@@ -1240,17 +1240,29 @@ class Errata(UnitMixin, ContentUnit):
 
         :param other: The erratum we are combining with this one
         :type  other: pulp_rpm.plugins.db.models.Errata
+        :return: True if and only if erratum was modified
+        :rtype: bool
         """
+        modified = False
+
         if self.update_needed(other):
+            modified = True
             for field_name in self.mutable_erratum_fields:
                 setattr(self, field_name, getattr(other, field_name))
+
         # This is due to https://pulp.plan.io/issues/2032
         # Syncs previously could have misinterpreted the reboot_suggested element and saved a
         # value of True when it should have been False. The only way to correct that data in pulp
         # is to do so here, during a subsequent sync.
-        self.reboot_suggested = other.reboot_suggested
-        self.relogin_suggested = other.relogin_suggested
-        self.restart_suggested = other.restart_suggested
+        if self.reboot_suggested != other.reboot_suggested \
+                or self.relogin_suggested != other.relogin_suggested \
+                or self.restart_suggested != other.restart_suggested:
+            modified = True
+            self.reboot_suggested = other.reboot_suggested
+            self.relogin_suggested = other.relogin_suggested
+            self.restart_suggested = other.restart_suggested
+
+        return modified
 
     def update_needed(self, other):
         """

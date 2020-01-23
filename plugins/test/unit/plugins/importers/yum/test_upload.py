@@ -5,6 +5,7 @@ import tempfile
 import unittest
 
 import mock
+import mongoengine
 from pulp.plugins.config import PluginCallConfiguration
 from pulp.plugins.model import Unit
 
@@ -209,9 +210,9 @@ class TestUploadErratum(unittest.TestCase):
     Tests for uploading erratum.
     """
 
-    def test_handle_with_link(self, m_update, m_model_by_id, m_repo_ctrl, m_errata_ctrl):
+    def test_handle_new_with_link(self, m_update, m_model_by_id, m_repo_ctrl, m_errata_ctrl):
         """
-        Ensure that erratum uploaded without the skip erratum link flag are associated.
+        Ensure that new erratum uploaded without the skip erratum link flag are associated.
         """
         unit_key = {'id': 'test-erratum'}
         metadata = {'a': 'a'}
@@ -224,6 +225,47 @@ class TestUploadErratum(unittest.TestCase):
         upload._handle_erratum(mock_repo, 'm_type', unit_key, metadata, None,
                                mock_conduit, config)
         m_repo_ctrl.associate_single_unit.assert_called_once_with(mock_repo, m_unit)
+
+        # It should not ask the controller to update any other repos, since the erratum
+        # was not modified
+        m_repo_ctrl.update_last_unit_added_for_unit.assert_never_called()
+
+    def test_handle_update_with_link(self, m_update, m_model_by_id, m_repo_ctrl, m_errata_ctrl):
+        """
+        Ensure that erratum updated without the skip erratum link flag are associated
+        and last_unit_added is set on relevant repos.
+        """
+        unit_key = {'id': 'test-erratum'}
+        metadata = {'a': 'a'}
+        mock_repo = mock.MagicMock()
+        mock_conduit = mock.MagicMock()
+        config = PluginCallConfiguration({}, {})
+        m_unit = m_model_by_id().return_value
+        m_unit.id = unit_key['id']
+        m_unit._content_type_id = 'erratum'
+        # Simulate an existing unit with older version, which will need to be updated.
+        m_unit.version = 2
+        m_unit.save.side_effect = mongoengine.NotUniqueError
+        existing_unit = mock.MagicMock()
+        existing_unit.id = m_unit.id
+        existing_unit._content_type_id = m_unit._content_type_id
+        existing_unit.version = m_unit.version - 1
+        existing_unit.merge_errata.return_value = True
+        m_model_by_id.return_value.objects.filter.return_value.first.return_value = existing_unit
+
+        upload._handle_erratum(mock_repo, 'm_type', unit_key, metadata, None,
+                               mock_conduit, config)
+
+        # It should have merged uploaded unit into existing
+        existing_unit.merge_errata.assert_called_once_with(m_unit)
+
+        # It should have associated the existing/merged unit into the repo
+        m_repo_ctrl.associate_single_unit.assert_called_once_with(mock_repo, existing_unit)
+
+        # Other repos (if any) containing the erratum should also have last_unit_added
+        # updated due to the modification.
+        m_repo_ctrl.update_last_unit_added_for_unit.assert_called_once_with(
+            'test-erratum', 'erratum')
 
     def test_handle_with_no_link(self, m_update, m_model_by_id, m_repo_ctrl, m_errata_ctrl):
         """
