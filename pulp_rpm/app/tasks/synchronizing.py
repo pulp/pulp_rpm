@@ -351,6 +351,9 @@ class RpmFirstStage(Stage):
                 elif record.type in SKIP_REPODATA:
                     continue
 
+                elif '_zck' in record.type:
+                    continue
+
                 elif record.type in MODULAR_REPODATA:
                     modules_url = urljoin(remote_url, record.location_href)
                     modulemd_downloader = self.remote.get_downloader(url=modules_url)
