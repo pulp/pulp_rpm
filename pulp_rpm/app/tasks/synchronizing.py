@@ -300,7 +300,15 @@ class RpmFirstStage(Stage):
             metadata_pb.increment()
 
             if self.treeinfo:
-                d_artifacts = []
+                d_artifacts = [
+                    DeclarativeArtifact(
+                        artifact=Artifact(),
+                        url=urljoin(remote_url, self.treeinfo["filename"]),
+                        relative_path=".treeinfo",
+                        remote=self.remote,
+                        deferred_download=False,
+                    )
+                ]
                 for path, checksum in self.treeinfo["download"]["images"].items():
                     artifact = Artifact(**checksum)
                     da = DeclarativeArtifact(

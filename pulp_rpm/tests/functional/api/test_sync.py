@@ -165,7 +165,7 @@ class KickstartSyncTestCase(unittest.TestCase):
         repo = self.client.get(repo['pulp_href'])
 
         artifacts = self.client.get(ARTIFACTS_PATH)
-        self.assertEqual(artifacts['count'], 3, artifacts)
+        self.assertEqual(artifacts['count'], 4, artifacts)
 
         # Check that nothing has changed since the last sync.
         self.assertEqual(latest_version_href, repo['latest_version_href'])
@@ -231,7 +231,7 @@ class KickstartSyncTestCase(unittest.TestCase):
         repo = self.client.get(repo['pulp_href'])
 
         artifacts = self.client.get(ARTIFACTS_PATH)
-        self.assertEqual(artifacts['count'], 0, artifacts)
+        self.assertEqual(artifacts['count'], 1, artifacts)  # treeinfo file is always downloaded
 
         # Check that nothing has changed since the last sync.
         self.assertEqual(latest_version_href, repo['latest_version_href'])

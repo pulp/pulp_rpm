@@ -31,7 +31,6 @@ from pulp_rpm.app.models import (
     RpmPublication,
     UpdateRecord,
 )
-from pulp_rpm.app.kickstart.treeinfo import create_treeinfo
 
 log = logging.getLogger(__name__)
 
@@ -154,12 +153,6 @@ class PublicationData:
 
         for distribution_tree in distribution_trees:
             self.handle_sub_repos(distribution_tree)
-
-            treeinfo_file = create_treeinfo(distribution_tree)
-            PublishedMetadata.create_from_file(
-                publication=self.publication,
-                file=File(open(treeinfo_file.name, 'rb'))
-            )
 
         all_content = main_content
         for name, content in self.sub_repos:
