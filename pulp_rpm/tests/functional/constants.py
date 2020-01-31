@@ -2,7 +2,7 @@
 """Constants for Pulp RPM plugin tests."""
 from urllib.parse import urljoin
 
-from pulp_smash.constants import PULP_FIXTURES_BASE_URL
+from pulp_smash import config
 from pulp_smash.pulp3.constants import (
     BASE_CONTENT_PATH,
     BASE_DISTRIBUTION_PATH,
@@ -11,6 +11,8 @@ from pulp_smash.pulp3.constants import (
     BASE_PUBLICATION_PATH,
     BASE_REMOTE_PATH,
 )
+
+PULP_FIXTURES_BASE_URL = config.get_config().get_fixtures_url()
 
 DRPM_UNSIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'drpm-unsigned/')
 """The URL to a repository with unsigned DRPM packages."""
