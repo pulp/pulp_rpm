@@ -13,6 +13,29 @@ Changelog
 
 .. towncrier release notes start
 
+
+3.1.0 (2020-02-03)
+==================
+
+
+Features
+--------
+
+- Advisory now support reboot_suggested info.
+  `#5737 <https://pulp.plan.io/issues/5737>`_
+- Skip unsupported repodata.
+  `#6034 <https://pulp.plan.io/issues/6034>`_
+
+
+Misc
+----
+
+- `#5867 <https://pulp.plan.io/issues/5867>`_, `#5900 <https://pulp.plan.io/issues/5900>`_
+
+
+----
+
+
 3.0.0 (2019-12-12)
 ==================
 
