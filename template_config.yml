@@ -11,7 +11,7 @@ deploy_client_to_rubygems: true
 deploy_daily_client_to_pypi: true
 deploy_daily_client_to_rubygems: true
 deploy_to_pypi: true
-docker_fixtures: false
+docker_fixtures: true
 docs_test: true
 plugin_app_label: rpm
 plugin_camel: PulpRpm
@@ -29,7 +29,6 @@ pypi_username: pulp
 stable_branch: '3.0'
 test_bindings: true
 test_performance:
-- sync
-- publish
+  - sync
+  - publish
 travis_notifications: None
-
