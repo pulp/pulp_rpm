@@ -8,7 +8,7 @@ from pulp_rpm.app.models import RpmRepository
 
 def _filter_content(content, criteria):
     """
-    Filter content in the source repository version by criteria
+    Filter content in the source repository version by criteria.
 
     Args:
         content: a queryset of content to filter

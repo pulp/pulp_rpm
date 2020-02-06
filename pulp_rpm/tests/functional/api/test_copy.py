@@ -1,39 +1,21 @@
 # coding=utf-8
 """Tests that sync rpm plugin repositories."""
 import unittest
-from urllib.parse import urljoin
 
-from pulp_smash import api, cli, config
-from pulp_smash.pulp3.constants import MEDIA_PATH, ARTIFACTS_PATH
+from pulp_smash import api, config
 from pulp_smash.pulp3.utils import (
     delete_orphans,
     gen_repo,
-    get_added_content,
     get_added_content_summary,
-    get_content,
     get_content_summary,
     sync,
 )
 
 from pulp_rpm.tests.functional.constants import (
     RPM_ADVISORY_CONTENT_NAME,
-    RPM_EPEL_URL,
     RPM_FIXTURE_SUMMARY,
-    RPM_KICKSTART_CONTENT_NAME,
-    RPM_KICKSTART_FIXTURE_SUMMARY,
-    RPM_KICKSTART_FIXTURE_URL,
-    RPM_MODULAR_FIXTURE_SUMMARY,
-    RPM_MODULAR_FIXTURE_URL,
-    RPM_PACKAGE_CONTENT_NAME,
-    RPM_PACKAGE_COUNT,
-    RPM_REFERENCES_UPDATEINFO_URL,
     RPM_REMOTE_PATH,
     RPM_REPO_PATH,
-    RPM_SHA512_FIXTURE_URL,
-    RPM_SIGNED_FIXTURE_URL,
-    RPM_UNSIGNED_FIXTURE_URL,
-    RPM_UPDATED_UPDATEINFO_FIXTURE_URL,
-    RPM_UPDATERECORD_ID,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_remote, rpm_copy
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
@@ -74,7 +56,8 @@ class BasicCopyTestCase(unittest.TestCase):
         self.addCleanup(self.client.delete, remote['pulp_href'])
 
         # Sync the repository.
-        self.assertEqual(source_repo["latest_version_href"], f"{source_repo['pulp_href']}versions/0/")
+        self.assertEqual(source_repo["latest_version_href"],
+                         f"{source_repo['pulp_href']}versions/0/")
         sync(self.cfg, remote, source_repo)
         source_repo = self.client.get(source_repo['pulp_href'])
 
@@ -94,6 +77,7 @@ class BasicCopyTestCase(unittest.TestCase):
         )
 
     def test_copy_all(self):
+        """Test copying all the content from one repo to another."""
         criteria = {}
         results = RPM_FIXTURE_SUMMARY
         self._do_test(criteria, results)
@@ -104,6 +88,7 @@ class BasicCopyTestCase(unittest.TestCase):
     #     self._do_test(criteria, results)
 
     def test_copy_by_advisory_id(self):
+        """Test copying an advisory by its id."""
         criteria = {
             'advisory': [{'id': 'RHEA-2012:0056'}]
         }
