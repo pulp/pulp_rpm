@@ -6,15 +6,11 @@ from django.db import IntegrityError
 from rest_framework import serializers
 from rest_framework.exceptions import NotAcceptable
 
-from pulpcore.plugin.models import (
-    Remote,
-    RepositoryVersion,
-)
+from pulpcore.plugin.models import Remote
 from pulpcore.plugin.serializers import (
     ArtifactSerializer,
     ModelSerializer,
     MultipleArtifactContentSerializer,
-    NestedRelatedField,
     NoArtifactContentSerializer,
     PublicationDistributionSerializer,
     PublicationSerializer,
