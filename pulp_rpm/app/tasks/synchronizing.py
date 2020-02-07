@@ -394,9 +394,9 @@ class RpmFirstStage(Stage):
                 modulemd_index = mmdlib.ModuleIndex.new()
                 open_func = gzip.open if modulemd_results.url.endswith('.gz') else open
                 with open_func(modulemd_results.path, 'r') as moduleyaml:
-                    modulemd_index.update_from_string(
-                        moduleyaml.read().decode(), True
-                    )
+                    content = moduleyaml.read()
+                    module_content = content if isinstance(content, str) else content.decode()
+                    modulemd_index.update_from_string(module_content, True)
 
                 modulemd_names = modulemd_index.get_module_names() or []
                 modulemd_all = parse_modulemd(modulemd_names, modulemd_index)

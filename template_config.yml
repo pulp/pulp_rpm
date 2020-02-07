@@ -31,4 +31,5 @@ test_bindings: true
 test_performance:
   - sync
   - publish
+  - pulp_to_pulp
 travis_notifications: None
