@@ -115,9 +115,26 @@ class PulpTreeInfo(TreeInfo):
         parser = SortedConfigParser()
         self.serialize(parser)
 
-        if "general" in self.original_parser._sections:
+        general = self.original_parser._sections.get("general")
+        build_timestamp = ""
+
+        if general:
             if "general" not in parser._sections:
-                parser._sections["general"] = self.original_parser._sections["general"]
+                parser._sections["general"] = general
+
+            if "." in str(general.get("timestamp")):
+                build_timestamp = float(general["timestamp"])
+
+        tree = self.original_parser._sections.get("tree", {})
+
+        if "." in str(tree.get("build_timestamp")):
+            build_timestamp = float(tree.get["build_timestamp"])
+
+        if build_timestamp and parser._sections.get("general", {}).get("timestamp"):
+            parser._sections["general"]["timestamp"] = build_timestamp
+
+        if build_timestamp and parser._sections.get("tree", {}).get("build_timestamp"):
+            parser._sections["tree"]["build_timestamp"] = build_timestamp
 
         return parser._sections
 
