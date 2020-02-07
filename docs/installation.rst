@@ -20,7 +20,7 @@ Only Fedora 29+ and CentOS 7 (with epel repository and python36) are supported.
 Create ``playbook.yml`` as example you can use ``example-use/playbook.yml`` from ``ansible-pulp`` directory.
 Do not forget about ``group_vars`` as dependency in same directory.
 
-Add ``pulp_use_system_wide_pkgs: true`` and ``pulp_rpm`` plugin with prereq role downloaded above under the ``vars``.
+Add the ``pulp_rpm`` plugin with the ``prereq_role`` downloaded to ``pulp_install_plugins`` under ``vars``.
 
 Final ``playbook.yml`` can looks like:
 
@@ -29,7 +29,6 @@ Final ``playbook.yml`` can looks like:
     ---
     - hosts: all
       vars:
-        pulp_use_system_wide_pkgs: true
         pulp_install_plugins:
           pulp-rpm:
             prereq_role: "pulp.pulp_rpm_prerequisites"

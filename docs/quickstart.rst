@@ -33,8 +33,6 @@ Do not forget to set up ``prereq_role`` to previously installed ``pulp.pulp_rpm_
         prereq_role: "pulp.pulp_rpm_prerequisites"
       pulp-file: {}
 
-    # Uncomment if using pulp-rpm
-    pulp_use_system_wide_pkgs: true
     pulp_settings:
       secret_key: "unsafe_default"
 
