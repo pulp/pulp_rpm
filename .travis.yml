@@ -86,6 +86,11 @@ jobs:
       env:
         - TEST=performance PERFORMANCE_TEST=publish
       if: type = cron
+    - stage: daily-performance-test
+      name: "Daily pulp_to_pulp performance test"
+      env:
+        - TEST=performance PERFORMANCE_TEST=pulp_to_pulp
+      if: type = cron
     - stage: cherry-pick
       if: type = cron
       before_install: skip

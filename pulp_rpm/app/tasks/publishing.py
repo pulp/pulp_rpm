@@ -31,7 +31,6 @@ from pulp_rpm.app.models import (
     RpmPublication,
     UpdateRecord,
 )
-from pulp_rpm.app.kickstart.treeinfo import create_treeinfo
 
 log = logging.getLogger(__name__)
 
@@ -154,12 +153,6 @@ class PublicationData:
 
         for distribution_tree in distribution_trees:
             self.handle_sub_repos(distribution_tree)
-
-            treeinfo_file = create_treeinfo(distribution_tree)
-            PublishedMetadata.create_from_file(
-                publication=self.publication,
-                file=File(open(treeinfo_file.name, 'rb'))
-            )
 
         all_content = main_content
         for name, content in self.sub_repos:
@@ -313,7 +306,7 @@ def create_repomd_xml(content, publication, extra_repomdrecords, sub_folder=None
         repomdrecords.append(("modules", mod_yml_path, None))
 
     if has_comps:
-        repomdrecords.append(("comps", comps_xml_path, None))
+        repomdrecords.append(("group", comps_xml_path, None))
 
     repomdrecords.extend(extra_repomdrecords)
 
@@ -326,12 +319,6 @@ def create_repomd_xml(content, publication, extra_repomdrecords, sub_folder=None
             record_bz.rename_file()
             path = record_bz.location_href.split('/')[-1]
             repomd.set_record(record_bz)
-        elif name == "modules":
-            record_md = record.compress_and_fill(cr.SHA256, cr.GZ)
-            record_md.type = name
-            record_md.rename_file()
-            path = record_md.location_href.split('/')[-1]
-            repomd.set_record(record_md)
         else:
             record.fill(cr.SHA256)
             if (db_to_update):
