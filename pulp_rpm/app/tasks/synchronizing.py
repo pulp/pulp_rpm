@@ -97,13 +97,14 @@ def repodata_exists(remote, url):
     return True
 
 
-def synchronize(remote_pk, repository_pk):
+def synchronize(remote_pk, repository_pk, mirror):
     """
     Sync content from the remote repository.
 
     Create a new version of the repository that is synchronized with the remote.
 
     Args:
+        mirror (bool): Mirror mode
         remote_pk (str): The remote PK.
         repository_pk (str): The repository PK.
 
@@ -146,7 +147,8 @@ def synchronize(remote_pk, repository_pk):
 
     first_stage = RpmFirstStage(remote, deferred_download, treeinfo=treeinfo)
     dv = RpmDeclarativeVersion(first_stage=first_stage,
-                               repository=repository)
+                               repository=repository,
+                               mirror=mirror)
     dv.create()
 
 
