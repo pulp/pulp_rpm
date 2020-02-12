@@ -2,6 +2,8 @@
 """Tests that sync rpm plugin repositories."""
 import unittest
 
+from requests.exceptions import HTTPError
+
 from pulp_smash import api, config
 from pulp_smash.pulp3.utils import (
     delete_orphans,
@@ -78,9 +80,8 @@ class BasicCopyTestCase(unittest.TestCase):
 
     def test_copy_all(self):
         """Test copying all the content from one repo to another."""
-        criteria = {}
         results = RPM_FIXTURE_SUMMARY
-        self._do_test(criteria, results)
+        self._do_test(None, results)
 
     # def test_copy_by_href(self):
     #     criteria = {}
@@ -96,3 +97,17 @@ class BasicCopyTestCase(unittest.TestCase):
             RPM_ADVISORY_CONTENT_NAME: 1
         }
         self._do_test(criteria, results)
+
+    def test_invalid_criteria(self):
+        """Test invalid criteria."""
+        with self.assertRaises(HTTPError):
+            criteria = {
+                'meta': 'morphosis'
+            }
+            self._do_test(criteria, {})
+
+        with self.assertRaises(HTTPError):
+            criteria = {
+                'advisory': [{'bad': 'field'}]
+            }
+            self._do_test(criteria, {})
