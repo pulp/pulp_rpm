@@ -122,8 +122,12 @@ def rpm_copy(cfg, source_repo, dest_repo, criteria, recursive=True):
         'source_repo': source_repo['pulp_href'],
         'dest_repo': dest_repo['pulp_href'],
         'criteria': criteria,
-        'dependency_solving': True,
+        'dependency_solving': recursive,
     }
+
+    if criteria:
+        data['criteria'] = criteria
+
     return client.post(RPM_COPY_PATH, data)
 
 
