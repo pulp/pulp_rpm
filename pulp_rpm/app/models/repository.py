@@ -14,7 +14,7 @@ from pulpcore.plugin.models import (
     PublicationDistribution,
     Task,
 )
-from pulpcore.plugin.repo_version_utils import remove_duplicates
+from pulpcore.plugin.repo_version_utils import remove_duplicates, validate_version_paths
 
 from pulp_rpm.app.models import (
     DistributionTree,
@@ -113,6 +113,7 @@ class RpmRepository(Repository):
             ).order_by('-number').first()
 
         remove_duplicates(new_version)
+        validate_version_paths(new_version)
 
         from pulp_rpm.app.modulemd import resolve_module_packages  # avoid circular import
         resolve_module_packages(new_version, previous_version)

@@ -8,17 +8,28 @@ from requests.exceptions import HTTPError
 from pulp_smash import api, config, utils
 from pulp_smash.exceptions import TaskReportError
 from pulp_smash.pulp3.constants import ARTIFACTS_PATH
-from pulp_smash.pulp3.utils import delete_orphans
+from pulp_smash.pulp3.utils import delete_orphans, gen_repo
 
 from pulp_rpm.tests.functional.constants import (
     RPM_CONTENT_PATH,
     RPM_PACKAGE_DATA,
     RPM_PACKAGE_FILENAME,
     RPM_SIGNED_URL,
+    RPM_SIGNED_URL2,
     RPM_UNSIGNED_URL,
 )
-from pulp_rpm.tests.functional.utils import skip_if
+from pulp_rpm.tests.functional.utils import (
+    gen_artifact,
+    gen_rpm_client,
+    monitor_task,
+    skip_if,
+)
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+
+from pulpcore.client.pulp_rpm import (
+    RepositoriesRpmApi,
+    ContentPackagesApi,
+)
 
 
 class ContentUnitTestCase(unittest.TestCase):
@@ -167,3 +178,40 @@ class DuplicateContentUnit(unittest.TestCase):
                 ctx.exception.task['error']['description'].lower(),
                 ctx.exception.task['error']
             )
+
+    def test_second_unit_raises_error(self):
+        """
+        Create a duplicate content unit with different ``artifacts`` and same ``repo_key_fields``.
+        """
+        delete_orphans()
+        client = gen_rpm_client()
+        packages_api = ContentPackagesApi(client)
+        repo_api = RepositoriesRpmApi(client)
+
+        repo = repo_api.create(gen_repo())
+        self.addCleanup(repo_api.delete, repo.pulp_href)
+
+        artifact = gen_artifact()
+
+        # create first content unit.
+        content_attrs = {"artifact": artifact["pulp_href"], "relative_path": "test_package"}
+        response = packages_api.create(**content_attrs)
+        monitor_task(response.task)
+
+        artifact = gen_artifact(url=RPM_SIGNED_URL2)
+
+        # create second content unit.
+        second_content_attrs = {"artifact": artifact["pulp_href"]}
+        second_content_attrs["relative_path"] = content_attrs["relative_path"]
+        response = packages_api.create(**second_content_attrs)
+        monitor_task(response.task)
+
+        data = {"add_content_units": [c.pulp_href for c in packages_api.list().results]}
+        response = repo_api.modify(repo.pulp_href, data)
+        task = monitor_task(response.task)
+
+        error_message = "Cannot create repository version. Path is duplicated: {}.".format(
+            content_attrs["relative_path"]
+        )
+
+        self.assertEqual(task["error"]["description"], error_message)
