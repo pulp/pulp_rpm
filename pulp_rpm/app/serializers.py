@@ -3,6 +3,7 @@ import json
 from gettext import gettext as _
 
 from django.db import IntegrityError
+from jsonschema import Draft7Validator
 from rest_framework import serializers
 from rest_framework.exceptions import NotAcceptable
 
@@ -63,6 +64,7 @@ from pulp_rpm.app.models import (
     UpdateReference
 )
 from pulp_rpm.app.shared_utils import _prepare_package
+from pulp_rpm.app.schema import COPY_CRITERIA_SCHEMA
 
 
 class PackageSerializer(SingleArtifactContentUploadSerializer):
@@ -583,19 +585,6 @@ class RpmRepositorySyncURLSerializer(RepositorySyncURLSerializer):
         )
     )
 
-# SCHEMA = '''{
-#     "$schema": "http://json-schema.org/draft-07/schema#",
-#     "title": "CopyPlan",
-#     "type": "object",
-#     "properties": {
-#         "type": "object",
-#         "minItems": 1,
-#         "additionalProperties": false
-#         }
-#     },
-#     "additionalProperties": false
-# }'''
-
 
 class CopySerializer(serializers.Serializer):
     """
@@ -623,6 +612,7 @@ class CopySerializer(serializers.Serializer):
 
     criteria = serializers.JSONField(
         help_text=_('A JSON document describing what content you want to be copied'),
+        required=False,
     )
 
     dependency_solving = serializers.BooleanField(
@@ -641,21 +631,20 @@ class CopySerializer(serializers.Serializer):
         """
         super().validate(data)
 
-        # schema = json.loads(SCHEMA)
-        # validator = Draft7Validator(schema)
-
         if hasattr(self, 'initial_data'):
             validate_unknown_fields(self.initial_data, self.fields)
 
-        # criteria = data.get('criteria')
+        criteria = data.get('criteria')
+        if criteria:
+            validator = Draft7Validator(COPY_CRITERIA_SCHEMA)
 
-        # err = []
-        # for error in sorted(validator.iter_errors(criteria), key=str):
-        #     err.append(error.message)
-        # if err:
-        #     raise serializers.ValidationError(
-        #         _("Provided copy criteria is invalid:'{}'".format(err))
-        #     )
+            err = []
+            for error in sorted(validator.iter_errors(criteria), key=str):
+                err.append(error.message)
+            if err:
+                raise serializers.ValidationError(
+                    _("Provided copy criteria is invalid:'{}'".format(err))
+                )
 
         return data
 
