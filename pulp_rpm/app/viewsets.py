@@ -251,7 +251,7 @@ class CopyViewSet(viewsets.ViewSet):
         source_repo = serializer.validated_data['source_repo']
         # source_repo_version = serializer.validated_data['source_repo_version']
         dest_repo = serializer.validated_data['dest_repo']
-        criteria = serializer.validated_data['criteria']
+        criteria = serializer.validated_data.get('criteria', None)
         dependency_solving = serializer.validated_data['dependency_solving']
 
         source_repos = [source_repo]
