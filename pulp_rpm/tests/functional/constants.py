@@ -149,13 +149,29 @@ RPM_MODULAR_FIXTURE_SUMMARY = {
 i.e. :data:`RPM_MODULAR_FIXTURE_URL`."""
 
 RPM_PACKAGE_DATA = {
-    'name': 'bear',
+    'name': 'kangaroo',
     'epoch': '0',
-    'version': '4.1',
+    'version': '0.3',
     'release': '1',
     'arch': 'noarch',
-    'description': 'A dummy package of bear',
-    'summary': 'A dummy package of bear',
+    'description': 'A modular RPM fixture for testing Pulp.',
+    'summary': 'hop like a kangaroo in Australia',
+    'rpm_license': 'Public Domain',
+    'rpm_group': 'Unspecified',
+    'rpm_vendor': '',
+    # TODO: Complete this information once we figure out how to serialize
+    # everything nicely
+}
+"""The metadata for one RPM package."""
+
+RPM_PACKAGE_DATA2 = {
+    'name': 'duck',
+    'epoch': '0',
+    'version': '0.7',
+    'release': '1',
+    'arch': 'noarch',
+    'description': 'A dummy package of duck',
+    'summary': 'A dummy package of duck',
     'rpm_license': 'GPLv2',
     'rpm_group': 'Internet/Applications',
     'rpm_vendor': '',
@@ -175,6 +191,14 @@ RPM_PACKAGE_FILENAME = '{}-{}-{}.{}.rpm'.format(
 )
 """The filename of one RPM package."""
 
+RPM_PACKAGE_FILENAME2 = '{}-{}-{}.{}.rpm'.format(
+    RPM_PACKAGE_DATA2['name'],
+    RPM_PACKAGE_DATA2['version'],
+    RPM_PACKAGE_DATA2['release'],
+    RPM_PACKAGE_DATA2['arch'],
+)
+"""The filename of one RPM package."""
+
 RPM_REFERENCES_UPDATEINFO_URL = urljoin(
     PULP_FIXTURES_BASE_URL, 'rpm-references-updateinfo/'
 )
@@ -190,6 +214,9 @@ RPM_RICH_WEAK_FIXTURE_URL = urljoin(
 """The URL to an RPM repository with weak and rich dependencies."""
 
 RPM_SIGNED_URL = urljoin(RPM_SIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
+"""The path to a single signed RPM package."""
+
+RPM_SIGNED_URL2 = urljoin(RPM_SIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME2)
 """The path to a single signed RPM package."""
 
 RPM_UNSIGNED_URL = urljoin(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
