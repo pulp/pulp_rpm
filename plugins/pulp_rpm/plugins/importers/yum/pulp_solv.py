@@ -955,10 +955,10 @@ class Solver(object):
             return set(transaction.newsolvables())
 
         solvables_to_copy = set(solvables)
+        install_jobs = []
         while solvables_to_copy:
             # Take one solvable
             solvable = solvables_to_copy.pop()
-            install_jobs = []
 
             if solvable.name.startswith("module:"):
                 # If the solvable being installed is a module, try to install it and all of its
@@ -981,9 +981,9 @@ class Solver(object):
                 unit_install_job = self._pool.Job(flags, solvable.id)
                 install_jobs.append(unit_install_job)
 
-            # Depsolv using the list of unit install jobs, add them to the results
-            solvables_copied = run_solver_jobs(install_jobs)
-            result_solvables.update(solvables_copied)
+        # Depsolv using the list of unit install jobs, add them to the results
+        solvables_copied = run_solver_jobs(install_jobs)
+        result_solvables.update(solvables_copied)
 
         return result_solvables
 
