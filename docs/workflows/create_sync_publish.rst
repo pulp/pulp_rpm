@@ -72,6 +72,10 @@ repository as a new repository version.
 Optionally, you can skip ``SRPM`` packages by using ``skip_types:="[\"srpm\"]"``
 option.
 
+By default, ``optimize=True`` and sync will only proceed if changes are present.
+You can override this by setting ``optimize=False`` which will disable optimizations and
+run a full sync.
+
 RepositoryVersion GET response (when sync task complete):
 
 .. code:: json

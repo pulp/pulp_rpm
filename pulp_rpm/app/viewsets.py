@@ -129,6 +129,7 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin):
         remote = serializer.validated_data.get('remote')
         mirror = serializer.validated_data.get('mirror')
         skip_types = serializer.validated_data.get('skip_types')
+        optimize = serializer.validated_data.get('optimize')
 
         result = enqueue_with_reservation(
             tasks.synchronize,
@@ -137,7 +138,8 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin):
                 'mirror': mirror,
                 'remote_pk': remote.pk,
                 'repository_pk': repository.pk,
-                'skip_types': skip_types
+                'skip_types': skip_types,
+                'optimize': optimize
             }
         )
         return OperationPostponedResponse(result, request)
