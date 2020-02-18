@@ -69,6 +69,9 @@ You can specify ``mirror=True`` for a mirror mode. It means Pulp won't update
 repository using previous repository version but create a new copy of remote
 repository as a new repository version.
 
+Optionally, you can skip ``SRPM`` packages by using ``skip_types:="[\"srpm\"]"``
+option.
+
 RepositoryVersion GET response (when sync task complete):
 
 .. code:: json

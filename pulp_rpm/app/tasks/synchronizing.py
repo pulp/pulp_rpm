@@ -97,16 +97,17 @@ def repodata_exists(remote, url):
     return True
 
 
-def synchronize(remote_pk, repository_pk, mirror):
+def synchronize(remote_pk, repository_pk, mirror, skip_types):
     """
     Sync content from the remote repository.
 
     Create a new version of the repository that is synchronized with the remote.
 
     Args:
-        mirror (bool): Mirror mode
         remote_pk (str): The remote PK.
         repository_pk (str): The repository PK.
+        mirror (bool): Mirror mode
+        skip_types (list): List of content to skip.
 
     Raises:
         ValueError: If the remote does not specify a url to sync.
@@ -145,7 +146,7 @@ def synchronize(remote_pk, repository_pk, mirror):
                                            repository=sub_repo)
                 dv.create()
 
-    first_stage = RpmFirstStage(remote, deferred_download, treeinfo=treeinfo)
+    first_stage = RpmFirstStage(remote, deferred_download, skip_types, treeinfo=treeinfo)
     dv = RpmDeclarativeVersion(first_stage=first_stage,
                                repository=repository,
                                mirror=mirror)
@@ -191,7 +192,7 @@ class RpmFirstStage(Stage):
     that should exist in the new :class:`~pulpcore.plugin.models.RepositoryVersion`.
     """
 
-    def __init__(self, remote, deferred_download, new_url=None, treeinfo=None):
+    def __init__(self, remote, deferred_download, skip_types=[], new_url=None, treeinfo=None):
         """
         The first stage of a pulp_rpm sync pipeline.
 
@@ -201,6 +202,7 @@ class RpmFirstStage(Stage):
                 happen immediately.
 
         Keyword Args:
+            skip_types (list): List of content to skip
             new_url(str): URL to replace remote url
             treeinfo(dict): Treeinfo data
 
@@ -210,6 +212,7 @@ class RpmFirstStage(Stage):
         self.deferred_download = deferred_download
         self.new_url = new_url
         self.treeinfo = treeinfo
+        self.skip_types = skip_types
 
     @staticmethod
     async def parse_updateinfo(updateinfo_xml_path):
@@ -587,6 +590,11 @@ class RpmFirstStage(Stage):
                         packages = await RpmFirstStage.parse_repodata(primary_xml_path,
                                                                       filelists_xml_path,
                                                                       other_xml_path)
+                        # skip SRPM if defined
+                        if 'srpm' in self.skip_types:
+                            packages = {
+                                pkgId: pkg for pkgId, pkg in packages.items() if pkg.arch != 'src'
+                            }
 
                         progress_data = {
                             'message': 'Parsed Packages',

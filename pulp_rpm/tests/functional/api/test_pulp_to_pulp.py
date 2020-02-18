@@ -22,7 +22,7 @@ from pulpcore.client.pulp_rpm import (
     DistributionsRpmApi,
     PublicationsRpmApi,
     RepositoriesRpmApi,
-    RepositorySyncURL,
+    RpmRepositorySyncURL,
     RemotesRpmApi,
     RpmRpmPublication,
 )
@@ -83,7 +83,7 @@ class SynctoSyncTestCase(unittest.TestCase):
         self.addCleanup(remote_api.delete, remote.pulp_href)
 
         # Sync a Repository
-        repository_sync_data = RepositorySyncURL(remote=remote.pulp_href)
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
         sync_response = repo_api.sync(repo.pulp_href, repository_sync_data)
         monitor_task(sync_response.task)
         repo = repo_api.read(repo.pulp_href)
@@ -112,7 +112,7 @@ class SynctoSyncTestCase(unittest.TestCase):
         self.addCleanup(remote_api.delete, remote2.pulp_href)
 
         # Sync a Repository
-        repository_sync_data = RepositorySyncURL(remote=remote2.pulp_href)
+        repository_sync_data = RpmRepositorySyncURL(remote=remote2.pulp_href)
         sync_response = repo_api.sync(repo2.pulp_href, repository_sync_data)
         monitor_task(sync_response.task)
         repo2 = repo_api.read(repo2.pulp_href)
