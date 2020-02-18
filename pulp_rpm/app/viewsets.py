@@ -5,10 +5,7 @@ from rest_framework.parsers import FormParser, MultiPartParser
 
 from pulpcore.plugin.actions import ModifyRepositoryActionMixin
 from pulpcore.plugin.tasking import enqueue_with_reservation
-from pulpcore.plugin.serializers import (
-    AsyncOperationResponseSerializer,
-    RepositorySyncURLSerializer
-)
+from pulpcore.plugin.serializers import AsyncOperationResponseSerializer
 from pulpcore.plugin.viewsets import (
     BaseDistributionViewSet,
     ContentFilter,
@@ -54,6 +51,7 @@ from pulp_rpm.app.serializers import (
     RpmDistributionSerializer,
     RpmRemoteSerializer,
     RpmRepositorySerializer,
+    RpmRepositorySyncURLSerializer,
     RpmPublicationSerializer,
     UpdateRecordSerializer,
 )
@@ -109,19 +107,20 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin):
         operation_summary="Sync from remote",
         responses={202: AsyncOperationResponseSerializer}
     )
-    @action(detail=True, methods=['post'], serializer_class=RepositorySyncURLSerializer)
+    @action(detail=True, methods=['post'], serializer_class=RpmRepositorySyncURLSerializer)
     def sync(self, request, pk):
         """
         Dispatches a sync task.
         """
         repository = self.get_object()
-        serializer = RepositorySyncURLSerializer(
+        serializer = RpmRepositorySyncURLSerializer(
             data=request.data,
             context={'request': request}
         )
         serializer.is_valid(raise_exception=True)
         remote = serializer.validated_data.get('remote')
         mirror = serializer.validated_data.get('mirror')
+        skip_types = serializer.validated_data.get('skip_types')
 
         result = enqueue_with_reservation(
             tasks.synchronize,
@@ -129,7 +128,8 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin):
             kwargs={
                 'mirror': mirror,
                 'remote_pk': remote.pk,
-                'repository_pk': repository.pk
+                'repository_pk': repository.pk,
+                'skip_types': skip_types
             }
         )
         return OperationPostponedResponse(result, request)

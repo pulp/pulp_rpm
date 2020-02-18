@@ -18,6 +18,7 @@ from pulpcore.plugin.serializers import (
     NoArtifactContentSerializer,
     PublicationDistributionSerializer,
     PublicationSerializer,
+    RepositorySyncURLSerializer,
     RelatedField,
     RemoteSerializer,
     RepositorySerializer,
@@ -33,11 +34,12 @@ from pulp_rpm.app.fields import (
 )
 
 from pulp_rpm.app.constants import (
-    RPM_PLUGIN_TYPE_CHOICE_MAP,
+    CR_UPDATE_REFERENCE_ATTRS,
+    PULP_UPDATE_COLLECTION_ATTRS,
     PULP_UPDATE_RECORD_ATTRS,
     PULP_UPDATE_REFERENCE_ATTRS,
-    PULP_UPDATE_COLLECTION_ATTRS,
-    CR_UPDATE_REFERENCE_ATTRS
+    RPM_PLUGIN_TYPE_CHOICE_MAP,
+    SKIP_TYPES
 )
 
 from pulp_rpm.app.models import (
@@ -568,6 +570,21 @@ class RpmDistributionSerializer(PublicationDistributionSerializer):
     class Meta:
         fields = PublicationDistributionSerializer.Meta.fields
         model = RpmDistribution
+
+
+class RpmRepositorySyncURLSerializer(RepositorySyncURLSerializer):
+    """
+    Serializer for RPM Sync.
+    """
+
+    skip_types = serializers.ListField(
+        help_text=_("List of content types to skip during sync."),
+        required=False,
+        default=[],
+        child=serializers.ChoiceField(
+            [(skip_type, skip_type) for skip_type in SKIP_TYPES]
+        )
+    )
 
 
 class CopySerializer(serializers.Serializer):
