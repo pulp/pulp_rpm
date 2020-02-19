@@ -18,7 +18,6 @@ from pulpcore.plugin.serializers import (
     PublicationSerializer,
     RepositorySyncURLSerializer,
     RelatedField,
-    DetailRelatedField,
     RemoteSerializer,
     RepositorySerializer,
     SingleArtifactContentUploadSerializer,
@@ -616,6 +615,11 @@ class CopySerializer(serializers.Serializer):
         required=False,
     )
 
+    content = serializers.ListField(
+        help_text=_("A list of content unit hrefs to copy from one repo to the other"),
+        required=False,
+    )
+
     dependency_solving = serializers.BooleanField(
         help_text=_('Also copy dependencies of the content being copied.'),
         default=True
@@ -635,7 +639,13 @@ class CopySerializer(serializers.Serializer):
         if hasattr(self, 'initial_data'):
             validate_unknown_fields(self.initial_data, self.fields)
 
+        if 'criteria' in data and 'content' in data:
+            raise serializers.ValidationError(
+                _("Criteria and content fields cannot both be set.")
+            )
+
         criteria = data.get('criteria')
+
         if criteria:
             validator = Draft7Validator(COPY_CRITERIA_SCHEMA)
 
