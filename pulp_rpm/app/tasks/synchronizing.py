@@ -1,6 +1,5 @@
 import asyncio
 import gzip
-import json
 import logging
 import os
 
@@ -431,7 +430,7 @@ class RpmFirstStage(Stage):
                     dc.extra_data = defaultdict(list)
 
                     # dc.content.artifacts are Modulemd artifacts
-                    for artifact in json.loads(dc.content.artifacts):
+                    for artifact in dc.content.artifacts:
                         nevra_to_module.setdefault(artifact, set()).add(dc)
                     modulemd_list.append(dc)
 

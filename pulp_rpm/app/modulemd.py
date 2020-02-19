@@ -1,4 +1,3 @@
-import json
 import os
 import tempfile
 
@@ -83,7 +82,7 @@ def parse_modulemd(module_names, module_index):
             modulemd[PULP_MODULE_ATTR.VERSION] = s.props.version
             modulemd[PULP_MODULE_ATTR.CONTEXT] = s.props.context
             modulemd[PULP_MODULE_ATTR.ARCH] = s.props.arch
-            modulemd[PULP_MODULE_ATTR.ARTIFACTS] = json.dumps(s.get_rpm_artifacts())
+            modulemd[PULP_MODULE_ATTR.ARTIFACTS] = s.get_rpm_artifacts()
 
             dependencies_list = s.get_dependencies()
             dependencies = dict()
@@ -91,7 +90,7 @@ def parse_modulemd(module_names, module_index):
                 d_list = dep.get_runtime_modules()
                 for dependency in d_list:
                     dependencies[dependency] = dep.get_runtime_streams(dependency)
-            modulemd[PULP_MODULE_ATTR.DEPENDENCIES] = json.dumps(dependencies)
+            modulemd[PULP_MODULE_ATTR.DEPENDENCIES] = dependencies
             # create yaml snippet for this modulemd stream
             temp_index = mmdlib.ModuleIndex.new()
             temp_index.add_module_stream(s)
@@ -128,7 +127,7 @@ def parse_defaults(module_index):
             ret.append({
                 PULP_MODULEDEFAULTS_ATTR.MODULE: modulemd.get_module_name(),
                 PULP_MODULEDEFAULTS_ATTR.STREAM: default_stream,
-                PULP_MODULEDEFAULTS_ATTR.PROFILES: json.dumps(default_profile),
+                PULP_MODULEDEFAULTS_ATTR.PROFILES: default_profile,
                 PULP_MODULEDEFAULTS_ATTR.DIGEST: artifact.sha256,
                 'artifact': artifact
             })
