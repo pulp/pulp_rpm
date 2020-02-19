@@ -4,11 +4,13 @@ from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
 
 from pulpcore.plugin.actions import ModifyRepositoryActionMixin
+from pulpcore.plugin.models import Content
 from pulpcore.plugin.tasking import enqueue_with_reservation
 from pulpcore.plugin.serializers import AsyncOperationResponseSerializer
 from pulpcore.plugin.viewsets import (
     BaseDistributionViewSet,
     ContentFilter,
+    NamedModelViewSet,
     OperationPostponedResponse,
     PublicationViewSet,
     ReadOnlyContentViewSet,
@@ -257,13 +259,21 @@ class CopyViewSet(viewsets.ViewSet):
         dest_repo = serializer.validated_data['dest_repo']
         criteria = serializer.validated_data.get('criteria', None)
         dependency_solving = serializer.validated_data['dependency_solving']
+        content_urls = serializer.validated_data.get('content', None)
+
+        content = []
+        if content_urls:
+            for url in content_urls:
+                c = NamedModelViewSet().get_resource(url, Content)
+                content.append(c.pk)
 
         source_repos = [source_repo]
         dest_repos = [dest_repo]
 
         async_result = enqueue_with_reservation(
             tasks.copy_content, [*source_repos, *dest_repos],
-            args=[source_repo.latest_version().pk, dest_repo.pk, criteria, dependency_solving],
+            args=[source_repo.latest_version().pk, dest_repo.pk, criteria, content,
+                  dependency_solving],
             kwargs={}
         )
         return OperationPostponedResponse(async_result, request)

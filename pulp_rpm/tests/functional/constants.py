@@ -266,7 +266,7 @@ RPM_WITH_NON_UTF_8_URL = urljoin(
 SRPM_UNSIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'srpm-unsigned/')
 """The URL to a repository with unsigned SRPM packages."""
 
-UPDATERECORD_CONTENT_PATH = urljoin(BASE_CONTENT_PATH, 'rpm/updates/')
+UPDATERECORD_CONTENT_PATH = urljoin(BASE_CONTENT_PATH, 'rpm/advisories/')
 """The location of RPM UpdateRecords on the content endpoint."""
 
 RPM_KICKSTART_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-kickstart/')
