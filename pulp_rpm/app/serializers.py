@@ -12,6 +12,7 @@ from pulpcore.plugin.models import (
 )
 from pulpcore.plugin.serializers import (
     ArtifactSerializer,
+    DetailRelatedField,
     ModelSerializer,
     MultipleArtifactContentSerializer,
     NestedRelatedField,
@@ -911,7 +912,10 @@ class ModulemdSerializer(SingleArtifactContentUploadSerializer):
         help_text=_("Modulemd dependencies."),
         allow_null=True
     )
-    packages = serializers.PrimaryKeyRelatedField(
+    # TODO: The performance of this is not great, there's a noticable difference in response
+    # time before/after. Since this will only return Package content hrefs, we might benefit
+    # from creating a specialized version of this Field that can skip some of the work.
+    packages = DetailRelatedField(
         help_text=_("Modulemd artifacts' packages."),
         allow_null=True,
         required=False,
