@@ -331,6 +331,19 @@ class RepoMetadataFileViewSet(ReadOnlyContentViewSet,
     serializer_class = RepoMetadataFileSerializer
 
 
+class ModulemdFilter(ContentFilter):
+    """
+    FilterSet for Modulemd.
+    """
+
+    class Meta:
+        model = Modulemd
+        fields = {
+            'name': ['exact', 'in'],
+            'stream': ['exact', 'in'],
+        }
+
+
 class ModulemdViewSet(SingleArtifactContentUploadViewSet):
     """
     ViewSet for Modulemd.
@@ -339,6 +352,20 @@ class ModulemdViewSet(SingleArtifactContentUploadViewSet):
     endpoint_name = 'modulemds'
     queryset = Modulemd.objects.all()
     serializer_class = ModulemdSerializer
+    filterset_class = ModulemdFilter
+
+
+class ModulemdDefaultsFilter(ContentFilter):
+    """
+    FilterSet for ModulemdDefaults.
+    """
+
+    class Meta:
+        model = ModulemdDefaults
+        fields = {
+            'module': ['exact', 'in'],
+            'stream': ['exact', 'in'],
+        }
 
 
 class ModulemdDefaultsViewSet(SingleArtifactContentUploadViewSet):
@@ -349,3 +376,4 @@ class ModulemdDefaultsViewSet(SingleArtifactContentUploadViewSet):
     endpoint_name = 'modulemd_defaults'
     queryset = ModulemdDefaults.objects.all()
     serializer_class = ModulemdDefaultsSerializer
+    filterset_class = ModulemdDefaultsFilter
