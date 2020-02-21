@@ -70,10 +70,8 @@ class RpmRepository(Repository):
         with transaction.atomic():
             version = RepositoryVersion(
                 repository=self,
-                number=int(self.last_version) + 1,
+                number=int(self.next_version),
                 base_version=base_version)
-            self.last_version = version.number
-            self.save()
             version.save()
 
             if base_version:
