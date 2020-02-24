@@ -75,25 +75,27 @@ def parse_modulemd(module_names, module_index):
     """
     ret = list()
     for module in module_names:
-        for s in module_index.get_module(module).get_all_streams():
+        for stream in module_index.get_module(module).get_all_streams():
             modulemd = dict()
-            modulemd[PULP_MODULE_ATTR.NAME] = s.props.module_name
-            modulemd[PULP_MODULE_ATTR.STREAM] = s.props.stream_name
-            modulemd[PULP_MODULE_ATTR.VERSION] = s.props.version
-            modulemd[PULP_MODULE_ATTR.CONTEXT] = s.props.context
-            modulemd[PULP_MODULE_ATTR.ARCH] = s.props.arch
-            modulemd[PULP_MODULE_ATTR.ARTIFACTS] = s.get_rpm_artifacts()
+            modulemd[PULP_MODULE_ATTR.NAME] = stream.props.module_name
+            modulemd[PULP_MODULE_ATTR.STREAM] = stream.props.stream_name
+            modulemd[PULP_MODULE_ATTR.VERSION] = stream.props.version
+            modulemd[PULP_MODULE_ATTR.CONTEXT] = stream.props.context
+            modulemd[PULP_MODULE_ATTR.ARCH] = stream.props.arch
+            modulemd[PULP_MODULE_ATTR.ARTIFACTS] = stream.get_rpm_artifacts()
 
-            dependencies_list = s.get_dependencies()
-            dependencies = dict()
+            dependencies_list = stream.get_dependencies()
+            dependencies = list()
             for dep in dependencies_list:
-                d_list = dep.get_runtime_modules()
-                for dependency in d_list:
-                    dependencies[dependency] = dep.get_runtime_streams(dependency)
+                depmodule_list = dep.get_runtime_modules()
+                platform_deps = dict()
+                for depmod in depmodule_list:
+                    platform_deps[depmod] = dep.get_runtime_streams(depmod)
+                dependencies.append(platform_deps)
             modulemd[PULP_MODULE_ATTR.DEPENDENCIES] = dependencies
             # create yaml snippet for this modulemd stream
             temp_index = mmdlib.ModuleIndex.new()
-            temp_index.add_module_stream(s)
+            temp_index.add_module_stream(stream)
             artifact = _create_snippet(temp_index.dump_to_string())
             modulemd["artifact"] = artifact
             ret.append(modulemd)
