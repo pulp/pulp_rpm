@@ -2,6 +2,25 @@
 Pulp 2.21 Release Notes
 =======================
 
+
+Pulp 2.21.1
+===========
+
+Bug Fixes
+---------
+
+* Fixed modulemd_defaults upload/copy collision traceback
+* rsync should use --skip-existing to avoid creating remote existing directories
+* Fixed publishing an empty ISO repo no longer publishes PULP_MANIFEST
+* Fixed issue when non-modular rpms were marked as modular
+* yum_distributor wrongly skips publish after update of multi-repo errata
+* After using the /associate endpoint, publish of the new repository fails
+* Recursive-conservative needs to do one solve.transaction()
+
+
+See the full list of :fixedbugs_pulp_rpm:`2.21.1`
+
+
 Pulp 2.21.0
 ===========
 
