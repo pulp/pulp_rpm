@@ -250,7 +250,8 @@ class PackageSerializer(SingleArtifactContentUploadSerializer):
         except OSError:
             raise NotAcceptable(detail='RPM file cannot be parsed for metadata.')
 
-        package = Package.objects.filter(**new_pkg)
+        attrs = {key: new_pkg[key] for key in Package.natural_key_fields()}
+        package = Package.objects.filter(**attrs)
 
         if package.exists():
             keywords = ('name', 'epoch', 'version', 'release', 'arch', 'checksum_type', 'pkgId')
