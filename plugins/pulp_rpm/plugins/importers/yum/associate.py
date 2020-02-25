@@ -467,7 +467,13 @@ def _associate_unit(dest_repo, unit, config):
     elif isinstance(unit, models.RPM):
         # copy will happen in one batch
         return unit
-    elif isinstance(unit, (models.YumMetadataFile, models.ModulemdDefaults)):
+    elif isinstance(unit, models.YumMetadataFile):
+        return associate_copy_for_repo(unit, dest_repo, True)
+    elif isinstance(unit, models.ModulemdDefaults):
+        # new modulemd-default needs a checksum
+        if not unit.checksum:
+            with open(unit.storage_path, 'r+') as fp:
+                unit.checksum = unit.calculate_checksum(fp)
         return associate_copy_for_repo(unit, dest_repo, True)
     elif isinstance(unit, (models.DRPM, models.SRPM)):
             if rpm_parse.signature_enabled(config):

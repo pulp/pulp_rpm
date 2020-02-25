@@ -191,6 +191,7 @@ def _handle_erratum(repo, type_id, unit_key, metadata, file_path, conduit, confi
     unit_data.update(metadata or {})
     unit_data.update(unit_key or {})
 
+    unit_updated = False
     unit = model_class(**unit_data)
     errata_controller.create_or_update_pkglist(unit, repo.repo_id)
 
@@ -198,12 +199,19 @@ def _handle_erratum(repo, type_id, unit_key, metadata, file_path, conduit, confi
         unit.save()
     except NotUniqueError:
         existing_unit = model_class.objects.filter(**unit_key).first()
-        existing_unit.merge_errata(unit)
+        unit_updated = existing_unit.merge_errata(unit)
         unit = existing_unit
         unit.save()
 
     if not config.get_boolean(CONFIG_SKIP_ERRATUM_LINK):
         repo_controller.associate_single_unit(repo, unit)
+
+    if unit_updated:
+        # We've changed an erratum which potentially exists in multiple repos.
+        # The updated erratum will result in last_unit_added being refreshed in *this*
+        # repo by the controller, but we'll also have to update that field in all
+        # other repos, otherwise they may wrongly skip publish.
+        repo_controller.update_last_unit_added_for_unit(unit.id, unit._content_type_id)
 
 
 def _handle_yum_metadata_file(repo, type_id, unit_key, metadata, file_path, conduit, config):
