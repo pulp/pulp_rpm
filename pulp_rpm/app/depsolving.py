@@ -774,10 +774,16 @@ class Solver:
         assert self._finalized, "Depsolver must be finalized before it can be used"
 
         solvables = []
+        # units (like advisories) that aren't solved for in the dependency solver need to be
+        # passed through to the end somehow, so let's add them to a second mapping that mirrors
+        # the first and combine them again at the end.
+        passthrough = {k: set() for k in unit_repo_map.keys()}
         for repo, units in unit_repo_map.items():
             for unit in units:
                 if unit.pulp_type in {"rpm.package"}:
                     solvables.append(self.mapping.get_solvable(unit.pk, repo))
+                else:
+                    passthrough[repo].add(unit.pk)
 
         result_solvables = set()
         self._pool.createwhatprovides()
@@ -842,4 +848,8 @@ class Solver:
         solvables_copied = run_solver_jobs(install_jobs)
         result_solvables.update(solvables_copied)
 
-        return self.mapping.get_units_from_solvables(result_solvables)
+        solved_units = self.mapping.get_units_from_solvables(result_solvables)
+        for k in unit_repo_map.keys():
+            solved_units[k] |= passthrough[k]
+
+        return solved_units
