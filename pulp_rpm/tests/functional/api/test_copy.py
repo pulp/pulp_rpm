@@ -16,6 +16,7 @@ from pulp_smash.pulp3.utils import (
 from pulp_rpm.tests.functional.constants import (
     RPM_ADVISORY_CONTENT_NAME,
     RPM_FIXTURE_SUMMARY,
+    RPM_PACKAGE_CONTENT_NAME,
     RPM_REMOTE_PATH,
     RPM_REPO_PATH,
     UPDATERECORD_CONTENT_PATH,
@@ -100,7 +101,8 @@ class BasicCopyTestCase(unittest.TestCase):
             'advisory': [{'id': 'RHEA-2012:0056'}]
         }
         results = {
-            RPM_ADVISORY_CONTENT_NAME: 1
+            RPM_ADVISORY_CONTENT_NAME: 1,
+            RPM_PACKAGE_CONTENT_NAME: 3,
         }
         self._do_test(criteria, results)
 

@@ -94,7 +94,7 @@ class PackageGroup(Content):
         return ('digest',)
 
     @classmethod
-    def pkglist_to_lst(cls, value):
+    def pkglist_to_list(cls, value):
         """
         Convert libcomps PkgList to list.
 
@@ -159,8 +159,8 @@ class PackageGroup(Content):
             PULP_GROUP_ATTRS.DISPLAY_ORDER: getattr(group, LIBCOMPS_GROUP_ATTRS.DISPLAY_ORDER),
             PULP_GROUP_ATTRS.NAME: getattr(group, LIBCOMPS_GROUP_ATTRS.NAME),
             PULP_GROUP_ATTRS.DESCRIPTION: getattr(group, LIBCOMPS_GROUP_ATTRS.DESCRIPTION) or '',
-            PULP_GROUP_ATTRS.PACKAGES: cls.pkglist_to_lst(getattr(group,
-                                                                  LIBCOMPS_GROUP_ATTRS.PACKAGES)),
+            PULP_GROUP_ATTRS.PACKAGES: cls.pkglist_to_list(getattr(group,
+                                                                   LIBCOMPS_GROUP_ATTRS.PACKAGES)),
             PULP_GROUP_ATTRS.BIARCH_ONLY: getattr(group, LIBCOMPS_GROUP_ATTRS.BIARCH_ONLY),
             PULP_GROUP_ATTRS.DESC_BY_LANG: strdict_to_dict(
                 getattr(group, LIBCOMPS_GROUP_ATTRS.DESC_BY_LANG)
