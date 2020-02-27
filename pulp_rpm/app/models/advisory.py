@@ -1,8 +1,8 @@
-import json
 from logging import getLogger
 
 import createrepo_c as cr
 
+from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.utils.dateparse import parse_datetime
 
@@ -197,6 +197,22 @@ class UpdateRecord(Content):
                 pkglist.append(nevra)
         return pkglist
 
+    def get_module_list(self):
+        """
+        Return NSVCAs of all modules from advisory collections.
+
+        Returns:
+            modlist (list): list of tuples with NSVCA info
+
+        """
+        modlist = []
+        for collection in self.collections.all():
+            mod = collection.module
+            nsvca = (mod['name'], mod['stream'], mod['version'], mod['context'], mod['arch'])
+            if mod:
+                modlist.append(nsvca)
+        return modlist
+
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
 
@@ -222,7 +238,7 @@ class UpdateCollection(BaseModel):
 
     name = models.TextField()
     shortname = models.TextField()
-    module = models.TextField(default='')
+    module = JSONField(null=True)
 
     update_record = models.ManyToManyField(UpdateRecord, related_name="collections")
 
@@ -244,25 +260,24 @@ class UpdateCollection(BaseModel):
                 collection, CR_UPDATE_COLLECTION_ATTRS.SHORTNAME)
         }
         if collection.module:
-            ret[PULP_UPDATE_COLLECTION_ATTRS.MODULE] = json.dumps(
-                {
-                    PULP_UPDATE_COLLECTION_ATTRS_MODULE.NAME: getattr(
-                        collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.NAME),
-                    PULP_UPDATE_COLLECTION_ATTRS_MODULE.STREAM: getattr(
-                        collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.STREAM),
-                    PULP_UPDATE_COLLECTION_ATTRS_MODULE.VERSION: getattr(
-                        collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.VERSION),
-                    PULP_UPDATE_COLLECTION_ATTRS_MODULE.CONTEXT: getattr(
-                        collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.CONTEXT),
-                    PULP_UPDATE_COLLECTION_ATTRS_MODULE.ARCH: getattr(
-                        collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.ARCH)
-                }
-            )
+            ret[PULP_UPDATE_COLLECTION_ATTRS.MODULE] = {
+                PULP_UPDATE_COLLECTION_ATTRS_MODULE.NAME: getattr(
+                    collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.NAME),
+                PULP_UPDATE_COLLECTION_ATTRS_MODULE.STREAM: getattr(
+                    collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.STREAM),
+                PULP_UPDATE_COLLECTION_ATTRS_MODULE.VERSION: getattr(
+                    collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.VERSION),
+                PULP_UPDATE_COLLECTION_ATTRS_MODULE.CONTEXT: getattr(
+                    collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.CONTEXT),
+                PULP_UPDATE_COLLECTION_ATTRS_MODULE.ARCH: getattr(
+                    collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.ARCH)
+            }
+
         return ret
 
     def to_createrepo_c(self):
         """
-        Convert to a createrepo_c UpdateColleciton object.
+        Convert to a createrepo_c UpdateCollection object.
 
         Returns:
             col(cr.UpdateCollection): createrepo_c representation of a collection
