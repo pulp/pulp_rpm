@@ -1,3 +1,4 @@
+from django_filters import CharFilter
 from drf_yasg.utils import swagger_auto_schema
 from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
@@ -62,6 +63,8 @@ class PackageFilter(ContentFilter):
     FilterSet for Package.
     """
 
+    sha256 = CharFilter(field_name="_artifacts__sha256")
+
     class Meta:
         model = Package
         fields = {
@@ -72,6 +75,7 @@ class PackageFilter(ContentFilter):
             'arch': ['exact', 'in', 'ne'],
             'pkgId': ['exact', 'in'],
             'checksum_type': ['exact', 'in', 'ne'],
+            'sha256': ['exact'],
         }
 
 
@@ -336,11 +340,14 @@ class ModulemdFilter(ContentFilter):
     FilterSet for Modulemd.
     """
 
+    sha256 = CharFilter(field_name="_artifacts__sha256")
+
     class Meta:
         model = Modulemd
         fields = {
             'name': ['exact', 'in'],
             'stream': ['exact', 'in'],
+            'sha256': ['exact'],
         }
 
 
@@ -360,11 +367,14 @@ class ModulemdDefaultsFilter(ContentFilter):
     FilterSet for ModulemdDefaults.
     """
 
+    sha256 = CharFilter(field_name="_artifacts__sha256")
+
     class Meta:
         model = ModulemdDefaults
         fields = {
             'module': ['exact', 'in'],
             'stream': ['exact', 'in'],
+            'sha256': ['exact'],
         }
 
 
