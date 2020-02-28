@@ -12,6 +12,7 @@ from pulpcore.plugin.models import (
 )
 from pulpcore.plugin.serializers import (
     ArtifactSerializer,
+    ContentChecksumSerializer,
     DetailRelatedField,
     ModelSerializer,
     MultipleArtifactContentSerializer,
@@ -69,7 +70,7 @@ from pulp_rpm.app.models import (
 from pulp_rpm.app.shared_utils import _prepare_package
 
 
-class PackageSerializer(SingleArtifactContentUploadSerializer):
+class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSerializer):
     """
     A Serializer for Package.
 
@@ -273,8 +274,8 @@ class PackageSerializer(SingleArtifactContentUploadSerializer):
             'name', 'epoch', 'version', 'release', 'arch', 'pkgId', 'checksum_type',
             'summary', 'description', 'url', 'changelogs', 'files',
             'requires', 'provides', 'conflicts', 'obsoletes',
-            'suggests', 'enhances', 'recommends', 'supplements',
-            'location_base', 'location_href',
+            'suggests', 'enhances', 'recommends', 'sha256',
+            'supplements', 'location_base', 'location_href',
             'rpm_buildhost', 'rpm_group', 'rpm_license',
             'rpm_packager', 'rpm_sourcerpm', 'rpm_vendor',
             'rpm_header_start', 'rpm_header_end', 'is_modular',
@@ -885,7 +886,7 @@ class PackageLangpacksSerializer(NoArtifactContentSerializer):
         model = PackageLangpacks
 
 
-class ModulemdSerializer(SingleArtifactContentUploadSerializer):
+class ModulemdSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSerializer):
     """
     Modulemd serializer.
     """
@@ -927,12 +928,12 @@ class ModulemdSerializer(SingleArtifactContentUploadSerializer):
     class Meta:
         fields = SingleArtifactContentUploadSerializer.Meta.fields + (
             'name', 'stream', 'version', 'context', 'arch',
-            'artifacts', 'dependencies', 'packages'
+            'artifacts', 'dependencies', 'packages', 'sha256'
         )
         model = Modulemd
 
 
-class ModulemdDefaultsSerializer(SingleArtifactContentUploadSerializer):
+class ModulemdDefaultsSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSerializer):
     """
     ModulemdDefaults serializer.
     """
@@ -949,7 +950,7 @@ class ModulemdDefaultsSerializer(SingleArtifactContentUploadSerializer):
 
     class Meta:
         fields = SingleArtifactContentUploadSerializer.Meta.fields + (
-            'module', 'stream', 'profiles'
+            'module', 'stream', 'profiles', 'sha256'
         )
         model = ModulemdDefaults
 
@@ -1105,7 +1106,7 @@ class DistributionTreeSerializer(MultipleArtifactContentSerializer):
         )
 
 
-class RepoMetadataFileSerializer(SingleArtifactContentUploadSerializer):
+class RepoMetadataFileSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSerializer):
     """
     RepoMetadataFile serializer.
     """
@@ -1122,6 +1123,6 @@ class RepoMetadataFileSerializer(SingleArtifactContentUploadSerializer):
 
     class Meta:
         fields = SingleArtifactContentUploadSerializer.Meta.fields + (
-            'data_type', 'checksum_type', 'checksum'
+            'data_type', 'checksum_type', 'checksum', 'sha256'
         )
         model = RepoMetadataFile
