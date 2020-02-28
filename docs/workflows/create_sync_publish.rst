@@ -131,6 +131,8 @@ RepositoryVersion GET response (when sync task complete):
     }
 
 
+.. _publication-workflow:
+
 Create a Publication
 --------------------
 
