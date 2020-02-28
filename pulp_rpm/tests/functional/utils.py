@@ -1,7 +1,7 @@
 # coding=utf-8
 """Utilities for tests for the rpm plugin."""
-import os
 from functools import partial
+import os
 import requests
 from io import StringIO
 from unittest import SkipTest
@@ -11,30 +11,24 @@ from tempfile import NamedTemporaryFile
 from pulp_smash import api, cli, selectors
 from pulp_smash.pulp3.utils import (
     gen_remote,
-    gen_repo,
     get_content,
     require_pulp_3,
-    require_pulp_plugins,
-    sync,
+    require_pulp_plugins
 )
 
 from pulp_rpm.tests.functional.constants import (
-    RPM_CONTENT_PATH,
     RPM_COPY_PATH,
     RPM_PACKAGE_CONTENT_NAME,
-    RPM_PUBLICATION_PATH,
-    RPM_REMOTE_PATH,
-    RPM_REPO_PATH,
-    RPM_SIGNED_FIXTURE_URL,
     RPM_SIGNED_URL,
     RPM_UNSIGNED_FIXTURE_URL,
+    RPM_PUBLICATION_PATH
 )
 
 from pulpcore.client.pulpcore import (
     ApiClient as CoreApiClient,
     ArtifactsApi,
     Configuration,
-    TasksApi,
+    TasksApi
 )
 from pulpcore.client.pulp_rpm import ApiClient as RpmApiClient
 
@@ -45,10 +39,21 @@ configuration.password = "password"
 configuration.safe_chars_for_path_param = "/"
 
 
+skip_if = partial(selectors.skip_if, exc=SkipTest)  # pylint:disable=invalid-name
+"""The ``@skip_if`` decorator, customized for unittest.
+
+:func:`pulp_smash.selectors.skip_if` is test runner agnostic. This function is
+identical, except that ``exc`` has been set to ``unittest.SkipTest``.
+"""
+
+core_client = CoreApiClient(configuration)
+tasks = TasksApi(core_client)
+
+
 def set_up_module():
     """Skip tests Pulp 3 isn't under test or if pulp_rpm isn't installed."""
     require_pulp_3(SkipTest)
-    require_pulp_plugins({'pulp_rpm'}, SkipTest)
+    require_pulp_plugins({"pulp_rpm"}, SkipTest)
 
 
 def gen_rpm_client():
@@ -56,14 +61,11 @@ def gen_rpm_client():
     return RpmApiClient(configuration)
 
 
-def gen_rpm_remote(url=None, **kwargs):
-    """Return a semi-random dict for use in creating a RPM remote.
+def gen_rpm_remote(url=RPM_UNSIGNED_FIXTURE_URL, **kwargs):
+    """Return a semi-random dict for use in creating a rpm Remote.
 
     :param url: The URL of an external content source.
     """
-    if url is None:
-        url = RPM_UNSIGNED_FIXTURE_URL
-
     return gen_remote(url, **kwargs)
 
 
@@ -80,29 +82,16 @@ def get_rpm_package_paths(repo):
     ]
 
 
-def populate_pulp(cfg, url=RPM_SIGNED_FIXTURE_URL):
-    """Add RPM contents to Pulp.
+def gen_rpm_content_attrs(artifact, rpm_name):
+    """Generate a dict with content unit attributes.
 
-    :param pulp_smash.config.PulpSmashConfig: Information about a Pulp
-        application.
-    :param url: The RPM repository URL. Defaults to
-        :data:`pulp_smash.constants.RPM_UNSIGNED_FIXTURE_URL`
-    :returns: A list of dicts, where each dict describes one RPM content in
-        Pulp.
+    :param artifact: A dict of info about the artifact.
+    :returns: A semi-random dict for use in creating a content unit.
     """
-    client = api.Client(cfg, api.json_handler)
-    remote = {}
-    repo = {}
-    try:
-        remote.update(client.post(RPM_REMOTE_PATH, gen_rpm_remote(url)))
-        repo.update(client.post(RPM_REPO_PATH, gen_repo()))
-        sync(cfg, remote, repo)
-    finally:
-        if remote:
-            client.delete(remote['pulp_href'])
-        if repo:
-            client.delete(repo['pulp_href'])
-    return client.get(RPM_CONTENT_PATH)['results']
+    return {
+        "artifact": artifact["pulp_href"],
+        "relative_path": rpm_name
+    }
 
 
 def rpm_copy(cfg, config, recursive=False):
@@ -122,12 +111,32 @@ def rpm_copy(cfg, config, recursive=False):
     return client.post(RPM_COPY_PATH, data)
 
 
+def publish(cfg, repo, version_href=None):
+    """Publish a repository.
+
+    :param pulp_smash.config.PulpSmashConfig cfg: Information about the Pulp
+        host.
+    :param repo: A dict of information about the repository.
+    :param version_href: A href for the repo version to be published.
+    :returns: A publication. A dict of information about the just created
+        publication.
+    """
+    if version_href:
+        body = {"repository_version": version_href}
+    else:
+        body = {"repository": repo["pulp_href"]}
+
+    client = api.Client(cfg, api.json_handler)
+    call_report = client.post(RPM_PUBLICATION_PATH, body)
+    tasks = tuple(api.poll_spawned_tasks(cfg, call_report))
+    return client.get(tasks[-1]["created_resources"][0])
+
+
 def gen_yum_config_file(cfg, repositoryid, baseurl, name, **kwargs):
     """Generate a yum configuration file and write it to ``/etc/yum.repos.d/``.
 
     Generate a yum configuration file containing a single repository section,
     and write it to ``/etc/yum.repos.d/{repositoryid}.repo``.
-
     :param cfg: The system on which to create
         a yum configuration file.
     :param repositoryid: The section's ``repositoryid``. Used when naming the
@@ -176,43 +185,12 @@ def gen_yum_config_file(cfg, repositoryid, baseurl, name, **kwargs):
     return path
 
 
-def publish(cfg, repo, version_href=None):
-    """Publish a repository.
-
-    :param pulp_smash.config.PulpSmashConfig cfg: Information about the Pulp
-        host.
-    :param repo: A dict of information about the repository.
-    :param version_href: A href for the repo version to be published.
-    :returns: A publication. A dict of information about the just created
-        publication.
-    """
-    if version_href:
-        body = {"repository_version": version_href}
-    else:
-        body = {"repository": repo["pulp_href"]}
-
-    client = api.Client(cfg, api.json_handler)
-    call_report = client.post(RPM_PUBLICATION_PATH, body)
-    tasks = tuple(api.poll_spawned_tasks(cfg, call_report))
-    return client.get(tasks[-1]["created_resources"][0])
-
-
-skip_if = partial(selectors.skip_if, exc=SkipTest)
-"""The ``@skip_if`` decorator, customized for unittest.
-
-:func:`pulp_smash.selectors.skip_if` is test runner agnostic. This function is
-identical, except that ``exc`` has been set to ``unittest.SkipTest``.
-"""
-
-core_client = CoreApiClient(configuration)
-tasks = TasksApi(core_client)
-
-
 def gen_artifact(url=RPM_SIGNED_URL):
     """Creates an artifact."""
     response = requests.get(url)
     with NamedTemporaryFile() as temp_file:
         temp_file.write(response.content)
+        temp_file.flush()
         artifact = ArtifactsApi(core_client).create(file=temp_file.name)
         return artifact.to_dict()
 

@@ -2,300 +2,260 @@
 """Tests that sync rpm plugin repositories."""
 import os
 import unittest
-from urllib.parse import urljoin
 
-from pulp_smash import api, cli, config
-from pulp_smash.pulp3.constants import MEDIA_PATH, ARTIFACTS_PATH
+from pulp_smash import cli, config
+from pulp_smash.pulp3.constants import MEDIA_PATH
 from pulp_smash.pulp3.utils import (
-    delete_orphans,
     gen_repo,
-    get_added_content,
     get_added_content_summary,
+    get_added_content,
     get_content,
     get_content_summary,
     get_removed_content,
-    sync,
+    delete_orphans
 )
 
 from pulp_rpm.tests.functional.constants import (
     RPM_ADVISORY_CONTENT_NAME,
     RPM_EPEL_URL,
     RPM_FIXTURE_SUMMARY,
-    RPM_KICKSTART_CONTENT_NAME,
+    RPM_INVALID_FIXTURE_URL,
     RPM_KICKSTART_FIXTURE_SUMMARY,
     RPM_KICKSTART_FIXTURE_URL,
     RPM_MODULAR_FIXTURE_SUMMARY,
     RPM_MODULAR_FIXTURE_URL,
     RPM_PACKAGE_CONTENT_NAME,
     RPM_PACKAGE_COUNT,
+    RPM_UPDATERECORD_ID,
+    RPM_UPDATED_UPDATEINFO_FIXTURE_URL,
     RPM_REFERENCES_UPDATEINFO_URL,
-    RPM_REMOTE_PATH,
-    RPM_REPO_PATH,
-    RPM_SHA512_FIXTURE_URL,
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
-    RPM_UPDATED_UPDATEINFO_FIXTURE_URL,
-    RPM_UPDATERECORD_ID,
+    RPM_SHA512_FIXTURE_URL,
 )
-from pulp_rpm.tests.functional.utils import gen_rpm_remote
+from pulp_rpm.tests.functional.utils import (
+    gen_rpm_client,
+    gen_rpm_remote,
+    monitor_task,
+)
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+
+from pulpcore.client.pulp_rpm import (
+    RepositoriesRpmApi,
+    RpmRepositorySyncURL,
+    RemotesRpmApi,
+)
 
 
 class BasicSyncTestCase(unittest.TestCase):
-    """Sync repositories with the rpm plugin."""
+    """Sync a repository with the rpm plugin."""
 
     @classmethod
     def setUpClass(cls):
         """Create class-wide variables."""
         cls.cfg = config.get_config()
-        cls.client = api.Client(cls.cfg, api.json_handler)
-
+        cls.client = gen_rpm_client()
+        cls.repo_api = RepositoriesRpmApi(cls.client)
+        cls.remote_api = RemotesRpmApi(cls.client)
         delete_orphans(cls.cfg)
 
-    def test_rpm(self):
+    def test_sync(self):
         """Sync repositories with the rpm plugin.
 
         In order to sync a repository a remote has to be associated within
         this repository. When a repository is created this version field is set
-        as None. After a sync the repository version is updated.
+        as version '0'. After a sync the repository version is updated.
 
         Do the following:
 
-        1. Create a repository and a remote.
+        1. Create a repository, and a remote.
         2. Assert that repository version is None.
         3. Sync the remote.
         4. Assert that repository version is not None.
         5. Assert that the correct number of units were added and are present
            in the repo.
         6. Sync the remote one more time.
-        7. Assert that repository version is the same as the previous one.
+        7. Assert that repository version is different from the previous one.
+        8. Assert that the same number of are present and that no units were
+           added.
         """
-        repo = self.client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['pulp_href'])
+        repo, remote = self.do_test()
 
-        # Create a remote with the standard test fixture url.
-        body = gen_rpm_remote()
-        remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote['pulp_href'])
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
-        # Sync the repository.
-        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
-        sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['pulp_href'])
-
-        # Check that we have the correct content counts.
-        self.assertIsNotNone(repo['latest_version_href'])
-        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
-        self.assertDictEqual(
-            get_added_content_summary(repo), RPM_FIXTURE_SUMMARY
-        )
+        self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
+        self.assertDictEqual(get_added_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
 
         # Sync the repository again.
-        latest_version_href = repo['latest_version_href']
-        sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['pulp_href'])
+        latest_version_href = repo.latest_version_href
+        repo, remote = self.do_test(repo, remote)
 
-        # Check that nothing has changed since the last sync.
-        self.assertEqual(latest_version_href, repo['latest_version_href'])
+        self.assertEqual(latest_version_href, repo.latest_version_href)
+        self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
 
-
-class KickstartSyncTestCase(unittest.TestCase):
-    """Sync repositories with the rpm plugin."""
-
-    @classmethod
-    def setUpClass(cls):
-        """Create class-wide variables."""
-        cls.cfg = config.get_config()
-        cls.client = api.Client(cls.cfg, api.json_handler)
-
-        delete_orphans(cls.cfg)
-
-    def test_rpm_kickstart(self):
-        """Sync repositories with the rpm plugin.
+    def test_sync_modular(self):
+        """Sync RPM modular content.
 
         This test targets the following issue:
 
+        * `Pulp #5408 <https://pulp.plan.io/issues/5408>`_
+        """
+        body = gen_rpm_remote(RPM_MODULAR_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+
+        repo, remote = self.do_test(remote=remote)
+
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_MODULAR_FIXTURE_SUMMARY)
+        self.assertDictEqual(get_added_content_summary(repo.to_dict()), RPM_MODULAR_FIXTURE_SUMMARY)
+
+    def test_checksum_constraint(self):
+        """Verify checksum constraint test case.
+
+        Do the following:
+
+        1. Create and sync a repo using the following
+           url=RPM_REFERENCES_UPDATEINFO_URL.
+        2. Create and sync a secondary repo using the following
+           url=RPM_UNSIGNED_FIXTURE_URL.
+           Those urls have RPM packages with the same name.
+        3. Assert that the task succeed.
+
+        This test targets the following issue:
+
+        * `Pulp #4170 <https://pulp.plan.io/issues/4170>`_
+        * `Pulp #4255 <https://pulp.plan.io/issues/4255>`_
+        """
+        for repository in [RPM_REFERENCES_UPDATEINFO_URL, RPM_UNSIGNED_FIXTURE_URL]:
+            body = gen_rpm_remote(repository)
+            remote = self.remote_api.create(body)
+
+            repo, remote = self.do_test(remote=remote)
+
+            self.addCleanup(self.repo_api.delete, repo.pulp_href)
+            self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+            self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
+            self.assertDictEqual(get_added_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
+
+    def test_sync_epel_repo(self):
+        """Sync large EPEL repository."""
+        if 'JENKINS_HOME' not in os.environ:
+            raise unittest.SkipTest('Slow test. It should only run on Jenkins')
+
+        body = gen_rpm_remote(RPM_EPEL_URL)
+        remote = self.remote_api.create(body)
+
+        repo, remote = self.do_test(remote=remote)
+
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        content_summary = get_content_summary(repo.to_dict())
+        self.assertGreater(content_summary[RPM_PACKAGE_CONTENT_NAME], 0)
+
+    def test_kickstarter(self):
+        """Sync repositories with the rpm plugin.
+
+        This test targets the following issue:
 
         `Pulp #5202 <https://pulp.plan.io/issues/5202>`_
 
         In order to sync a repository a remote has to be associated within
-        this repository. When a repository is created this version field is set
-        as None. After a sync the repository version is updated.
+        this repository.
 
         Do the following:
 
-        1. Create a repository and a remote.
-        2. Assert that repository version is None.
-        3. Sync the remote.
-        4. Assert that repository version is not None.
-        5. Assert that the correct number of units were added and are present
+        1. Create a remote.
+        2. Sync the remote. (repo will be created automatically)
+        3. Assert that the correct number of units were added and are present
            in the repo.
-        6. Sync the remote one more time.
-        7. Assert that repository version is the same the previous one.
-        8. Assert that the same number of packages are present.
+        4. Sync the remote one more time.
+        5. Assert that repository version is the same the previous one.
+        6. Assert that the same number of packages are present.
         """
-        repo = self.client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['pulp_href'])
+        body = gen_rpm_remote(RPM_KICKSTART_FIXTURE_URL)
+        remote = self.remote_api.create(body)
 
-        # Create a remote with the standard test fixture url.
-        body = gen_rpm_remote(url=RPM_KICKSTART_FIXTURE_URL)
-        remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote['pulp_href'])
+        # sync
+        repo, remote = self.do_test(remote=remote)
 
-        # Sync the repository.
-        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
-        sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['pulp_href'])
-        for kickstart_content in get_content(repo)[RPM_KICKSTART_CONTENT_NAME]:
-            self.addCleanup(self.client.delete, kickstart_content['pulp_href'])
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
         # Check that we have the correct content counts.
-        self.assertIsNotNone(repo['latest_version_href'])
-
+        self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_KICKSTART_FIXTURE_SUMMARY)
         self.assertDictEqual(
-            get_content_summary(repo), RPM_KICKSTART_FIXTURE_SUMMARY
-        )
-        self.assertDictEqual(
-            get_added_content_summary(repo), RPM_KICKSTART_FIXTURE_SUMMARY
+            get_added_content_summary(repo.to_dict()), RPM_KICKSTART_FIXTURE_SUMMARY
         )
 
-        # Sync the repository again.
-        latest_version_href = repo['latest_version_href']
-        sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['pulp_href'])
+        latest_version_href = repo.latest_version_href
 
-        artifacts = self.client.get(ARTIFACTS_PATH)
-        self.assertEqual(artifacts['count'], 4, artifacts)
+        # sync again
+        repo, remote = self.do_test(repository=repo, remote=remote)
 
         # Check that nothing has changed since the last sync.
-        self.assertEqual(latest_version_href, repo['latest_version_href'])
-        self.assertDictEqual(
-            get_content_summary(repo), RPM_KICKSTART_FIXTURE_SUMMARY
-        )
+        self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_KICKSTART_FIXTURE_SUMMARY)
+        self.assertEqual(latest_version_href, repo.latest_version_href)
 
-    def test_rpm_kickstart_on_demand(self):
+    def test_kickstarter_on_demand(self):
         """Sync repositories with the rpm plugin.
 
         This test targets the following issue:
 
-
         `Pulp #5202 <https://pulp.plan.io/issues/5202>`_
 
         In order to sync a repository a remote has to be associated within
-        this repository. When a repository is created this version field is set
-        as None. After a sync the repository version is updated.
+        this repository.
 
         Do the following:
 
-        1. Create a repository and a remote.
-        2. Assert that repository version is None.
-        3. Sync the remote.
-        4. Assert that repository version is not None.
-        5. Assert that the correct number of units were added and are present
+        1. Create a remote.
+        2. Sync the remote. (repo will be created automatically)
+        3. Assert that the correct number of units were added and are present
            in the repo.
-        6. Sync the remote one more time.
-        7. Assert that repository version is the same as the previous one.
-        8. Assert that the same number of packages are present
+        4. Sync the remote one more time.
+        5. Assert that repository version is the same the previous one.
+        6. Assert that the same number of packages are present.
         """
-        delete_orphans(self.cfg)
-        repo = self.client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['pulp_href'])
+        body = gen_rpm_remote(RPM_KICKSTART_FIXTURE_URL, policy="on_demand")
+        remote = self.remote_api.create(body)
 
-        # Create a remote with the standard test fixture url.
-        body = gen_rpm_remote(
-            url=RPM_KICKSTART_FIXTURE_URL, policy='on_demand'
-        )
-        remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote['pulp_href'])
+        # sync
+        repo, remote = self.do_test(remote=remote)
 
-        # Sync the repository.
-        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
-        sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['pulp_href'])
-        for kickstart_content in get_content(repo)[RPM_KICKSTART_CONTENT_NAME]:
-            self.addCleanup(self.client.delete, kickstart_content['pulp_href'])
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
         # Check that we have the correct content counts.
-        self.assertIsNotNone(repo['latest_version_href'])
-
+        self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_KICKSTART_FIXTURE_SUMMARY)
         self.assertDictEqual(
-            get_content_summary(repo), RPM_KICKSTART_FIXTURE_SUMMARY
-        )
-        self.assertDictEqual(
-            get_added_content_summary(repo), RPM_KICKSTART_FIXTURE_SUMMARY
+            get_added_content_summary(repo.to_dict()),
+            RPM_KICKSTART_FIXTURE_SUMMARY
         )
 
-        # Sync the repository again.
-        latest_version_href = repo['latest_version_href']
-        sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['pulp_href'])
+        latest_version_href = repo.latest_version_href
 
-        artifacts = self.client.get(ARTIFACTS_PATH)
-        self.assertEqual(artifacts['count'], 1, artifacts)  # treeinfo file is always downloaded
+        # sync again
+        repo, remote = self.do_test(repository=repo, remote=remote)
 
         # Check that nothing has changed since the last sync.
-        self.assertEqual(latest_version_href, repo['latest_version_href'])
-        self.assertDictEqual(
-            get_content_summary(repo), RPM_KICKSTART_FIXTURE_SUMMARY
-        )
+        self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_KICKSTART_FIXTURE_SUMMARY)
+        self.assertEqual(latest_version_href, repo.latest_version_href)
 
-
-class FileDescriptorsTestCase(unittest.TestCase):
-    """Test whether file descriptors are closed properly after a sync."""
-
-    def test_file_decriptors(self):
-        """Test whether file descriptors are closed properly.
-
-        This test targets the following issue:
-
-        `Pulp #4073 <https://pulp.plan.io/issues/4073>`_
-
-        Do the following:
-        1. Check if 'lsof' is installed. If it is not, skip this test.
-        2. Create and sync a repo.
-        3. Run the 'lsof' command to verify that files in the
-           path ``/var/lib/pulp/`` are closed after the sync.
-        4. Assert that issued command returns `0` opened files.
-        """
-        cfg = config.get_config()
-        client = api.Client(cfg, api.json_handler)
-        cli_client = cli.Client(cfg, cli.echo_handler)
-
-        # check if 'lsof' is available
-        if cli_client.run(('which', 'lsof')).returncode != 0:
-            raise unittest.SkipTest('lsof package is not present')
-
-        repo = client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(client.delete, repo['pulp_href'])
-
-        remote = client.post(RPM_REMOTE_PATH, gen_rpm_remote())
-        self.addCleanup(client.delete, remote['pulp_href'])
-
-        sync(cfg, remote, repo)
-
-        cmd = 'lsof -t +D {}'.format(MEDIA_PATH).split()
-        response = cli_client.run(cmd).stdout
-        self.assertEqual(len(response), 0, response)
-
-
-class SyncMutatedPackagesTestCase(unittest.TestCase):
-    """Sync different packages with the same NEVRA as existing packages."""
-
-    @classmethod
-    def setUpClass(cls):
-        """Create class-wide variables."""
-        cls.cfg = config.get_config()
-        cls.client = api.Client(cls.cfg, api.json_handler)
-
-    def test_all(self):
+    def test_mutated_packages(self):
         """Sync two copies of the same packages.
 
         Make sure we end up with only one copy.
 
         Do the following:
 
-        1. Create a repository and a remote.
-        2. Sync the remote.
+        1. Sync.
         3. Assert that the content summary matches what is expected.
         4. Create a new remote w/ using fixture containing updated advisory
            (packages with the same NEVRA as the existing package content, but
@@ -305,19 +265,19 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
            but has the same content summary.
         7. Assert that the packages have changed since the last sync.
         """
-        repo = self.client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['pulp_href'])
+        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
 
-        # Create a remote with the unsigned RPM fixture url.
-        body = gen_rpm_remote(url=RPM_UNSIGNED_FIXTURE_URL)
-        remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote['pulp_href'])
+        # sync
+        repo, remote = self.do_test(remote=remote)
 
-        # Sync the repository.
-        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
-        sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['pulp_href'])
-        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # check if sync OK
+        self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
+        self.assertDictEqual(get_added_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
 
         # Save a copy of the original packages.
         original_packages = {
@@ -328,31 +288,28 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
                 content['release'],
                 content['arch'],
             ): content
-            for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
+            for content in get_content(repo.to_dict())[RPM_PACKAGE_CONTENT_NAME]
         }
 
         # Create a remote with a different test fixture with the same NEVRA but
         # different digests.
-        body = gen_rpm_remote(url=RPM_SIGNED_FIXTURE_URL)
-        remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote['pulp_href'])
+        body = gen_rpm_remote(RPM_SIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
 
-        # Sync the repository again.
-        sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['pulp_href'])
-        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
+        # sync again
+        repo, remote = self.do_test(repo, remote)
 
         # In case of "duplicates" the most recent one is chosen, so the old
         # package is removed from and the new one is added to a repo version.
         self.assertEqual(
-            len(get_added_content(repo)[RPM_PACKAGE_CONTENT_NAME]),
+            len(get_added_content(repo.to_dict())[RPM_PACKAGE_CONTENT_NAME]),
             RPM_PACKAGE_COUNT,
-            get_added_content(repo)[RPM_PACKAGE_CONTENT_NAME],
+            get_added_content(repo.to_dict())[RPM_PACKAGE_CONTENT_NAME],
         )
         self.assertEqual(
-            len(get_removed_content(repo)[RPM_PACKAGE_CONTENT_NAME]),
+            len(get_removed_content(repo.to_dict())[RPM_PACKAGE_CONTENT_NAME]),
             RPM_PACKAGE_COUNT,
-            get_removed_content(repo)[RPM_PACKAGE_CONTENT_NAME],
+            get_removed_content(repo.to_dict())[RPM_PACKAGE_CONTENT_NAME],
         )
 
         # Test that the packages have been modified.
@@ -364,7 +321,7 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
                 content['release'],
                 content['arch'],
             ): content
-            for content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
+            for content in get_content(repo.to_dict())[RPM_PACKAGE_CONTENT_NAME]
         }
 
         for nevra in original_packages:
@@ -375,49 +332,57 @@ class SyncMutatedPackagesTestCase(unittest.TestCase):
                     original_packages[nevra]['pkgId'],
                 )
 
+    def test_sync_diff_checksum_packages(self):
+        """Sync two fixture content with same NEVRA and different checksum.
 
-class EPELSyncTestCase(unittest.TestCase):
-    """Sync large EPEL repository."""
+        Make sure we end up with the most recently synced content.
 
-    @classmethod
-    def setUpClass(cls):
-        """Skip test if the test is not running on Jenkins."""
-        if 'JENKINS_HOME' not in os.environ:
-            raise unittest.SkipTest('Slow test. It should only run on Jenkins')
+        Do the following:
 
-    def test_sync_large_repo(self):
-        """Sync large EPEL repository."""
-        cfg = config.get_config()
-        client = api.Client(cfg, api.page_handler)
+        1. Create two remotes with same content but different checksums.
+            Sync the remotes one after the other.
+               a. Sync remote with packages with SHA256: ``RPM_UNSIGNED_FIXTURE_URL``.
+               b. Sync remote with packages with SHA512: ``RPM_SHA512_FIXTURE_URL``.
+        2. Make sure the latest content is only kept.
 
-        repo = client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(client.delete, repo['pulp_href'])
+        This test targets the following issues:
 
-        remote = client.post(RPM_REMOTE_PATH, gen_rpm_remote(url=RPM_EPEL_URL))
-        self.addCleanup(client.delete, remote['pulp_href'])
+        * `Pulp #4297 <https://pulp.plan.io/issues/4297>`_
+        * `Pulp #3954 <https://pulp.plan.io/issues/3954>`_
+        """
+        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
 
-        # Sync the repository.
-        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
-        sync(cfg, remote, repo)
-        repo = client.get(repo['pulp_href'])
-        content_summary = get_content_summary(repo)
-        self.assertGreater(
-            content_summary[RPM_PACKAGE_CONTENT_NAME], 0, content_summary
-        )
+        # sync with SHA256
+        repo, remote = self.do_test(remote=remote)
 
+        body = gen_rpm_remote(RPM_SHA512_FIXTURE_URL)
+        remote = self.remote_api.create(body)
 
-@unittest.skip(
-    'FIXME: Enable this test after we can throw out duplicate UpdateRecords'
-)
-class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
-    """Sync a new UpdateRecord (Advisory / Erratum) with the same ID."""
+        # re-sync with SHA512
+        repo, remote = self.do_test(repo, remote)
 
-    @classmethod
-    def setUpClass(cls):
-        """Create class-wide variables."""
-        cls.cfg = config.get_config()
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
-    def test_all(self):
+        added_content = get_content(repo.to_dict())[RPM_PACKAGE_CONTENT_NAME]
+        removed_content = get_removed_content(repo.to_dict())[RPM_PACKAGE_CONTENT_NAME]
+
+        # In case of "duplicates" the most recent one is chosen, so the old
+        # package is removed from and the new one is added to a repo version.
+        self.assertEqual(len(added_content), RPM_PACKAGE_COUNT)
+        self.assertEqual(len(removed_content), RPM_PACKAGE_COUNT)
+
+        # Verifying whether the packages with first checksum is removed and second
+        # is added.
+        self.assertEqual(added_content[0]['checksum_type'], 'sha512')
+        self.assertEqual(removed_content[0]['checksum_type'], 'sha256')
+
+    @unittest.skip(
+        'FIXME: Enable this test after we can throw out duplicate UpdateRecords'
+    )
+    def test_mutated_update_records(self):
         """Sync two copies of the same UpdateRecords.
 
         Make sure we end up with only one copy.
@@ -435,52 +400,47 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
            but has the same content summary.
         7. Assert that the updaterecords have changed since the last sync.
         """
-        client = api.Client(self.cfg, api.json_handler)
-
-        repo = client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(client.delete, repo['pulp_href'])
-
         # Create a remote with the unsigned RPM fixture url.
         # We need to use the unsigned fixture because the one used down below
         # has unsigned RPMs. Signed and unsigned units have different hashes,
         # so they're seen as different units.
-        body = gen_rpm_remote(url=RPM_UNSIGNED_FIXTURE_URL)
-        remote = client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(client.delete, remote['pulp_href'])
+        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
 
-        # Sync the repository.
-        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
-        sync(self.cfg, remote, repo)
-        repo = client.get(repo['pulp_href'])
-        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
+        # sync
+        repo, remote = self.do_test(remote=remote)
 
-        # Save a copy of the original updateinfo
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # check if sync OK
+        self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
+        self.assertDictEqual(get_added_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
+
         original_updaterecords = {
             content['id']: content
-            for content in get_content(repo)[RPM_ADVISORY_CONTENT_NAME]
+            for content in get_content(repo.to_dict())[RPM_ADVISORY_CONTENT_NAME]
         }
 
-        # Create a remote with a different test fixture, one containing mutated
-        # updateinfo.
-        body = gen_rpm_remote(url=RPM_UPDATED_UPDATEINFO_FIXTURE_URL)
-        remote = client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(client.delete, remote['pulp_href'])
+        body = gen_rpm_remote(RPM_UPDATED_UPDATEINFO_FIXTURE_URL)
+        remote = self.remote_api.create(body)
 
-        # Sync the repository again.
-        sync(self.cfg, remote, repo)
-        repo = client.get(repo['pulp_href'])
-        self.assertDictEqual(get_content_summary(repo), RPM_FIXTURE_SUMMARY)
+        # sync the repository again
+        repo, remote = self.do_test(repo, remote)
+
+        self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
         self.assertEqual(
-            len(get_added_content(repo)[RPM_ADVISORY_CONTENT_NAME]), 4
+            len(get_added_content(repo.to_dict())[RPM_ADVISORY_CONTENT_NAME]), 4
         )
         self.assertEqual(
-            len(get_removed_content(repo)[RPM_ADVISORY_CONTENT_NAME]), 4
+            len(get_removed_content(repo.to_dict())[RPM_ADVISORY_CONTENT_NAME]), 4
         )
 
         # Test that the updateinfo have been modified.
         mutated_updaterecords = {
             content['id']: content
-            for content in get_content(repo)[RPM_ADVISORY_CONTENT_NAME]
+            for content in get_content(repo.to_dict())[RPM_ADVISORY_CONTENT_NAME]
         }
 
         self.assertNotEqual(mutated_updaterecords, original_updaterecords)
@@ -490,140 +450,111 @@ class SyncMutatedUpdateRecordTestCase(unittest.TestCase):
             mutated_updaterecords[RPM_UPDATERECORD_ID],
         )
 
+    def test_file_decriptors(self):
+        """Test whether file descriptors are closed properly.
 
-class SyncDiffChecksumPackagesTestCase(unittest.TestCase):
-    """Syncing duplicate NEVRA with different checksums."""
+        This test targets the following issue:
+
+        `Pulp #4073 <https://pulp.plan.io/issues/4073>`_
+
+        Do the following:
+
+        1. Check if 'lsof' is installed. If it is not, skip this test.
+        2. Create and sync a repo.
+        3. Run the 'lsof' command to verify that files in the
+           path ``/var/lib/pulp/`` are closed after the sync.
+        4. Assert that issued command returns `0` opened files.
+        """
+        cli_client = cli.Client(self.cfg, cli.echo_handler)
+
+        # check if 'lsof' is available
+        if cli_client.run(("which", "lsof")).returncode != 0:
+            raise unittest.SkipTest("lsof package is not present")
+
+        repo_api = RepositoriesRpmApi(self.client)
+        repo = repo_api.create(gen_repo())
+        self.addCleanup(repo_api.delete, repo.pulp_href)
+
+        remote_api = RemotesRpmApi(self.client)
+        remote = remote_api.create(gen_rpm_remote())
+        self.addCleanup(remote_api.delete, remote.pulp_href)
+
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+
+        cmd = "lsof -t +D {}".format(MEDIA_PATH).split()
+        response = cli_client.run(cmd).stdout
+        self.assertEqual(len(response), 0, response)
+
+    def do_test(self, repository=None, remote=None):
+        """Sync a repository.
+
+        Args:
+            repository (pulp_rpm.app.models.repository.RpmRepository):
+                object of RPM repository
+            remote (pulp_rpm.app.models.repository.RpmRemote):
+                object of RPM Remote
+        Returns (tuple):
+            tuple of instances of
+            pulp_rpm.app.models.repository.RpmRepository, pulp_rpm.app.models.repository.RpmRemote
+        """
+        if repository:
+            repo = self.repo_api.read(repository.pulp_href)
+        else:
+            repo = self.repo_api.create(gen_repo())
+            self.assertEqual(repo.latest_version_href, f"{repo.pulp_href}versions/0/")
+
+        if not remote:
+            body = gen_rpm_remote()
+            remote = self.remote_api.create(body)
+        else:
+            remote = self.remote_api.read(remote.pulp_href)
+
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+        return self.repo_api.read(repo.pulp_href), self.remote_api.read(remote.pulp_href)
+
+
+class SyncInvalidTestCase(unittest.TestCase):
+    """Sync a repository with a given url on the remote."""
 
     @classmethod
     def setUpClass(cls):
         """Create class-wide variables."""
-        cls.cfg = config.get_config()
-        cls.client = api.Client(cls.cfg, api.json_handler)
+        cls.client = gen_rpm_client()
 
-    def test_all(self):
-        """Sync two fixture content with same NEVRA and different checksum.
+    def test_invalid_url(self):
+        """Sync a repository using a remote url that does not exist.
 
-        Make sure we end up with the most recently synced content.
-
-        Do the following:
-
-        1. Create a repository
-        2. Create two remotes with same content but different checksums.
-            Sync the remotes one after the other.
-               a. Sync remote with packages with SHA256: ``RPM_UNSIGNED_FIXTURE_URL``.
-               b. Sync remote with packages with SHA512: ``RPM_SHA512_FIXTURE_URL``.
-        3. Make sure the latest content is only kept.
-
-        This test targets the following issues:
-
-        * `Pulp #4297 <https://pulp.plan.io/issues/4297>`_
-        * `Pulp #3954 <https://pulp.plan.io/issues/3954>`_
+        Test that we get a task failure. See :meth:`do_test`.
         """
-        # Step 1
-        repo = self.client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['pulp_href'])
+        task = self.do_test("http://i-am-an-invalid-url.com/invalid/")
+        self.assertIsNotNone(task["error"]["description"])
 
-        # Step 2.
+    def test_invalid_rpm_content(self):
+        """Sync a repository using an invalid plugin_content repository.
 
-        for body in [
-            gen_rpm_remote(),
-            gen_rpm_remote(url=RPM_SHA512_FIXTURE_URL),
-        ]:
-            remote = self.client.post(RPM_REMOTE_PATH, body)
-            self.addCleanup(self.client.delete, remote['pulp_href'])
-            # Sync the repository.
-            sync(self.cfg, remote, repo)
+        Assert that an exception is raised, and that error message has
+        keywords related to the reason of the failure. See :meth:`do_test`.
+        """
+        task = self.do_test(RPM_INVALID_FIXTURE_URL)
+        for key in ("missing", "filelists.xml"):
+            self.assertIn(key, task["error"]["description"])
 
-        # Step 3
-        repo = self.client.get(repo['pulp_href'])
-        added_content = get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
-        removed_content = get_removed_content(repo)[RPM_PACKAGE_CONTENT_NAME]
+    def do_test(self, url):
+        """Sync a repository given ``url`` on the remote."""
+        repo_api = RepositoriesRpmApi(self.client)
+        remote_api = RemotesRpmApi(self.client)
 
-        # In case of "duplicates" the most recent one is chosen, so the old
-        # package is removed from and the new one is added to a repo version.
-        self.assertEqual(len(added_content), RPM_PACKAGE_COUNT, added_content)
-        self.assertEqual(
-            len(removed_content), RPM_PACKAGE_COUNT, removed_content
-        )
+        repo = repo_api.create(gen_repo())
+        self.addCleanup(repo_api.delete, repo.pulp_href)
 
-        # Verifying whether the packages with first checksum is removed and second
-        # is added.
-        self.assertEqual(added_content[0]['checksum_type'], 'sha512')
-        self.assertEqual(removed_content[0]['checksum_type'], 'sha256')
+        body = gen_rpm_remote(url=url)
+        remote = remote_api.create(body)
+        self.addCleanup(remote_api.delete, remote.pulp_href)
 
-
-class ChecksumConstraintTestCase(unittest.TestCase):
-    """Verify checksum constraint test case.
-
-    Do the following:
-
-    1. Create and sync a repo using the following
-       url=RPM_REFERENCES_UPDATEINFO_URL.
-    2. Create and sync a secondary repo using the following
-       url=RPM_REFERENCES_UPDATEINFO_URL.
-       Those urls have RPM packages with the same name.
-    3. Assert that the task succeed.
-
-    This test targets the following issue:
-
-    * `Pulp #4170 <https://pulp.plan.io/issues/4170>`_
-    * `Pulp #4255 <https://pulp.plan.io/issues/4255>`_
-    """
-
-    def test_sync(self):
-        """Test duplicate content can be synced."""
-        cfg = config.get_config()
-        client = api.Client(cfg)
-
-        for url in [RPM_REFERENCES_UPDATEINFO_URL, RPM_UNSIGNED_FIXTURE_URL]:
-            remote = client.post(RPM_REMOTE_PATH, gen_rpm_remote(url=url))
-            self.addCleanup(client.delete, remote['pulp_href'])
-
-            repo = client.post(RPM_REPO_PATH, gen_repo())
-            self.addCleanup(client.delete, repo['pulp_href'])
-
-            client.post(
-                urljoin(repo['pulp_href'], 'sync/'),
-                {'remote': remote['pulp_href']},
-            )
-            repo = client.get(repo['pulp_href'])
-
-            added_content_summary = get_added_content_summary(repo)
-            self.assertEqual(
-                added_content_summary,
-                RPM_FIXTURE_SUMMARY,
-                added_content_summary,
-            )
-
-
-class SyncModularContentTestCase(unittest.TestCase):
-    """Sync RPM modular content.
-
-    This test targets the following issue:
-
-    * `Pulp #5408 <https://pulp.plan.io/issues/5408>`_
-    """
-
-    def test_sync_modular_repo(self):
-        """Test RPM modular content can be synced."""
-        cfg = config.get_config()
-        client = api.Client(cfg)
-
-        remote = client.post(
-            RPM_REMOTE_PATH, gen_rpm_remote(url=RPM_MODULAR_FIXTURE_URL)
-        )
-        self.addCleanup(client.delete, remote['pulp_href'])
-
-        repo = client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(client.delete, repo['pulp_href'])
-
-        sync(cfg, remote, repo)
-        repo = client.get(repo['pulp_href'])
-
-        added_content_summary = get_added_content_summary(repo)
-
-        self.assertEqual(
-            added_content_summary,
-            RPM_MODULAR_FIXTURE_SUMMARY,
-            added_content_summary
-        )
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = repo_api.sync(repo.pulp_href, repository_sync_data)
+        return monitor_task(sync_response.task)

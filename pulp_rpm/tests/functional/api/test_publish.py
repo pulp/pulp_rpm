@@ -1,42 +1,50 @@
 # coding=utf-8
 """Tests that publish rpm plugin repositories."""
+import gzip
+import os
 import unittest
+from tempfile import NamedTemporaryFile
 from random import choice
 from xml.etree import ElementTree
-from urllib.parse import urljoin
 
-from requests.exceptions import HTTPError
-
-from pulp_smash import api, config
+from pulp_smash import config
+from pulp_smash.utils import http_get
 from pulp_smash.pulp3.utils import (
-    download_content_unit,
-    gen_distribution,
     gen_repo,
+    gen_distribution,
     get_content,
     get_content_summary,
     get_versions,
-    sync,
+    modify_repo
 )
 
-from pulp_rpm.tests.functional.utils import (
-    gen_rpm_remote,
-)
 from pulp_rpm.tests.functional.constants import (
-    RPM_ALT_LAYOUT_FIXTURE_URL,
-    RPM_DISTRIBUTION_PATH,
-    RPM_FIXTURE_SUMMARY,
-    RPM_LONG_UPDATEINFO_FIXTURE_URL,
     RPM_NAMESPACES,
     RPM_PACKAGE_CONTENT_NAME,
-    RPM_PUBLICATION_PATH,
-    RPM_REFERENCES_UPDATEINFO_URL,
-    RPM_REMOTE_PATH,
-    RPM_REPO_PATH,
+    RPM_LONG_UPDATEINFO_FIXTURE_URL,
     RPM_RICH_WEAK_FIXTURE_URL,
+    RPM_ALT_LAYOUT_FIXTURE_URL,
     RPM_SHA512_FIXTURE_URL,
     SRPM_UNSIGNED_FIXTURE_URL,
+    RPM_REFERENCES_UPDATEINFO_URL,
+    RPM_FIXTURE_SUMMARY
 )
-from pulp_rpm.tests.functional.utils import publish, set_up_module as setUpModule  # noqa:F401
+from pulp_rpm.tests.functional.utils import (
+    gen_rpm_client,
+    gen_rpm_remote,
+    monitor_task,
+)
+from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+
+from pulpcore.client.pulp_rpm import (
+    DistributionsRpmApi,
+    PublicationsRpmApi,
+    RepositoriesRpmApi,
+    RpmRepositorySyncURL,
+    RemotesRpmApi,
+    RpmRpmPublication,
+)
+from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 
 class PublishAnyRepoVersionTestCase(unittest.TestCase):
@@ -48,12 +56,6 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
     * `Pulp Smash #897 <https://github.com/pulp/pulp-smash/issues/897>`_
     """
 
-    @classmethod
-    def setUpClass(cls):
-        """Create class-wide variables."""
-        cls.cfg = config.get_config()
-        cls.client = api.Client(cls.cfg, api.json_handler)
-
     def test_all(self):
         """Test whether a particular repository version can be published.
 
@@ -61,90 +63,62 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
         2. Create a publication by supplying the latest ``repository_version``.
         3. Assert that the publication ``repository_version`` attribute points
            to the latest repository version.
-        4. Create a publication by supplying the non-latest
-           ``repository_version``.
+        4. Create a publication by supplying the non-latest ``repository_version``.
         5. Assert that the publication ``repository_version`` attribute points
            to the supplied repository version.
         6. Assert that an exception is raised when providing two different
            repository versions to be published at same time.
         """
+        cfg = config.get_config()
+        client = gen_rpm_client()
+        repo_api = RepositoriesRpmApi(client)
+        remote_api = RemotesRpmApi(client)
+        publications = PublicationsRpmApi(client)
+
         body = gen_rpm_remote()
-        remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote['pulp_href'])
+        remote = remote_api.create(body)
+        self.addCleanup(remote_api.delete, remote.pulp_href)
 
-        repo = self.client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['pulp_href'])
+        repo = repo_api.create(gen_repo())
+        self.addCleanup(repo_api.delete, repo.pulp_href)
 
-        sync(self.cfg, remote, repo)
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
 
         # Step 1
-        repo = self.client.get(repo['pulp_href'])
-        for rpm_content in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]:
-            self.client.post(
-                urljoin(repo['pulp_href'], 'modify/'),
-                {'remove_content_units': [rpm_content['pulp_href']]}
-            )
-        version_hrefs = tuple(ver['pulp_href'] for ver in get_versions(repo))
+        repo = repo_api.read(repo.pulp_href)
+        for rpm_content in get_content(repo.to_dict())[RPM_PACKAGE_CONTENT_NAME]:
+            modify_repo(cfg, repo.to_dict(), add_units=[rpm_content])
+        version_hrefs = tuple(ver["pulp_href"] for ver in get_versions(repo.to_dict()))
         non_latest = choice(version_hrefs[:-1])
 
         # Step 2
-        publication = publish(self.cfg, repo)
+        publish_data = RpmRpmPublication(repository=repo.pulp_href)
+        publish_response = publications.create(publish_data)
+        created_resources = monitor_task(publish_response.task)
+        publication_href = created_resources[0]
+        self.addCleanup(publications.delete, publication_href)
+        publication = publications.read(publication_href)
 
         # Step 3
-        self.assertEqual(publication['repository_version'], version_hrefs[-1])
+        self.assertEqual(publication.repository_version, version_hrefs[-1])
 
         # Step 4
-        publication = publish(self.cfg, repo, non_latest)
+        publish_data.repository_version = non_latest
+        publish_data.repository = None
+        publish_response = publications.create(publish_data)
+        created_resources = monitor_task(publish_response.task)
+        publication_href = created_resources[0]
+        publication = publications.read(publication_href)
 
         # Step 5
-        self.assertEqual(publication['repository_version'], non_latest)
+        self.assertEqual(publication.repository_version, non_latest)
 
         # Step 6
-        with self.assertRaises(HTTPError):
-            body = {
-                'repository': repo['pulp_href'],
-                'repository_version': non_latest
-            }
-            self.client.post(RPM_PUBLICATION_PATH, body)
-
-
-class SyncPublishReferencesUpdateTestCase(unittest.TestCase):
-    """Sync/publish a repo that ``updateinfo.xml`` contains references."""
-
-    @classmethod
-    def setUpClass(cls):
-        """Create class-wide variables."""
-        cls.cfg = config.get_config()
-        cls.client = api.Client(cls.cfg, api.json_handler)
-
-    def test_all(self):
-        """Sync/publish a repo that ``updateinfo.xml`` contains references.
-
-        This test targets the following issue:
-
-        `Pulp #3998 <https://pulp.plan.io/issues/3998>`_.
-        """
-        repo = self.client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['pulp_href'])
-
-        body = gen_rpm_remote(url=RPM_REFERENCES_UPDATEINFO_URL)
-        remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote['pulp_href'])
-
-        sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['pulp_href'])
-
-        self.assertIsNotNone(repo['latest_version_href'])
-
-        content_summary = get_content_summary(repo)
-        self.assertDictEqual(
-            content_summary,
-            RPM_FIXTURE_SUMMARY,
-            content_summary
-        )
-
-        publication = publish(self.cfg, repo)
-        self.addCleanup(self.client.delete, publication['pulp_href'])
+        with self.assertRaises(ApiException):
+            body = {"repository": repo.pulp_href, "repository_version": non_latest}
+            publications.create(body)
 
 
 class SyncPublishTestCase(unittest.TestCase):
@@ -160,7 +134,10 @@ class SyncPublishTestCase(unittest.TestCase):
     def setUpClass(cls):
         """Create class-wide variables."""
         cls.cfg = config.get_config()
-        cls.client = api.Client(cls.cfg, api.page_handler)
+        cls.client = gen_rpm_client()
+        cls.repo_api = RepositoriesRpmApi(cls.client)
+        cls.remote_api = RemotesRpmApi(gen_rpm_client())
+        cls.publications = PublicationsRpmApi(cls.client)
 
     def test_rpm_rich_weak(self):
         """Sync and publish an RPM repository. See :meth: `do_test`."""
@@ -184,19 +161,72 @@ class SyncPublishTestCase(unittest.TestCase):
 
     def do_test(self, url):
         """Sync and publish an RPM repository given a feed URL."""
-        repo = self.client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['pulp_href'])
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
 
-        remote = self.client.post(RPM_REMOTE_PATH, gen_rpm_remote(url=url))
-        self.addCleanup(self.client.delete, remote['pulp_href'])
+        body = gen_rpm_remote(url=url)
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
-        sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['pulp_href'])
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
 
-        self.assertIsNotNone(repo['latest_version_href'])
+        publish_data = RpmRpmPublication(repository=repo.pulp_href)
+        publish_response = self.publications.create(publish_data)
+        created_resources = monitor_task(publish_response.task)
+        publication_href = created_resources[0]
+        self.addCleanup(self.publications.delete, publication_href)
 
-        publication = publish(self.cfg, repo)
-        self.addCleanup(self.client.delete, publication['pulp_href'])
+        self.assertIsNotNone(publication_href)
+
+
+class SyncPublishReferencesUpdateTestCase(unittest.TestCase):
+    """Sync/publish a repo that ``updateinfo.xml`` contains references."""
+
+    def test_all(self):
+        """Sync/publish a repo that ``updateinfo.xml`` contains references.
+
+        This test targets the following issue:
+
+        `Pulp #3998 <https://pulp.plan.io/issues/3998>`_.
+        """
+        client = gen_rpm_client()
+        repo_api = RepositoriesRpmApi(client)
+        remote_api = RemotesRpmApi(client)
+        publications = PublicationsRpmApi(client)
+
+        repo = repo_api.create(gen_repo())
+        self.addCleanup(repo_api.delete, repo.pulp_href)
+
+        body = gen_rpm_remote(RPM_REFERENCES_UPDATEINFO_URL)
+        remote = remote_api.create(body)
+        self.addCleanup(remote_api.delete, remote.pulp_href)
+
+        # Sync the repository.
+        self.assertEqual(repo.latest_version_href, f"{repo.pulp_href}versions/0/")
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+        repo = repo_api.read(repo.pulp_href)
+
+        self.assertIsNotNone(repo.latest_version_href)
+
+        content_summary = get_content_summary(repo.to_dict())
+        self.assertDictEqual(
+            content_summary,
+            RPM_FIXTURE_SUMMARY,
+            content_summary
+        )
+
+        publish_data = RpmRpmPublication(repository=repo.pulp_href)
+        publish_response = publications.create(publish_data)
+        created_resources = monitor_task(publish_response.task)
+        publication_href = created_resources[0]
+
+        self.assertIsNotNone(publication_href)
+
+        self.addCleanup(publications.delete, publication_href)
 
 
 class ValidateNoChecksumTagTestCase(unittest.TestCase):
@@ -219,44 +249,66 @@ class ValidateNoChecksumTagTestCase(unittest.TestCase):
     def setUpClass(cls):
         """Create class-wide variables."""
         cls.cfg = config.get_config()
-        cls.client = api.Client(cls.cfg, api.page_handler)
-        raise unittest.SkipTest('Skipping until we resolve https://pulp.plan.io/issues/5507')
+        cls.client = gen_rpm_client()
+        cls.repo_api = RepositoriesRpmApi(cls.client)
+        cls.remote_api = RemotesRpmApi(cls.client)
+        cls.publications = PublicationsRpmApi(cls.client)
+        cls.distributions = DistributionsRpmApi(cls.client)
 
     def test_all(self):
         """Sync and publish an RPM repository and verify the checksum."""
-        # Step 1
-        repo = self.client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['pulp_href'])
+        # 1. create repo and remote
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
 
-        remote = self.client.post(RPM_REMOTE_PATH, gen_rpm_remote())
-        self.addCleanup(self.client.delete, remote['pulp_href'])
+        body = gen_rpm_remote()
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
-        # Step 2
-        sync(self.cfg, remote, repo)
-        repo = self.client.get(repo['pulp_href'])
+        # 2. Sync it
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
 
-        self.assertIsNotNone(repo['latest_version_href'])
+        # 3. Publish and distribute
+        publish_data = RpmRpmPublication(repository=repo.pulp_href)
+        publish_response = self.publications.create(publish_data)
+        created_resources = monitor_task(publish_response.task)
+        publication_href = created_resources[0]
+        self.addCleanup(self.publications.delete, publication_href)
 
-        # Step 3
-        publication = publish(self.cfg, repo)
-        self.addCleanup(self.client.delete, publication['pulp_href'])
         body = gen_distribution()
-        body['publication'] = publication['pulp_href']
-        distribution = self.client.using_handler(api.task_handler).post(
-            RPM_DISTRIBUTION_PATH, body
-        )
-        self.addCleanup(self.client.delete, distribution['pulp_href'])
-        # Step 4
-        repo_md = ElementTree.fromstring(
-            download_content_unit(self.cfg, distribution, 'repodata/repomd.xml')
-        )
-        update_info_content = ElementTree.fromstring(
-            download_content_unit(
-                self.cfg,
-                distribution,
-                self._get_updateinfo_xml_path(repo_md)
+        body["publication"] = publication_href
+        distribution_response = self.distributions.create(body)
+        created_resources = monitor_task(distribution_response.task)
+        distribution = self.distributions.read(created_resources[0])
+        self.addCleanup(self.distributions.delete, distribution.pulp_href)
+
+        # 4. check the tag 'sum' is not present in updateinfo.xml
+        repomd = ElementTree.fromstring(
+            http_get(
+                os.path.join(distribution.base_url, 'repodata/repomd.xml')
             )
         )
+
+        with NamedTemporaryFile() as temp_file:
+            update_xml_url = self._get_updateinfo_xml_path(repomd)
+            update_xml_content = http_get(
+                os.path.join(distribution.base_url, update_xml_url)
+            )
+            temp_file.write(update_xml_content)
+            temp_file.seek(0)
+            # TODO: fix this as in CI update_info.xml has '.gz' but
+            # it is not gzipped
+            try:
+                update_xml = gzip.open(temp_file.name).read()
+            except OSError:
+                update_xml = temp_file.read()
+
+            update_info_content = ElementTree.fromstring(
+                update_xml
+            )
+
         tags = {elem.tag for elem in update_info_content.iter()}
         self.assertNotIn('sum', tags, update_info_content)
 

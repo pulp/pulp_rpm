@@ -5,26 +5,26 @@ import unittest
 from random import choice
 from urllib.parse import urljoin
 
-from pulp_smash import api, config, utils
-from pulp_smash.pulp3.utils import (
-    download_content_unit,
-    gen_distribution,
-    gen_repo,
-    sync,
-)
+from pulp_smash import config, utils
+from pulp_smash.pulp3.utils import download_content_unit, gen_distribution, gen_repo
 
+from pulp_rpm.tests.functional.constants import RPM_UNSIGNED_FIXTURE_URL
 from pulp_rpm.tests.functional.utils import (
-    gen_rpm_remote,
+    gen_rpm_client,
     get_rpm_package_paths,
-    publish,
-)
-from pulp_rpm.tests.functional.constants import (
-    RPM_DISTRIBUTION_PATH,
-    RPM_REMOTE_PATH,
-    RPM_REPO_PATH,
-    RPM_UNSIGNED_FIXTURE_URL,
+    gen_rpm_remote,
+    monitor_task,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+
+from pulpcore.client.pulp_rpm import (
+    DistributionsRpmApi,
+    PublicationsRpmApi,
+    RepositoriesRpmApi,
+    RpmRepositorySyncURL,
+    RemotesRpmApi,
+    RpmRpmPublication,
+)
 
 
 class DownloadContentTestCase(unittest.TestCase):
@@ -57,38 +57,48 @@ class DownloadContentTestCase(unittest.TestCase):
         * `Pulp Smash #872 <https://github.com/pulp/pulp-smash/issues/872>`_
         """
         cfg = config.get_config()
-        client = api.Client(cfg, api.json_handler)
+        client = gen_rpm_client()
+        repo_api = RepositoriesRpmApi(client)
+        remote_api = RemotesRpmApi(client)
+        publications = PublicationsRpmApi(client)
+        distributions = DistributionsRpmApi(client)
 
-        repo = client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(client.delete, repo['pulp_href'])
+        repo = repo_api.create(gen_repo())
+        self.addCleanup(repo_api.delete, repo.pulp_href)
 
-        body = gen_rpm_remote()
-        remote = client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(client.delete, remote['pulp_href'])
+        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
+        remote = remote_api.create(body)
+        self.addCleanup(remote_api.delete, remote.pulp_href)
 
-        sync(cfg, remote, repo)
-        repo = client.get(repo['pulp_href'])
+        # Sync a Repository
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+        repo = repo_api.read(repo.pulp_href)
 
         # Create a publication.
-        publication = publish(cfg, repo)
-        self.addCleanup(client.delete, publication['pulp_href'])
+        publish_data = RpmRpmPublication(repository=repo.pulp_href)
+        publish_response = publications.create(publish_data)
+        created_resources = monitor_task(publish_response.task)
+        publication_href = created_resources[0]
+        self.addCleanup(publications.delete, publication_href)
 
         # Create a distribution.
         body = gen_distribution()
-        body['publication'] = publication['pulp_href']
-        distribution = client.using_handler(api.task_handler).post(
-            RPM_DISTRIBUTION_PATH, body
-        )
-        self.addCleanup(client.delete, distribution['pulp_href'])
+        body["publication"] = publication_href
+        distribution_response = distributions.create(body)
+        created_resources = monitor_task(distribution_response.task)
+        distribution = distributions.read(created_resources[0])
+        self.addCleanup(distributions.delete, distribution.pulp_href)
 
-        # Pick a content unit, and download it from both Pulp Fixtures…
-        unit_path = choice(get_rpm_package_paths(repo))
-        fixtures_hash = hashlib.sha256(
+        # Pick a content unit (of each type), and download it from both Pulp Fixtures…
+        unit_path = choice(get_rpm_package_paths(repo.to_dict()))
+        fixture_hash = hashlib.sha256(
             utils.http_get(urljoin(RPM_UNSIGNED_FIXTURE_URL, unit_path))
         ).hexdigest()
 
         # …and Pulp.
-        content = download_content_unit(cfg, distribution, unit_path)
+        content = download_content_unit(cfg, distribution.to_dict(), unit_path)
         pulp_hash = hashlib.sha256(content).hexdigest()
 
-        self.assertEqual(fixtures_hash, pulp_hash)
+        self.assertEqual(fixture_hash, pulp_hash)

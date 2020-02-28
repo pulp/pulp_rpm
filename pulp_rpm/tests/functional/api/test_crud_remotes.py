@@ -3,17 +3,19 @@
 from random import choice
 import unittest
 
-from requests.exceptions import HTTPError
+from pulp_smash import utils
 
-from pulp_smash import api, config, utils
-from pulp_smash.pulp3.constants import (
-    IMMEDIATE_DOWNLOAD_POLICIES,
-    ON_DEMAND_DOWNLOAD_POLICIES,
+from pulp_rpm.tests.functional.constants import DOWNLOAD_POLICIES
+from pulp_rpm.tests.functional.utils import (
+    gen_rpm_client,
+    gen_rpm_remote,
+    monitor_task,
+    skip_if,
 )
-
-from pulp_rpm.tests.functional.constants import RPM_REMOTE_PATH
-from pulp_rpm.tests.functional.utils import gen_rpm_remote, skip_if
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+
+from pulpcore.client.pulp_rpm import RemotesRpmApi
+from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 
 class CRUDRemotesTestCase(unittest.TestCase):
@@ -22,21 +24,19 @@ class CRUDRemotesTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Create class-wide variables."""
-        cls.cfg = config.get_config()
-        cls.client = api.Client(cls.cfg, api.json_handler)
-        cls.remote = {}
+        cls.remote_api = RemotesRpmApi(gen_rpm_client())
 
     def test_01_create_remote(self):
         """Create a remote."""
         body = _gen_verbose_remote()
-        type(self).remote = self.client.post(RPM_REMOTE_PATH, body)
-        for key in ('username', 'password'):
+        type(self).remote = self.remote_api.create(body)
+        for key in ("username", "password"):
             del body[key]
         for key, val in body.items():
             with self.subTest(key=key):
-                self.assertEqual(self.remote[key], val)
+                self.assertEqual(self.remote.to_dict()[key], val, key)
 
-    @skip_if(bool, 'remote', False)
+    @skip_if(bool, "remote", False)
     def test_02_create_same_name(self):
         """Try to create a second remote with an identical name.
 
@@ -44,59 +44,60 @@ class CRUDRemotesTestCase(unittest.TestCase):
         <https://github.com/pulp/pulp-smash/issues/1055>`_.
         """
         body = gen_rpm_remote()
-        body['name'] = self.remote['name']
-        with self.assertRaises(HTTPError):
-            self.client.post(RPM_REMOTE_PATH, body)
+        body["name"] = self.remote.name
+        with self.assertRaises(ApiException):
+            self.remote_api.create(body)
 
-    @skip_if(bool, 'remote', False)
+    @skip_if(bool, "remote", False)
     def test_02_read_remote(self):
         """Read a remote by its href."""
-        remote = self.client.get(self.remote['pulp_href'])
-        for key, val in self.remote.items():
+        remote = self.remote_api.read(self.remote.pulp_href)
+        for key, val in self.remote.to_dict().items():
             with self.subTest(key=key):
-                self.assertEqual(remote[key], val)
+                self.assertEqual(remote.to_dict()[key], val, key)
 
-    @skip_if(bool, 'remote', False)
+    @skip_if(bool, "remote", False)
     def test_02_read_remotes(self):
         """Read a remote by its name."""
-        page = self.client.get(
-            RPM_REMOTE_PATH, params={'name': self.remote['name']}
-        )
-        self.assertEqual(len(page['results']), 1)
-        for key, val in self.remote.items():
+        page = self.remote_api.list(name=self.remote.name)
+        self.assertEqual(len(page.results), 1)
+        for key, val in self.remote.to_dict().items():
             with self.subTest(key=key):
-                self.assertEqual(page['results'][0][key], val)
+                self.assertEqual(page.results[0].to_dict()[key], val, key)
 
-    @skip_if(bool, 'remote', False)
+    @skip_if(bool, "remote", False)
     def test_03_partially_update(self):
         """Update a remote using HTTP PATCH."""
         body = _gen_verbose_remote()
-        self.client.patch(self.remote['pulp_href'], body)
-        for key in ('username', 'password'):
+        response = self.remote_api.partial_update(self.remote.pulp_href, body)
+        monitor_task(response.task)
+        for key in ("username", "password"):
             del body[key]
-        type(self).remote = self.client.get(self.remote['pulp_href'])
+        type(self).remote = self.remote_api.read(self.remote.pulp_href)
         for key, val in body.items():
             with self.subTest(key=key):
-                self.assertEqual(self.remote[key], val)
+                self.assertEqual(self.remote.to_dict()[key], val, key)
 
-    @skip_if(bool, 'remote', False)
+    @skip_if(bool, "remote", False)
     def test_04_fully_update(self):
         """Update a remote using HTTP PUT."""
         body = _gen_verbose_remote()
-        self.client.put(self.remote['pulp_href'], body)
-        for key in ('username', 'password'):
+        response = self.remote_api.update(self.remote.pulp_href, body)
+        monitor_task(response.task)
+        for key in ("username", "password"):
             del body[key]
-        type(self).remote = self.client.get(self.remote['pulp_href'])
+        type(self).remote = self.remote_api.read(self.remote.pulp_href)
         for key, val in body.items():
             with self.subTest(key=key):
-                self.assertEqual(self.remote[key], val)
+                self.assertEqual(self.remote.to_dict()[key], val, key)
 
-    @skip_if(bool, 'remote', False)
+    @skip_if(bool, "remote", False)
     def test_05_delete(self):
         """Delete a remote."""
-        self.client.delete(self.remote['pulp_href'])
-        with self.assertRaises(HTTPError):
-            self.client.get(self.remote['pulp_href'])
+        response = self.remote_api.delete(self.remote.pulp_href)
+        monitor_task(response.task)
+        with self.assertRaises(ApiException):
+            self.remote_api.read(self.remote.pulp_href)
 
 
 class CreateRemoteNoURLTestCase(unittest.TestCase):
@@ -111,28 +112,96 @@ class CreateRemoteNoURLTestCase(unittest.TestCase):
         * `Pulp Smash #984 <https://github.com/pulp/pulp-smash/issues/984>`_
         """
         body = gen_rpm_remote()
-        del body['url']
-        response = api.Client(config.get_config(), api.echo_handler).post(
-            RPM_REMOTE_PATH, body
-        )
-        with self.assertRaises(HTTPError):
-            response.raise_for_status()
+        del body["url"]
+        with self.assertRaises(ApiException):
+            RemotesRpmApi(gen_rpm_client()).create(body)
 
-        self.assertTrue(
-            all(
-                [
-                    key in response.json()['url'][0]
-                    for key in ['field', 'required']
-                ]
-            ),
-            response.json(),
+
+class RemoteDownloadPolicyTestCase(unittest.TestCase):
+    """Verify download policy behavior for valid and invalid values.
+
+    In Pulp 3, there are are different download policies.
+
+    This test targets the following testing scenarios:
+
+    1. Creating a remote without a download policy.
+       Verify the creation is successful and immediate it is policy applied.
+    2. Change the remote policy from default.
+       Verify the change is successful.
+    3. Attempt to change the remote policy to an invalid string.
+       Verify an ApiException is given for the invalid policy as well
+       as the policy remaining unchanged.
+
+    For more information on the remote policies, see the Pulp3
+    API on an installed server:
+
+    * /pulp/api/v3/docs/#operation`
+
+    This test targets the following issues:
+
+    * `Pulp #4420 <https://pulp.plan.io/issues/4420>`_
+    * `Pulp #3763 <https://pulp.plan.io/issues/3763>`_
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.remote_api = RemotesRpmApi(gen_rpm_client())
+        cls.remote = {}
+        cls.policies = DOWNLOAD_POLICIES
+        cls.body = _gen_verbose_remote()
+
+    @classmethod
+    def tearDownClass(cls):
+        """Clean class-wide variable."""
+        results = cls.remote_api.list().to_dict()["results"]
+        for result in results:
+            cls.remote_api.delete(result["pulp_href"])
+
+    def test_01_no_defined_policy(self):
+        """Verify the default policy `immediate`.
+
+        When no policy is defined, the default policy of `immediate`
+        is applied.
+        """
+        del self.body["policy"]
+        self.remote.update(self.remote_api.create(self.body).to_dict())
+        self.assertEqual(self.remote["policy"], "immediate", self.remote)
+
+    @skip_if(len, "policies", 1)
+    def test_02_change_policy(self):
+        """Verify ability to change policy to value other than the default.
+
+        Update the remote policy to a valid value other than `immedaite`
+        and verify the new set value.
+        """
+        changed_policy = choice([item for item in self.policies if item != "immediate"])
+        response = self.remote_api.partial_update(
+            self.remote["pulp_href"], {"policy": changed_policy}
         )
+        monitor_task(response.task)
+        self.remote.update(self.remote_api.read(self.remote["pulp_href"]).to_dict())
+        self.assertEqual(self.remote["policy"], changed_policy, self.remote)
+
+    @skip_if(bool, "remote", False)
+    def test_03_invalid_policy(self):
+        """Verify an invalid policy does not update the remote policy.
+
+        Get the current remote policy.
+        Attempt to update the remote policy to an invalid value.
+        Verify the policy remains the same.
+        """
+        remote = self.remote_api.read(self.remote["pulp_href"]).to_dict()
+        with self.assertRaises(ApiException):
+            self.remote_api.partial_update(self.remote["pulp_href"], {"policy": utils.uuid4()})
+        self.remote.update(self.remote_api.read(self.remote["pulp_href"]).to_dict())
+        self.assertEqual(remote["policy"], self.remote["policy"], self.remote)
 
 
 def _gen_verbose_remote():
     """Return a semi-random dict for use in defining a remote.
 
-    For most tests, it's desirable to create remotes with as few attributes
+    For most tests, it"s desirable to create remotes with as few attributes
     as possible, so that the tests can specifically target and attempt to break
     specific features. This module specifically targets remotes, so it makes
     sense to provide as many attributes as possible.
@@ -141,12 +210,6 @@ def _gen_verbose_remote():
     """
     attrs = gen_rpm_remote()
     attrs.update(
-        {
-            'password': utils.uuid4(),
-            'username': utils.uuid4(),
-            'policy': choice(
-                IMMEDIATE_DOWNLOAD_POLICIES + ON_DEMAND_DOWNLOAD_POLICIES
-            ),
-        }
+        {"password": utils.uuid4(), "username": utils.uuid4(), "policy": choice(DOWNLOAD_POLICIES)}
     )
     return attrs
