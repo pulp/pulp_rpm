@@ -1,1 +1,0 @@
-Fix REST API for Modulemd "Package" list - instead of returning PKs, return Package HREFs as intended.

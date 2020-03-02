@@ -13,6 +13,57 @@ Changelog
 
 .. towncrier release notes start
 
+3.2.0 (2020-03-02)
+==================
+
+
+Features
+--------
+
+- Add mirror mode for sync endpoint.
+  `#5738 <https://pulp.plan.io/issues/5738>`_
+- Add some additional not equal filters.
+  `#5854 <https://pulp.plan.io/issues/5854>`_
+- SRPM can be skipped during the sync.
+  `#6033 <https://pulp.plan.io/issues/6033>`_
+
+
+Bugfixes
+--------
+
+- Fix absolute path error when parsing packages stored in S3
+  `#5904 <https://pulp.plan.io/issues/5904>`_
+- Fix advisory conflict resolution to check current version first.
+  `#5924 <https://pulp.plan.io/issues/5924>`_
+- Handling float timestamp on treeinfo file
+  `#5989 <https://pulp.plan.io/issues/5989>`_
+- Raise error when content has overlapping relative_path on the same version
+  `#6152 <https://pulp.plan.io/issues/6152>`_
+- Fixed an issue causing module and module-default metadata to be stored incorrectly, and added a data migration to fix existing installations.
+  `#6191 <https://pulp.plan.io/issues/6191>`_
+- Fix REST API for Modulemd "Package" list - instead of returning PKs, return Package HREFs as intended.
+  `#6196 <https://pulp.plan.io/issues/6196>`_
+- Replace RepositorySyncURL with RpmRepositorySyncURL
+  `#6204 <https://pulp.plan.io/issues/6204>`_
+- Modulemd dependencies are now stored corectly in DB.
+  `#6214 <https://pulp.plan.io/issues/6214>`_
+
+
+Improved Documentation
+----------------------
+
+- Remove the pulp_use_system_wide_pkgs installer variable from the docs. We now set it in the pulp_rpm_prerequisites role. Users can safely leave it in their installer variables for the foreseeable future though.
+  `#5992 <https://pulp.plan.io/issues/5992>`_
+
+
+Misc
+----
+
+- `#6030 <https://pulp.plan.io/issues/6030>`_, `#6147 <https://pulp.plan.io/issues/6147>`_
+
+
+----
+
 
 3.1.0 (2020-02-03)
 ==================
