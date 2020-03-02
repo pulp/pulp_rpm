@@ -6,7 +6,7 @@ requirements = [
     'createrepo_c~=0.13',
     'libcomps~=0.1.11',
     'productmd',
-    'pulpcore>=3.0',
+    'pulpcore>=3.2,<3.3',
     'PyGObject~=3.22',
 ]
 
@@ -15,7 +15,7 @@ with open('README.rst') as f:
 
 setup(
     name='pulp-rpm',
-    version='3.2.0b1.dev',
+    version='3.2.0',
     description='RPM plugin for the Pulp Project',
     long_description=long_description,
     license='GPLv2+',

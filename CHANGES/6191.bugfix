@@ -1,1 +1,0 @@
-Fixed an issue causing module and module-default metadata to be stored incorrectly, and added a data migration to fix existing installations.
