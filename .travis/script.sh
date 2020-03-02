@@ -20,7 +20,7 @@ export FUNC_TEST_SCRIPT=$TRAVIS_BUILD_DIR/.travis/func_test_script.sh
 export DJANGO_SETTINGS_MODULE=pulpcore.app.settings
 
 if [ "$TEST" = 'docs' ]; then
-
+  
 
   cd docs
   make html
@@ -88,6 +88,13 @@ export CMD_STDIN_PREFIX="sudo kubectl exec -i $PULP_API_POD --"
 
 cat unittest_requirements.txt | $CMD_STDIN_PREFIX bash -c "cat > /tmp/test_requirements.txt"
 $CMD_PREFIX pip3 install -r /tmp/test_requirements.txt
+
+if [[ "$TEST" == 's3' ]]; then
+  mc config host add s3 http://localhost:9000 AKIAIT2Z5TDYPX3ARJBA fqRvjWaPU5o0fCqQuUWbj9Fainj2pVZtBCiDiieS --api S3v4
+  mc config host rm local
+  mc mb s3/pulp3 --region eu-central-1
+  mc tree s3
+fi
 
 # Run unit tests.
 $CMD_PREFIX bash -c "PULP_DATABASES__default__USER=postgres django-admin test --noinput /usr/local/lib/python${TRAVIS_PYTHON_VERSION}/site-packages/pulp_rpm/tests/unit/"

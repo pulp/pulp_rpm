@@ -24,12 +24,16 @@ plugin_name: pulp_rpm
 plugin_snake: pulp_rpm
 pulp_settings: null
 pulpcore_branch: master
+pulpcore_pip_version_specifier: null
 pydocstyle: true
 pypi_username: pulp
 stable_branch: '3.0'
 test_bindings: true
 test_performance:
-  - sync
-  - publish
-  - pulp_to_pulp
+- sync
+- publish
+- pulp_to_pulp
+test_s3: true
+travis_addtl_services: []
 travis_notifications: None
+
