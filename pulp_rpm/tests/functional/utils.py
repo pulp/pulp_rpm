@@ -105,31 +105,20 @@ def populate_pulp(cfg, url=RPM_SIGNED_FIXTURE_URL):
     return client.get(RPM_CONTENT_PATH)['results']
 
 
-def rpm_copy(cfg, source_repo, dest_repo, criteria=None, content=None, recursive=False):
+def rpm_copy(cfg, config, recursive=False):
     """Sync a repository.
 
     :param pulp_smash.config.PulpSmashConfig cfg: Information about the Pulp
         host.
     :param remote: A dict of information about the remote of the repository
         to be synced.
-    :param repo: A dict of information about the repository.
+    :param config: A dict of information about the copy.
     :param kwargs: Keyword arguments to be merged in to the request data.
     :returns: The server's response. A dict of information about the just
         created sync.
     """
     client = api.Client(cfg)
-    data = {
-        'source_repo': source_repo['pulp_href'],
-        'dest_repo': dest_repo['pulp_href'],
-        'dependency_solving': recursive,
-    }
-
-    if criteria:
-        data['criteria'] = criteria
-
-    if content:
-        data['content'] = content
-
+    data = {'config': config, 'dependency_solving': recursive}
     return client.post(RPM_COPY_PATH, data)
 
 

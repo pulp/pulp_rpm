@@ -208,8 +208,8 @@ class UpdateRecord(Content):
         modlist = []
         for collection in self.collections.all():
             mod = collection.module
-            nsvca = (mod['name'], mod['stream'], mod['version'], mod['context'], mod['arch'])
             if mod:
+                nsvca = (mod['name'], mod['stream'], mod['version'], mod['context'], mod['arch'])
                 modlist.append(nsvca)
         return modlist
 

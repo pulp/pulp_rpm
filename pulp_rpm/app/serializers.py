@@ -63,7 +63,7 @@ from pulp_rpm.app.models import (
     UpdateReference
 )
 from pulp_rpm.app.shared_utils import _prepare_package
-from pulp_rpm.app.schema import COPY_CRITERIA_SCHEMA
+from pulp_rpm.app.schema import COPY_CONFIG_SCHEMA
 
 
 class PackageSerializer(SingleArtifactContentUploadSerializer):
@@ -591,33 +591,8 @@ class CopySerializer(serializers.Serializer):
     A serializer for Content Copy API.
     """
 
-    source_repo = DetailRelatedField(
-        help_text=_('A URI of the repository to copy from.'),
-        queryset=RpmRepository.objects.all(),
-    )
-
-    dest_repo = DetailRelatedField(
-        help_text=_('A URI of the repository to copy to.'),
-        queryset=RpmRepository.objects.all(),
-    )
-
-    # source_repo_version = NestedRelatedField(
-    #     help_text=_('A URI of the repository version'),
-    #     required=False,
-    #     queryset=RepositoryVersion.objects.all(),
-    #     parent_lookup_kwargs={'repository_pk': 'repository__pk'},
-    #     lookup_field='number',
-    #     view_name='versions-detail',
-    # )
-
-    criteria = serializers.JSONField(
-        help_text=_('A JSON document describing what content you want to be copied'),
-        required=False,
-    )
-
-    content = serializers.ListField(
-        help_text=_("A list of content unit hrefs to copy from one repo to the other"),
-        required=False,
+    config = serializers.JSONField(
+        help_text=_("A JSON document describing sources, destinations, and content to be copied"),
     )
 
     dependency_solving = serializers.BooleanField(
@@ -639,18 +614,11 @@ class CopySerializer(serializers.Serializer):
         if hasattr(self, 'initial_data'):
             validate_unknown_fields(self.initial_data, self.fields)
 
-        if 'criteria' in data and 'content' in data:
-            raise serializers.ValidationError(
-                _("Criteria and content fields cannot both be set.")
-            )
-
-        criteria = data.get('criteria')
-
-        if criteria:
-            validator = Draft7Validator(COPY_CRITERIA_SCHEMA)
+        if 'config' in data:
+            validator = Draft7Validator(COPY_CONFIG_SCHEMA)
 
             err = []
-            for error in sorted(validator.iter_errors(criteria), key=str):
+            for error in sorted(validator.iter_errors(data['config']), key=str):
                 err.append(error.message)
             if err:
                 raise serializers.ValidationError(
