@@ -71,66 +71,53 @@ class BasicCopyTestCase(unittest.TestCase):
 
         return source_repo, dest_repo
 
-    def _do_test(self, criteria, expected_results):
-        """Test copying content units with the RPM plugin.
-
-        Calls _setup_repos() which creates two repos and syncs to the source. Then:
-
-        1. Use the RPM copy API to units from the repo to the empty repo.
-        2. Assert that the correct number of units were added and are present in the dest repo.
-        """
+    def test_copy_all(self):
+        """Test copying all the content from one repo to another."""
         source_repo, dest_repo = self._setup_repos()
+        results = RPM_FIXTURE_SUMMARY
+        config = [{
+            'source_repo_version': source_repo['latest_version_href'],
+            'dest_repo': dest_repo['pulp_href'],
+        }]
 
-        rpm_copy(self.cfg, source_repo, dest_repo, criteria)
+        rpm_copy(self.cfg, config)
         dest_repo = self.client.get(dest_repo['pulp_href'])
 
         # Check that we have the correct content counts.
-        self.assertDictEqual(get_content_summary(dest_repo), expected_results)
+        self.assertDictEqual(get_content_summary(dest_repo), results)
         self.assertDictEqual(
-            get_added_content_summary(dest_repo), expected_results,
+            get_added_content_summary(dest_repo), results,
         )
 
-    def test_copy_all(self):
-        """Test copying all the content from one repo to another."""
-        results = RPM_FIXTURE_SUMMARY
-        self._do_test(None, results)
-
-    def test_copy_by_advisory_id(self):
-        """Test copying an advisory by its id."""
-        criteria = {
-            'advisory': [{'id': 'RHEA-2012:0056'}]
-        }
-        results = {
-            RPM_ADVISORY_CONTENT_NAME: 1,
-            RPM_PACKAGE_CONTENT_NAME: 3,
-        }
-        self._do_test(criteria, results)
-
-    def test_invalid_criteria(self):
-        """Test invalid criteria."""
-        with self.assertRaises(HTTPError):
-            criteria = {
-                'meta': 'morphosis'
-            }
-            self._do_test(criteria, {})
-
-        with self.assertRaises(HTTPError):
-            criteria = {
-                'advisory': [{'bad': 'field'}]
-            }
-            self._do_test(criteria, {})
-
-    def test_both_criteria_and_content(self):
-        """Test that specifying 'content' and 'criteria' is invalid."""
-        criteria = {
-            'advisory': [{'bad': 'field'}]
-        }
-        content = ["/pulp/api/v3/content/rpm/packages/6d0e1e29-ae58-4c70-8bcb-ae957250fc8f/"]
-        self._setup_repos()
+    def test_invalid_config(self):
+        """Test invalid config."""
         source_repo, dest_repo = self._setup_repos()
 
         with self.assertRaises(HTTPError):
-            rpm_copy(self.cfg, source_repo, dest_repo, criteria, content)
+            # no list
+            config = {
+                'source_repo_version': source_repo['latest_version_href'],
+                'dest_repo': dest_repo['pulp_href'],
+            }
+            rpm_copy(self.cfg, config)
+
+        with self.assertRaises(HTTPError):
+            good = {
+                'source_repo_version': source_repo['latest_version_href'],
+                'dest_repo': dest_repo['pulp_href']
+            }
+            bad = {
+                'source_repo_version': source_repo['latest_version_href']
+            }
+            config = [good, bad]
+            rpm_copy(self.cfg, config)
+
+        with self.assertRaises(HTTPError):
+            config = [{
+                'source_repo': source_repo['latest_version_href'],
+                'dest_repo': dest_repo['pulp_href'],
+            }]
+            rpm_copy(self.cfg, config)
 
     def test_content(self):
         """Test the content parameter."""
@@ -140,12 +127,28 @@ class BasicCopyTestCase(unittest.TestCase):
         content = self.client.get(f"{UPDATERECORD_CONTENT_PATH}?repository_version={latest_href}")
         content_to_copy = (content["results"][0]["pulp_href"], content["results"][1]["pulp_href"])
 
-        rpm_copy(self.cfg, source_repo, dest_repo, content=content_to_copy)
+        config = [{
+            'source_repo_version': latest_href,
+            'dest_repo': dest_repo['pulp_href'],
+            'content': content_to_copy
+        }]
 
-        latest_href = dest_repo["pulp_href"] + "versions/1/"
+        rpm_copy(self.cfg, config)
+
+        dest_repo = self.client.get(dest_repo['pulp_href'])
+        latest_href = dest_repo["latest_version_href"]
         dc = self.client.get(f"{UPDATERECORD_CONTENT_PATH}?repository_version={latest_href}")
         dest_content = [c["pulp_href"] for c in dc["results"]]
 
+        results = {
+            RPM_ADVISORY_CONTENT_NAME: 2,
+            RPM_PACKAGE_CONTENT_NAME: 4,
+        }
+
+        self.assertDictEqual(get_content_summary(dest_repo), results)
+        self.assertDictEqual(
+            get_added_content_summary(dest_repo), results,
+        )
         self.assertEqual(sorted(content_to_copy), sorted(dest_content))
 
 
