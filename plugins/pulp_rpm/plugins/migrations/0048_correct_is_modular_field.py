@@ -96,9 +96,9 @@ def migrate_modulemd_artifacts(modulemd):
                                'release': pkg_nevra[3],
                                'arch': pkg_nevra[4]})
 
-        if rpms_to_update:
-            search_criteria = {"$or": rpms_to_update}
-            units_rpm_collection.update_many(search_criteria, {'$set': delta})
+    if rpms_to_update:
+        search_criteria = {"$or": rpms_to_update}
+        units_rpm_collection.update_many(search_criteria, {'$set': delta})
 
 
 def migrate(*args, **kwargs):
