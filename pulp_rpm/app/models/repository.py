@@ -106,11 +106,10 @@ class RpmRepository(Repository):
         if new_version.base_version:
             previous_version = new_version.base_version
         else:
-            previous_version = RepositoryVersion.objects.filter(
-                repository=self,
-                number__lt=new_version.number,
-                complete=True
-            ).order_by('-number').first()
+            try:
+                previous_version = new_version.previous()
+            except RepositoryVersion.DoesNotExist:
+                previous_version = None
 
         remove_duplicates(new_version)
 
