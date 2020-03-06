@@ -35,8 +35,9 @@ def resolve_advisories(version, previous_version):
     content_pks_to_exclude = set()  # exclude from the set of content which is being added
 
     # identify conflicting advisories
+    advisory_pulp_type = UpdateRecord.get_pulp_type()
     current_advisories = UpdateRecord.objects.filter(
-        pk__in=version.content.filter(pulp_type="rpm.advisory"))
+        pk__in=version.content.filter(pulp_type=advisory_pulp_type))
     added_advisories = current_advisories
     advisory_conflicts = []
     # check for IDs if any conflict
@@ -45,7 +46,7 @@ def resolve_advisories(version, previous_version):
 
     if previous_version and len(current_ids) != len(set(current_ids)):
         previous_advisories = UpdateRecord.objects.filter(
-            pk__in=previous_version.content.filter(pulp_type="rpm.advisory"))
+            pk__in=previous_version.content.filter(pulp_type=advisory_pulp_type))
         previous_advisory_ids = set(previous_advisories.values_list('id', flat=True))
 
         # diff for querysets works fine but the result is not fully functional queryset,

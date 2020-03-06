@@ -16,6 +16,8 @@ def resolve_module_packages(version, previous_version):
 
     Args:
         version (pulpcore.app.models.RepositoryVersion): current incomplete repository version
+        previous_version (pulpcore.app.models.RepositoryVersion) :  previous version of the same
+                                                                    repository to compare to
 
     """
     def modules_packages(modules):
@@ -24,12 +26,13 @@ def resolve_module_packages(version, previous_version):
             packages.update(module.packages.all())
         return packages
 
+    modulemd_pulp_type = Modulemd.get_pulp_type()
     current_modules = Modulemd.objects \
-        .filter(pk__in=version.content.filter(pulp_type="rpm.modulemd"))
+        .filter(pk__in=version.content.filter(pulp_type=modulemd_pulp_type))
 
-    if previous_version.number:
+    if previous_version:
         previous_modules = Modulemd.objects \
-            .filter(pk__in=previous_version.content.filter(pulp_type="rpm.modulemd"))
+            .filter(pk__in=previous_version.content.filter(pulp_type=modulemd_pulp_type))
         added_modules = current_modules.difference(previous_modules)
         removed_modules = previous_modules.difference(current_modules)
         current_module_packages = modules_packages(current_modules)
@@ -41,7 +44,7 @@ def resolve_module_packages(version, previous_version):
 
     added_module_packages = modules_packages(added_modules)
     current_packages = Package.objects \
-        .filter(pk__in=version.content.filter(pulp_type="rpm.package"))
+        .filter(pk__in=version.content.filter(pulp_type=Package.get_pulp_type()))
     packages_to_add = added_module_packages.difference(current_packages)
     version.add_content(Package.objects.filter(pk__in=packages_to_add))
 
