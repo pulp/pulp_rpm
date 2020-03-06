@@ -244,8 +244,8 @@ class UpdateCollection(BaseModel):
         update_record (models.ForeignKey): The associated UpdateRecord
     """
 
-    name = models.TextField()
-    shortname = models.TextField()
+    name = models.TextField(null=True)
+    shortname = models.TextField(null=True)
     module = JSONField(null=True)
 
     update_record = models.ManyToManyField(UpdateRecord, related_name="collections")
@@ -320,6 +320,10 @@ class UpdateCollectionPackage(BaseModel):
             Name
         reboot_suggested (Boolean):
             Whether a reboot is suggested after package installation
+        relogin_suggested (Boolean):
+            Whether a relogin is suggested (SuSe specific)
+        restart_suggested (Boolean):
+            Whether a restart is suggested (SuSe specific)
         release (Text):
             Release
         src (Text):
@@ -341,6 +345,8 @@ class UpdateCollectionPackage(BaseModel):
     filename = models.TextField()
     name = models.TextField()
     reboot_suggested = models.BooleanField(default=False)
+    relogin_suggested = models.BooleanField(default=False)
+    restart_suggested = models.BooleanField(default=False)
     release = models.TextField()
     src = models.TextField()
     sum = models.TextField()
@@ -373,6 +379,10 @@ class UpdateCollectionPackage(BaseModel):
                 package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.NAME) or '',
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.REBOOT_SUGGESTED: getattr(
                 package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.REBOOT_SUGGESTED),  # noqa
+            PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.RELOGIN_SUGGESTED: getattr(
+                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.RELOGIN_SUGGESTED, False),
+            PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.RESTART_SUGGESTED: getattr(
+                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.RESTART_SUGGESTED, False),
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.RELEASE: getattr(
                 package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.RELEASE) or '',
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.SRC: getattr(
@@ -402,6 +412,11 @@ class UpdateCollectionPackage(BaseModel):
         pkg.src = self.src
         pkg.filename = self.filename
         pkg.reboot_suggested = self.reboot_suggested
+        # relogin and restart suggested are suse specific
+        if self.relogin_suggested:
+            pkg.relogin_suggested = self.relogin_suggested
+        if self.restart_suggested:
+            pkg.restart_suggested = self.restart_suggested
         if self.sum:
             pkg.sum = self.sum
             pkg.sum_type = int(self.sum_type or 0)

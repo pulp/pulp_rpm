@@ -28,6 +28,8 @@ class UpdateCollectionPackagesField(serializers.ListField):
                 'filename': pkg['filename'],
                 'name': pkg['name'],
                 'reboot_suggested': pkg['reboot_suggested'],
+                'relogin_suggested': pkg['relogin_suggested'],
+                'restart_suggested': pkg['restart_suggested'],
                 'release': pkg['release'],
                 'src': pkg['src'],
                 'sum': pkg['sum'],
