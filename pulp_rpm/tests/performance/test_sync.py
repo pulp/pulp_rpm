@@ -133,6 +133,10 @@ class SyncTestCase(unittest.TestCase):
         """Sync CentOS 7."""
         self.rpm_sync(url=CENTOS7_URL)
 
+    def test_centos7_immediate(self):
+        """Sync CentOS 7 with the immediate policy."""
+        self.rpm_sync(url=CENTOS7_URL, policy='immediate')
+
     def test_centos8_baseos_on_demand(self):
         """Sync CentOS 8 BaseOS."""
         self.rpm_sync(url=CENTOS8_BASEOS_URL)
