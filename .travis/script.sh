@@ -20,7 +20,7 @@ export FUNC_TEST_SCRIPT=$TRAVIS_BUILD_DIR/.travis/func_test_script.sh
 export DJANGO_SETTINGS_MODULE=pulpcore.app.settings
 
 if [ "$TEST" = 'docs' ]; then
-  
+
 
   cd docs
   make html
@@ -122,9 +122,9 @@ if [[ "$TEST" == "performance" ]]; then
   wget -qO- https://github.com/crazy-max/travis-wait-enhanced/releases/download/v1.0.0/travis-wait-enhanced_1.0.0_linux_x86_64.tar.gz | sudo tar -C /usr/local/bin -zxvf - travis-wait-enhanced
   echo "--- Performance Tests ---"
   if [[ -z ${PERFORMANCE_TEST+x} ]]; then
-    travis-wait-enhanced --interval=1m --timeout=30m -- pytest -vv -r sx --color=yes --pyargs --capture=no --durations=0 pulp_rpm.tests.performance || show_logs_and_return_non_zero
+    travis-wait-enhanced --interval=1m --timeout=40m -- pytest -vv -r sx --color=yes --pyargs --capture=no --durations=0 pulp_rpm.tests.performance || show_logs_and_return_non_zero
   else
-    travis-wait-enhanced --interval=1m --timeout=30m -- pytest -vv -r sx --color=yes --pyargs --capture=no --durations=0 pulp_rpm.tests.performance.test_$PERFORMANCE_TEST || show_logs_and_return_non_zero
+    travis-wait-enhanced --interval=1m --timeout=40m -- pytest -vv -r sx --color=yes --pyargs --capture=no --durations=0 pulp_rpm.tests.performance.test_$PERFORMANCE_TEST || show_logs_and_return_non_zero
   fi
   exit
 fi
