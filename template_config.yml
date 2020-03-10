@@ -27,7 +27,7 @@ pulpcore_branch: master
 pulpcore_pip_version_specifier: null
 pydocstyle: true
 pypi_username: pulp
-stable_branch: '3.0'
+stable_branch: '3.2'
 test_bindings: true
 test_performance:
 - sync
