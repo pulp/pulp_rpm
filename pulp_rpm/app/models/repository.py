@@ -6,6 +6,7 @@ from django.db import (
 )
 
 from pulpcore.plugin.models import (
+    AsciiArmoredDetachedSigningService,
     CreatedResource,
     Remote,
     Repository,
@@ -50,6 +51,11 @@ class RpmRepository(Repository):
         Modulemd, ModulemdDefaults
     ]
 
+    metadata_signing_service = models.ForeignKey(
+        AsciiArmoredDetachedSigningService,
+        on_delete=models.SET_NULL,
+        null=True
+    )
     sub_repo = models.BooleanField(default=False)
 
     def new_version(self, base_version=None):

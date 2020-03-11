@@ -30,3 +30,4 @@ library with:
    use_pulp_repo
    manage
    copy
+   metadata_signing

@@ -17,6 +17,7 @@ from pulp_rpm.tests.functional.utils import (
     gen_rpm_remote,
 )
 from pulp_rpm.tests.functional.constants import (
+    RPM_ALT_LAYOUT_FIXTURE_URL,
     RPM_DISTRIBUTION_PATH,
     RPM_REMOTE_PATH,
     RPM_REPO_PATH,
@@ -90,4 +91,83 @@ class PackageManagerConsumeTestCase(unittest.TestCase):
         self.pkg_mgr.install(rpm_name)
         self.addCleanup(self.pkg_mgr.uninstall, rpm_name)
         rpm = cli_client.run(('rpm', '-q', rpm_name)).stdout.strip().split('-')
+        self.assertEqual(rpm_name, rpm[0])
+
+
+class ConsumeSignedRepomdTestCase(unittest.TestCase):
+    """A test case that verifies the publishing of a signed repository."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.cfg = config.get_config()
+        cls.cli_client = cli.Client(cls.cfg)
+        cls.pkg_mgr = cli.PackageManager(cls.cfg)
+        cls.api_client = api.Client(cls.cfg, api.json_handler)
+
+    def test_publish_signed_repo_metadata(self):
+        """Test if a package manager is able to install packages from a signed repository."""
+        distribution = self.create_distribution()
+        self.init_repository_config(distribution)
+        self.install_package()
+
+    def create_distribution(self):
+        """Create a distribution with a repository that contains a signing service."""
+        metadata_signing_service = self.api_client.using_handler(api.page_handler).get(
+            'pulp/api/v3/signing-services/'
+        )[0]
+
+        repo = self.api_client.post(RPM_REPO_PATH, gen_repo(
+            metadata_signing_service=metadata_signing_service['pulp_href']
+        ))
+        self.addCleanup(self.api_client.delete, repo['pulp_href'])
+
+        remote = self.api_client.post(
+            RPM_REMOTE_PATH, gen_rpm_remote(url=RPM_ALT_LAYOUT_FIXTURE_URL)
+        )
+        self.addCleanup(self.api_client.delete, remote['pulp_href'])
+
+        sync(self.cfg, remote, repo)
+        repo = self.api_client.get(repo['pulp_href'])
+
+        self.assertIsNotNone(repo['latest_version_href'])
+
+        publication = publish(self.cfg, repo)
+        self.addCleanup(self.api_client.delete, publication['pulp_href'])
+
+        body = gen_distribution()
+        body['publication'] = publication['pulp_href']
+        distribution = self.api_client.using_handler(api.task_handler).post(
+            RPM_DISTRIBUTION_PATH, body
+        )
+        self.addCleanup(self.api_client.delete, distribution['pulp_href'])
+
+        return distribution
+
+    def init_repository_config(self, distribution):
+        """
+        Create and initialize the repository's configuration.
+
+        This configuration is going to be used by the package manager (dnf) afterwards.
+        """
+        self.cli_client.run(
+            ('sudo', 'dnf', 'config-manager', '--add-repo', distribution['base_url'])
+        )
+        repo_id = '*{}'.format(distribution['base_path'])
+        public_key_url = f"{distribution['base_url']}/repodata/public.key"
+        self.cli_client.run(
+            ('sudo', 'dnf', 'config-manager', '--save', f'--setopt={repo_id}.gpgcheck=0',
+             f'--setopt={repo_id}.repo_gpgcheck=1', f'--setopt={repo_id}.gpgkey={public_key_url}',
+             repo_id)
+        )
+        self.addCleanup(
+            self.cli_client.run, ('sudo', 'dnf', 'config-manager', '--disable', repo_id)
+        )
+
+    def install_package(self):
+        """Install and verify the installed package."""
+        rpm_name = 'walrus'
+        self.pkg_mgr.install(rpm_name)
+        self.addCleanup(self.pkg_mgr.uninstall, rpm_name)
+        rpm = self.cli_client.run(('rpm', '-q', rpm_name)).stdout.strip().split('-')
         self.assertEqual(rpm_name, rpm[0])
