@@ -17,6 +17,11 @@ RPM_COPY_PATH = urljoin(BASE_PATH, 'rpm/copy/')
 
 PULP_FIXTURES_BASE_URL = config.get_config().get_fixtures_url()
 
+DOWNLOAD_POLICIES = ["immediate", "on_demand", "streamed"]
+
+DRPM_UNSIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'drpm-unsigned/')
+"""The URL to a repository with unsigned DRPM packages."""
+
 RPM_PACKAGE_CONTENT_NAME = 'rpm.package'
 
 RPM_PACKAGECATEGORY_CONTENT_NAME = 'rpm.packagecategory'
@@ -79,6 +84,8 @@ RPM_SINGLE_REQUEST_UPLOAD = urljoin(BASE_PATH, 'content/rpm/packages/')
 
 RPM_UNSIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-unsigned/')
 """The URL to a repository with unsigned RPM packages."""
+
+RPM_INVALID_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-missing-filelists/')
 
 RPM_PACKAGE_COUNT = 35
 """The number of packages available at
