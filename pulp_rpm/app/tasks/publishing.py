@@ -247,7 +247,7 @@ def create_repomd_xml(content, publication, extra_repomdrecords,
     oth_db = cr.OtherSqlite(oth_db_path)
     upd_xml = cr.UpdateInfoXmlFile(upd_xml_path)
 
-    packages = Package.objects.filter(pk__in=content).prefetch_related('contentartifact_set')
+    packages = Package.objects.filter(pk__in=content)
     total_packages = packages.count()
 
     pri_xml.set_num_of_pkgs(total_packages)
@@ -257,7 +257,6 @@ def create_repomd_xml(content, publication, extra_repomdrecords,
     # Process all packages
     for package in packages.iterator():
         pkg = package.to_createrepo_c()
-        pkg.location_href = package.contentartifact_set.only('relative_path').first().relative_path
         pri_xml.add_pkg(pkg)
         fil_xml.add_pkg(pkg)
         oth_xml.add_pkg(pkg)
