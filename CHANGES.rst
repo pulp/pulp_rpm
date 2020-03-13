@@ -13,6 +13,51 @@ Changelog
 
 .. towncrier release notes start
 
+3.3.0b1 (2020-03-13)
+====================
+
+
+Features
+--------
+
+- Add dependency solving for modules and module-defaults.
+  `#4162 <https://pulp.plan.io/issues/4162>`_
+- Add dependency solving for RPMs.
+  `#4761 <https://pulp.plan.io/issues/4761>`_
+- Add incremental update -- copying an advisory also copies the RPMs that it references.
+  `#4768 <https://pulp.plan.io/issues/4768>`_
+- Enable users to publish a signed Yum repository
+  `#4812 <https://pulp.plan.io/issues/4812>`_
+- Add a criteria parameter to the copy api that can be used to filter content to by copied.
+  `#6009 <https://pulp.plan.io/issues/6009>`_
+- Added REST API for copying content between repositories.
+  `#6018 <https://pulp.plan.io/issues/6018>`_
+- Add a content parameter to the copy api that accepts a list of hrefs to be copied.
+  `#6019 <https://pulp.plan.io/issues/6019>`_
+- Functional test using bindings.
+  `#6061 <https://pulp.plan.io/issues/6061>`_
+- Added the field 'sha256' to the public API and enabled users to filter content by this field
+  `#6187 <https://pulp.plan.io/issues/6187>`_
+- Added a config param to copy api which maps multiple sources to destinations.
+  `#6268 <https://pulp.plan.io/issues/6268>`_
+
+
+Bugfixes
+--------
+
+- Fix sync for repositories with modular content.
+  `#6229 <https://pulp.plan.io/issues/6229>`_
+
+
+Misc
+----
+
+- `#6155 <https://pulp.plan.io/issues/6155>`_, `#6297 <https://pulp.plan.io/issues/6297>`_, `#6300 <https://pulp.plan.io/issues/6300>`_
+
+
+----
+
+
 3.2.0 (2020-03-02)
 ==================
 
