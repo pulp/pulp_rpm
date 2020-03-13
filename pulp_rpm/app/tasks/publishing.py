@@ -164,7 +164,7 @@ class PublicationData:
         self.publish_artifacts(all_content)
 
 
-def publish(repository_version_pk, metadata_signing_service):
+def publish(repository_version_pk, metadata_signing_service=None):
     """
     Create a Publication based on a RepositoryVersion.
 
