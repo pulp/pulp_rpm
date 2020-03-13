@@ -3,10 +3,11 @@
 Metadata Signing
 ================
 
-The RPM plugin is able to sign repository metadata using a signing service configured by an
-administrator. This enables package managers to verify the authenticity of metadata before
-installing packages referenced by that metadata. The metadata signing is enabled for all
-repositories that have a signing service associated with them.
+The RPM plugin is able to sign repository metadata using a `signing service
+<https://docs.pulpproject.org/workflows/signed-metadata.html>`_ configured by an administrator.
+This enables package managers to verify the authenticity of metadata before installing packages
+referenced by that metadata. The metadata signing is enabled for all repositories that have a
+signing service associated with them.
 
 Setup
 -----
