@@ -288,7 +288,8 @@ class YumProfiler(Profiler):
         # Create lookup table of available RPMs for errata applicability, find applicable RPMs
         # and modules.
         additional_unit_fields = ['is_modular']
-        rpms = conduit.get_repo_units(bound_repo_id, TYPE_ID_RPM, additional_unit_fields)
+        rpms = conduit.get_repo_units(bound_repo_id, TYPE_ID_RPM, additional_unit_fields,
+                                      NVREA_KEYS)
 
         available_rpm_nevras = {'modular': set(), 'non-modular': set()}
         for rpm in rpms:
