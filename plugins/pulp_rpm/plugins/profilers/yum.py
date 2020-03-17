@@ -3,6 +3,7 @@ from gettext import gettext as _
 from mongoengine import Q
 
 from pulp.plugins.profiler import Profiler, InvalidUnitsRequested
+from pulp.plugins.util import misc
 from pulp.server.controllers import repository as repo_controller
 from pulp.server.db import model
 from pulp.server.db.model.criteria import UnitAssociationCriteria
@@ -291,16 +292,16 @@ class YumProfiler(Profiler):
         rpms = conduit.get_repo_units(bound_repo_id, TYPE_ID_RPM, additional_unit_fields,
                                       NVREA_KEYS)
 
-        available_rpm_nevras = {'modular': set(), 'non-modular': set()}
+        applicable_rpm_nevras = {'modular': set(), 'non-modular': set()}
         for rpm in rpms:
             rpm_nevra = YumProfiler._create_nevra(rpm.unit_key)
             name = rpm_nevra[0]
 
             # Modular RPMs have to be among artifacts of enabled modules
             if rpm.metadata['is_modular'] and rpm_nevra in enabled_rpm_module_map:
-                available_rpm_nevras['modular'].add(rpm_nevra)
                 applicable = YumProfiler._is_rpm_applicable(rpm.unit_key, profile_lookup_table)
                 if applicable:
+                    applicable_rpm_nevras['modular'].add(rpm_nevra)
                     applicable_modules = enabled_rpm_module_map[rpm_nevra]
                     applicable_unit_ids[TYPE_ID_MODULEMD] = \
                         applicable_unit_ids[TYPE_ID_MODULEMD].union(applicable_modules)
@@ -308,23 +309,17 @@ class YumProfiler(Profiler):
             # Modular RPMs have precedence over non-modular ones, so names of available non-modular
             # RPMs should not intersect with the modular ones.
             elif not rpm.metadata['is_modular'] and name not in modular_rpm_names_to_exclude:
-                available_rpm_nevras['non-modular'].add(rpm_nevra)
                 applicable = YumProfiler._is_rpm_applicable(rpm.unit_key, profile_lookup_table)
             else:
                 applicable = False
 
             if applicable:
+                applicable_rpm_nevras['non-modular'].add(rpm_nevra)
                 applicable_unit_ids[TYPE_ID_RPM].add(rpm.metadata['unit_id'])
 
-        additional_unit_fields = ['pkglist']
-        errata = conduit.get_repo_units(bound_repo_id, TYPE_ID_ERRATA, additional_unit_fields)
-
         # Check applicability for Errata
-        for erratum in errata:
-            applicable = YumProfiler._is_errata_applicable(erratum, profile_lookup_table,
-                                                           available_rpm_nevras)
-            if applicable:
-                applicable_unit_ids[TYPE_ID_ERRATA].add(erratum.metadata['unit_id'])
+        applicable_unit_ids[TYPE_ID_ERRATA] = \
+            YumProfiler._get_applicable_errata_for_repo(bound_repo_id, applicable_rpm_nevras)
 
         # Convert sets to lists before returning the result
         result = {}
@@ -400,7 +395,76 @@ class YumProfiler(Profiler):
         return lookup
 
     @staticmethod
-    def _is_errata_applicable(errata, profile_lookup_table, available_rpm_nevras):
+    def _get_applicable_errata_for_repo(repo_id, applicable_rpm_nevras):
+        """
+        Get the applicable errata in a repo based on the given applicable rpms.
+        Since we already know the applicable rpms, we can use that to calculate the
+        applicable errata. Hence, avoid checking the package profiles again.
+
+        :param repo_id: repo id of a repository to be used to calculate applicable errata
+        :type  repo_id: str
+        :param applicable_rpm_nevras: list of rpms that are applicable to the consumer
+        :type  applicable_rpm_nevras: dic
+        :return: A list of applicable errata unit ids
+        :rtype:  list
+        """
+        # No applicable rpms means no applicable errata so return immediately
+        if not applicable_rpm_nevras['modular'] and not applicable_rpm_nevras['non-modular']:
+            return set([])
+
+        assert repo_id, "Must provide a valid repo_id, not None"
+
+        # When removing errata from a repo, pkglist won't get removed so we need to
+        # check the RepositoryContentUnit to make sure errata are still associating
+        # to the repo
+        rcuq = model.RepositoryContentUnit.objects.filter(
+            repo_id=repo_id, unit_type_id=TYPE_ID_ERRATA).only('unit_id').as_pymongo()
+
+        unit_ids = set([rcu['unit_id'] for rcu in rcuq])
+        fields = ['id', 'errata_id']
+        errata_q = models.Errata.objects.filter(id__in=unit_ids).only(*fields).as_pymongo()
+
+        errata_id_map = {}
+        not_found = set([])
+        for erratum in errata_q:
+            not_found.add(erratum["errata_id"])
+            errata_id_map[erratum["errata_id"]] = erratum["_id"]
+
+        pkglists = models.ErratumPkglist.objects.filter(
+            repo_id=repo_id, errata_id__in=errata_id_map.keys()).as_pymongo()
+
+        applicable_errata = set([])
+        for pkglist_batch in misc.paginate(pkglists):
+            for pkglist in pkglist_batch:
+                errata_id = pkglist["errata_id"]
+                not_found.remove(errata_id)
+                applicable = YumProfiler._is_errata_applicable(
+                    pkglist["collections"], applicable_rpm_nevras)
+                if applicable:
+                    applicable_errata.add(errata_id_map[errata_id])
+
+        # If can't find the pkglist of the repo then we need to fallback to the old way.
+        # This is because pkglist will not be copied when copying an erratum from one repo
+        # to another repo
+        for errata_id in not_found:
+            match_stage = {'$match': {'errata_id': errata_id}}
+            unwind_collections_stage = {'$unwind': '$collections'}
+            unwind_packages_stage = {'$unwind': '$collections.packages'}
+            group_stage = {'$group': {'_id': '$collections.module',
+                                      'packages': {'$addToSet': '$collections.packages'}}}
+            collections = models.ErratumPkglist.objects.aggregate(
+                match_stage, unwind_collections_stage, unwind_packages_stage, group_stage,
+                allowDiskUse=True)
+
+            applicable = YumProfiler._is_errata_applicable(
+                collections, applicable_rpm_nevras)
+            if applicable:
+                applicable_errata.add(errata_id_map[errata_id])
+
+        return applicable_errata
+
+    @staticmethod
+    def _is_errata_applicable(collections, applicable_rpm_nevras):
         """
         Checks whether given errata is applicable to the consumer.
 
@@ -419,38 +483,27 @@ class YumProfiler(Profiler):
         we have access to in the repo. This is to prevent a RHEL6 machine
         from finding RHEL7 packages, for example.
 
-        :param errata: Errata unit for which the applicability is being checked
-        :type errata: pulp.plugins.model.Unit
-
-        :param profile_lookup_table: lookup table of unit profiles
-        :type profile_lookup_table: dict
-
-        :param available_rpm_nevras: NEVRA of packages available in a repo divided by is_modular
-                                     flag
-        :type available_rpm_nevras: dict
-
-        :return: true if applicable, false otherwise
-        :rtype: boolean
+        :param collections:           pkglist collections of an erratum.
+        :type  units:                 list
+        :param applicable_rpm_nevras: list of rpms that are applicable to the consumer
+        :type  applicable_rpm_nevras: dic
+        :return:                      true if applicable, false otherwise
+        :rtype:                       boolean
         """
-        pkglist = errata.metadata.get('pkglist')
-        enabled_modules = profile_lookup_table[TYPE_ID_MODULEMD]
-        for collection in pkglist:
+        for collection in collections:
             rpm_type = 'non-modular'
             module = collection.get('module')
             if module:
-                if not YumProfiler._is_enabled_module(module, enabled_modules):
-                    continue
                 rpm_type = 'modular'
+
+            if not applicable_rpm_nevras[rpm_type]:
+                continue
 
             for errata_rpm in collection['packages']:
                 rpm_nevra = YumProfiler._create_nevra(errata_rpm)
-                if rpm_nevra in available_rpm_nevras[rpm_type]:
-                    applicable = YumProfiler._is_rpm_applicable(errata_rpm,
-                                                                profile_lookup_table)
-                    if applicable:
-                        return True
+                if rpm_nevra in applicable_rpm_nevras[rpm_type]:
+                    return True
 
-        # Return false if none of the errata rpms are applicable
         return False
 
     @staticmethod
