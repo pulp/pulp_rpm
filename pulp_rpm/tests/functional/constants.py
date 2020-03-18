@@ -286,6 +286,9 @@ RPM_KICKSTART_FIXTURE_SUMMARY = {
     RPM_KICKSTART_CONTENT_NAME: RPM_KICKSTART_COUNT
 }
 
+PULP_FIXTURES_COMMON_URL = 'https://github.com/pulp/pulp-fixtures/raw/master/common/'
+PRIVATE_GPG_KEY_URL = urljoin(PULP_FIXTURES_COMMON_URL, 'GPG-PRIVATE-KEY-pulp-qe')
+
 
 CENTOS6_URL = "http://mirror.centos.org/centos-6/6.10/os/x86_64/"
 CENTOS7_URL = "http://mirror.linux.duke.edu/pub/centos/7/os/x86_64/"

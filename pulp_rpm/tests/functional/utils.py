@@ -1,8 +1,10 @@
 # coding=utf-8
 """Utilities for tests for the rpm plugin."""
-from functools import partial
 import os
 import requests
+import subprocess
+
+from functools import partial
 from io import StringIO
 from unittest import SkipTest
 from time import sleep
@@ -17,6 +19,7 @@ from pulp_smash.pulp3.utils import (
 )
 
 from pulp_rpm.tests.functional.constants import (
+    PRIVATE_GPG_KEY_URL,
     RPM_COPY_PATH,
     RPM_PACKAGE_CONTENT_NAME,
     RPM_SIGNED_URL,
@@ -218,3 +221,32 @@ def monitor_task(task_href):
         return task.created_resources
 
     return task.to_dict()
+
+
+def init_signed_repo_configuration():
+    """Initialize the configuration required for verifying a signed repository.
+
+    This function downloads and imports a private GPG key by invoking subprocess
+    commands. Then, it creates a new signing service on the fly.
+    """
+    # download the private key
+    completed_process = subprocess.run(
+        ("wget", "-q", "-O", "-", PRIVATE_GPG_KEY_URL), stdout=subprocess.PIPE
+    )
+    # import the downloaded private key
+    subprocess.run(("gpg", "--import"), input=completed_process.stdout)
+
+    # set the imported key to the maximum trust level
+    key_fingerprint = "6EDF301256480B9B801EBA3D05A5E6DA269D9D98"
+    completed_process = subprocess.run(("echo", f"{key_fingerprint}:6:"), stdout=subprocess.PIPE)
+    subprocess.run(("gpg", "--import-ownertrust"), input=completed_process.stdout)
+
+    # create a new signing service
+    utils_dir_path = os.path.dirname(os.path.realpath(__file__))
+    signing_script_path = os.path.join(utils_dir_path, 'sign-metadata.sh')
+    subprocess.run(
+        ("django-admin", "shell", "-c",
+         "from pulpcore.app.models.content import AsciiArmoredDetachedSigningService;"
+         "AsciiArmoredDetachedSigningService.objects.create(name='sign-metadata',"
+         f"script='{signing_script_path}')")
+    )

@@ -15,9 +15,9 @@ from pulp_smash.pulp3.utils import (
 
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_remote,
+    init_signed_repo_configuration,
 )
 from pulp_rpm.tests.functional.constants import (
-    RPM_ALT_LAYOUT_FIXTURE_URL,
     RPM_DISTRIBUTION_PATH,
     RPM_REMOTE_PATH,
     RPM_REPO_PATH,
@@ -105,6 +105,18 @@ class ConsumeSignedRepomdTestCase(unittest.TestCase):
         cls.pkg_mgr = cli.PackageManager(cls.cfg)
         cls.api_client = api.Client(cls.cfg, api.json_handler)
 
+        signing_services = cls.api_client.using_handler(api.page_handler).get(
+            'pulp/api/v3/signing-services/', params={'name': 'sign-metadata'}
+        )
+        if not signing_services:
+            init_signed_repo_configuration()
+
+            signing_services = cls.api_client.using_handler(api.page_handler).get(
+                'pulp/api/v3/signing-services/', params={'name': 'sign-metadata'}
+            )
+
+        cls.metadata_signing_service = signing_services[0]
+
     def test_publish_signed_repo_metadata(self):
         """Test if a package manager is able to install packages from a signed repository."""
         distribution = self.create_distribution()
@@ -113,18 +125,12 @@ class ConsumeSignedRepomdTestCase(unittest.TestCase):
 
     def create_distribution(self):
         """Create a distribution with a repository that contains a signing service."""
-        metadata_signing_service = self.api_client.using_handler(api.page_handler).get(
-            'pulp/api/v3/signing-services/'
-        )[0]
-
         repo = self.api_client.post(RPM_REPO_PATH, gen_repo(
-            metadata_signing_service=metadata_signing_service['pulp_href']
+            metadata_signing_service=self.metadata_signing_service['pulp_href']
         ))
         self.addCleanup(self.api_client.delete, repo['pulp_href'])
 
-        remote = self.api_client.post(
-            RPM_REMOTE_PATH, gen_rpm_remote(url=RPM_ALT_LAYOUT_FIXTURE_URL)
-        )
+        remote = self.api_client.post(RPM_REMOTE_PATH, gen_rpm_remote())
         self.addCleanup(self.api_client.delete, remote['pulp_href'])
 
         sync(self.cfg, remote, repo)
