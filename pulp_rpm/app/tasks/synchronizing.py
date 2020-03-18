@@ -96,7 +96,7 @@ def repodata_exists(remote, url):
     return True
 
 
-def synchronize(remote_pk, repository_pk, mirror, skip_types):
+def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
     """
     Sync content from the remote repository.
 
@@ -140,16 +140,24 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types):
             path = f"{repodata}/"
             new_url = urljoin(remote.url, path)
             if repodata_exists(remote, new_url):
-                stage = RpmFirstStage(remote, deferred_download, new_url=new_url)
+                stage = RpmFirstStage(remote, repository, deferred_download, new_url=new_url)
                 dv = RpmDeclarativeVersion(first_stage=stage,
                                            repository=sub_repo)
                 dv.create()
 
-    first_stage = RpmFirstStage(remote, deferred_download, skip_types, treeinfo=treeinfo)
+    first_stage = RpmFirstStage(remote,
+                                repository,
+                                deferred_download,
+                                optimize,
+                                skip_types,
+                                treeinfo=treeinfo)
     dv = RpmDeclarativeVersion(first_stage=first_stage,
                                repository=repository,
                                mirror=mirror)
     dv.create()
+    repository.last_sync_remote = remote
+    repository.last_sync_repo_version = repository.latest_version().number
+    repository.save()
 
 
 class RpmDeclarativeVersion(DeclarativeVersion):
@@ -191,12 +199,14 @@ class RpmFirstStage(Stage):
     that should exist in the new :class:`~pulpcore.plugin.models.RepositoryVersion`.
     """
 
-    def __init__(self, remote, deferred_download, skip_types=[], new_url=None, treeinfo=None):
+    def __init__(self, remote, repository, deferred_download, optimize, skip_types=[], new_url=None,
+                 treeinfo=None):
         """
         The first stage of a pulp_rpm sync pipeline.
 
         Args:
             remote (RpmRemote): The remote data to be used when syncing
+            repository (RpmRepository): The repository to be compared when optimizing sync
             deferred_download (bool): if True the downloading will not happen now. If False, it will
                 happen immediately.
 
@@ -204,14 +214,17 @@ class RpmFirstStage(Stage):
             skip_types (list): List of content to skip
             new_url(str): URL to replace remote url
             treeinfo(dict): Treeinfo data
+            optimize(bool): Optimize sync
 
         """
         super().__init__()
         self.remote = remote
+        self.repository = repository
         self.deferred_download = deferred_download
         self.new_url = new_url
         self.treeinfo = treeinfo
         self.skip_types = skip_types
+        self.optimize = optimize
 
     @staticmethod
     async def parse_updateinfo(updateinfo_xml_path):
@@ -293,6 +306,7 @@ class RpmFirstStage(Stage):
         """
         remote_url = self.new_url or self.remote.url
         remote_url = remote_url if remote_url[-1] == "/" else f"{remote_url}/"
+        optimize_sync = self.optimize
 
         progress_data = dict(message='Downloading Metadata Files', code='downloading.metadata')
         with ProgressReport(**progress_data) as metadata_pb:
@@ -302,6 +316,31 @@ class RpmFirstStage(Stage):
             # TODO: decide how to distinguish between a mirror list and a normal repo
             result = await downloader.run()
             metadata_pb.increment()
+
+            repomd_path = result.path
+            repomd = cr.Repomd(repomd_path)
+
+            # Caution: we are not storing when the remote was last updated, so the order of this
+            # logic must remain in this order where we first check the version number as other
+            # changes than sync could have taken place such that the date or repo version will be
+            # different from last sync
+            if (
+                optimize_sync and
+                self.repository.last_sync_remote and
+                self.remote.pk == self.repository.last_sync_remote.pk and
+                (self.repository.last_sync_repo_version ==
+                 self.repository.latest_version().number) and
+                (self.remote.pulp_last_updated <=
+                 self.repository.latest_version().pulp_created) and
+                int(repomd.revision) <= self.repository.last_sync_revision_number
+            ):
+                optimize_data = dict(message='Optimizing Sync', code='optimizing.sync')
+                with ProgressReport(**optimize_data) as optimize_pb:
+                    optimize_pb.done = 1
+                    optimize_pb.save()
+                    return
+
+            self.repository.last_sync_revision_number = repomd.revision
 
             if self.treeinfo:
                 d_artifacts = [
@@ -329,8 +368,6 @@ class RpmFirstStage(Stage):
                 dc.extra_data = self.treeinfo
                 await self.put(dc)
 
-            repomd_path = result.path
-            repomd = cr.Repomd(repomd_path)
             package_repodata_urls = {}
             downloaders = []
             modulemd_list = list()

@@ -597,6 +597,11 @@ class RpmRepositorySyncURLSerializer(RepositorySyncURLSerializer):
             [(skip_type, skip_type) for skip_type in SKIP_TYPES]
         )
     )
+    optimize = serializers.BooleanField(
+        help_text=_("Whether or not to optimize sync."),
+        required=False,
+        default=True
+    )
 
 
 class CopySerializer(serializers.Serializer):

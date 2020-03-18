@@ -41,6 +41,12 @@ class RpmRepository(Repository):
 
         sub_repo (Boolean):
             Whether is sub_repo or not
+        last_sync_revision_number (Integer):
+            The revision number
+        last_sync_remote (Remote):
+            The remote used for the last sync
+        last_sync_repo_version (Integer):
+            The repo version number of the last sync
     """
 
     TYPE = "rpm"
@@ -57,6 +63,9 @@ class RpmRepository(Repository):
         null=True
     )
     sub_repo = models.BooleanField(default=False)
+    last_sync_revision_number = models.IntegerField(null=True)
+    last_sync_remote = models.ForeignKey(Remote, null=True, on_delete=models.SET_NULL)
+    last_sync_repo_version = models.PositiveIntegerField(default=0)
 
     def new_version(self, base_version=None):
         """
