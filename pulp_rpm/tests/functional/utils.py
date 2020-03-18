@@ -8,7 +8,7 @@ from unittest import SkipTest
 from time import sleep
 from tempfile import NamedTemporaryFile
 
-from pulp_smash import api, cli, selectors
+from pulp_smash import api, cli, config, selectors
 from pulp_smash.pulp3.utils import (
     gen_remote,
     get_content,
@@ -34,6 +34,7 @@ from pulpcore.client.pulp_rpm import ApiClient as RpmApiClient
 
 
 configuration = Configuration()
+configuration.host = config.get_config().get_base_url()
 configuration.username = "admin"
 configuration.password = "password"
 configuration.safe_chars_for_path_param = "/"
