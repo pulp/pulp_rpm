@@ -51,3 +51,26 @@ as a GET parameter. For example for ``pulp_rpm`` only endpoints use a query like
 The schema can then be used as input to the openapi-generator-cli. The documentation on getting
 started with openapi-generator-cli is available on
 `openapi-generator.tech <https://openapi-generator.tech/#try>`_.
+
+
+Generating a client for a dev environment
+-----------------------------------------
+
+The pulp dev environment provided by `ansible-pulp <https://github.com/pulp/ansible-pulp>`_
+introduces a set of useful
+`aliases <https://github.com/pulp/ansible-pulp/tree/master/roles/pulp-devel#aliases>`_,
+such as `pbindings`.
+
+Examples:
+
+- generating python bindings for pulp_rpm:
+
+.. code-block:: bash
+
+    pbindings pulp_rpm python
+
+- generating ruby bindings for pulp_rpm with '3.0.0rc1.dev.10' version
+
+.. code-block:: bash
+
+    pbindings pulp_rpm ruby 3.0.0rc1.dev.10
