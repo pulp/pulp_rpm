@@ -29,13 +29,13 @@ def resolve_module_packages(version, previous_version):
     modulemd_pulp_type = Modulemd.get_pulp_type()
     current_modules = Modulemd.objects \
         .filter(pk__in=version.content.filter(pulp_type=modulemd_pulp_type))
+    current_module_packages = modules_packages(current_modules)
 
     if previous_version:
         previous_modules = Modulemd.objects \
             .filter(pk__in=previous_version.content.filter(pulp_type=modulemd_pulp_type))
         added_modules = current_modules.difference(previous_modules)
         removed_modules = previous_modules.difference(current_modules)
-        current_module_packages = modules_packages(current_modules)
         removed_module_packages = modules_packages(removed_modules)
         packages_to_remove = removed_module_packages.difference(current_module_packages)
         version.remove_content(Package.objects.filter(pk__in=packages_to_remove))
@@ -43,9 +43,7 @@ def resolve_module_packages(version, previous_version):
         added_modules = current_modules
 
     added_module_packages = modules_packages(added_modules)
-    current_packages = Package.objects \
-        .filter(pk__in=version.content.filter(pulp_type=Package.get_pulp_type()))
-    packages_to_add = added_module_packages.difference(current_packages)
+    packages_to_add = added_module_packages.difference(current_module_packages)
     version.add_content(Package.objects.filter(pk__in=packages_to_add))
 
 
