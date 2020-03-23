@@ -30,3 +30,26 @@ def _prepare_package(artifact, filename):
 
     package['location_href'] = filename
     return package
+
+
+def is_previous_revision(revision, target_revision):
+    """
+    Compare revision with a target revision.
+    """
+    if revision.isdigit() and target_revision.isdigit():
+        return int(revision) <= int(target_revision)
+
+    if "." in revision and len(revision.split(".")) == len(target_revision.split(".")):
+        rev = revision.split(".")
+        for index, target in enumerate(target_revision.split(".")):
+            is_digit = rev[index].isdigit() and target.isdigit()
+            if is_digit and int(rev[index]) < int(target):
+                return True
+
+        if is_digit:
+            return int(rev[index]) <= int(target)
+
+    if revision:
+        return revision == target_revision
+
+    return False

@@ -70,6 +70,7 @@ from pulp_rpm.app.modulemd import (
 from pulp_rpm.app.kickstart.treeinfo import get_treeinfo_data
 
 from pulp_rpm.app.comps import strdict_to_dict, dict_digest
+from pulp_rpm.app.shared_utils import is_previous_revision
 
 import gi
 gi.require_version('Modulemd', '2.0')
@@ -140,7 +141,14 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
             path = f"{repodata}/"
             new_url = urljoin(remote.url, path)
             if repodata_exists(remote, new_url):
-                stage = RpmFirstStage(remote, repository, deferred_download, new_url=new_url)
+                stage = RpmFirstStage(
+                    remote,
+                    sub_repo,
+                    deferred_download,
+                    optimize=optimize,
+                    skip_types=skip_types,
+                    new_url=new_url,
+                )
                 dv = RpmDeclarativeVersion(first_stage=stage,
                                            repository=sub_repo)
                 dv.create()
@@ -148,8 +156,8 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
     first_stage = RpmFirstStage(remote,
                                 repository,
                                 deferred_download,
-                                optimize,
-                                skip_types,
+                                optimize=optimize,
+                                skip_types=skip_types,
                                 treeinfo=treeinfo)
     dv = RpmDeclarativeVersion(first_stage=first_stage,
                                repository=repository,
@@ -199,8 +207,8 @@ class RpmFirstStage(Stage):
     that should exist in the new :class:`~pulpcore.plugin.models.RepositoryVersion`.
     """
 
-    def __init__(self, remote, repository, deferred_download, optimize, skip_types=[], new_url=None,
-                 treeinfo=None):
+    def __init__(self, remote, repository, deferred_download, optimize=True, skip_types=[],
+                 new_url=None, treeinfo=None):
         """
         The first stage of a pulp_rpm sync pipeline.
 
@@ -332,7 +340,7 @@ class RpmFirstStage(Stage):
                  self.repository.latest_version().number) and
                 (self.remote.pulp_last_updated <=
                  self.repository.latest_version().pulp_created) and
-                int(repomd.revision) <= self.repository.last_sync_revision_number
+                is_previous_revision(repomd.revision, self.repository.last_sync_revision_number)
             ):
                 optimize_data = dict(message='Optimizing Sync', code='optimizing.sync')
                 with ProgressReport(**optimize_data) as optimize_pb:
