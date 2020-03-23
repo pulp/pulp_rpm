@@ -65,7 +65,13 @@ class PulpTreeInfo(TreeInfo):
         except Exception:
             sections = parser._sections.keys()
 
-            for section in sections:
+            # ProductMD follows a specific order to deserialize:
+            # https://github.com/release-engineering/productmd/blob/master/productmd/treeinfo.py#L120
+            deserialize_order = "header release tree variants checksums images stage2 media".split()
+
+            for section in deserialize_order:
+                if section not in sections:
+                    continue
                 if section.startswith("image"):
                     section = "images"
                 if section.startswith("variant"):
