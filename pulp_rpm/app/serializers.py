@@ -645,37 +645,6 @@ class CopySerializer(serializers.Serializer):
 
         return data
 
-        # new_data = {}
-        # new_data.update(data)
-
-        # source_repo = data.get('source_repo')
-        # source_repo_version = data.get('source_repo_version')
-
-        # if not source_repo and not source_repo_version:
-        #     raise serializers.ValidationError(
-        #         _("Either the 'source_repo' or 'source_repo_version' need to be specified"))
-
-        # if source_repo and source_repo_version:
-        #     raise serializers.ValidationError(
-        #         _("Either the 'source_repo' or 'source_repo_version' need to be specified "
-        #           "but not both.")
-        #     )
-
-        # if not source_repo and source_repo_version:
-        #     repo = {'source_repo': source_repo_version.repository}
-        #     new_data.update(repo)
-
-        # if source_repo and not source_repo_version:
-        #     version = RepositoryVersion.latest(source_repo)
-        #     if version:
-        #         repo_version = {'source_repo_version': version}
-        #         new_data.update(repo_version)
-        #     else:
-        #         raise serializers.ValidationError(
-        #             detail=_('Repository has no version available to copy'))
-
-        # return new_data
-
 
 class PackageGroupSerializer(NoArtifactContentSerializer):
     """
