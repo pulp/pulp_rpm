@@ -19,6 +19,7 @@ from pulpcore.plugin.models import (
 from pulpcore.plugin.tasking import WorkingDirectory
 
 from pulp_rpm.app.comps import dict_to_strdict
+from pulp_rpm.app.constants import PACKAGES_DIRECTORY
 from pulp_rpm.app.models import (
     DistributionTree,
     Modulemd,
@@ -103,10 +104,19 @@ class PublicationData:
         """
         published_artifacts = []
         for content_artifact in ContentArtifact.objects.filter(
-                content__in=content.exclude(pulp_type="rpm.repo_metadata_file").distinct()
+                content__in=content.exclude(
+                    pulp_type=RepoMetadataFile.get_pulp_type()
+                ).distinct()
         ).iterator():
+            relative_path = content_artifact.relative_path
+            if content_artifact.content.pulp_type == Package.get_pulp_type():
+                relative_path = os.path.join(
+                    PACKAGES_DIRECTORY,
+                    relative_path.lower()[0],
+                    content_artifact.relative_path
+                )
             published_artifacts.append(PublishedArtifact(
-                relative_path=content_artifact.relative_path,
+                relative_path=relative_path,
                 publication=self.publication,
                 content_artifact=content_artifact)
             )
@@ -257,6 +267,14 @@ def create_repomd_xml(content, publication, extra_repomdrecords,
     # Process all packages
     for package in packages.iterator():
         pkg = package.to_createrepo_c()
+        pkg_filename = os.path.basename(package.location_href)
+        # this can cause an issue when two same RPM package names appears
+        # a/name1.rpm b/name1.rpm
+        pkg.location_href = os.path.join(
+            PACKAGES_DIRECTORY,
+            pkg_filename[0].lower(),
+            pkg_filename
+        )
         pri_xml.add_pkg(pkg)
         fil_xml.add_pkg(pkg)
         oth_xml.add_pkg(pkg)

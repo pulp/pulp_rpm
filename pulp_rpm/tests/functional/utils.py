@@ -18,6 +18,8 @@ from pulp_smash.pulp3.utils import (
     require_pulp_plugins
 )
 
+from pulp_rpm.app.constants import PACKAGES_DIRECTORY
+
 from pulp_rpm.tests.functional.constants import (
     PRIVATE_GPG_KEY_URL,
     RPM_COPY_PATH,
@@ -272,3 +274,18 @@ def progress_reports(task_href):
         return task.progress_reports
 
     return []
+
+
+def get_package_repo_path(package_filename):
+    """Get package repo path with directory structure.
+
+    Args:
+        package_filename(str): filename of RPM package
+
+    Returns:
+        (str): full path of RPM package in published repository
+
+    """
+    return os.path.join(
+        PACKAGES_DIRECTORY, package_filename.lower()[0], package_filename
+    )

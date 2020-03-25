@@ -232,3 +232,5 @@ PULP_ENVIRONMENT_ATTRS = SimpleNamespace(
     DESC_BY_LANG='desc_by_lang',
     NAME_BY_LANG='name_by_lang'
 )
+
+PACKAGES_DIRECTORY = "Packages"
