@@ -41,7 +41,7 @@ class RpmRepository(Repository):
 
         sub_repo (Boolean):
             Whether is sub_repo or not
-        last_sync_revision_number (Integer):
+        last_sync_revision_number (Text):
             The revision number
         last_sync_remote (Remote):
             The remote used for the last sync
@@ -63,7 +63,7 @@ class RpmRepository(Repository):
         null=True
     )
     sub_repo = models.BooleanField(default=False)
-    last_sync_revision_number = models.IntegerField(null=True)
+    last_sync_revision_number = models.CharField(max_length=20)
     last_sync_remote = models.ForeignKey(Remote, null=True, on_delete=models.SET_NULL)
     last_sync_repo_version = models.PositiveIntegerField(default=0)
 
