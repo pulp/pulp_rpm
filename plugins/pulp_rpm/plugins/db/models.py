@@ -1353,6 +1353,7 @@ class ErratumPkglist(AutoRetryDocument):
     meta = {'collection': 'erratum_pkglists',
             'allow_inheritance': False,
             'indexes': ['errata_id',
+                        'repo_id',
                         {'fields': model_key_fields, 'unique': True}]}
 
     @property
