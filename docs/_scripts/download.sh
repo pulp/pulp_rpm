@@ -3,7 +3,9 @@
 # Download a package
 
 # Specify one package from repository used in 'remote.sh'
-PKG="fox-1.1-2.noarch.rpm"
+if [ -z "$PKG" ]; then
+  PKG="fox-1.1-2.noarch.rpm"
+fi
 
 # The distribution will return a url that can be used by http clients
 echo "Setting DISTRIBUTION_BASE_URL, which is used to retrieve content from the content app."

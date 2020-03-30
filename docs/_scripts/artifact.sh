@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
 # Get an RPM package
-curl -O https://repos.fedorapeople.org/pulp/pulp/fixtures/rpm/fox-1.1-2.noarch.rpm
-export PKG="fox-1.1-2.noarch.rpm"
+curl -O https://repos.fedorapeople.org/pulp/pulp/fixtures/rpm-signed/squirrel-0.1-1.noarch.rpm
+export PKG="squirrel-0.1-1.noarch.rpm"
 
 # Upload it as an Artifact
 echo "Upload an RPM package."

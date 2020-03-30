@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 
+# Variables
+if [ $# -eq 0 ]; then
+  export BASE_PATH="foo"
+else
+  export BASE_PATH="$1"
+fi
+
 # Create RPM distribution for publication
 export TASK_URL=$(http POST $BASE_ADDR/pulp/api/v3/distributions/rpm/rpm/ \
-    name='baz' base_path='foo' publication=$PUBLICATION_HREF | jq -r '.task')
+    publication=$PUBLICATION_HREF name="$BASE_PATH" base_path="$REPO_NAME" | jq -r '.task')
 
 # Poll the task (here we use a function defined in docs/_scripts/base.sh)
 wait_until_task_finished $BASE_ADDR$TASK_URL
