@@ -10,8 +10,7 @@ from pulp_smash.utils import http_get
 from pulp_rpm.tests.functional.utils import (
     core_client,
     gen_rpm_client,
-    monitor_task
-)
+    monitor_task,)
 from pulp_rpm.tests.functional.constants import (
     RPM_UNSIGNED_FIXTURE_URL,
     RPM_PACKAGE_FILENAME,
@@ -46,7 +45,7 @@ class ContentUnitTestCase(unittest.TestCase):
         """TearDown."""
         delete_orphans()
 
-    def test_singe_request_unit_and_duplicate_unit(self):
+    def test_single_request_unit_and_duplicate_unit(self):
         """Test single request upload unit.
 
         1. Upload a unit
