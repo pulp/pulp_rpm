@@ -6,7 +6,7 @@ requirements = [
     'createrepo_c~=0.13',
     'jsonschema',
     'libcomps~=0.1.11',
-    'productmd',
+    'productmd>=1.25',
     'pulpcore>=3.2',
     'PyGObject~=3.22',
     'solv'
