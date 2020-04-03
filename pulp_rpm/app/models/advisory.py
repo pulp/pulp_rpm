@@ -158,18 +158,26 @@ class UpdateRecord(Content):
 
         """
         rec = cr.UpdateRecord()
+        rec.id = self.id
+        rec.updated_date = parse_datetime(self.updated_date)
+
+        rec.description = self.description
+        rec.issued_date = parse_datetime(self.issued_date)
         rec.fromstr = self.fromstr
         rec.status = self.status
-        rec.type = self.type
-        rec.version = self.version
-        rec.id = self.id
         rec.title = self.title
-        rec.issued_date = parse_datetime(self.issued_date)
-        rec.updated_date = parse_datetime(self.updated_date)
-        rec.rights = self.rights
         rec.summary = self.summary
-        rec.description = self.description
+        rec.version = self.version
+
+        rec.type = self.type
+        rec.severity = self.severity
+        rec.solution = self.solution
+        rec.release = self.release
+        rec.rights = self.rights
+
         rec.reboot_suggested = self.reboot_suggested
+
+        rec.pushcount = self.pushcount
 
         if not collections:
             collections = self.collections.all()
