@@ -22,6 +22,7 @@ from pulp_rpm.app.constants import (
     PULP_UPDATE_COLLECTION_PACKAGE_ATTRS,
     PULP_UPDATE_RECORD_ATTRS,
     PULP_UPDATE_REFERENCE_ATTRS,
+    ADVISORY_SUM_TYPE_TO_NAME
 )
 
 log = getLogger(__name__)
@@ -358,7 +359,12 @@ class UpdateCollectionPackage(BaseModel):
     release = models.TextField()
     src = models.TextField()
     sum = models.TextField()
-    sum_type = models.TextField()
+    sum_type = models.PositiveIntegerField(
+        null=True,
+        choices=[
+            (sum_type, sum_type) for sum_type in ADVISORY_SUM_TYPE_TO_NAME.keys()
+        ]
+    )
     version = models.TextField()
 
     update_collection = models.ForeignKey(UpdateCollection, related_name='packages',
@@ -398,7 +404,7 @@ class UpdateCollectionPackage(BaseModel):
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM: getattr(
                 package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM) or '',
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM_TYPE: getattr(
-                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM_TYPE) or '',
+                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM_TYPE) or None,
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.VERSION: getattr(
                 package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.VERSION) or ''
         }
@@ -427,7 +433,7 @@ class UpdateCollectionPackage(BaseModel):
             pkg.restart_suggested = self.restart_suggested
         if self.sum:
             pkg.sum = self.sum
-            pkg.sum_type = int(self.sum_type or 0)
+            pkg.sum_type = self.sum_type
 
         return pkg
 

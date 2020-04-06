@@ -1,4 +1,5 @@
 import copy
+import createrepo_c
 import json
 from gettext import gettext as _
 
@@ -504,6 +505,10 @@ class UpdateRecordSerializer(SingleArtifactContentUploadSerializer):
             coll.update_record.add(update_record)
             for package in packages:
                 pkg = UpdateCollectionPackage(**package)
+                try:
+                    pkg.sum_type = createrepo_c.checksum_type(pkg.sum_type)
+                except TypeError:
+                    raise TypeError(f'"{pkg.sum_type}" is not supported.')
                 pkg.update_collection = coll
                 update_collection_packages_to_save.append(pkg)
         for reference in references:

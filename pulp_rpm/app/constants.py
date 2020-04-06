@@ -236,3 +236,18 @@ PULP_ENVIRONMENT_ATTRS = SimpleNamespace(
 )
 
 PACKAGES_DIRECTORY = "Packages"
+
+# Mappings of the possible integer values of "sum_type" on Advisory packages to their user-facing
+# string representation. Should mirror the createrepo_c source code:
+# https://github.com/rpm-software-management/createrepo_c/blob/master/src/checksum.h#L43-L54
+# Please keep dict consistent with createrepo_c mapping mentioned above.
+ADVISORY_SUM_TYPE_TO_NAME = {
+    0: "UNKNOWN",
+    1: "MD5",
+    2: "SHA",
+    3: "SHA1",
+    4: "SHA224",
+    5: "SHA256",
+    6: "SHA384",
+    7: "SHA512"
+}
