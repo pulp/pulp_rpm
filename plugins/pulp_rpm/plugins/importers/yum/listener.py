@@ -145,7 +145,8 @@ class PackageListener(DownloadEventListener):
             return
 
         with open(location) as fp:
-            sums = util.calculate_checksums(fp, [util.TYPE_MD5, util.TYPE_SHA1, util.TYPE_SHA256])
+            sums = util.calculate_checksums(fp, [util.TYPE_MD5, util.TYPE_SHA1, util.TYPE_SHA256,
+                                                 util.TYPE_SHA512])
 
         if sums[unit.checksumtype] != unit.checksum:
             error_report = {
