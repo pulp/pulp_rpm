@@ -276,6 +276,9 @@ SRPM_UNSIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'srpm-unsigned/')
 UPDATERECORD_CONTENT_PATH = urljoin(BASE_CONTENT_PATH, 'rpm/advisories/')
 """The location of RPM UpdateRecords on the content endpoint."""
 
+KICKSTART_CONTENT_PATH = urljoin(BASE_CONTENT_PATH, 'rpm/distribution_trees/')
+"""The location of RPM Distribution Trees on the content endpoint."""
+
 RPM_KICKSTART_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-kickstart/')
 
 RPM_KICKSTART_CONTENT_NAME = 'rpm.distribution_tree'
