@@ -9,14 +9,20 @@ from pulp_smash.pulp3.utils import (
     delete_orphans,
     gen_repo,
     get_added_content_summary,
+    get_content,
     get_content_summary,
     sync,
 )
 
 from pulp_rpm.tests.functional.constants import (
+    KICKSTART_CONTENT_PATH,
+    RPM_KICKSTART_CONTENT_NAME,
     RPM_FIXTURE_SUMMARY,
+    RPM_KICKSTART_FIXTURE_URL,
+    RPM_KICKSTART_FIXTURE_SUMMARY,
     RPM_REMOTE_PATH,
     RPM_REPO_PATH,
+    RPM_UNSIGNED_FIXTURE_URL,
     UPDATERECORD_CONTENT_PATH,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_remote, rpm_copy
@@ -34,7 +40,7 @@ class BasicCopyTestCase(unittest.TestCase):
 
         delete_orphans(cls.cfg)
 
-    def _setup_repos(self):
+    def _setup_repos(self, remote_url=RPM_UNSIGNED_FIXTURE_URL, summary=RPM_FIXTURE_SUMMARY):
         """Prepare for a copy test by creating two repos and syncing.
 
         Do the following:
@@ -51,7 +57,7 @@ class BasicCopyTestCase(unittest.TestCase):
         self.addCleanup(self.client.delete, dest_repo['pulp_href'])
 
         # Create a remote with the standard test fixture url.
-        body = gen_rpm_remote()
+        body = gen_rpm_remote(url=remote_url)
         remote = self.client.post(RPM_REMOTE_PATH, body)
         self.addCleanup(self.client.delete, remote['pulp_href'])
 
@@ -61,10 +67,13 @@ class BasicCopyTestCase(unittest.TestCase):
         sync(self.cfg, remote, source_repo)
         source_repo = self.client.get(source_repo['pulp_href'])
 
+        for kickstart_content in get_content(source_repo).get(RPM_KICKSTART_CONTENT_NAME, []):
+            self.addCleanup(self.client.delete, kickstart_content['pulp_href'])
+
         # Check that we have the correct content counts.
-        self.assertDictEqual(get_content_summary(source_repo), RPM_FIXTURE_SUMMARY)
+        self.assertDictEqual(get_content_summary(source_repo), summary)
         self.assertDictEqual(
-            get_added_content_summary(source_repo), RPM_FIXTURE_SUMMARY
+            get_added_content_summary(source_repo), summary
         )
 
         return source_repo, dest_repo
@@ -139,6 +148,53 @@ class BasicCopyTestCase(unittest.TestCase):
         dest_content = [c["pulp_href"] for c in dc["results"]]
 
         self.assertEqual(sorted(content_to_copy), sorted(dest_content))
+
+    def test_kickstart_copy_all(self):
+        """Test copying all the content from one repo to another."""
+        source_repo, dest_repo = self._setup_repos(
+            remote_url=RPM_KICKSTART_FIXTURE_URL,
+            summary=RPM_KICKSTART_FIXTURE_SUMMARY,
+        )
+        results = RPM_KICKSTART_FIXTURE_SUMMARY
+        config = [{
+            'source_repo_version': source_repo['latest_version_href'],
+            'dest_repo': dest_repo['pulp_href'],
+        }]
+
+        rpm_copy(self.cfg, config)
+        dest_repo = self.client.get(dest_repo['pulp_href'])
+
+        # Check that we have the correct content counts.
+        self.assertDictEqual(get_content_summary(dest_repo), results)
+        self.assertDictEqual(
+            get_added_content_summary(dest_repo), results,
+        )
+
+    def test_kickstart_content(self):
+        """Test the content parameter."""
+        source_repo, dest_repo = self._setup_repos(
+            remote_url=RPM_KICKSTART_FIXTURE_URL,
+            summary=RPM_KICKSTART_FIXTURE_SUMMARY,
+        )
+        latest_href = source_repo["latest_version_href"]
+
+        content = self.client.get(f"{KICKSTART_CONTENT_PATH}?repository_version={latest_href}")
+        content_to_copy = [content["results"][0]["pulp_href"]]
+
+        config = [{
+            'source_repo_version': latest_href,
+            'dest_repo': dest_repo['pulp_href'],
+            'content': content_to_copy
+        }]
+
+        rpm_copy(self.cfg, config)
+
+        dest_repo = self.client.get(dest_repo['pulp_href'])
+        latest_href = dest_repo["latest_version_href"]
+        dc = self.client.get(f"{KICKSTART_CONTENT_PATH}?repository_version={latest_href}")
+        dest_content = [c["pulp_href"] for c in dc["results"]]
+
+        self.assertEqual(content_to_copy, dest_content)
 
 
 class DependencySolvingTestCase(unittest.TestCase):
