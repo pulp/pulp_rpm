@@ -3,21 +3,21 @@ User setup
 
 .. _ansible-installation:
 
-Install with Ansible-pulp (recommended)
----------------------------------------
+Install with pulp_installer (recommended)
+-----------------------------------------
 
-With the use of the ``ansible-pulp`` installer you need to download a supportive
+With the use of the ``pulp_installer`` installer you need to download a supportive
 role before you run installer.
 
 Only Fedora 29+ and CentOS 7 (with epel repository and python36) are supported.
 
 .. code-block:: bash
 
-   git clone https://github.com/pulp/ansible-pulp.git
-   cd ansible-pulp
+   git clone https://github.com/pulp/pulp_installer.git
+   cd pulp_installer
    ansible-galaxy install pulp.pulp_rpm_prerequisites -p ./roles/
 
-Create ``playbook.yml`` as example you can use ``example-use/playbook.yml`` from ``ansible-pulp`` directory.
+Create ``playbook.yml`` as example you can use ``example-use/playbook.yml`` from ``pulp_installer`` directory.
 Do not forget about ``group_vars`` as dependency in same directory.
 
 Add the ``pulp_rpm`` plugin with the ``prereq_role`` downloaded to ``pulp_install_plugins`` under ``vars``.
@@ -50,7 +50,7 @@ Final ``playbook.yml`` can looks like:
         DJANGO_SETTINGS_MODULE: pulpcore.app.settings
 
 Now you can run installer against your desired host following instructions
-in the `ansible-pulp <https://github.com/pulp/ansible-pulp>`__ installer.
+in the `pulp_installer <https://github.com/pulp/pulp_installer>`__ installer.
 
 
 Pip install
@@ -125,7 +125,7 @@ Users on CentOS or RHEL must manually install the Python build dependencies for 
 Install ``pulp_rpm``
 ********************
 
-Users should install from **either** PyPI or source or use ansible-pulp installer.
+Users should install from **either** PyPI or source or use pulp_installer installer.
 In case of PyPI or source installation in virtual environment make sure the environment
 has enabled usage of system wide packages. You can achieve that with flag ``--system-site-packages``
 at environment creation time or with option in ``pyvenv.cfg`` file in root directory of virtual environment.

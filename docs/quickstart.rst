@@ -12,7 +12,7 @@ Download pulplift and RPM plugin prerequisite role.
 
     git clone --recurse-submodules https://github.com/pulp/pulplift.git
     cd pulplift
-    ansible-galaxy install pulp.pulp_rpm_prerequisites -p ./ansible-pulp/roles/
+    ansible-galaxy install pulp.pulp_rpm_prerequisites -p ./pulp_installer/roles/
 
 
 Use ``example.user-config.yml`` as a template for your config yaml file or directly edit that one.
