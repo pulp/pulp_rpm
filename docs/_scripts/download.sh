@@ -16,4 +16,4 @@ if [[ "${DISTRIBUTION_BASE_URL:0:1}" = "/" ]]; then
 fi
 
 # Download a package from the distribution
-http -d $DISTRIBUTION_BASE_URL/$PKG
+http -d $DISTRIBUTION_BASE_URL/Packages/f/$PKG

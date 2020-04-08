@@ -10,6 +10,7 @@ from pulp_smash.pulp3.utils import download_content_unit, gen_distribution, gen_
 
 from pulp_rpm.tests.functional.constants import RPM_UNSIGNED_FIXTURE_URL
 from pulp_rpm.tests.functional.utils import (
+    get_package_repo_path,
     gen_rpm_client,
     get_rpm_package_paths,
     gen_rpm_remote,
@@ -98,7 +99,8 @@ class DownloadContentTestCase(unittest.TestCase):
         ).hexdigest()
 
         # …and Pulp.
-        content = download_content_unit(cfg, distribution.to_dict(), unit_path)
+        pkg_path = get_package_repo_path(unit_path)
+        content = download_content_unit(cfg, distribution.to_dict(), pkg_path)
         pulp_hash = hashlib.sha256(content).hexdigest()
 
         self.assertEqual(fixture_hash, pulp_hash)
