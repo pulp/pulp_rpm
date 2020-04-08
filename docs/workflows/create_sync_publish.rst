@@ -140,7 +140,11 @@ RepositoryVersion GET response (when sync task complete):
 Create a Publication
 --------------------
 
-A publication can only be created once a sync task completes.
+A publication can only be created once a sync task completes. You can specify checksum algorithm with the following optional parameters:
+
+- metadata_checksum_type: affects all the repodata, including primary.xml, repomd.xml, etc.
+
+- package_checksum_type: affects package checksum type in all repo metadata files.
 
 .. literalinclude:: ../_scripts/publication.sh
    :language: bash

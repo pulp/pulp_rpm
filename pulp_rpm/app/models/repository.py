@@ -1,5 +1,6 @@
 from logging import getLogger
 
+from django.contrib.postgres.fields import JSONField
 from django.db import (
     models,
     transaction,
@@ -17,6 +18,7 @@ from pulpcore.plugin.models import (
 )
 from pulpcore.plugin.repo_version_utils import remove_duplicates, validate_version_paths
 
+from pulp_rpm.app.constants import CHECKSUM_CHOICES
 from pulp_rpm.app.models import (
     DistributionTree,
     Package,
@@ -47,6 +49,8 @@ class RpmRepository(Repository):
             The remote used for the last sync
         last_sync_repo_version (Integer):
             The repo version number of the last sync
+        original_checksum_types (JSON):
+            Checksum for each metadata type
     """
 
     TYPE = "rpm"
@@ -66,6 +70,7 @@ class RpmRepository(Repository):
     last_sync_revision_number = models.CharField(max_length=20)
     last_sync_remote = models.ForeignKey(Remote, null=True, on_delete=models.SET_NULL)
     last_sync_repo_version = models.PositiveIntegerField(default=0)
+    original_checksum_types = JSONField(default=dict)
 
     def new_version(self, base_version=None):
         """
@@ -151,6 +156,8 @@ class RpmPublication(Publication):
     """
 
     TYPE = 'rpm'
+    metadata_checksum_type = models.CharField(choices=CHECKSUM_CHOICES, max_length=10)
+    package_checksum_type = models.CharField(choices=CHECKSUM_CHOICES, max_length=10)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"

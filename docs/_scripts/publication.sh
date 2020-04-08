@@ -3,7 +3,7 @@
 # Create RPM publication
 echo "Create a task to create a publication."
 export TASK_URL=$(http POST $BASE_ADDR/pulp/api/v3/publications/rpm/rpm/ \
-    repository=$REPO_HREF | jq -r '.task')
+    repository=$REPO_HREF metadata_checksum_type=sha256 | jq -r '.task')
 
 # Poll the task (here we use a function defined in docs/_scripts/base.sh)
 wait_until_task_finished $BASE_ADDR$TASK_URL

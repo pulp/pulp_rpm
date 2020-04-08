@@ -29,6 +29,7 @@ from pulpcore.plugin.serializers import (
 )
 
 from pulp_rpm.app.advisory import hash_update_record
+from pulp_rpm.app.constants import CHECKSUM_CHOICES, CHECKSUM_TYPES
 
 from pulp_rpm.app.fields import (
     UpdateCollectionPackagesField,
@@ -338,8 +339,21 @@ class RpmPublicationSerializer(PublicationSerializer):
     A Serializer for RpmPublication.
     """
 
+    metadata_checksum_type = serializers.ChoiceField(
+        help_text=_("The checksum type for metadata."),
+        choices=CHECKSUM_CHOICES,
+        default=CHECKSUM_TYPES.SHA256,
+    )
+    package_checksum_type = serializers.ChoiceField(
+        help_text=_("The checksum type for packages."),
+        choices=CHECKSUM_CHOICES,
+        default=CHECKSUM_TYPES.SHA256,
+    )
+
     class Meta:
-        fields = PublicationSerializer.Meta.fields
+        fields = PublicationSerializer.Meta.fields + (
+            "metadata_checksum_type", "package_checksum_type"
+        )
         model = RpmPublication
 
 
