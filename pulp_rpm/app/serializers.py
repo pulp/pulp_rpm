@@ -348,8 +348,18 @@ class UpdateCollectionSerializer(ModelSerializer):
     A Serializer for UpdateCollection.
     """
 
-    name = serializers.CharField(help_text=_("Collection name."), allow_blank=True)
-    shortname = serializers.CharField(help_text=_("Collection short name."), allow_blank=True)
+    name = serializers.CharField(
+        help_text=_("Collection name."),
+        allow_blank=True,
+        allow_null=True
+    )
+
+    shortname = serializers.CharField(
+        help_text=_("Collection short name."),
+        allow_blank=True,
+        allow_null=True
+    )
+
     packages = UpdateCollectionPackagesField(
         source='*', read_only=True,
         help_text=_("List of packages")
