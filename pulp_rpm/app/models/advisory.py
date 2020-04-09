@@ -294,6 +294,14 @@ class UpdateCollection(BaseModel):
         col = cr.UpdateCollection()
         col.shortname = self.shortname
         col.name = self.name
+        if self.module:
+            module = cr.UpdateCollectionModule()
+            module.name = self.module['name']
+            module.stream = self.module['stream']
+            module.version = self.module['version']
+            module.context = self.module['context']
+            module.arch = self.module['arch']
+            col.module = module
 
         for package in self.packages.all():
             col.append(package.to_createrepo_c())
