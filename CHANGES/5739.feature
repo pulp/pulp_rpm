@@ -1,0 +1,1 @@
+Advisory version is considered at conflict resolution time.
