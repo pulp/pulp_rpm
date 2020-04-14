@@ -72,7 +72,7 @@ from pulp_rpm.app.modulemd import (
 from pulp_rpm.app.kickstart.treeinfo import get_treeinfo_data
 
 from pulp_rpm.app.comps import strdict_to_dict, dict_digest
-from pulp_rpm.app.shared_utils import is_previous_revision
+from pulp_rpm.app.shared_utils import is_previous_version
 
 import gi
 gi.require_version('Modulemd', '2.0')
@@ -343,7 +343,7 @@ class RpmFirstStage(Stage):
                  self.repository.latest_version().number) and
                 (self.remote.pulp_last_updated <=
                  self.repository.latest_version().pulp_created) and
-                is_previous_revision(repomd.revision, self.repository.last_sync_revision_number)
+                is_previous_version(repomd.revision, self.repository.last_sync_revision_number)
             ):
                 optimize_data = dict(message='Optimizing Sync', code='optimizing.sync')
                 with ProgressReport(**optimize_data) as optimize_pb:

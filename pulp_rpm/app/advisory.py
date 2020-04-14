@@ -18,6 +18,7 @@ from pulpcore.plugin.models import (
 
 from pulp_rpm.app.exceptions import AdvisoryConflict
 from pulp_rpm.app.models import UpdateRecord
+from pulp_rpm.app.shared_utils import is_previous_version
 
 
 def resolve_advisories(version, previous_version):
@@ -93,16 +94,17 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
     version, or advisories merge into newly created one which is added to a repo version.
     Merge is done based on criteria described below.
 
-     1. If updated_dates are the same and pkglist intersection is empty (e.g. base repo merged
-     with debuginfo repo) -> new UpdateRecord content unit with combined pkglist is created.
-     2. If updated_dates differ and pkglist intersection is non-empty (update/re-sync/upload-new
-     case) -> UpdateRecord with newer updated_date is added.
-     3. If updated_dates differ and pkglist intersection is empty - ERROR CONDITION (e.g. base and
-     -debuginfo repos are from different versions, not at same date)
-     4. If update_dates are the same, pkglist intersection is non-empty and not equal to either
-     pkglist - ERROR CONDITION! (never-happen case - "something is Terribly Wrong Here")
-
-     TODO: Add version comparison if dates are the same (important for opensuse advisories)
+     1. If updated_dates and update_version are the same and pkglist intersection is empty
+     (e.g. base repo merged with debuginfo repo) -> new UpdateRecord content unit with combined
+     pkglist is created.
+     2. If updated_dates or update_version differ and pkglist intersection is non-empty
+     (update/re-sync/upload-new case) -> UpdateRecord with newer updated_date or update_version
+     is added.
+     3. If updated_dates differ and pkglist intersection is empty: ERROR CONDITION
+     (e.g. base and-debuginfo repos are from different versions, not at same date)
+     4. If update_dates and update_version are the same, pkglist intersection is non-empty
+     and not equal to either pkglist - ERROR CONDITION!
+     (never-happen case - "something is Terribly Wrong Here")
 
      Args:
        previous_advisory(pulp_rpm.app.models.UpdateRecord): Advisory which is in a previous repo
@@ -120,39 +122,53 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
     to_add, to_remove, to_exclude = [], [], []
 
     previous_updated_date = parse_datetime(
-        previous_advisory.updated_date or previous_advisory.issued_date)
+        previous_advisory.updated_date or previous_advisory.issued_date
+    )
     added_updated_date = parse_datetime(
-        added_advisory.updated_date or added_advisory.issued_date)
-
+        added_advisory.updated_date or added_advisory.issued_date
+    )
+    previous_updated_version = previous_advisory.version
+    added_updated_version = added_advisory.version
     previous_pkglist = set(previous_advisory.get_pkglist())
     added_pkglist = set(added_advisory.get_pkglist())
 
-    if previous_updated_date == added_updated_date:
-        if not previous_pkglist.intersection(added_pkglist):
-            previous_advisory_pk = previous_advisory.pk
-            added_advisory_pk = added_advisory.pk
-            merged_advisory = merge_advisories(previous_advisory, added_advisory)
-            to_add.append(merged_advisory.pk)
-            to_remove.append(previous_advisory_pk)
-            to_exclude.append(added_advisory_pk)
-        else:
+    # Prepare results of conditions for easier use.
+    same_dates = previous_updated_date == added_updated_date
+    same_version = previous_updated_version == added_updated_version
+    pkgs_intersection = previous_pkglist.intersection(added_pkglist)
+
+    if same_dates and same_version and pkgs_intersection:
+        if previous_pkglist != added_pkglist:
             raise AdvisoryConflict(_('Incoming and existing advisories have the same id and '
                                      'timestamp but different and intersecting package lists. '
                                      'At least one of them is wrong. '
                                      f'Advisory id: {previous_advisory.id}'))
-    else:
-        if previous_pkglist.intersection(added_pkglist):
-            if previous_updated_date < added_updated_date:
-                to_remove.append(previous_advisory.pk)
-            else:
-                to_exclude.append(added_advisory.pk)
+    elif (not same_dates and not pkgs_intersection) or \
+            (same_dates and not same_version and not pkgs_intersection):
+        raise AdvisoryConflict(_('Incoming and existing advisories have the same id but '
+                                 'different timestamps and intersecting package lists. It is '
+                                 'likely that they are from two different incompatible remote '
+                                 'repositories. E.g. RHELX-repo and RHELY-debuginfo repo. '
+                                 'Ensure that you are adding content for the compatible '
+                                 f'repositories. Advisory id: {previous_advisory.id}'))
+    elif not same_dates and pkgs_intersection:
+        if previous_updated_date < added_updated_date:
+            to_remove.append(previous_advisory.pk)
         else:
-            raise AdvisoryConflict(_('Incoming and existing advisories have the same id but '
-                                     'different timestamps and intersecting package lists. It is '
-                                     'likely that they are from two different incompatible remote '
-                                     'repositories. E.g. RHELX-repo and RHELY-debuginfo repo. '
-                                     'Ensure that you are adding content for the compatible '
-                                     f'repositories. Advisory id: {previous_advisory.id}'))
+            to_exclude.append(added_advisory.pk)
+    elif not same_version and pkgs_intersection:
+        if is_previous_version(previous_updated_version, added_updated_version):
+            to_remove.append(previous_advisory.pk)
+        else:
+            to_exclude.append(added_advisory.pk)
+    elif same_dates and same_version and not pkgs_intersection:
+        # previous_advisory is used to copy the object and thus the variable refers to a
+        # different object after `merge_advisories` call
+        previous_advisory_pk = previous_advisory.pk
+        merged_advisory = merge_advisories(previous_advisory, added_advisory)
+        to_add.append(merged_advisory.pk)
+        to_remove.append(previous_advisory_pk)
+        to_exclude.append(added_advisory.pk)
 
     return to_add, to_remove, to_exclude
 

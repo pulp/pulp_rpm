@@ -32,24 +32,34 @@ def _prepare_package(artifact, filename):
     return package
 
 
-def is_previous_revision(revision, target_revision):
+def is_previous_version(version, target_version):
     """
-    Compare revision with a target revision.
-    """
-    if revision.isdigit() and target_revision.isdigit():
-        return int(revision) <= int(target_revision)
+    Compare version with a target version.
 
-    if "." in revision and len(revision.split(".")) == len(target_revision.split(".")):
-        rev = revision.split(".")
-        for index, target in enumerate(target_revision.split(".")):
-            is_digit = rev[index].isdigit() and target.isdigit()
-            if is_digit and int(rev[index]) < int(target):
+    Able to compare versions with integers only.
+
+    Args:
+        version(str): version to compare
+        target_version(str): version to compare with
+
+    Returns:
+        bool: True if versions are the same or if the version is older than the target version.
+
+    """
+    if version.isdigit() and target_version.isdigit():
+        return int(version) <= int(target_version)
+
+    if "." in version and len(version.split(".")) == len(target_version.split(".")):
+        ver = version.split(".")
+        for index, target in enumerate(target_version.split(".")):
+            is_digit = ver[index].isdigit() and target.isdigit()
+            if is_digit and int(ver[index]) < int(target):
                 return True
 
         if is_digit:
-            return int(rev[index]) <= int(target)
+            return int(ver[index]) <= int(target)
 
-    if revision:
-        return revision == target_revision
+    if version:
+        return version == target_version
 
     return False
