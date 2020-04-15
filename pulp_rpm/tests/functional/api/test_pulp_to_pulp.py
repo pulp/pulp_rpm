@@ -89,7 +89,11 @@ class SynctoSyncTestCase(unittest.TestCase):
         repo = repo_api.read(repo.pulp_href)
 
         # Create a publication.
-        publish_data = RpmRpmPublication(repository=repo.pulp_href)
+        publish_data = RpmRpmPublication(
+            repository=repo.pulp_href,
+            metadata_checksum_type="sha1",
+            package_checksum_type="sha224",
+        )
         publish_response = publications.create(publish_data)
         created_resources = monitor_task(publish_response.task)
         publication_href = created_resources[0]

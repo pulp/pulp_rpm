@@ -10,6 +10,7 @@ from xml.etree import ElementTree
 from pulp_smash import config
 from pulp_smash.utils import http_get
 from pulp_smash.pulp3.utils import (
+    delete_orphans,
     gen_repo,
     gen_distribution,
     get_content,
@@ -45,6 +46,25 @@ from pulpcore.client.pulp_rpm import (
     RpmRpmPublication,
 )
 from pulpcore.client.pulp_rpm.exceptions import ApiException
+
+
+def read_xml_gz(content):
+    """
+    Read xml and xml.gz.
+
+    Tests work normally but fails for S3 due '.gz'
+    Why is it only compressed for S3?
+    """
+    with NamedTemporaryFile() as temp_file:
+        temp_file.write(content)
+        temp_file.seek(0)
+
+        try:
+            content_xml = gzip.open(temp_file.name).read()
+        except OSError:
+            # FIXME: fix this as in CI primary/update_info.xml has '.gz' but it is not gzipped
+            content_xml = temp_file.read()
+        return content_xml
 
 
 class PublishAnyRepoVersionTestCase(unittest.TestCase):
@@ -291,23 +311,12 @@ class ValidateNoChecksumTagTestCase(unittest.TestCase):
             )
         )
 
-        with NamedTemporaryFile() as temp_file:
-            update_xml_url = self._get_updateinfo_xml_path(repomd)
-            update_xml_content = http_get(
-                os.path.join(distribution.base_url, update_xml_url)
-            )
-            temp_file.write(update_xml_content)
-            temp_file.seek(0)
-            # TODO: fix this as in CI update_info.xml has '.gz' but
-            # it is not gzipped
-            try:
-                update_xml = gzip.open(temp_file.name).read()
-            except OSError:
-                update_xml = temp_file.read()
-
-            update_info_content = ElementTree.fromstring(
-                update_xml
-            )
+        update_xml_url = self._get_updateinfo_xml_path(repomd)
+        update_xml_content = http_get(
+            os.path.join(distribution.base_url, update_xml_url)
+        )
+        update_xml = read_xml_gz(update_xml_content)
+        update_info_content = ElementTree.fromstring(update_xml)
 
         tags = {elem.tag for elem in update_info_content.iter()}
         self.assertNotIn('sum', tags, update_info_content)
@@ -333,3 +342,140 @@ class ValidateNoChecksumTagTestCase(unittest.TestCase):
         ]
         xpath = '{{{}}}location'.format(RPM_NAMESPACES['metadata/repo'])
         return data_elems[0].find(xpath).get('href')
+
+
+class ChecksumTypeTestCase(unittest.TestCase):
+    """Publish repository and validate the updateinfo.
+
+    This Test does the following:
+
+    1. Create a rpm repo and a remote.
+    2. Sync the repo with the remote.
+    3. Publish and distribute the repo.
+    4. Verify the checksum types
+
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        delete_orphans()
+        cls.cfg = config.get_config()
+        cls.client = gen_rpm_client()
+        cls.repo_api = RepositoriesRpmApi(cls.client)
+        cls.remote_api = RemotesRpmApi(cls.client)
+        cls.publications = PublicationsRpmApi(cls.client)
+        cls.distributions = DistributionsRpmApi(cls.client)
+
+    def get_checksum_types(self, **kwargs):
+        """Sync and publish an RPM repository."""
+        package_checksum_type = kwargs.get("package_checksum_type")
+        metadata_checksum_type = kwargs.get("metadata_checksum_type")
+        policy = kwargs.get("policy", "immediate")
+        # 1. create repo and remote
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+
+        body = gen_rpm_remote(policy=policy)
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # 2. Sync it
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+
+        # 3. Publish and distribute
+        publish_data = RpmRpmPublication(
+            repository=repo.pulp_href,
+            package_checksum_type=package_checksum_type,
+            metadata_checksum_type=metadata_checksum_type,
+        )
+        publish_response = self.publications.create(publish_data)
+        created_resources = monitor_task(publish_response.task)
+        publication_href = created_resources[0]
+        self.addCleanup(self.publications.delete, publication_href)
+
+        body = gen_distribution()
+        body["publication"] = publication_href
+        distribution_response = self.distributions.create(body)
+        created_resources = monitor_task(distribution_response.task)
+        distribution = self.distributions.read(created_resources[0])
+        self.addCleanup(self.distributions.delete, distribution.pulp_href)
+
+        repomd = ElementTree.fromstring(
+            http_get(
+                os.path.join(distribution.base_url, 'repodata/repomd.xml')
+            )
+        )
+
+        data_xpath = '{{{}}}data'.format(RPM_NAMESPACES['metadata/repo'])
+        data_elems = [elem for elem in repomd.findall(data_xpath)]
+
+        repomd_checksum_types = {}
+        primary_checksum_types = {}
+        checksum_xpath = '{{{}}}checksum'.format(RPM_NAMESPACES['metadata/repo'])
+        for data_elem in data_elems:
+            checksum_type = data_elem.find(checksum_xpath).get('type')
+            repomd_checksum_types[data_elem.get("type")] = checksum_type
+            if data_elem.get("type") == "primary":
+                location_xpath = '{{{}}}location'.format(RPM_NAMESPACES['metadata/repo'])
+                primary_href = data_elem.find(location_xpath).get('href')
+                primary = ElementTree.fromstring(
+                    read_xml_gz(http_get(
+                        os.path.join(distribution.base_url, primary_href)
+                    ))
+                )
+                package_checksum_xpath = '{{{}}}checksum'.format(RPM_NAMESPACES['metadata/common'])
+                package_xpath = '{{{}}}package'.format(RPM_NAMESPACES['metadata/common'])
+                package_elems = [elem for elem in primary.findall(package_xpath)]
+                pkg_checksum_type = package_elems[0].find(package_checksum_xpath).get('type')
+                primary_checksum_types[package_elems[0].get("type")] = pkg_checksum_type
+
+        return repomd_checksum_types, primary_checksum_types
+
+    def test_unspecified_checksum_types(self):
+        """Sync and publish an RPM repository and verify the checksum."""
+        repomd_checksum_types, primary_checksum_types = self.get_checksum_types()
+
+        for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
+            self.assertEqual(repomd_checksum_type, "sha256")
+
+        for package, package_checksum_type in primary_checksum_types.items():
+            self.assertEqual(package_checksum_type, "sha256")
+
+    def test_specified_package_checksum_type(self):
+        """Sync and publish an RPM repository and verify the checksum."""
+        repomd_checksum_types, primary_checksum_types = self.get_checksum_types(
+            package_checksum_type="md5"
+        )
+
+        for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
+            self.assertEqual(repomd_checksum_type, "sha256")
+
+        for package, package_checksum_type in primary_checksum_types.items():
+            self.assertEqual(package_checksum_type, "md5")
+
+    def test_specified_metadata_checksum_type(self):
+        """Sync and publish an RPM repository and verify the checksum."""
+        repomd_checksum_types, primary_checksum_types = self.get_checksum_types(
+            metadata_checksum_type="md5"
+        )
+
+        for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
+            self.assertEqual(repomd_checksum_type, "md5")
+
+        for package, package_checksum_type in primary_checksum_types.items():
+            self.assertEqual(package_checksum_type, "sha256")
+
+    def test_specified_metadata_and_package_checksum_type(self):
+        """Sync and publish an RPM repository and verify the checksum."""
+        repomd_checksum_types, primary_checksum_types = self.get_checksum_types(
+            package_checksum_type="md5", metadata_checksum_type="md5"
+        )
+
+        for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
+            self.assertEqual(repomd_checksum_type, "md5")
+
+        for package, package_checksum_type in primary_checksum_types.items():
+            self.assertEqual(package_checksum_type, "md5")

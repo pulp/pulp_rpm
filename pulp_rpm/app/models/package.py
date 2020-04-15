@@ -273,7 +273,7 @@ class Package(Content):
             PULP_PACKAGE_ATTRS.VERSION: getattr(package, CR_PACKAGE_ATTRS.VERSION)
         }
 
-    def to_createrepo_c(self):
+    def to_createrepo_c(self, checksum_type=None):
         """
         Convert Package object to a createrepo_c package object.
 
@@ -353,5 +353,11 @@ class Package(Content):
         package.time_file = getattr(self, PULP_PACKAGE_ATTRS.TIME_FILE)
         package.url = getattr(self, PULP_PACKAGE_ATTRS.URL)
         package.version = getattr(self, PULP_PACKAGE_ATTRS.VERSION)
+
+        if checksum_type:
+            pkgId = getattr(self._artifacts.first(), checksum_type.lower(), None)
+            if pkgId:
+                package.checksum_type = checksum_type
+                package.pkgId = pkgId
 
         return package

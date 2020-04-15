@@ -393,8 +393,10 @@ class RpmFirstStage(Stage):
             modulemd_results = None
             comps_downloader = None
             main_types = set()
+            checksums = {}
 
             for record in repomd.records:
+                checksums[record.type] = record.checksum_type.upper()
                 if record.type in PACKAGE_REPODATA:
                     main_types.update([record.type])
                     package_repodata_urls[record.type] = urljoin(remote_url, record.location_href)
@@ -440,6 +442,8 @@ class RpmFirstStage(Stage):
             if missing_type:
                 raise FileNotFoundError(_("XML file(s): {filename} not found").format(
                     filename=", ".join(missing_type)))
+
+            self.repository.original_checksum_types = checksums
 
             # we have to sync module.yaml first if it exists, to make relations to packages
             if modulemd_results:

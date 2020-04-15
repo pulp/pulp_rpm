@@ -19,7 +19,7 @@ from pulpcore.plugin.models import (
 from pulpcore.plugin.tasking import WorkingDirectory
 
 from pulp_rpm.app.comps import dict_to_strdict
-from pulp_rpm.app.constants import PACKAGES_DIRECTORY
+from pulp_rpm.app.constants import CHECKSUM_TYPES, PACKAGES_DIRECTORY
 from pulp_rpm.app.models import (
     DistributionTree,
     Modulemd,
@@ -140,7 +140,11 @@ class PublicationData:
 
                 if repository_version and repository.sub_repo:
                     addon_or_variant_id = getattr(addon_or_variant, f"{relation}_id")
-                    self.sub_repos.append((addon_or_variant_id, repository_version.content))
+                    self.sub_repos.append((
+                        addon_or_variant_id,
+                        repository_version.content,
+                        repository.original_checksum_types
+                    ))
 
     def populate(self):
         """
@@ -166,15 +170,35 @@ class PublicationData:
             self.handle_sub_repos(distribution_tree)
 
         all_content = main_content
-        for name, content in self.sub_repos:
+        for name, content, checksum_types in self.sub_repos:
             os.mkdir(name)
             setattr(self, f"{name}_content", content)
+            setattr(self, f"{name}_checksums", checksum_types)
             setattr(self, f"{name}_repomdrecords", self.prepare_metadata_files(content, name))
             all_content |= content
         self.publish_artifacts(all_content)
 
 
-def publish(repository_version_pk, metadata_signing_service=None):
+def get_checksum_type(name, checksum_types):
+    """
+    Get checksum algorithm for publishing metadata.
+
+    Args:
+        name (str): Name of the metadata type.
+        checksum_types (dict): Checksum types for metadata and packages.
+
+    """
+    original = checksum_types.get("original")
+    metadata = checksum_types.get("metadata")
+    checksum_type = original.get(name, CHECKSUM_TYPES.SHA256)
+
+    if metadata:
+        checksum_type = metadata
+
+    return getattr(cr, checksum_type.upper(), cr.SHA256)
+
+
+def publish(repository_version_pk, metadata_signing_service=None, checksum_types=None):
     """
     Create a Publication based on a RepositoryVersion.
 
@@ -182,39 +206,45 @@ def publish(repository_version_pk, metadata_signing_service=None):
         repository_version_pk (str): Create a publication from this repository version.
         metadata_signing_service (pulpcore.app.models.AsciiArmoredDetachedSigningService):
             A reference to an associated signing service.
+        checksum_types (dict): Checksum types for metadata and packages.
 
     """
     repository_version = RepositoryVersion.objects.get(pk=repository_version_pk)
+    repository = repository_version.repository.cast()
 
     log.info(_('Publishing: repository={repo}, version={version}').format(
-        repo=repository_version.repository.name,
+        repo=repository.name,
         version=repository_version.number,
     ))
 
     with WorkingDirectory():
         with RpmPublication.create(repository_version) as publication:
+            publication.package_checksum_type = checksum_types["package"]
+            publication.metadata_checksum_type = checksum_types["metadata"]
             publication_data = PublicationData(publication)
             publication_data.populate()
 
             content = publication.repository_version.content
+            checksum_types["original"] = repository.original_checksum_types
 
             # Main repo
             create_repomd_xml(
-                content, publication, publication_data.repomdrecords,
+                content, publication, checksum_types, publication_data.repomdrecords,
                 metadata_signing_service=metadata_signing_service
             )
 
             for sub_repo in publication_data.sub_repos:
                 name = sub_repo[0]
+                checksum_types["original"] = getattr(publication_data, f"{name}_checksums")
                 content = getattr(publication_data, f"{name}_content")
                 extra_repomdrecords = getattr(publication_data, f"{name}_repomdrecords")
                 create_repomd_xml(
-                    content, publication, extra_repomdrecords, name,
+                    content, publication, checksum_types, extra_repomdrecords, name,
                     metadata_signing_service=metadata_signing_service
                 )
 
 
-def create_repomd_xml(content, publication, extra_repomdrecords,
+def create_repomd_xml(content, publication, checksum_types, extra_repomdrecords,
                       sub_folder=None, metadata_signing_service=None):
     """
     Creates a repomd.xml file.
@@ -232,6 +262,7 @@ def create_repomd_xml(content, publication, extra_repomdrecords,
     repodata_path = REPODATA_PATH
     has_modules = False
     has_comps = False
+    package_checksum_type = checksum_types.get("package")
 
     if sub_folder:
         cwd = os.path.join(cwd, sub_folder)
@@ -266,7 +297,7 @@ def create_repomd_xml(content, publication, extra_repomdrecords,
 
     # Process all packages
     for package in packages.iterator():
-        pkg = package.to_createrepo_c()
+        pkg = package.to_createrepo_c(package_checksum_type)
         pkg_filename = os.path.basename(package.location_href)
         # this can cause an issue when two same RPM package names appears
         # a/name1.rpm b/name1.rpm
@@ -343,14 +374,15 @@ def create_repomd_xml(content, publication, extra_repomdrecords,
     sqlite_files = ("primary_db", "filelists_db", "other_db")
     for name, path, db_to_update in repomdrecords:
         record = cr.RepomdRecord(name, path)
+        checksum_type = get_checksum_type(name, checksum_types)
         if name in sqlite_files:
-            record_bz = record.compress_and_fill(cr.SHA256, cr.BZ2)
+            record_bz = record.compress_and_fill(checksum_type, cr.BZ2)
             record_bz.type = name
             record_bz.rename_file()
             path = record_bz.location_href.split('/')[-1]
             repomd.set_record(record_bz)
         else:
-            record.fill(cr.SHA256)
+            record.fill(checksum_type)
             if (db_to_update):
                 db_to_update.dbinfo_update(record.checksum)
                 db_to_update.close()
