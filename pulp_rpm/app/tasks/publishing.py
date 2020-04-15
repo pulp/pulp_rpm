@@ -211,6 +211,10 @@ def publish(repository_version_pk, metadata_signing_service=None, checksum_types
     """
     repository_version = RepositoryVersion.objects.get(pk=repository_version_pk)
     repository = repository_version.repository.cast()
+    checksum_types = checksum_types or {}
+    checksum_types["original"] = repository.original_checksum_types
+    original_metadata_checksum_type = repository.original_checksum_types.get(
+        "primary", CHECKSUM_TYPES.SHA256)
 
     log.info(_('Publishing: repository={repo}, version={version}').format(
         repo=repository.name,
@@ -219,13 +223,14 @@ def publish(repository_version_pk, metadata_signing_service=None, checksum_types
 
     with WorkingDirectory():
         with RpmPublication.create(repository_version) as publication:
-            publication.package_checksum_type = checksum_types["package"]
-            publication.metadata_checksum_type = checksum_types["metadata"]
+            publication.package_checksum_type = checksum_types.get(
+                "package", CHECKSUM_TYPES.SHA256)
+            publication.metadata_checksum_type = checksum_types.get(
+                "metadata", original_metadata_checksum_type)
             publication_data = PublicationData(publication)
             publication_data.populate()
 
             content = publication.repository_version.content
-            checksum_types["original"] = repository.original_checksum_types
 
             # Main repo
             create_repomd_xml(
