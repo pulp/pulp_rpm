@@ -3,7 +3,7 @@
 from setuptools import setup, find_packages
 
 requirements = [
-    'createrepo_c~=0.15',
+    'createrepo_c>=0.15.10,<1.0',
     'jsonschema',
     'libcomps~=0.1.11',
     'productmd>=1.25',
