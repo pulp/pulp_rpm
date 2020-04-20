@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from pulp_rpm.app.constants import ADVISORY_SUM_TYPE_TO_NAME
 from pulp_rpm.app.models import UpdateReference
 
 
@@ -33,7 +34,7 @@ class UpdateCollectionPackagesField(serializers.ListField):
                 'release': pkg['release'],
                 'src': pkg['src'],
                 'sum': pkg['sum'],
-                'sum_type': pkg['sum_type'],
+                'sum_type': ADVISORY_SUM_TYPE_TO_NAME.get(pkg['sum_type'], ""),
                 'version': pkg['version'],
             })
 
