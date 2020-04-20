@@ -242,12 +242,12 @@ PACKAGES_DIRECTORY = "Packages"
 # https://github.com/rpm-software-management/createrepo_c/blob/master/src/checksum.h#L43-L54
 # Please keep dict consistent with createrepo_c mapping mentioned above.
 ADVISORY_SUM_TYPE_TO_NAME = {
-    0: "UNKNOWN",
-    1: "MD5",
-    2: "SHA",
-    3: "SHA1",
-    4: "SHA224",
-    5: "SHA256",
-    6: "SHA384",
-    7: "SHA512"
+    0: "unknown",
+    1: "md5",
+    2: "sha",
+    3: "sha1",
+    4: "sha224",
+    5: "sha256",
+    6: "sha384",
+    7: "sha512"
 }
