@@ -951,6 +951,7 @@ class RpmContentSaver(ContentSaver):
         update_record_collections_to_save = []
         update_references_to_save = []
         update_collection_packages_to_save = []
+        seen_updaterecords = []
 
         for declarative_content in batch:
             if declarative_content is None:
@@ -968,6 +969,14 @@ class RpmContentSaver(ContentSaver):
                 if relations_exist:
                     # existing content which was retrieved from the db at earlier stages
                     continue
+
+                # if there are same update_records in a batch, the relations to the references
+                # and collections will be duplicated, if there are 3 same update_record,
+                # there will be 3 sets of relations and collections.
+                # It can happen easily during pulp 2to3 migration, or in case of a bad repo.
+                if update_record.digest in seen_updaterecords:
+                    continue
+                seen_updaterecords.append(update_record.digest)
 
                 future_relations = declarative_content.extra_data
                 update_collections = future_relations.get('collections', {})
