@@ -5,6 +5,9 @@ Each workflow renders bash scripts that allow the developers to ensure the conti
 the instructions. These scripts may also be helpful to users as a basis for their own scripts. All
 of the scripts can be found at https://github.com/pulp/pulp_rpm/tree/master/docs/_scripts/
 
+Some scripts have conditional statements for setting REPO_NAME.
+These are used by Pulp team for validity testing.
+
 The following scripts are used in conjunction with all the workflow scripts:
 
 **Base**

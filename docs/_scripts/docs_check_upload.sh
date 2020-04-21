@@ -8,8 +8,11 @@
 # From the _scripts directory, run with `source docs_check_upload_publish.sh` (source to preserve
 # the environment variables)
 
+export REPO_NAME="upload-repo"
+export DIST_NAME="upload-dist"
+
 source base.sh
-source repo.sh
+source repo.sh "$REPO_NAME"
 
 source artifact.sh
 source package.sh
@@ -18,5 +21,5 @@ source advisory.sh
 source copy.sh
 
 source publication.sh
-source distribution.sh
+source distribution.sh "$DIST_NAME"
 source download.sh
