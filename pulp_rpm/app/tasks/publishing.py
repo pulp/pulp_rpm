@@ -105,7 +105,9 @@ class PublicationData:
         published_artifacts = []
         for content_artifact in ContentArtifact.objects.filter(
                 content__in=content.exclude(
-                    pulp_type=RepoMetadataFile.get_pulp_type()
+                    pulp_type__in=[RepoMetadataFile.get_pulp_type(),
+                                   Modulemd.get_pulp_type(),
+                                   ModulemdDefaults.get_pulp_type()]
                 ).distinct()
         ).iterator():
             relative_path = content_artifact.relative_path
