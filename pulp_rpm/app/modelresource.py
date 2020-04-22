@@ -1,4 +1,4 @@
-from pulpcore.app.modelresource import QueryModelResource
+from pulpcore.plugin.importexport import QueryModelResource
 from pulp_rpm.app.models import (
     DistributionTree,
     Modulemd,
