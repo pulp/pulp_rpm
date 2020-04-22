@@ -1,0 +1,1 @@
+Fixed import of QueryModelResource to pulpcore.plugin.importexport.
