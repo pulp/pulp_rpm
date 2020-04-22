@@ -13,6 +13,7 @@ from pulpcore.plugin.serializers import AsyncOperationResponseSerializer
 from pulpcore.plugin.viewsets import (
     BaseDistributionViewSet,
     ContentFilter,
+    NoArtifactContentUploadViewSet,
     NamedModelViewSet,
     OperationPostponedResponse,
     PublicationViewSet,
@@ -178,7 +179,7 @@ class UpdateRecordFilter(ContentFilter):
         }
 
 
-class UpdateRecordViewSet(SingleArtifactContentUploadViewSet):
+class UpdateRecordViewSet(NoArtifactContentUploadViewSet):
     """
     A ViewSet for UpdateRecord.
 

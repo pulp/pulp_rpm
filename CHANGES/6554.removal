@@ -1,0 +1,1 @@
+Removed the query parameter relative_path from the API which was used when uploading an advisory

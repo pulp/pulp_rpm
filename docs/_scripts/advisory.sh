@@ -11,8 +11,7 @@ export ADVISORY="advisory.json"
 # Upload advisory
 echo "Upload advisory in JSON format."
 export TASK_URL=$(http --form POST $BASE_ADDR/pulp/api/v3/content/rpm/advisories/ \
-    file@./$ADVISORY repository=$REPO_HREF \
-    relative_path=$ADVISORY | jq -r '.task')
+    file@./$ADVISORY repository=$REPO_HREF | jq -r '.task')
 
 # Poll the task (here we use a function defined in docs/_scripts/base.sh)
 wait_until_task_finished $BASE_ADDR$TASK_URL
