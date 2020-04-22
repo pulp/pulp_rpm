@@ -13,8 +13,8 @@ Changelog
 
 .. towncrier release notes start
 
-3.3.0b1 (2020-03-13)
-====================
+3.3.0 (2020-04-21)
+==================
 
 
 Features
@@ -40,6 +40,20 @@ Features
   `#6187 <https://pulp.plan.io/issues/6187>`_
 - Added a config param to copy api which maps multiple sources to destinations.
   `#6268 <https://pulp.plan.io/issues/6268>`_
+- Default publish type is alphabetical directory structure under 'Packages' folder.
+  `#4445 <https://pulp.plan.io/issues/4445>`_
+- Enabled checksum selection when publishing metadata
+  `#4458 <https://pulp.plan.io/issues/4458>`_
+- Advisory version is considered at conflict resolution time.
+  `#5739 <https://pulp.plan.io/issues/5739>`_
+- Added support for opensuse advisories.
+  `#5829 <https://pulp.plan.io/issues/5829>`_
+- Optimize sync to only happen when there have been changes.
+  `#6055 <https://pulp.plan.io/issues/6055>`_
+- Store the checksum type (sum_type) for advisory packages as an integer, but continue displaying it to the user as a string. This brings the internal representation closer to createrepo_c which uses integers.
+  `#6442 <https://pulp.plan.io/issues/6442>`_
+- Add support for import/export processing
+  `#6473 <https://pulp.plan.io/issues/6473>`_
 
 
 Bugfixes
@@ -47,12 +61,33 @@ Bugfixes
 
 - Fix sync for repositories with modular content.
   `#6229 <https://pulp.plan.io/issues/6229>`_
+- Properly compare modular content between the versions.
+  `#6303 <https://pulp.plan.io/issues/6303>`_
+- Deserialize treeinfo files in a scpecific order
+  `#6322 <https://pulp.plan.io/issues/6322>`_
+- Fixed the repo revision comparison and sync optimization for sub-repos
+  `#6367 <https://pulp.plan.io/issues/6367>`_
+- Fixed repository metadata that was pointing to wrong file locations.
+  `#6399 <https://pulp.plan.io/issues/6399>`_
+- Fixed modular advisory publication.
+  `#6440 <https://pulp.plan.io/issues/6440>`_
+- Fixed advisory publication, missing auxiliary fields were added.
+  `#6441 <https://pulp.plan.io/issues/6441>`_
+- Fixed publishing of module repodata.
+  `#6530 <https://pulp.plan.io/issues/6530>`_
+
+
+Improved Documentation
+----------------------
+
+- Documented bindings installation for a dev environment
+  `#6395 <https://pulp.plan.io/issues/6395>`_
 
 
 Misc
 ----
 
-- `#6155 <https://pulp.plan.io/issues/6155>`_, `#6297 <https://pulp.plan.io/issues/6297>`_, `#6300 <https://pulp.plan.io/issues/6300>`_
+- `#5207 <https://pulp.plan.io/issues/5207>`_, `#5455 <https://pulp.plan.io/issues/5455>`_, `#6312 <https://pulp.plan.io/issues/6312>`_, `#6313 <https://pulp.plan.io/issues/6313>`_, `#6339 <https://pulp.plan.io/issues/6339>`_, `#6363 <https://pulp.plan.io/issues/6363>`_, `#6442 <https://pulp.plan.io/issues/6442>`_, `#6155 <https://pulp.plan.io/issues/6155>`_, `#6297 <https://pulp.plan.io/issues/6297>`_, `#6300 <https://pulp.plan.io/issues/6300>`_
 
 
 ----
