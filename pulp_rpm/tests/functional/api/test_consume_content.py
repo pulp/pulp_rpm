@@ -159,7 +159,7 @@ class ConsumeSignedRepomdTestCase(unittest.TestCase):
         self.cli_client.run(
             ('sudo', 'dnf', 'config-manager', '--add-repo', distribution['base_url'])
         )
-        repo_id = '*{}'.format(distribution['base_path'])
+        repo_id = '*{}_'.format(distribution['base_path'])
         public_key_url = f"{distribution['base_url']}repodata/public.key"
         self.cli_client.run(
             ('sudo', 'dnf', 'config-manager', '--save', f'--setopt={repo_id}.gpgcheck=0',
