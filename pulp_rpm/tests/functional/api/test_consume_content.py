@@ -83,7 +83,7 @@ class PackageManagerConsumeTestCase(unittest.TestCase):
 
         cli_client = cli.Client(self.cfg)
         cli_client.run(('sudo', 'dnf', 'config-manager', '--add-repo', distribution['base_url']))
-        repo_id = '*{}'.format(distribution['base_path'])
+        repo_id = '*{}_'.format(distribution['base_path'])
         cli_client.run(('sudo', 'dnf', 'config-manager', '--save',
                         '--setopt={}.gpgcheck=0'.format(repo_id), repo_id))
         self.addCleanup(cli_client.run, ('sudo', 'dnf', 'config-manager', '--disable', repo_id))
@@ -160,7 +160,7 @@ class ConsumeSignedRepomdTestCase(unittest.TestCase):
             ('sudo', 'dnf', 'config-manager', '--add-repo', distribution['base_url'])
         )
         repo_id = '*{}'.format(distribution['base_path'])
-        public_key_url = f"{distribution['base_url']}/repodata/public.key"
+        public_key_url = f"{distribution['base_url']}repodata/public.key"
         self.cli_client.run(
             ('sudo', 'dnf', 'config-manager', '--save', f'--setopt={repo_id}.gpgcheck=0',
              f'--setopt={repo_id}.repo_gpgcheck=1', f'--setopt={repo_id}.gpgkey={public_key_url}',
