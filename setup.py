@@ -7,7 +7,7 @@ requirements = [
     'jsonschema',
     'libcomps~=0.1.11',
     'productmd>=1.25',
-    'pulpcore>=3.3,<3.4',
+    'pulpcore>=3.3',
     'PyGObject~=3.22',
     'solv'
 ]
@@ -17,7 +17,7 @@ with open('README.rst') as f:
 
 setup(
     name='pulp-rpm',
-    version='3.3.0',
+    version='3.4.0b1.dev',
     description='RPM plugin for the Pulp Project',
     long_description=long_description,
     license='GPLv2+',
