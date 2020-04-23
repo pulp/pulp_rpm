@@ -87,7 +87,7 @@ Improved Documentation
 Misc
 ----
 
-- `#5207 <https://pulp.plan.io/issues/5207>`_, `#5455 <https://pulp.plan.io/issues/5455>`_, `#6312 <https://pulp.plan.io/issues/6312>`_, `#6313 <https://pulp.plan.io/issues/6313>`_, `#6339 <https://pulp.plan.io/issues/6339>`_, `#6363 <https://pulp.plan.io/issues/6363>`_, `#6442 <https://pulp.plan.io/issues/6442>`_, `#6155 <https://pulp.plan.io/issues/6155>`_, `#6297 <https://pulp.plan.io/issues/6297>`_, `#6300 <https://pulp.plan.io/issues/6300>`_
+- `#5207 <https://pulp.plan.io/issues/5207>`_, `#5455 <https://pulp.plan.io/issues/5455>`_, `#6312 <https://pulp.plan.io/issues/6312>`_, `#6313 <https://pulp.plan.io/issues/6313>`_, `#6339 <https://pulp.plan.io/issues/6339>`_, `#6363 <https://pulp.plan.io/issues/6363>`_, `#6442 <https://pulp.plan.io/issues/6442>`_, `#6155 <https://pulp.plan.io/issues/6155>`_, `#6297 <https://pulp.plan.io/issues/6297>`_, `#6300 <https://pulp.plan.io/issues/6300>`_, `#6560 <https://pulp.plan.io/issues/6560>`_
 
 
 ----
