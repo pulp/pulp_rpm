@@ -105,7 +105,12 @@ def repair_file(lite_model, document):
         fp.write(document)
     checksum = sha256(document).hexdigest()
     repaired = lite_model.Model.objects.get(id=lite_model.id)
-    repaired.update(checksum=checksum)
+    repaired.checksum = checksum
+    # it has to be save and not update, so the pre_save hook is called and the _last_updated is set
+    repaired.save()
+    # even though content unit got updated, there is no need to republish any repos,
+    # storage_path stays the same, it just has a correct content.
+
     repaired.safe_import_content(path)
     return repaired
 
@@ -282,10 +287,15 @@ def add_default(repository, default, model):
         model.save_and_import_content(path)
     except NotUniqueError:
         updated = ModulemdDefaults.objects.get(**model.unit_key)
-        updated.update(
-            stream=model.stream,
-            profiles=model.profiles,
-            checksum=model.checksum)
+        updated.stream = model.stream
+        updated.profiles = model.profiles
+        updated.checksum = model.checksum
+        # it has to be save, so the pre_save hook is called and the _last_updated is set
+        updated.save()
+        # module-defaults content units belong to a specific repo and are never shared between
+        # multiple repos. So even though content unit got updated, there is no need to
+        # republish any repos.
+
         updated.safe_import_content(path)
         model = updated
     repository_controller.associate_single_unit(repository, model)
