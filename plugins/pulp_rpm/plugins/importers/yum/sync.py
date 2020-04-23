@@ -1058,10 +1058,18 @@ class RepoSync(object):
                                              (existing_unit.unit_key, new_unit.unit_key))
 
         if isinstance(existing_unit, models.Errata):
-            existing_unit.merge_errata(new_unit)
+            is_updated_unit = existing_unit.merge_errata(new_unit)
         else:
             raise PulpCodedException(message="Concatenation of unit type %s is not supported" %
                                              existing_unit.type_id)
+
+        if is_updated_unit:
+            # We've changed an erratum which potentially exists in multiple repos.
+            # The updated erratum will result in last_unit_added being refreshed in *this*
+            # repo by the controller, but we'll also have to update that field in all
+            # other repos, otherwise they may wrongly skip publish.
+            repo_controller.update_last_unit_added_for_unit(existing_unit.id,
+                                                            existing_unit._content_type_id)
 
         # return the unit now that we've possibly modified it.
         return existing_unit
