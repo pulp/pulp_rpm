@@ -1,11 +1,15 @@
+import tempfile
 from logging import getLogger
 
+from aiohttp.web_response import Response
+from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db import (
     models,
     transaction,
 )
 
+from pulpcore.app.settings import CONTENT_PATH_PREFIX
 from pulpcore.plugin.models import (
     AsciiArmoredDetachedSigningService,
     CreatedResource,
@@ -169,6 +173,40 @@ class RpmDistribution(PublicationDistribution):
     """
 
     TYPE = 'rpm'
+
+    def content_handler(self, path):
+        """Serve config.repo and public.key."""
+        if path == 'config.repo':
+            val = f"""[{self.name}]
+enabled=1
+baseurl={settings.CONTENT_ORIGIN}{CONTENT_PATH_PREFIX}{self.base_path}/
+gpgcheck=0
+"""
+            repository_pk = self.publication.repository.pk
+            repository = RpmRepository.objects.get(pk=repository_pk)
+            signing_service = repository.metadata_signing_service
+            if signing_service is None:
+                val += 'repo_gpgcheck=0'
+            else:
+                val += f"""repo_gpgcheck=1
+gpgkey={settings.CONTENT_ORIGIN}{CONTENT_PATH_PREFIX}{self.base_path}/public.key
+"""
+            return Response(body=val)
+
+        if path == 'public.key':
+            repository_pk = self.publication.repository.pk
+            repository = RpmRepository.objects.get(pk=repository_pk)
+            signing_service = repository.metadata_signing_service
+            if signing_service is None:
+                return None
+            with tempfile.TemporaryDirectory() as temp_directory_name:
+                with tempfile.NamedTemporaryFile(dir=temp_directory_name) as temp_file:
+                    temp_file.write(b"arbitrary data")
+                    temp_file.flush()
+                    signing_result = signing_service.sign(temp_file.name)
+                    with open(signing_result.get('key')) as pk:
+                        return Response(body=''.join(pk.readlines()))
+        return None
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
