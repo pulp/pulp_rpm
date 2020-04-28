@@ -173,10 +173,12 @@ class RpmDistribution(PublicationDistribution):
     """
 
     TYPE = 'rpm'
+    repository_config_file_name = 'config.repo'
+    public_key_file_name = 'public.key'
 
     def content_handler(self, path):
         """Serve config.repo and public.key."""
-        if path == 'config.repo':
+        if path == self.repository_config_file_name:
             val = f"""[{self.name}]
 enabled=1
 baseurl={settings.CONTENT_ORIGIN}{CONTENT_PATH_PREFIX}{self.base_path}/
@@ -189,11 +191,11 @@ gpgcheck=0
                 val += 'repo_gpgcheck=0'
             else:
                 val += f"""repo_gpgcheck=1
-gpgkey={settings.CONTENT_ORIGIN}{CONTENT_PATH_PREFIX}{self.base_path}/public.key
+gpgkey={settings.CONTENT_ORIGIN}{CONTENT_PATH_PREFIX}{self.base_path}/{self.public_key_file_name}
 """
             return Response(body=val)
 
-        if path == 'public.key':
+        if path == self.public_key_file_name:
             repository_pk = self.publication.repository.pk
             repository = RpmRepository.objects.get(pk=repository_pk)
             signing_service = repository.metadata_signing_service
@@ -207,6 +209,18 @@ gpgkey={settings.CONTENT_ORIGIN}{CONTENT_PATH_PREFIX}{self.base_path}/public.key
                     with open(signing_result.get('key')) as pk:
                         return Response(body=''.join(pk.readlines()))
         return None
+
+    def content_handler_list_directory(self, rel_path):
+        """Return the extra dir entries."""
+        retval = set()
+        if rel_path == '':
+            retval.add(self.repository_config_file_name)
+            repository_pk = self.publication.repository.pk
+            repository = RpmRepository.objects.get(pk=repository_pk)
+            signing_service = repository.metadata_signing_service
+            if signing_service is not None:
+                retval.add(self.public_key_file_name)
+        return retval
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
