@@ -4,6 +4,8 @@ import os
 import unittest
 from random import choice
 
+from django.utils.dateparse import parse_datetime
+
 from pulp_smash import cli, config
 from pulp_smash.pulp3.constants import MEDIA_PATH
 from pulp_smash.pulp3.utils import (
@@ -18,7 +20,16 @@ from pulp_smash.pulp3.utils import (
 )
 
 from pulp_rpm.tests.functional.constants import (
+    PULP_TYPE_ADVISORY,
     RPM_ADVISORY_CONTENT_NAME,
+    RPM_ADVISORY_INCOMPLETE_PKG_LIST_URL,
+    RPM_ADVISORY_UPDATED_VERSION_URL,
+    RPM_ADVISORY_DIFFERENT_PKGLIST_URL,
+    RPM_ADVISORY_DIFFERENT_REPO_URL,
+    RPM_ADVISORY_NO_DATES,
+    RPM_ADVISORY_TEST_ID,
+    RPM_ADVISORY_TEST_REMOVE_COUNT,
+    RPM_ADVISORY_TEST_ADDED_COUNT,
     RPM_EPEL_URL,
     RPM_FIXTURE_SUMMARY,
     RPM_INVALID_FIXTURE_URL,
@@ -29,7 +40,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_PACKAGE_CONTENT_NAME,
     RPM_PACKAGE_COUNT,
     RPM_RICH_WEAK_FIXTURE_URL,
-    RPM_UPDATERECORD_ID,
+    RPM_ADVISORY_TEST_ID_NEW,
     RPM_UPDATED_UPDATEINFO_FIXTURE_URL,
     RPM_REFERENCES_UPDATEINFO_URL,
     RPM_SIGNED_FIXTURE_URL,
@@ -449,9 +460,9 @@ class BasicSyncTestCase(unittest.TestCase):
 
         self.assertNotEqual(mutated_updaterecords, original_updaterecords)
         self.assertEqual(
-            mutated_updaterecords[RPM_UPDATERECORD_ID]['description'],
+            mutated_updaterecords[RPM_ADVISORY_TEST_ID_NEW]['description'],
             'Updated Gorilla_Erratum and the updated date contains timezone',
-            mutated_updaterecords[RPM_UPDATERECORD_ID],
+            mutated_updaterecords[RPM_ADVISORY_TEST_ID_NEW],
         )
 
     def test_file_decriptors(self):
@@ -596,6 +607,340 @@ class BasicSyncTestCase(unittest.TestCase):
 
         # check that sync was optimized
         self.assertTrue(optimized)
+
+    def test_sync_advisory_new_version(self):
+        """Sync a repository and re-sync with newer version of Advisory.
+
+        Test if advisory with same ID and pkglist, but newer version is updated.
+
+        `Pulp #4142 <https://pulp.plan.io/issues/4142>`_
+
+        1. Sync rpm-unsigned repository
+        2. Re-sync rpm-advisory-updateversion
+        3. Check if the newer version advisory was synced
+        """
+        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+
+        # sync
+        repo, remote = self.do_test(remote=remote)
+
+        # add remote to clean up
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        body = gen_rpm_remote(RPM_ADVISORY_UPDATED_VERSION_URL)
+        remote = self.remote_api.create(body)
+
+        # re-sync
+        repo, remote = self.do_test(repo, remote)
+
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # check if newer version advisory was added and older removed
+        added_advisories = get_added_content(repo.to_dict())[PULP_TYPE_ADVISORY]
+        added_advisory = [
+            advisory['version']
+            for advisory in added_advisories
+            if advisory['id'] == RPM_ADVISORY_TEST_ID
+        ]
+        removed_advisories = get_removed_content(repo.to_dict())[PULP_TYPE_ADVISORY]
+        removed_advisory = [
+            advisory['version']
+            for advisory in removed_advisories
+            if advisory['id'] == RPM_ADVISORY_TEST_ID
+        ]
+        self.assertGreater(int(added_advisory[0]), int(removed_advisory[0]))
+
+    def test_sync_advisory_old_version(self):
+        """Sync a repository and re-sync with older version of Advisory.
+
+        Test if advisory with same ID and pkglist, but older version is not updated.
+
+        `Pulp #4142 <https://pulp.plan.io/issues/4142>`_
+
+        1. Sync rpm-advisory-updateversion
+        2. Re-sync rpm-unsigned repository
+        3. Check if the newer (already present) version is preserved
+        """
+        body = gen_rpm_remote(RPM_ADVISORY_UPDATED_VERSION_URL)
+        remote = self.remote_api.create(body)
+
+        # sync
+        repo, remote = self.do_test(remote=remote)
+        repository_version = repo.to_dict()['latest_version_href']
+
+        # add remote to clean up
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+
+        # re-sync
+        repo, remote = self.do_test(repo, remote)
+        repository_version_new = repo.to_dict()['latest_version_href']
+
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        present_advisories = get_content(repo.to_dict())[PULP_TYPE_ADVISORY]
+        advisory_version = [
+            advisory['version']
+            for advisory in present_advisories
+            if advisory['id'] == RPM_ADVISORY_TEST_ID
+        ]
+
+        # check if the newer version is preserved
+        self.assertEqual(advisory_version[0], '2')
+        # no new content is present in RPM_UNSIGNED_FIXTURE_URL against
+        # RPM_ADVISORY_UPDATED_VERSION_URL so repository latests version should stay the same.
+        self.assertEqual(repository_version, repository_version_new)
+
+    def test_sync_merge_advisories(self):
+        """Sync two advisories with same ID, version and different pkglist.
+
+        Test if two advisories are merged.
+        """
+        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+
+        # sync
+        repo, remote = self.do_test(remote=remote)
+
+        # add remote to clean up
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        body = gen_rpm_remote(RPM_ADVISORY_DIFFERENT_PKGLIST_URL)
+        remote = self.remote_api.create(body)
+
+        # re-sync
+        repo, remote = self.do_test(repo, remote)
+
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # check advisories were merged
+        added_advisories = get_added_content(repo.to_dict())[PULP_TYPE_ADVISORY]
+        added_advisory_pkglist = [
+            advisory['pkglist']
+            for advisory in added_advisories
+            if advisory['id'] == RPM_ADVISORY_TEST_ID
+        ]
+        removed_advisories = get_removed_content(repo.to_dict())[PULP_TYPE_ADVISORY]
+        removed_advisory_pkglist = [
+            advisory['pkglist']
+            for advisory in removed_advisories
+            if advisory['id'] == RPM_ADVISORY_TEST_ID
+        ]
+        added_count = 0
+        removed_count = 0
+        for collection in added_advisory_pkglist[0]:
+            added_count += len(collection['packages'])
+        for collection in removed_advisory_pkglist[0]:
+            removed_count += len(collection['packages'])
+        self.assertEqual(RPM_ADVISORY_TEST_REMOVE_COUNT, removed_count)
+        self.assertEqual(RPM_ADVISORY_TEST_ADDED_COUNT, added_count)
+
+    def test_sync_advisory_diff_repo(self):
+        """Test failure sync advisories.
+
+        If advisory has same id, version but different update_date and
+        no packages intersection sync should fail.
+
+        Tested error_msg must be same as we use in pulp_rpm.app.advisory.
+        """
+        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+
+        # sync
+        repo, remote = self.do_test(remote=remote)
+
+        # add remote to clean up
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # create remote with colliding advisory
+        body = gen_rpm_remote(RPM_ADVISORY_DIFFERENT_REPO_URL)
+        remote = self.remote_api.create(body)
+
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        task_result = monitor_task(sync_response.task)
+        error_msg = 'Incoming and existing advisories have the same id but different ' \
+            'timestamps and intersecting package lists. It is likely that they are from ' \
+            'two different incompatible remote repositories. E.g. RHELX-repo and ' \
+            'RHELY-debuginfo repo. Ensure that you are adding content for the compatible ' \
+            'repositories. Advisory id: {}'.format(RPM_ADVISORY_TEST_ID)
+
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        self.assertIn(error_msg, task_result['error']['description'])
+
+    def test_sync_advisory_incomplete_pgk_list(self):
+        """Test failure sync advisories.
+
+        If update_dates and update_version are the same, pkglist intersection is non-empty
+        and not equal to either pkglist sync should fail.
+
+        Tested error_msg must be same as we use in pulp_rpm.app.advisory.
+        """
+        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+
+        # sync
+        repo, remote = self.do_test(remote=remote)
+
+        # add remote to clean up
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # create remote with colliding advisory
+        body = gen_rpm_remote(RPM_ADVISORY_INCOMPLETE_PKG_LIST_URL)
+        remote = self.remote_api.create(body)
+
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        task_result = monitor_task(sync_response.task)
+        error_msg = 'Incoming and existing advisories have the same id ' \
+            'and timestamp but different and intersecting package lists. ' \
+            'At least one of them is wrong. Advisory id: {}'.format(RPM_ADVISORY_TEST_ID)
+
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        self.assertIn(error_msg, task_result['error']['description'])
+
+    @unittest.skip(
+        'FIXME: Enable this test after https://pulp.plan.io/issues/6605 is fixed'
+    )
+    def test_sync_advisory_no_updated_date(self):
+        """Test sync advisory with no update.
+
+        1. Sync repository with advisory which has updated_date
+        2. Re-sync with repo with same id and version as previous
+           but missing updated_date (issued_date should be used instead).
+        """
+        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+
+        # sync
+        repo, remote = self.do_test(remote=remote)
+
+        # add remote to clean up
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        body = gen_rpm_remote(RPM_ADVISORY_NO_DATES)
+        remote = self.remote_api.create(body)
+
+        # re-sync
+        repo, remote = self.do_test(repo, remote)
+
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        added_advisory_date = [
+            advisory['updated_date']
+            for advisory in get_added_content(repo.to_dict())[PULP_TYPE_ADVISORY]
+            if RPM_ADVISORY_TEST_ID in advisory['id']
+        ]
+        removed_advisory_date = [
+            advisory['issued_date']
+            for advisory in get_removed_content(repo.to_dict())[PULP_TYPE_ADVISORY]
+            if RPM_ADVISORY_TEST_ID in advisory['id']
+        ]
+
+        self.assertGreater(
+            parse_datetime(added_advisory_date[0]),
+            parse_datetime(removed_advisory_date[0])
+        )
+
+    def test_sync_advisory_updated_update_date(self):
+        """Test sync advisory with updated update_date."""
+        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+
+        # sync
+        repo, remote = self.do_test(remote=remote)
+
+        # add remote to clean up
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        body = gen_rpm_remote(RPM_UPDATED_UPDATEINFO_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+
+        # re-sync
+        repo, remote = self.do_test(repo, remote)
+
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        added_advisory_date = [
+            advisory['updated_date']
+            for advisory in get_added_content(repo.to_dict())[PULP_TYPE_ADVISORY]
+            if RPM_ADVISORY_TEST_ID_NEW in advisory['id']
+        ]
+        removed_advisory_date = [
+            advisory['updated_date']
+            for advisory in get_removed_content(repo.to_dict())[PULP_TYPE_ADVISORY]
+            if RPM_ADVISORY_TEST_ID_NEW in advisory['id']
+        ]
+
+        self.assertGreater(
+            parse_datetime(added_advisory_date[0]),
+            parse_datetime(removed_advisory_date[0])
+        )
+
+    def test_sync_advisory_older_update_date(self):
+        """Test sync advisory with older update_date."""
+        body = gen_rpm_remote(RPM_UPDATED_UPDATEINFO_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+
+        # sync
+        repo, remote = self.do_test(remote=remote)
+        advisory_date = [
+            advisory['updated_date']
+            for advisory in get_content(repo.to_dict())[PULP_TYPE_ADVISORY]
+            if advisory['id'] == RPM_ADVISORY_TEST_ID
+        ]
+
+        # add remote to clean up
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+
+        # re-sync
+        repo, remote = self.do_test(repo, remote)
+
+        advisory_date_new = [
+            advisory['updated_date']
+            for advisory in get_content(repo.to_dict())[PULP_TYPE_ADVISORY]
+            if advisory['id'] == RPM_ADVISORY_TEST_ID
+        ]
+        added_advisories = [
+            advisory['id']
+            for advisory in get_added_content(repo.to_dict())[PULP_TYPE_ADVISORY]
+        ]
+
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # check if advisory is preserved and no advisory with same id was added
+        self.assertEqual(
+            parse_datetime(advisory_date[0]),
+            parse_datetime(advisory_date_new[0])
+        )
+        self.assertNotIn(
+            RPM_ADVISORY_TEST_ID,
+            added_advisories
+        )
 
     def do_test(self, repository=None, remote=None):
         """Sync a repository.

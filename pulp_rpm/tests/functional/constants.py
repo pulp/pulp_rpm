@@ -238,7 +238,44 @@ as the ones in the standard repositories, but with different metadata.
 Note: This repository uses unsigned RPMs.
 """
 
-RPM_UPDATERECORD_ID = 'RHEA-2012:0058'
+RPM_ADVISORY_UPDATED_VERSION_URL = urljoin(
+    PULP_FIXTURES_BASE_URL, 'rpm-updated-updateversion'
+)
+"""The URL to a repository containing Advisories with same ID as the ones in the standard
+unsigned rpm repository, but with updated Advisory version.
+"""
+
+RPM_ADVISORY_DIFFERENT_PKGLIST_URL = urljoin(
+    PULP_FIXTURES_BASE_URL, 'rpm-advisory-diffpkgs'
+)
+"""The URL to a repository containing Advisories with same ID and version as the ones in the
+standard unsigned rpm repository, but with different pkglist.
+"""
+
+RPM_ADVISORY_DIFFERENT_REPO_URL = urljoin(
+    PULP_FIXTURES_BASE_URL, 'rpm-advisory-diff-repo'
+)
+"""The URL to a repository containing Advisories with same ID and version as the ones in the
+standard unsigned rpm repository, but with different update_date and packages intersection.
+"""
+
+RPM_ADVISORY_INCOMPLETE_PKG_LIST_URL = urljoin(
+    PULP_FIXTURES_BASE_URL, 'rpm-advisory-incomplete-package-list'
+)
+"""The URL to a repository containing Advisories with same update_date and version as the ones
+in the standard unsigned rpm repository, but pkglist intersection is non-empty and not equal
+to either pkglist.
+"""
+
+RPM_ADVISORY_NO_DATES = urljoin(
+    PULP_FIXTURES_BASE_URL, 'rpm-advisory-no-dates'
+)
+"""The URL to a repository containing Advisories with same id and version as the ones
+in the standard unsigned rpm repository, but no update_date or issue_date.
+"""
+
+RPM_ADVISORY_TEST_ID = 'RHEA-2012:0056'
+RPM_ADVISORY_TEST_ID_NEW = 'RHEA-2012:0058'
 """The ID of an UpdateRecord (advisory/erratum).
 
 The package contained on this advisory is defined by
@@ -246,6 +283,9 @@ The package contained on this advisory is defined by
 repositories, i.e. :data:`RPM_SIGNED_FIXTURE_URL` and
 :data:`RPM_UNSIGNED_FIXTURE_URL`.
 """
+RPM_ADVISORY_TEST_REMOVE_COUNT = 3
+RPM_ADVISORY_TEST_ADDED_COUNT = 6
+
 
 RPM_UPDATERECORD_RPM_NAME = 'gorilla'
 """The name of the RPM named by :data:`RPM_UPDATERECORD_ID`."""
@@ -300,3 +340,5 @@ CENTOS8_KICKSTART_BASEOS_URL = "http://mirror.linux.duke.edu/pub/centos/8/BaseOS
 CENTOS8_APPSTREAM_URL = "http://mirror.linux.duke.edu/pub/centos/8/AppStream/x86_64/os/"
 CENTOS8_BASEOS_URL = "http://mirror.linux.duke.edu/pub/centos/8/BaseOS/x86_64/os/"
 EPEL7_URL = "https://dl.fedoraproject.org/pub/epel/7/x86_64/"
+
+PULP_TYPE_ADVISORY = 'rpm.advisory'
