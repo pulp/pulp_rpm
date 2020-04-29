@@ -57,6 +57,11 @@ Remote GET response:
         "url": "https://fixtures.pulpproject.org/rpm-unsigned/"
     }
 
+While creating a new remote, you may set the field ``url`` to point to a mirror list feed. Pulp
+fetches the list of available mirrors and tries to download content from the first valid mirror.
+This means that whenever an error occurs during the synchronization, the whole sync process ends
+with an error too.
+
 .. _versioned-repo-created:
 
 Configuration for SLES 12+ repository with authentication

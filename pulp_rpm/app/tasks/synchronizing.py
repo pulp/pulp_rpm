@@ -2,6 +2,7 @@ import asyncio
 import gzip
 import logging
 import os
+import re
 
 from collections import defaultdict
 from functools import partial
@@ -100,6 +101,36 @@ def repodata_exists(remote, url):
     return True
 
 
+def fetch_mirror(remote):
+    """Fetch the first valid mirror from a list of all available mirrors from a mirror list feed.
+
+    URLs which are commented out or have any punctuations in front of them are being ignored.
+    """
+    downloader = remote.get_downloader(url=remote.url.rstrip("/"))
+    result = downloader.fetch()
+
+    url_pattern = re.compile(r"(^|^[\w\s=]+\s)((http(s)?)://.*)")
+    with open(result.path) as mirror_list_file:
+        for mirror in mirror_list_file:
+            match = re.match(url_pattern, mirror)
+            if match and repodata_exists(remote, match.group(2)):
+                return match.group(2)
+
+    return None
+
+
+def fetch_remote_url(remote):
+    """Fetch a single remote from which can be content synced."""
+    remote_url = remote.url.rstrip("/") + "/"
+    downloader = remote.get_downloader(url=urljoin(remote_url, "repodata/repomd.xml"))
+    try:
+        downloader.fetch()
+    except (ClientResponseError, FileNotFoundError):
+        return fetch_mirror(remote)
+    else:
+        return remote_url
+
+
 def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
     """
     Sync content from the remote repository.
@@ -127,7 +158,13 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
 
     deferred_download = (remote.policy != Remote.IMMEDIATE)  # Interpret download policy
 
-    treeinfo = get_treeinfo_data(remote)
+    remote_url = fetch_remote_url(remote)
+    if not remote_url:
+        raise ValueError(_("A no valid remote URL was provided."))
+    else:
+        remote_url = remote_url.rstrip("/") + "/"
+
+    treeinfo = get_treeinfo_data(remote, remote_url)
     if treeinfo:
         treeinfo["repositories"] = {}
         for repodata in set(treeinfo["download"]["repodatas"]):
@@ -142,7 +179,7 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
                 sub_repo.save()
             treeinfo["repositories"].update({repodata: str(sub_repo.pk)})
             path = f"{repodata}/"
-            new_url = urljoin(remote.url, path)
+            new_url = urljoin(remote_url, path)
             if repodata_exists(remote, new_url):
                 stage = RpmFirstStage(
                     remote,
@@ -161,7 +198,8 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
                                 deferred_download,
                                 optimize=optimize,
                                 skip_types=skip_types,
-                                treeinfo=treeinfo)
+                                treeinfo=treeinfo,
+                                new_url=remote_url)
     dv = RpmDeclarativeVersion(first_stage=first_stage,
                                repository=repository,
                                mirror=mirror)
@@ -317,8 +355,7 @@ class RpmFirstStage(Stage):
 
     async def run(self):
         """Build `DeclarativeContent` from the repodata."""
-        remote_url = self.new_url or self.remote.url
-        self.data.remote_url = remote_url if remote_url[-1] == "/" else f"{remote_url}/"
+        self.data.remote_url = self.new_url or self.remote.url
 
         progress_data = dict(message='Downloading Metadata Files', code='downloading.metadata')
         with ProgressReport(**progress_data) as metadata_pb:
@@ -327,7 +364,6 @@ class RpmFirstStage(Stage):
             downloader = self.remote.get_downloader(
                 url=urljoin(self.data.remote_url, 'repodata/repomd.xml')
             )
-            # TODO: decide how to distinguish between a mirror list and a normal repo
             result = await downloader.run()
             metadata_pb.increment()
 
