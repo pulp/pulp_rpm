@@ -1,4 +1,4 @@
-import tempfile
+import urllib.parse
 from logging import getLogger
 
 from aiohttp.web_response import Response
@@ -174,7 +174,6 @@ class RpmDistribution(PublicationDistribution):
 
     TYPE = 'rpm'
     repository_config_file_name = 'config.repo'
-    public_key_file_name = 'public.key'
 
     def content_handler(self, path):
         """Serve config.repo and public.key."""
@@ -190,36 +189,20 @@ gpgcheck=0
             if signing_service is None:
                 val += 'repo_gpgcheck=0'
             else:
+                gpgkey_path = urllib.parse.urljoin(settings.CONTENT_ORIGIN, CONTENT_PATH_PREFIX)
+                gpgkey_path = urllib.parse.urljoin(gpgkey_path, self.base_path, True)
+                gpgkey_path += '/repodata/public.key'
+
                 val += f"""repo_gpgcheck=1
-gpgkey={settings.CONTENT_ORIGIN}{CONTENT_PATH_PREFIX}{self.base_path}/{self.public_key_file_name}
+gpgkey={gpgkey_path}
 """
             return Response(body=val)
-
-        if path == self.public_key_file_name:
-            repository_pk = self.publication.repository.pk
-            repository = RpmRepository.objects.get(pk=repository_pk)
-            signing_service = repository.metadata_signing_service
-            if signing_service is None:
-                return None
-            with tempfile.TemporaryDirectory() as temp_directory_name:
-                with tempfile.NamedTemporaryFile(dir=temp_directory_name) as temp_file:
-                    temp_file.write(b"arbitrary data")
-                    temp_file.flush()
-                    signing_result = signing_service.sign(temp_file.name)
-                    with open(signing_result.get('key')) as pk:
-                        return Response(body=''.join(pk.readlines()))
-        return None
 
     def content_handler_list_directory(self, rel_path):
         """Return the extra dir entries."""
         retval = set()
         if rel_path == '':
             retval.add(self.repository_config_file_name)
-            repository_pk = self.publication.repository.pk
-            repository = RpmRepository.objects.get(pk=repository_pk)
-            signing_service = repository.metadata_signing_service
-            if signing_service is not None:
-                retval.add(self.public_key_file_name)
         return retval
 
     class Meta:
