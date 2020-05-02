@@ -2,6 +2,7 @@ import asyncio
 import gzip
 import logging
 import os
+import time
 
 from collections import defaultdict
 from gettext import gettext as _  # noqa:F401
@@ -330,6 +331,10 @@ class RpmFirstStage(Stage):
 
             repomd_path = result.path
             repomd = cr.Repomd(repomd_path)
+
+            # It the tag revision is missing, set it at the current Unix TimeStamp
+            if (repomd.revision is None):
+                repomd.set_revision(str(int(time.time())))
 
             # Caution: we are not storing when the remote was last updated, so the order of this
             # logic must remain in this order where we first check the version number as other
