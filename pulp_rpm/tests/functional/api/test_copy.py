@@ -24,21 +24,14 @@ from pulp_rpm.tests.functional.constants import (
     RPM_REPO_PATH,
     RPM_UNSIGNED_FIXTURE_URL,
     UPDATERECORD_CONTENT_PATH,
+    RPM_CONTENT_PATH,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_remote, rpm_copy
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 
-class BasicCopyTestCase(unittest.TestCase):
-    """Copy units between repositories with the rpm plugin."""
-
-    @classmethod
-    def setUpClass(cls):
-        """Create class-wide variables."""
-        cls.cfg = config.get_config()
-        cls.client = api.Client(cls.cfg, api.json_handler)
-
-        delete_orphans(cls.cfg)
+class BaseCopy(unittest.TestCase):
+    """Base-class for shared code for copy-test-subclasses."""
 
     def _setup_repos(self, remote_url=RPM_UNSIGNED_FIXTURE_URL, summary=RPM_FIXTURE_SUMMARY):
         """Prepare for a copy test by creating two repos and syncing.
@@ -77,6 +70,18 @@ class BasicCopyTestCase(unittest.TestCase):
         )
 
         return source_repo, dest_repo
+
+
+class BasicCopyTestCase(BaseCopy):
+    """Copy units between repositories with the rpm plugin."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.cfg = config.get_config()
+        cls.client = api.Client(cls.cfg, api.json_handler)
+
+        delete_orphans(cls.cfg)
 
     def test_copy_all(self):
         """Test copying all the content from one repo to another."""
@@ -197,7 +202,7 @@ class BasicCopyTestCase(unittest.TestCase):
         self.assertEqual(content_to_copy, dest_content)
 
 
-class DependencySolvingTestCase(unittest.TestCase):
+class DependencySolvingTestCase(BaseCopy):
     """Copy units between repositories with the rpm plugin."""
 
     @classmethod
@@ -212,37 +217,11 @@ class DependencySolvingTestCase(unittest.TestCase):
         """Test copying content units with the RPM plugin.
 
         Do the following:
-
-        1. Create two repositories and a remote.
-        2. Sync the remote.
-        3. Assert that repository version is not None.
-        4. Assert that the correct number of units were added and are present in the repo.
-        5. Use the RPM copy API to units from the repo to the empty repo.
-        7. Assert that the correct number of units were added and are present in the dest repo.
+        1. start with standard repo-setup
+        2. Use the RPM copy API to units from the repo to the empty repo.
+        3. Assert that the correct number of units were added and are present in the dest repo.
         """
-        source_repo = self.client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, source_repo['pulp_href'])
-
-        dest_repo = self.client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, dest_repo['pulp_href'])
-
-        # Create a remote with the standard test fixture url.
-        body = gen_rpm_remote()
-        remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote['pulp_href'])
-
-        # Sync the repository.
-        self.assertEqual(source_repo["latest_version_href"],
-                         f"{source_repo['pulp_href']}versions/0/")
-        sync(self.cfg, remote, source_repo)
-        source_repo = self.client.get(source_repo['pulp_href'])
-
-        # Check that we have the correct content counts.
-        self.assertDictEqual(get_content_summary(source_repo), RPM_FIXTURE_SUMMARY)
-        self.assertDictEqual(
-            get_added_content_summary(source_repo), RPM_FIXTURE_SUMMARY
-        )
-
+        source_repo, dest_repo = self._setup_repos()
         rpm_copy(self.cfg, source_repo, dest_repo, criteria, recursive=True)
         dest_repo = self.client.get(dest_repo['pulp_href'])
 
@@ -251,3 +230,38 @@ class DependencySolvingTestCase(unittest.TestCase):
         self.assertDictEqual(
             get_added_content_summary(dest_repo), expected_results,
         )
+
+    def test_all_content_recursive(self):
+        """Test requesting all-rpm-uipdate-content/recursive (see #6519)."""
+        source_repo, dest_repo = self._setup_repos()
+        latest_href = source_repo["latest_version_href"]
+
+        advisory_content = \
+            self.client.get(f"{UPDATERECORD_CONTENT_PATH}?repository_version={latest_href}")
+        advisories_to_copy = \
+            [rslt["pulp_href"] for rslt in advisory_content["results"]]
+        rpm_content = self.client.get(f"{RPM_CONTENT_PATH}?repository_version={latest_href}")
+        rpms_to_copy = [rslt["pulp_href"] for rslt in rpm_content["results"]]
+        content_to_copy = set()
+        content_to_copy.update(advisories_to_copy)
+        content_to_copy.update(rpms_to_copy)
+        config = [{
+            'source_repo_version': latest_href,
+            'dest_repo': dest_repo['pulp_href'],
+            'content': list(content_to_copy)
+        }]
+
+        rpm_copy(self.cfg, config, recursive=True)
+
+        dest_repo = self.client.get(dest_repo['pulp_href'])
+        latest_href = dest_repo["latest_version_href"]
+
+        # check advisories copied
+        dc = self.client.get(f"{UPDATERECORD_CONTENT_PATH}?repository_version={latest_href}")
+        dest_content = [c["pulp_href"] for c in dc["results"]]
+        self.assertEqual(sorted(advisories_to_copy), sorted(dest_content))
+
+        # check rpms copied
+        dc = self.client.get(f"{RPM_CONTENT_PATH}?repository_version={latest_href}")
+        dest_content = [c["pulp_href"] for c in dc["results"]]
+        self.assertEqual(sorted(rpms_to_copy), sorted(dest_content))
