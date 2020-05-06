@@ -838,8 +838,7 @@ class Solver:
             for unit in units:
                 if unit.pulp_type in {"rpm.package", "rpm.modulemd", "rpm.modulemd_defaults"}:
                     solvables.append(self.mapping.get_solvable(unit.pk, repo))
-                else:
-                    passthrough[repo].add(unit.pk)
+                passthrough[repo].add(unit.pk)
 
         result_solvables = set()
         self._pool.createwhatprovides()
