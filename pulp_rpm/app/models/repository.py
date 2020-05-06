@@ -67,7 +67,7 @@ class RpmRepository(Repository):
         null=True
     )
     sub_repo = models.BooleanField(default=False)
-    last_sync_revision_number = models.CharField(max_length=20)
+    last_sync_revision_number = models.CharField(max_length=20, null=True)
     last_sync_remote = models.ForeignKey(Remote, null=True, on_delete=models.SET_NULL)
     last_sync_repo_version = models.PositiveIntegerField(default=0)
     original_checksum_types = JSONField(default=dict)
