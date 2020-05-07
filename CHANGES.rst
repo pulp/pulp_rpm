@@ -13,6 +13,28 @@ Changelog
 
 .. towncrier release notes start
 
+3.3.1 (2020-05-07)
+==================
+
+
+Bugfixes
+--------
+
+- Taught copy to always include specified packages.
+  `#6519 <https://pulp.plan.io/issues/6519>`_
+- Fixed the upgrade issue, revision number can be empty now.
+  `#6662 <https://pulp.plan.io/issues/6662>`_
+
+
+Misc
+----
+
+- `#6665 <https://pulp.plan.io/issues/6665>`_
+
+
+----
+
+
 3.3.0 (2020-04-21)
 ==================
 
