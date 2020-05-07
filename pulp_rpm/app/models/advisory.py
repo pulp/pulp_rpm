@@ -361,6 +361,7 @@ class UpdateCollectionPackage(BaseModel):
     sum = models.TextField()
     sum_type = models.PositiveIntegerField(
         null=True,
+        default=None,
         choices=[
             (sum_type, sum_type) for sum_type in ADVISORY_SUM_TYPE_TO_NAME.keys()
         ]

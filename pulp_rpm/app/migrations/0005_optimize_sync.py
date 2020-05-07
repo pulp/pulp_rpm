@@ -25,6 +25,6 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='rpmrepository',
             name='last_sync_revision_number',
-            field=models.CharField(max_length=20),
+            field=models.CharField(max_length=20, null=True),
         ),
     ]

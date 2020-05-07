@@ -46,6 +46,11 @@ def is_previous_version(version, target_version):
         bool: True if versions are the same or if the version is older than the target version.
 
     """
+    if version is None or target_version is None:
+        # if any of the versions are empty, they can't be compared and
+        # a target_version need to be picked
+        return True
+
     if version.isdigit() and target_version.isdigit():
         return int(version) <= int(target_version)
 
