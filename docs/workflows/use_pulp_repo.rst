@@ -41,20 +41,14 @@ Download GET response:
 
 Install a package from Pulp
 ---------------------------
+Download the config.repo file from the server at distribution's
+base_path and store it in /etc/yum.repos.d::
 
-Open /etc/yum.repos.d/foo.repo and add the following:
+  curl http://localhost:24816/pulp/content/foo/config.repo > /etc/yum.repos.d/foo.repo
 
-.. code::
+Now use dnf to install a package::
 
-  [foo]
-  name = foo
-  baseurl = http://localhost:24816/pulp/content/foo/
-  gpgcheck = 0
-
-
-Now use dnf to install a package:
-
-``$ sudo dnf install walrus``
+  sudo dnf install walrus
 
 List and Install applicable Advisories
 --------------------------------------

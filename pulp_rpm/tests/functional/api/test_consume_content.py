@@ -25,6 +25,8 @@ from pulp_rpm.tests.functional.constants import (
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 from pulp_rpm.tests.functional.utils import publish
 
+import requests
+
 
 class PackageManagerConsumeTestCase(unittest.TestCase):
     """Verify whether package manager can consume content from Pulp."""
@@ -122,6 +124,19 @@ class ConsumeSignedRepomdTestCase(unittest.TestCase):
         distribution = self.create_distribution()
         self.init_repository_config(distribution)
         self.install_package()
+
+    def test_config_dot_repo(self):
+        """Test if the generated config.repo has the right content."""
+        distribution = self.create_distribution()
+        response = requests.get(f'{distribution["base_url"]}/config.repo')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(bytes(f'[{distribution["name"]}]\n', 'utf-8'), response.content)
+        self.assertIn(bytes(f'baseurl={distribution["base_url"]}\n', 'utf-8'), response.content)
+        self.assertIn(bytes(f'gpgcheck=0\n', 'utf-8'), response.content)
+        self.assertIn(bytes(f'repo_gpgcheck=1\n', 'utf-8'), response.content)
+        self.assertIn(bytes(f'gpgkey={distribution["base_url"]}repodata/public.key', 'utf-8'),
+                      response.content)
 
     def create_distribution(self):
         """Create a distribution with a repository that contains a signing service."""

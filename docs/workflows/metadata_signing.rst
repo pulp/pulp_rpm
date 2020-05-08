@@ -26,6 +26,9 @@ The publication will automatically contain a detached ascii-armored signature an
 Both, the detached signature and the public key, are used by package managers during the process of
 verification.
 
+.. note::
+  The public key **must** be stored as public.key to prevent any path issues.
+
 Installing Packages
 -------------------
 
