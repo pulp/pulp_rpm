@@ -299,7 +299,7 @@ class CopyViewSet(viewsets.ViewSet):
             r["dest_repo"] = dest_repo.pk
             repos.extend((source_version.repository, dest_repo))
 
-            if entry.get("dest_base_version"):
+            if "dest_base_version" in entry:
                 try:
                     r["dest_base_version"] = dest_repo.versions.\
                         get(number=entry["dest_base_version"]).pk
