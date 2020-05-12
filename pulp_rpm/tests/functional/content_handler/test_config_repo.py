@@ -71,5 +71,5 @@ class ContentHandlerTests(unittest.TestCase):
         self.assertEqual(resp.status_code, 200)
         self.assertIn(bytes(f'[{self.dist.name}]\n', 'utf-8'), resp.content)
         self.assertIn(bytes(f'baseurl={self.dist.base_url}\n', 'utf-8'), resp.content)
-        self.assertIn(bytes(f'gpgcheck=0\n', 'utf-8'), resp.content)
-        self.assertIn(bytes(f'repo_gpgcheck=0', 'utf-8'), resp.content)
+        self.assertIn(bytes('gpgcheck=0\n', 'utf-8'), resp.content)
+        self.assertIn(bytes('repo_gpgcheck=0', 'utf-8'), resp.content)

@@ -284,7 +284,7 @@ class Package(Content):
             createrepo_c.Package: package itself in a format of a createrepo_c package object
 
         """
-        def list_to_createrepo_c(l):
+        def list_to_createrepo_c(lst):
             """
             Convert list to createrepo_c format.
 
@@ -293,14 +293,14 @@ class Package(Content):
             Package model at the moment.
 
             Args:
-                l(list): a list
+                lst(list): a list
 
             Returns:
                 list: list of strings and/or tuples
 
             """
             createrepo_c_list = []
-            for item in l:
+            for item in lst:
                 if isinstance(item, list):
                     createrepo_c_list.append(tuple(item))
                 else:

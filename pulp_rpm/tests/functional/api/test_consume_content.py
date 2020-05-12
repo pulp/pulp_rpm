@@ -133,8 +133,8 @@ class ConsumeSignedRepomdTestCase(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(bytes(f'[{distribution["name"]}]\n', 'utf-8'), response.content)
         self.assertIn(bytes(f'baseurl={distribution["base_url"]}\n', 'utf-8'), response.content)
-        self.assertIn(bytes(f'gpgcheck=0\n', 'utf-8'), response.content)
-        self.assertIn(bytes(f'repo_gpgcheck=1\n', 'utf-8'), response.content)
+        self.assertIn(bytes('gpgcheck=0\n', 'utf-8'), response.content)
+        self.assertIn(bytes('repo_gpgcheck=1\n', 'utf-8'), response.content)
         self.assertIn(bytes(f'gpgkey={distribution["base_url"]}repodata/public.key', 'utf-8'),
                       response.content)
 
