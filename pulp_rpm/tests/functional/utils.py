@@ -32,17 +32,13 @@ from pulp_rpm.tests.functional.constants import (
 from pulpcore.client.pulpcore import (
     ApiClient as CoreApiClient,
     ArtifactsApi,
-    Configuration,
     TasksApi
 )
 from pulpcore.client.pulp_rpm import ApiClient as RpmApiClient
 
 
-configuration = Configuration()
-configuration.host = config.get_config().get_base_url()
-configuration.username = "admin"
-configuration.password = "password"
-configuration.safe_chars_for_path_param = "/"
+cfg = config.get_config()
+configuration = cfg.get_bindings_config()
 
 
 skip_if = partial(selectors.skip_if, exc=SkipTest)  # pylint:disable=invalid-name
