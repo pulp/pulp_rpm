@@ -1,7 +1,7 @@
 import os
 import tempfile
 
-from pulpcore.app.models.content import Artifact
+from pulpcore.plugin.models import Artifact
 from pulp_rpm.app.models import Modulemd, Package
 from pulp_rpm.app.constants import PULP_MODULE_ATTR, PULP_MODULEDEFAULTS_ATTR
 

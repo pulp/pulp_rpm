@@ -9,7 +9,6 @@ from django.db import (
     transaction,
 )
 
-from pulpcore.app.settings import CONTENT_PATH_PREFIX
 from pulpcore.plugin.models import (
     AsciiArmoredDetachedSigningService,
     CreatedResource,
@@ -180,7 +179,7 @@ class RpmDistribution(PublicationDistribution):
         if path == self.repository_config_file_name:
             val = f"""[{self.name}]
 enabled=1
-baseurl={settings.CONTENT_ORIGIN}{CONTENT_PATH_PREFIX}{self.base_path}/
+baseurl={settings.CONTENT_ORIGIN}{settings.CONTENT_PATH_PREFIX}{self.base_path}/
 gpgcheck=0
 """
             repository_pk = self.publication.repository.pk
@@ -189,7 +188,9 @@ gpgcheck=0
             if signing_service is None:
                 val += 'repo_gpgcheck=0'
             else:
-                gpgkey_path = urllib.parse.urljoin(settings.CONTENT_ORIGIN, CONTENT_PATH_PREFIX)
+                gpgkey_path = urllib.parse.urljoin(
+                    settings.CONTENT_ORIGIN, settings.CONTENT_PATH_PREFIX
+                )
                 gpgkey_path = urllib.parse.urljoin(gpgkey_path, self.base_path, True)
                 gpgkey_path += '/repodata/public.key'
 

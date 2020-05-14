@@ -66,7 +66,7 @@ repo.git.checkout(STABLE_BRANCH)
 
 g = Github(GITHUB_TOKEN)
 grepo = g.get_repo(REPOSITORY)
-(label,) = (label for label in grepo.get_labels() if label.name == PR_LABEL)
+(label,) = (lbl for lbl in grepo.get_labels() if lbl.name == PR_LABEL)
 issues = grepo.get_issues(labels=[label], state="all", sort="updated", direction="asc")
 
 cherrypicks = []
@@ -104,7 +104,7 @@ if len(cherrypicks) == 0:
 print(f"Attempting push changes to {REPOSITORY}.")
 cherry_pick_branch = f"cherry-picks-{uuid.uuid4()}"
 remote.push(refspec=f"{STABLE_BRANCH}:{cherry_pick_branch}")
-print("Pushed cherry picks to {cherry_pick_branch}.")
+print(f"Pushed cherry picks to {cherry_pick_branch}.")
 
 # create a pull request
 body = f"Cherry picking #{(', #').join(str(cp.number) for cp in cherrypicks)}."
@@ -115,7 +115,7 @@ print(f"Created pull request {pr.html_url}.")
 for cp in cherrypicks:
     labels = cp.labels
     labels.remove(label)
-    cp.edit(labels=labels)
+    cp.edit(labels=[lbl.name for lbl in labels])
     print(f"Removed label '{PR_LABEL}' from PR #{cp.number}.")
 
 print("Cherry picking complete.")
