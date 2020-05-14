@@ -6,13 +6,13 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('rpm', '0008_advisory_pkg_sumtype_as_int'),
+        ('rpm', '0009_revision_null'),
     ]
 
     operations = [
         migrations.AlterField(
             model_name='rpmrepository',
             name='last_sync_revision_number',
-            field=models.CharField(max_length=20),
+            field=models.CharField(max_length=20, null=True),
         ),
     ]
