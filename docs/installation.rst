@@ -31,7 +31,7 @@ Final ``playbook.yml`` can looks like:
       vars:
         pulp_install_plugins:
           pulp-rpm:
-            prereq_role: "pulp.pulp_rpm_prerequisites"
+            prereq_role: "pulp.pulp_rpm_prerequisites"  # https://galaxy.ansible.com/pulp/pulp_rpm_prerequisites
       pre_tasks:
         # The version string below is the highest of all those in roles' metadata:
         # "min_ansible_version". It needs to be kept manually up-to-date.
@@ -41,11 +41,11 @@ Final ``playbook.yml`` can looks like:
             msg: >
               "You must update Ansible to at least 2.8 to use this version of Pulp 3 Installer."
       roles:
-        - pulp-database
-        - pulp-workers
-        - pulp-resource-manager
-        - pulp-webserver
-        - pulp-content
+        - pulp_database
+        - pulp_workers
+        - pulp_resource_manager
+        - pulp_webserver
+        - pulp_content
       environment:
         DJANGO_SETTINGS_MODULE: pulpcore.app.settings
 
