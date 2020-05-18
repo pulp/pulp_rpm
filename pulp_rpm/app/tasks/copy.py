@@ -82,7 +82,8 @@ def copy_content(config, dependency_solving):
         source_repo_version = RepositoryVersion.objects.get(pk=entry["source_repo_version"])
         dest_repo = RpmRepository.objects.get(pk=entry["dest_repo"])
 
-        if entry.get("dest_base_version"):
+        dest_version_provided = bool(entry.get("dest_base_version"))
+        if dest_version_provided:
             dest_repo_version = RepositoryVersion.objects.get(pk=entry["dest_base_version"])
         else:
             dest_repo_version = dest_repo.latest_version()
@@ -96,7 +97,8 @@ def copy_content(config, dependency_solving):
             content_to_copy = source_repo_version.content.filter(content_filter)
             content_to_copy |= find_children_of_content(content_to_copy, source_repo_version)
 
-            with dest_repo.new_version() as new_version:
+            base_version = dest_repo_version if dest_version_provided else None
+            with dest_repo.new_version(base_version=base_version) as new_version:
                 new_version.add_content(content_to_copy)
 
             continue
@@ -129,5 +131,6 @@ def copy_content(config, dependency_solving):
         for from_repo, units in content_to_copy.items():
             src_repo_version = libsolv_repo_names[from_repo]
             dest_repo_version = repo_mapping[src_repo_version]
-            with dest_repo_version.repository.new_version() as new_version:
+            base_version = dest_repo_version if dest_version_provided else None
+            with dest_repo_version.repository.new_version(base_version=base_version) as new_version:
                 new_version.add_content(Content.objects.filter(pk__in=units))

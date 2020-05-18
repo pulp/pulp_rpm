@@ -1,0 +1,2 @@
+Fix edge case where specifying 'dest_base_version' for an RPM copy did not work properly
+in all circumstances.
