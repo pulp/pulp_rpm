@@ -13,6 +13,23 @@ Changelog
 
 .. towncrier release notes start
 
+3.3.2 (2020-05-18)
+==================
+
+
+Bugfixes
+--------
+
+- Fix edge case where specifying 'dest_base_version' for an RPM copy did not work properly
+  in all circumstances.
+  `#6693 <https://pulp.plan.io/issues/6693>`_
+- Add a new migration to ensure that 'last_sync_revision_number' is nullable.
+  `#6743 <https://pulp.plan.io/issues/6743>`_
+
+
+----
+
+
 3.3.1 (2020-05-07)
 ==================
 
