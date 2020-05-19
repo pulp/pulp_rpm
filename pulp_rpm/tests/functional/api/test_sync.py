@@ -394,11 +394,8 @@ class BasicSyncTestCase(unittest.TestCase):
         self.assertEqual(added_content[0]['checksum_type'], 'sha512')
         self.assertEqual(removed_content[0]['checksum_type'], 'sha256')
 
-    @unittest.skip(
-        'FIXME: Enable this test after we can throw out duplicate UpdateRecords'
-    )
-    def test_mutated_update_records(self):
-        """Sync two copies of the same UpdateRecords.
+    def test_mutated_advisory_metadata(self):
+        """Sync two copies of the same Advisory (only description is updated).
 
         Make sure we end up with only one copy.
 
@@ -443,6 +440,9 @@ class BasicSyncTestCase(unittest.TestCase):
 
         # sync the repository again
         repo, remote = self.do_test(repo, remote)
+
+        # add the second remote to clean up
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
         self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
         self.assertEqual(

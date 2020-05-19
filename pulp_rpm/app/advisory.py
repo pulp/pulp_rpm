@@ -143,6 +143,11 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
                                      'timestamp but different and intersecting package lists. '
                                      'At least one of them is wrong. '
                                      f'Advisory id: {previous_advisory.id}'))
+        elif previous_pkglist == added_pkglist:
+            # it means some advisory metadata changed without bumping the updated_date or version.
+            # There is no way to find out which one is newer, and a user can't fix it,
+            # so we are choosing the incoming advisory.
+            to_remove.append(previous_advisory.pk)
     elif (not same_dates and not pkgs_intersection) or \
             (same_dates and not same_version and not pkgs_intersection):
         raise AdvisoryConflict(_('Incoming and existing advisories have the same id but '

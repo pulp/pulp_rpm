@@ -14,7 +14,7 @@ Manual Coverage
 | As a user, I can sync opensuse repository | NO |  |
 | As a user, I can sync from a mirror list | NO | not merged yet |
 | **Duplicates** |  |  |
-| As a user, I have only one advisory with the same id in a repo version | PART | https://pulp.plan.io/issues/6604 |
+| As a user, I have only one advisory with the same id in a repo version | YES |  |
 | As a user, I have only one module with the same NSVCA in a repo version | NO |  |
 | As a user, I have only one [S]RPM with the same NEVRA in a repo version | YES |  |
 | As a user, I have only one distribution tree, custom metadata of a certain type in a repo version | NO |  |
