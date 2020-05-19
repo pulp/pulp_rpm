@@ -1,7 +1,11 @@
 #!/usr/bin/env bash
 
 # Create RPM repository
-export REPO_NAME="foo"
+if [ $# -eq 0 ]; then
+  export REPO_NAME="foo"
+else
+  export REPO_NAME="$1"
+fi
 
 echo "Fetching the signing service."
 export SIGNING_SERVICE_HREF=$(http ${BASE_ADDR}/pulp/api/v3/signing-services/?name="sign-metadata" \

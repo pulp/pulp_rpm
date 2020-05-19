@@ -13,3 +13,9 @@ echo "$KEY_FINGERPRINT:$TRUST_LEVEL:" | cmd_stdin_prefix gpg --import-ownertrust
 
 CREATE_SIGNING_SERVICE="from pulpcore.app.models.content import AsciiArmoredDetachedSigningService; AsciiArmoredDetachedSigningService.objects.create(name='sign-metadata', script='/root/sign-metadata.sh')"
 cmd_prefix bash -c "django-admin shell -c \"${CREATE_SIGNING_SERVICE}\""
+
+
+echo "machine pulp
+login admin
+password password
+" > ~/.netrc
