@@ -18,7 +18,6 @@ source artifact.sh
 source package.sh
 source add_remove.sh
 source advisory.sh
-source copy.sh
 
 source publication.sh
 source distribution.sh "$DIST_NAME"
