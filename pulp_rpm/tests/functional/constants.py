@@ -329,6 +329,14 @@ RPM_KICKSTART_FIXTURE_SUMMARY = {
     RPM_KICKSTART_CONTENT_NAME: RPM_KICKSTART_COUNT
 }
 
+RPM_KICKSTART_REPOSITORY_ROOT_CONTENT = [
+    '.treeinfo',
+    'HighAvailability/',
+    'LiveOS/',
+    'ResilientStorage/',
+    'images/'
+]
+
 PULP_FIXTURES_COMMON_URL = 'https://github.com/pulp/pulp-fixtures/raw/master/common/'
 PRIVATE_GPG_KEY_URL = urljoin(PULP_FIXTURES_COMMON_URL, 'GPG-PRIVATE-KEY-pulp-qe')
 

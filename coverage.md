@@ -21,7 +21,7 @@ Manual Coverage
 | As a user, I have only one module-defaults, package groups, category or environment with the same name in a repo version. | NO |  |
 | **Publish** |  |  |
 | As a user, I can publish repodata with specific checksum type | PART | "on_demand is not covered, https://pulp.plan.io/issues/6503" |
-| As a user, I have the published root directory containing the ‘Package’ directory and packages in alphabetical order inside it. | NO | including that there is NO files which are not expected to be there |
+| As a user, I have the published root directory containing the ‘Package’ directory and packages in alphabetical order inside it. | YES | testing with modularity and kickstarter repositories, contains test if no extra files are present |
 | As a user, I can sign repository metadata using a signing service and publish such repo | PART |  |
 | As a user, I can have a config.repo file generated for any distribution at runtime | YES |  |
 | **Upload** |  |  |

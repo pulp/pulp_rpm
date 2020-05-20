@@ -22,7 +22,10 @@ from pulp_smash.pulp3.utils import (
 from pulp_rpm.tests.functional.constants import (
     RPM_NAMESPACES,
     RPM_PACKAGE_CONTENT_NAME,
+    RPM_KICKSTART_FIXTURE_URL,
+    RPM_KICKSTART_REPOSITORY_ROOT_CONTENT,
     RPM_LONG_UPDATEINFO_FIXTURE_URL,
+    RPM_MODULAR_FIXTURE_URL,
     RPM_RICH_WEAK_FIXTURE_URL,
     RPM_ALT_LAYOUT_FIXTURE_URL,
     RPM_SHA512_FIXTURE_URL,
@@ -479,3 +482,108 @@ class ChecksumTypeTestCase(unittest.TestCase):
 
         for package, package_checksum_type in primary_checksum_types.items():
             self.assertEqual(package_checksum_type, "md5")
+
+
+class PublishDirectoryLayoutTestCase(unittest.TestCase):
+    """Test published directory layout."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.cfg = config.get_config()
+        cls.client = gen_rpm_client()
+        cls.repo_api = RepositoriesRpmApi(cls.client)
+        cls.remote_api = RemotesRpmApi(gen_rpm_client())
+        cls.publications = PublicationsRpmApi(cls.client)
+        cls.distributions = DistributionsRpmApi(cls.client)
+
+    def test_distribute_with_modules(self):
+        """Ensure no more files or folders are present when distribute repository with modules."""
+        distribution = self.do_test(RPM_MODULAR_FIXTURE_URL)
+        repository = ElementTree.fromstring(
+            http_get(distribution)
+        )
+        # Get links from repository HTML
+        # Each link is an item (file or directory) in repository root
+        repository_root_items = []
+        for elem in repository.iter():
+            if elem.tag == 'a':
+                repository_root_items.append(elem.attrib['href'])
+
+        # Check if 'Packages' and 'repodata' are present
+        # Trailing '/' is present for easier check
+        self.assertIn('Packages/', repository_root_items)
+        self.assertIn('repodata/', repository_root_items)
+        # Only three items should be present, two mentioned above and 'config.repo'
+        self.assertEqual(len(repository_root_items), 3)
+
+    def test_distribute_with_treeinfo(self):
+        """Ensure no more files or folders are present when distribute repository with treeinfo."""
+        distribution = self.do_test(RPM_KICKSTART_FIXTURE_URL)
+        repository = ElementTree.fromstring(
+            http_get(distribution)
+        )
+        # Get links from repository HTML
+        # Each link is an item (file or directory) in repository root
+        repository_root_items = []
+        for elem in repository.iter():
+            if elem.tag == 'a':
+                repository_root_items.append(elem.attrib['href'])
+        # Check if all treeinfo related directories are present
+        # Trailing '/' is present for easier check
+        for directory in RPM_KICKSTART_REPOSITORY_ROOT_CONTENT:
+            self.assertIn(directory, repository_root_items)
+
+        self.assertIn('repodata/', repository_root_items)
+        # assert how many items are present altogether
+        # here is '+2' for 'repodata' and 'config.repo'
+        self.assertEqual(
+            len(repository_root_items),
+            len(RPM_KICKSTART_REPOSITORY_ROOT_CONTENT) + 2
+        )
+
+    def do_test(self, url=None):
+        """Sync and publish an RPM repository.
+
+        - create repository
+        - create remote
+        - sync the remote
+        - create publication
+        - create distribution
+
+        Args:
+            url(string):
+                Optional URL of repositoy that should be use as a remote
+
+        Returns (string):
+            RPM distribution base_url.
+        """
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+
+        if url:
+            body = gen_rpm_remote(url=url)
+        else:
+            body = gen_rpm_remote()
+
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+
+        publish_data = RpmRpmPublication(repository=repo.pulp_href)
+        publish_response = self.publications.create(publish_data)
+        created_resources = monitor_task(publish_response.task)
+        publication_href = created_resources[0]
+        self.addCleanup(self.publications.delete, publication_href)
+
+        body = gen_distribution()
+        body["publication"] = publication_href
+        distribution_response = self.distributions.create(body)
+        created_resources = monitor_task(distribution_response.task)
+        distribution = self.distributions.read(created_resources[0])
+        self.addCleanup(self.distributions.delete, distribution.pulp_href)
+
+        return distribution.to_dict()['base_url']
