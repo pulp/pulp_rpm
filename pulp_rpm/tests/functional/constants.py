@@ -313,6 +313,12 @@ RPM_WITH_NON_UTF_8_URL = urljoin(
 SRPM_UNSIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'srpm-unsigned/')
 """The URL to a repository with unsigned SRPM packages."""
 
+SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT = 2
+"""Count of advisories in the repository."""
+
+SRPM_UNSIGNED_FIXTURE_PACKAGE_COUNT = 3
+"""Count of packages in the repository."""
+
 UPDATERECORD_CONTENT_PATH = urljoin(BASE_CONTENT_PATH, 'rpm/advisories/')
 """The location of RPM UpdateRecords on the content endpoint."""
 
@@ -350,3 +356,4 @@ CENTOS8_BASEOS_URL = "http://mirror.linux.duke.edu/pub/centos/8/BaseOS/x86_64/os
 EPEL7_URL = "https://dl.fedoraproject.org/pub/epel/7/x86_64/"
 
 PULP_TYPE_ADVISORY = 'rpm.advisory'
+PULP_TYPE_PACKAGE = 'rpm.package'

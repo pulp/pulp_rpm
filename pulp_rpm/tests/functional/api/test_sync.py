@@ -21,6 +21,8 @@ from pulp_smash.pulp3.utils import (
 
 from pulp_rpm.tests.functional.constants import (
     PULP_TYPE_ADVISORY,
+    PULP_TYPE_PACKAGE,
+    RPM_ADVISORY_COUNT,
     RPM_ADVISORY_CONTENT_NAME,
     RPM_ADVISORY_INCOMPLETE_PKG_LIST_URL,
     RPM_ADVISORY_UPDATED_VERSION_URL,
@@ -46,6 +48,9 @@ from pulp_rpm.tests.functional.constants import (
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
     RPM_SHA512_FIXTURE_URL,
+    SRPM_UNSIGNED_FIXTURE_URL,
+    SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT,
+    SRPM_UNSIGNED_FIXTURE_PACKAGE_COUNT
 )
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
@@ -1036,3 +1041,52 @@ class SyncInvalidTestCase(unittest.TestCase):
         repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
         sync_response = repo_api.sync(repo.pulp_href, repository_sync_data)
         return monitor_task(sync_response.task)
+
+
+class AdditiveModeTestCase(unittest.TestCase):
+    """Test of additive mode.
+
+    1. Create repository, remote and sync it
+    2. Create remote with different set of content
+    3. Re-sync and check if new content was added and is present with old one
+    """
+
+    def test_all(self):
+        """Test of addtive mode."""
+        client = gen_rpm_client()
+        repo_api = RepositoriesRpmApi(client)
+        remote_api = RemotesRpmApi(client)
+
+        # 1. create repo, remote and sync them
+        repo = repo_api.create(gen_repo())
+        self.addCleanup(repo_api.delete, repo.pulp_href)
+
+        body = gen_rpm_remote(url=RPM_UNSIGNED_FIXTURE_URL)
+        remote = remote_api.create(body)
+        self.addCleanup(remote_api.delete, remote.pulp_href)
+
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+
+        # 2. create another remote and re-sync
+        body = gen_rpm_remote(url=SRPM_UNSIGNED_FIXTURE_URL)
+        remote = remote_api.create(body)
+        self.addCleanup(remote_api.delete, remote.pulp_href)
+
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+
+        # 3. Check content counts
+        repo = repo_api.read(repo.pulp_href)
+        present_package_count = len(get_content(repo.to_dict())[PULP_TYPE_PACKAGE])
+        present_advisory_count = len(get_content(repo.to_dict())[PULP_TYPE_ADVISORY])
+        self.assertEqual(
+            RPM_PACKAGE_COUNT + SRPM_UNSIGNED_FIXTURE_PACKAGE_COUNT,
+            present_package_count
+        )
+        self.assertEqual(
+            RPM_ADVISORY_COUNT + SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT,
+            present_advisory_count
+        )
