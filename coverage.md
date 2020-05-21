@@ -8,7 +8,7 @@ Manual Coverage
 | As a user, I can sync all yum content types ( NO drpm) with on-demand policy | PART | only types contained in rpm-unsigned + kickstart fixture |
 | As a user, I can sync all yum content types ( NO drpm) with cache-only policy | PART | only types contained in rpm-unsigned |
 | As a user, I can sync all yum content types ( NO drpm) with optimization | PART | only types contained in rpm-unsigned |
-| As a user, I can sync all yum content types ( NO drpm) in a mirror mode | NO |  |
+| As a user, I can sync all yum content types ( NO drpm) in a mirror mode | PART | only types contained in rpm-unsigned |
 | As a user, I can sync all yum content types ( NO drpm) in additive mode (default) | PART | checking counts of packages and advisories |
 | As a user, I can sync and skip specific type (srpm) | NO |  |
 | As a user, I can sync opensuse repository | NO |  |
