@@ -915,6 +915,7 @@ class ModulemdSerializer(SingleArtifactContentUploadSerializer, ContentChecksumS
         allow_null=True,
         required=False,
         queryset=Package.objects.all(),
+        view_name="content-rpm/packages-detail",
         many=True
     )
 
