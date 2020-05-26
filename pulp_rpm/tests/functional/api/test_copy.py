@@ -2,6 +2,7 @@
 """Tests that sync rpm plugin repositories."""
 import unittest
 
+from random import choice
 from requests.exceptions import HTTPError
 
 from pulp_smash import api, config
@@ -16,6 +17,7 @@ from pulp_smash.pulp3.utils import (
 
 from pulp_rpm.tests.functional.constants import (
     KICKSTART_CONTENT_PATH,
+    PULP_TYPE_PACKAGE,
     RPM_KICKSTART_CONTENT_NAME,
     RPM_FIXTURE_SUMMARY,
     RPM_KICKSTART_FIXTURE_URL,
@@ -26,8 +28,15 @@ from pulp_rpm.tests.functional.constants import (
     UPDATERECORD_CONTENT_PATH,
     RPM_CONTENT_PATH,
 )
-from pulp_rpm.tests.functional.utils import gen_rpm_remote, rpm_copy
+from pulp_rpm.tests.functional.utils import gen_rpm_client, gen_rpm_remote, monitor_task, rpm_copy
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+
+from pulpcore.client.pulp_rpm import (
+    ContentPackagesApi,
+    RepositoriesRpmApi,
+    RpmRepositorySyncURL,
+    RemotesRpmApi,
+)
 
 
 class BaseCopy(unittest.TestCase):
@@ -265,3 +274,141 @@ class DependencySolvingTestCase(BaseCopy):
         dc = self.client.get(f"{RPM_CONTENT_PATH}?repository_version={latest_href}")
         dest_content = [c["pulp_href"] for c in dc["results"]]
         self.assertEqual(sorted(rpms_to_copy), sorted(dest_content))
+
+
+class StrictPackageCopyTestCase(unittest.TestCase):
+    """Test strict copy of package and its dependencies."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.cfg = config.get_config()
+        cls.client = gen_rpm_client()
+        cls.repo_api = RepositoriesRpmApi(cls.client)
+        cls.remote_api = RemotesRpmApi(cls.client)
+        cls.rpm_content_api = ContentPackagesApi(cls.client)
+        cls.test_package = 'whale'
+        cls.test_package_dependencies = ['shark', 'stork']
+        delete_orphans(cls.cfg)
+
+    def test_strict_copy_package_to_empty_repo(self):
+        """Test copy package and its dependencies to empty repository.
+
+        - Create repository and populate it
+        - Create empty repository
+        - Use 'copy' to copy 'whale' package with dependencies
+        - assert package and its dependencies were copied
+        """
+        empty_repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, empty_repo.pulp_href)
+
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+
+        body = gen_rpm_remote(url=RPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+
+        repo = self.repo_api.read(repo.pulp_href)
+        test_package_href = [
+            pkg
+            for pkg in get_content(repo.to_dict())[PULP_TYPE_PACKAGE]
+            if pkg['name'] == self.test_package
+        ][0]['pulp_href']
+        package_to_copy = []
+        package_to_copy.append(test_package_href)
+
+        config = [{
+            'source_repo_version': repo.latest_version_href,
+            'dest_repo': empty_repo.pulp_href,
+            'content': package_to_copy
+        }]
+
+        rpm_copy(self.cfg, config, recursive=True)
+        empty_repo = self.repo_api.read(empty_repo.pulp_href)
+        empty_repo_packages = [
+            pkg['name']
+            for pkg in get_content(empty_repo.to_dict())[PULP_TYPE_PACKAGE]
+        ]
+
+        # assert that only 3 packages are copied (original package with its two dependencies)
+        self.assertEqual(len(empty_repo_packages), 3)
+        # assert dependencies package names
+        for dependency in self.test_package_dependencies:
+            self.assertIn(dependency, empty_repo_packages)
+
+    def test_strict_copy_package_to_existing_repo(self):
+        """Test copy package and its dependencies to empty repository.
+
+        - Create repository and populate it
+        - Create second repository with package fullfiling test package dependency
+        - Use 'copy' to copy 'whale' package with dependencies
+        - assert package and its missing dependencies were copied
+        """
+        # prepare final_repo - copy to repository
+        final_repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, final_repo.pulp_href)
+
+        body = gen_rpm_remote(url=RPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(final_repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+
+        final_repo = self.repo_api.read(final_repo.pulp_href)
+
+        # prepare repository - copy from repository
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+
+        body = gen_rpm_remote(url=RPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+
+        repo = self.repo_api.read(repo.pulp_href)
+
+        # remove test package and one dependency package from final repository
+        dependency_to_remove = choice(self.test_package_dependencies)
+        data = {
+            "remove_content_units": [
+                pkg.pulp_href
+                for pkg in self.rpm_content_api.list().results
+                if pkg.name in (dependency_to_remove, self.test_package)
+            ]
+        }
+        response = self.repo_api.modify(final_repo.pulp_href, data)
+        monitor_task(response.task)
+        final_repo = self.repo_api.read(final_repo.pulp_href)
+
+        # get package to copy
+        test_package_href = [
+            pkg
+            for pkg in get_content(repo.to_dict())[PULP_TYPE_PACKAGE]
+            if pkg['name'] == self.test_package
+        ][0]['pulp_href']
+        package_to_copy = []
+        package_to_copy.append(test_package_href)
+
+        config = [{
+            'source_repo_version': repo.latest_version_href,
+            'dest_repo': final_repo.pulp_href,
+            'content': package_to_copy
+        }]
+
+        copy_response = rpm_copy(self.cfg, config, recursive=True)
+
+        # check only two packages was copied, original package to copy and only one
+        # of its dependency as one is already present
+        self.assertEqual(
+            copy_response['content_summary']['added'][PULP_TYPE_PACKAGE]['count'], 2
+        )
