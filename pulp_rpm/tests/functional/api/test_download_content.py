@@ -1,7 +1,6 @@
 # coding=utf-8
 """Tests that verify download of content served by Pulp."""
 import hashlib
-import unittest
 from random import choice
 from urllib.parse import urljoin
 
@@ -17,6 +16,7 @@ from pulp_rpm.tests.functional.utils import (
     monitor_task,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+from pulp_rpm.tests.functional.utils import PulpTestCase
 
 from pulpcore.client.pulp_rpm import (
     DistributionsRpmApi,
@@ -28,7 +28,7 @@ from pulpcore.client.pulp_rpm import (
 )
 
 
-class DownloadContentTestCase(unittest.TestCase):
+class DownloadContentTestCase(PulpTestCase):
     """Verify whether content served by pulp can be downloaded."""
 
     def test_all(self):

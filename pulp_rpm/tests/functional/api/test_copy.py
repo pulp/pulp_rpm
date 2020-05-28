@@ -1,7 +1,5 @@
 # coding=utf-8
 """Tests that sync rpm plugin repositories."""
-import unittest
-
 from random import choice
 from requests.exceptions import HTTPError
 
@@ -30,6 +28,7 @@ from pulp_rpm.tests.functional.constants import (
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_client, gen_rpm_remote, monitor_task, rpm_copy
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+from pulp_rpm.tests.functional.utils import PulpTestCase
 
 from pulpcore.client.pulp_rpm import (
     ContentPackagesApi,
@@ -39,7 +38,7 @@ from pulpcore.client.pulp_rpm import (
 )
 
 
-class BaseCopy(unittest.TestCase):
+class BaseCopy(PulpTestCase):
     """Base-class for shared code for copy-test-subclasses."""
 
     def _setup_repos(self, remote_url=RPM_UNSIGNED_FIXTURE_URL, summary=RPM_FIXTURE_SUMMARY):
@@ -276,7 +275,7 @@ class DependencySolvingTestCase(BaseCopy):
         self.assertEqual(sorted(rpms_to_copy), sorted(dest_content))
 
 
-class StrictPackageCopyTestCase(unittest.TestCase):
+class StrictPackageCopyTestCase(PulpTestCase):
     """Test strict copy of package and its dependencies."""
 
     @classmethod

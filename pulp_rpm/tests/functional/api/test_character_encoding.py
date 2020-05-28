@@ -1,7 +1,5 @@
 # coding=utf-8
 """Tests for Pulp's characters encoding."""
-import unittest
-
 from urllib.parse import urljoin
 
 from pulp_smash import api, config, utils
@@ -22,9 +20,10 @@ from pulp_rpm.tests.functional.constants import (
     RPM_WITH_NON_UTF_8_URL,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+from pulp_rpm.tests.functional.utils import PulpTestCase
 
 
-class UploadEncodingMetadataTestCase(unittest.TestCase):
+class UploadEncodingMetadataTestCase(PulpTestCase):
     """Test upload of RPMs with different character encoding.
 
     This test targets the following issues:

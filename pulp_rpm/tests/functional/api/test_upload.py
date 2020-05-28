@@ -1,7 +1,6 @@
 # coding=utf-8
 """Tests that perform actions over content unit."""
 import os
-import unittest
 from tempfile import NamedTemporaryFile
 
 from pulp_smash.pulp3.utils import delete_orphans
@@ -17,12 +16,13 @@ from pulp_rpm.tests.functional.constants import (
     RPM_WITH_NON_ASCII_URL
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+from pulp_rpm.tests.functional.utils import PulpTestCase
 
 from pulpcore.client.pulpcore import TasksApi
 from pulpcore.client.pulp_rpm import ContentPackagesApi
 
 
-class ContentUnitTestCase(unittest.TestCase):
+class ContentUnitTestCase(PulpTestCase):
     """CRUD content unit.
 
     This test targets the following issues:

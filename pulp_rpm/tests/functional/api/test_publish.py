@@ -2,7 +2,6 @@
 """Tests that publish rpm plugin repositories."""
 import gzip
 import os
-import unittest
 from tempfile import NamedTemporaryFile
 from random import choice
 from xml.etree import ElementTree
@@ -39,6 +38,7 @@ from pulp_rpm.tests.functional.utils import (
     monitor_task,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+from pulp_rpm.tests.functional.utils import PulpTestCase
 
 from pulpcore.client.pulp_rpm import (
     DistributionsRpmApi,
@@ -70,7 +70,7 @@ def read_xml_gz(content):
         return content_xml
 
 
-class PublishAnyRepoVersionTestCase(unittest.TestCase):
+class PublishAnyRepoVersionTestCase(PulpTestCase):
     """Test whether a particular repository version can be published.
 
     This test targets the following issues:
@@ -144,7 +144,7 @@ class PublishAnyRepoVersionTestCase(unittest.TestCase):
             publications.create(body)
 
 
-class SyncPublishTestCase(unittest.TestCase):
+class SyncPublishTestCase(PulpTestCase):
     """Test sync and publish for different RPM repositories.
 
     This test targets the following issue:
@@ -204,7 +204,7 @@ class SyncPublishTestCase(unittest.TestCase):
         self.assertIsNotNone(publication_href)
 
 
-class SyncPublishReferencesUpdateTestCase(unittest.TestCase):
+class SyncPublishReferencesUpdateTestCase(PulpTestCase):
     """Sync/publish a repo that ``updateinfo.xml`` contains references."""
 
     def test_all(self):
@@ -252,7 +252,7 @@ class SyncPublishReferencesUpdateTestCase(unittest.TestCase):
         self.addCleanup(publications.delete, publication_href)
 
 
-class ValidateNoChecksumTagTestCase(unittest.TestCase):
+class ValidateNoChecksumTagTestCase(PulpTestCase):
     """Publish repository and validate the updateinfo.
 
     This Test does the following:
@@ -347,7 +347,7 @@ class ValidateNoChecksumTagTestCase(unittest.TestCase):
         return data_elems[0].find(xpath).get('href')
 
 
-class ChecksumTypeTestCase(unittest.TestCase):
+class ChecksumTypeTestCase(PulpTestCase):
     """Publish repository and validate the updateinfo.
 
     This Test does the following:
@@ -484,7 +484,7 @@ class ChecksumTypeTestCase(unittest.TestCase):
             self.assertEqual(package_checksum_type, "md5")
 
 
-class PublishDirectoryLayoutTestCase(unittest.TestCase):
+class PublishDirectoryLayoutTestCase(PulpTestCase):
     """Test published directory layout."""
 
     @classmethod
