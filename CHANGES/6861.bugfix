@@ -1,0 +1,1 @@
+Make 'last_sync_revision_number' nullable in all migrations.
