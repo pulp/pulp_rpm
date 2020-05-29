@@ -4,7 +4,7 @@ from setuptools import setup, find_packages
 
 requirements = [
     'createrepo_c>=0.15.10,<1.0',
-    'jsonschema',
+    'jsonschema>=3.0',
     'libcomps~=0.1.11',
     'productmd>=1.25',
     'pulpcore>=3.3',
