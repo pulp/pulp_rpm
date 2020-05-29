@@ -59,6 +59,31 @@ Remote GET response:
 
 .. _versioned-repo-created:
 
+Configuration for SLES 12+ repository with authentication
+*********************************************************
+
+If you would like to sync SLES 12+ repository you will need to specify an authentication as ``sles_auth_token``.
+
+You can receive your token with script like this:
+
+.. code:: bash
+
+    curl -H "Authorization: Token token=YourOrganizationRegistrationCode" \
+    https://scc.suse.com/connect/subscriptions/products | \
+    tr "," "\n" | \
+    grep -i "url" | \
+    grep -i "SLE-SERVER"
+
+Assuming your token is ``YourRepositoryToken``, create the remote with the ``sles_auth_token`` specified.
+
+.. code:: bash
+
+    http POST :/pulp/api/v3/remotes/rpm/rpm/ \
+    name='SLESrepo' \
+    url='https://updates.suse.com/SUSE/Updates/SLE-SERVER/12/x86_64/update/' \
+    policy='on_demand' \
+    sles_auth_token='YourRepositoryToken'
+
 Sync repository ``foo`` using remote ``bar``
 --------------------------------------------
 

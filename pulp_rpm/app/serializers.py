@@ -323,6 +323,11 @@ class RpmRemoteSerializer(RemoteSerializer):
     A Serializer for RpmRemote.
     """
 
+    sles_auth_token = serializers.CharField(
+        help_text="Authentication token for SLES repositories.",
+        required=False, allow_null=True
+    )
+
     policy = serializers.ChoiceField(
         help_text="The policy to use when downloading content. The possible values include: "
                   "'immediate', 'on_demand', and 'streamed'. 'immediate' is the default.",
@@ -331,7 +336,7 @@ class RpmRemoteSerializer(RemoteSerializer):
     )
 
     class Meta:
-        fields = RemoteSerializer.Meta.fields
+        fields = RemoteSerializer.Meta.fields + ('sles_auth_token',)
         model = RpmRemote
 
 
