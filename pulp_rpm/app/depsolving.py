@@ -840,7 +840,6 @@ class Solver:
                     solvables.append(self.mapping.get_solvable(unit.pk, repo))
                 passthrough[repo].add(unit.pk)
 
-        result_solvables = set()
         self._pool.createwhatprovides()
         flags = solv.Job.SOLVER_INSTALL | solv.Job.SOLVER_SOLVABLE
 
@@ -873,10 +872,11 @@ class Solver:
             return set(transaction.newsolvables())
 
         solvables_to_copy = set(solvables)
-        install_jobs = []
+        result_solvables = set()
         while solvables_to_copy:
             # Take one solvable
             solvable = solvables_to_copy.pop()
+            install_jobs = []
 
             if solvable.name.startswith("module:"):
                 # If the solvable being installed is a module, try to install it and all of its
@@ -899,9 +899,9 @@ class Solver:
                 unit_install_job = self._pool.Job(flags, solvable.id)
                 install_jobs.append(unit_install_job)
 
-        # Depsolv using the list of unit install jobs, add them to the results
-        solvables_copied = run_solver_jobs(install_jobs)
-        result_solvables.update(solvables_copied)
+            # Depsolve using the list of unit install jobs, add them to the results
+            solvables_copied = run_solver_jobs(install_jobs)
+            result_solvables.update(solvables_copied)
 
         solved_units = self.mapping.get_units_from_solvables(result_solvables)
         for k in unit_repo_map.keys():

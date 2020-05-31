@@ -1,0 +1,1 @@
+Fixed dependency solving issue where not all RPM dependencies were coped.
