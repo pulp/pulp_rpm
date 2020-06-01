@@ -78,23 +78,32 @@ def copy_content(config, dependency_solving):
             criteria MUST be validated before being passed to this task.
         content_pks: a list of content pks to copy from source to destination
     """
+    def process_entry(entry):
+        source_repo_version = RepositoryVersion.objects.get(pk=entry["source_repo_version"])
+        dest_repo = RpmRepository.objects.get(pk=entry["dest_repo"])
+
+        dest_version_provided = bool(entry.get("dest_base_version"))
+        if dest_version_provided:
+            dest_repo_version = RepositoryVersion.objects.get(pk=entry["dest_base_version"])
+        else:
+            dest_repo_version = dest_repo.latest_version()
+
+        if entry.get("content"):
+            content_filter = Q(pk__in=entry.get("content"))
+        else:
+            content_filter = Q()
+
+        return (
+            source_repo_version, dest_repo_version,
+            dest_repo, content_filter, dest_version_provided
+        )
+
     if not dependency_solving:
         # No Dependency Solving Branch
         # ============================
         for entry in config:
-            source_repo_version = RepositoryVersion.objects.get(pk=entry["source_repo_version"])
-            dest_repo = RpmRepository.objects.get(pk=entry["dest_repo"])
-
-            dest_version_provided = bool(entry.get("dest_base_version"))
-            if dest_version_provided:
-                dest_repo_version = RepositoryVersion.objects.get(pk=entry["dest_base_version"])
-            else:
-                dest_repo_version = dest_repo.latest_version()
-
-            if entry.get("content"):
-                content_filter = Q(pk__in=entry.get("content"))
-            else:
-                content_filter = Q()
+            (source_repo_version, dest_repo_version,
+                dest_repo, content_filter, dest_version_provided) = process_entry(entry)
 
             content_to_copy = source_repo_version.content.filter(content_filter)
             content_to_copy |= find_children_of_content(content_to_copy, source_repo_version)
@@ -115,22 +124,11 @@ def copy_content(config, dependency_solving):
         solver = Solver()
 
         for entry in config:
-            source_repo_version = RepositoryVersion.objects.get(pk=entry["source_repo_version"])
-            dest_repo = RpmRepository.objects.get(pk=entry["dest_repo"])
-
-            dest_version_provided = bool(entry.get("dest_base_version"))
-            base_versions[source_repo_version] = dest_version_provided
-            if dest_version_provided:
-                dest_repo_version = RepositoryVersion.objects.get(pk=entry["dest_base_version"])
-            else:
-                dest_repo_version = dest_repo.latest_version()
+            (source_repo_version, dest_repo_version,
+                dest_repo, content_filter, dest_version_provided) = process_entry(entry)
 
             repo_mapping[source_repo_version] = dest_repo_version
-
-            if entry.get("content"):
-                content_filter = Q(pk__in=entry.get("content"))
-            else:
-                content_filter = Q()
+            base_versions[source_repo_version] = dest_version_provided
 
             # Load the content from the source and destination repository versions into the solver
             source_repo_name = solver.load_source_repo(source_repo_version)
