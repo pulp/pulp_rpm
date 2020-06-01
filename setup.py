@@ -2,22 +2,15 @@
 
 from setuptools import setup, find_packages
 
-requirements = [
-    'createrepo_c>=0.15.10,<1.0',
-    'jsonschema>=3.0',
-    'libcomps~=0.1.11',
-    'productmd>=1.25',
-    'pulpcore>=3.3',
-    'PyGObject~=3.22',
-    'solv'
-]
+with open("requirements.txt") as requirements:
+    requirements = requirements.readlines()
 
 with open('README.rst') as f:
     long_description = f.read()
 
 setup(
     name='pulp-rpm',
-    version='3.4.0b1.dev',
+    version='3.4.0.dev',
     description='RPM plugin for the Pulp Project',
     long_description=long_description,
     license='GPLv2+',
