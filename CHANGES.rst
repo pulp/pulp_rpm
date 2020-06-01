@@ -13,6 +13,49 @@ Changelog
 
 .. towncrier release notes start
 
+3.4.0 (2020-06-01)
+==================
+
+
+Features
+--------
+
+- Distributions now serves a config.repo, and when signing is enabled also a public.key, in the base_path.
+  `#5356 <https://pulp.plan.io/issues/5356>`_
+
+
+Bugfixes
+--------
+
+- Fixed the duplicated advisory case when only auxiliary fields were updated but not any timestamp or version.
+  `#6604 <https://pulp.plan.io/issues/6604>`_
+- Fixed dependency solving issue where not all RPM dependencies were coped.
+  `#6820 <https://pulp.plan.io/issues/6820>`_
+- Make 'last_sync_revision_number' nullable in all migrations.
+  `#6861 <https://pulp.plan.io/issues/6861>`_
+- Fixed a bug where the behavior of RPM advanced copy with dependency solving differed depending
+  on the order of the source-destination repository pairs provided by the user.
+  `#6868 <https://pulp.plan.io/issues/6868>`_
+
+
+Improved Documentation
+----------------------
+
+- Added documentation for the RPM copy API.
+  `#6332 <https://pulp.plan.io/issues/6332>`_
+- Updated the required roles names
+  `#6759 <https://pulp.plan.io/issues/6759>`_
+
+
+Misc
+----
+
+- `#4142 <https://pulp.plan.io/issues/4142>`_, `#6514 <https://pulp.plan.io/issues/6514>`_, `#6536 <https://pulp.plan.io/issues/6536>`_, `#6706 <https://pulp.plan.io/issues/6706>`_, `#6777 <https://pulp.plan.io/issues/6777>`_, `#6786 <https://pulp.plan.io/issues/6786>`_, `#6789 <https://pulp.plan.io/issues/6789>`_, `#6801 <https://pulp.plan.io/issues/6801>`_, `#6839 <https://pulp.plan.io/issues/6839>`_, `#6841 <https://pulp.plan.io/issues/6841>`_
+
+
+----
+
+
 3.3.2 (2020-05-18)
 ==================
 

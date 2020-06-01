@@ -1,2 +1,0 @@
-Fixed a bug where the behavior of RPM advanced copy with dependency solving differed depending
-on the order of the source-destination repository pairs provided by the user.

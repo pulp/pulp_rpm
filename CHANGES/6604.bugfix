@@ -1,1 +1,0 @@
-Fixed the duplicated advisory case when only auxiliary fields were updated but not any timestamp or version.
