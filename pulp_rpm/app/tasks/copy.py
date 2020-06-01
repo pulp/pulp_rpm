@@ -78,7 +78,7 @@ def copy_content(config, dependency_solving):
             criteria MUST be validated before being passed to this task.
         content_pks: a list of content pks to copy from source to destination
     """
-    for entry in config:
+    def process_entry(entry):
         source_repo_version = RepositoryVersion.objects.get(pk=entry["source_repo_version"])
         dest_repo = RpmRepository.objects.get(pk=entry["dest_repo"])
 
@@ -93,36 +93,58 @@ def copy_content(config, dependency_solving):
         else:
             content_filter = Q()
 
-        if not dependency_solving:
+        return (
+            source_repo_version, dest_repo_version,
+            dest_repo, content_filter, dest_version_provided
+        )
+
+    if not dependency_solving:
+        # No Dependency Solving Branch
+        # ============================
+        for entry in config:
+            (source_repo_version, dest_repo_version,
+                dest_repo, content_filter, dest_version_provided) = process_entry(entry)
+
             content_to_copy = source_repo_version.content.filter(content_filter)
             content_to_copy |= find_children_of_content(content_to_copy, source_repo_version)
 
             base_version = dest_repo_version if dest_version_provided else None
             with dest_repo.new_version(base_version=base_version) as new_version:
                 new_version.add_content(content_to_copy)
-
-            continue
-
+    else:
         # Dependency Solving Branch
         # =========================
-        content_to_copy = {}
 
-        # TODO: add lookaside repos here
-        repo_mapping = {source_repo_version: dest_repo_version}
+        # TODO: a more structured way to store this state would be nice.
+        content_to_copy = {}
+        repo_mapping = {}
         libsolv_repo_names = {}
+        base_versions = {}
 
         solver = Solver()
 
-        for src in repo_mapping.keys():
-            repo_name = solver.load_source_repo(src)
-            libsolv_repo_names[repo_name] = src
+        for entry in config:
+            (source_repo_version, dest_repo_version,
+                dest_repo, content_filter, dest_version_provided) = process_entry(entry)
 
-            content = src.content.filter(content_filter)
-            children = find_children_of_content(content, src)
-            content_to_copy[repo_name] = content | children
+            repo_mapping[source_repo_version] = dest_repo_version
+            base_versions[source_repo_version] = dest_version_provided
 
-        for tgt in repo_mapping.values():
-            solver.load_target_repo(tgt)
+            # Load the content from the source and destination repository versions into the solver
+            source_repo_name = solver.load_source_repo(source_repo_version)
+            solver.load_target_repo(dest_repo_version)
+
+            # Store the correspondance between the libsolv name of a repo version and the
+            # actual Pulp repo version, so that we can work backwards to get the latter
+            # from the former.
+            libsolv_repo_names[source_repo_name] = source_repo_version
+
+            # Find all of the matching content in the repository version, then determine
+            # child relationships (e.g. RPM children of Errata/Advisories), then combine
+            # those two sets to copy the specified content + children.
+            content = source_repo_version.content.filter(content_filter)
+            children = find_children_of_content(content, source_repo_version)
+            content_to_copy[source_repo_name] = content | children
 
         solver.finalize()
 
@@ -131,6 +153,6 @@ def copy_content(config, dependency_solving):
         for from_repo, units in content_to_copy.items():
             src_repo_version = libsolv_repo_names[from_repo]
             dest_repo_version = repo_mapping[src_repo_version]
-            base_version = dest_repo_version if dest_version_provided else None
+            base_version = dest_repo_version if base_versions[src_repo_version] else None
             with dest_repo_version.repository.new_version(base_version=base_version) as new_version:
                 new_version.add_content(Content.objects.filter(pk__in=units))
