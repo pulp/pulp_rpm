@@ -22,6 +22,13 @@ else
   RANGE="$RANGE~..$RANGE"
 fi
 
+# check for code changes
+if [[ ! `git log --no-merges --pretty='format:' --name-only "$RANGE" | grep -v "pulp_rpm/__init__.py" | grep "pulp_rpm/.*.py"` ]]
+then
+  echo "No code changes detected. Skipping coverage check."
+  return 0
+fi
+
 if [[ $(git log --format=medium --no-merges "$RANGE" | grep "\[nocoverage\]") ]]
 then
   echo "[nocoverage] is present - skipping this check"
