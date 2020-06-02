@@ -11,6 +11,7 @@ CHECKSUM_TYPES = SimpleNamespace(
     SHA512='sha512'
 )
 
+
 # The same as above, but in a format that choice fields can use
 CHECKSUM_CHOICES = (
     (CHECKSUM_TYPES.UNKNOWN, CHECKSUM_TYPES.UNKNOWN),
