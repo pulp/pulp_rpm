@@ -6,7 +6,7 @@ import subprocess
 
 from functools import partial
 from io import StringIO
-from unittest import SkipTest
+from unittest import SkipTest, TestCase
 from time import sleep
 from tempfile import NamedTemporaryFile
 
@@ -285,3 +285,20 @@ def get_package_repo_path(package_filename):
     return os.path.join(
         PACKAGES_DIRECTORY, package_filename.lower()[0], package_filename
     )
+
+
+class PulpTestCase(TestCase):
+    """Pulp customized test case."""
+
+    def doCleanups(self):
+        """
+        Execute all cleanup functions and waits the deletion tasks.
+
+        Normally called for you after tearDown.
+        """
+        output = super().doCleanups()
+        running_tasks = tasks.list(state="running", name__contains="delete")
+        while running_tasks.count:
+            sleep(0.3)
+            running_tasks = tasks.list(state="running", name__contains="delete")
+        return output

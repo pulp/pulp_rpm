@@ -1,7 +1,5 @@
 # coding=utf-8
 """Tests for Pulp`s download policies."""
-import unittest
-
 from pulp_smash.pulp3.utils import gen_repo, get_added_content_summary, get_content_summary
 
 from pulp_rpm.tests.functional.constants import (
@@ -15,6 +13,7 @@ from pulp_rpm.tests.functional.utils import (
     skip_if,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+from pulp_rpm.tests.functional.utils import PulpTestCase
 
 from pulpcore.client.pulp_rpm import (
     RepositoriesRpmApi,
@@ -25,7 +24,7 @@ from pulpcore.client.pulp_rpm import (
 )
 
 
-class SyncPublishDownloadPolicyTestCase(unittest.TestCase):
+class SyncPublishDownloadPolicyTestCase(PulpTestCase):
     """Sync a repository with different download policies.
 
     This test targets the following issue:

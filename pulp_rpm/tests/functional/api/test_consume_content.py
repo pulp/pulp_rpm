@@ -24,11 +24,12 @@ from pulp_rpm.tests.functional.constants import (
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 from pulp_rpm.tests.functional.utils import publish
+from pulp_rpm.tests.functional.utils import PulpTestCase
 
 import requests
 
 
-class PackageManagerConsumeTestCase(unittest.TestCase):
+class PackageManagerConsumeTestCase(PulpTestCase):
     """Verify whether package manager can consume content from Pulp."""
 
     @classmethod
@@ -96,7 +97,7 @@ class PackageManagerConsumeTestCase(unittest.TestCase):
         self.assertEqual(rpm_name, rpm[0])
 
 
-class ConsumeSignedRepomdTestCase(unittest.TestCase):
+class ConsumeSignedRepomdTestCase(PulpTestCase):
     """A test case that verifies the publishing of a signed repository."""
 
     @classmethod

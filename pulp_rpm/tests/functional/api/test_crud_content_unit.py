@@ -1,7 +1,5 @@
 # coding=utf-8
 """Tests that perform actions over content unit."""
-import unittest
-
 from pulp_smash.pulp3.utils import delete_orphans, gen_repo
 
 from pulp_rpm.tests.functional.utils import (
@@ -18,11 +16,12 @@ from pulp_rpm.tests.functional.constants import (
     RPM_SIGNED_URL2
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+from pulp_rpm.tests.functional.utils import PulpTestCase
 
 from pulpcore.client.pulp_rpm import ContentPackagesApi, RepositoriesRpmApi
 
 
-class ContentUnitTestCase(unittest.TestCase):
+class ContentUnitTestCase(PulpTestCase):
     """CRUD content unit.
 
     This test targets the following issues:

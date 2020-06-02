@@ -59,6 +59,7 @@ from pulp_rpm.tests.functional.utils import (
     progress_reports,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+from pulp_rpm.tests.functional.utils import PulpTestCase
 
 from pulpcore.client.pulp_rpm import (
     RepositoriesRpmApi,
@@ -67,7 +68,7 @@ from pulpcore.client.pulp_rpm import (
 )
 
 
-class BasicSyncTestCase(unittest.TestCase):
+class BasicSyncTestCase(PulpTestCase):
     """Sync a repository with the rpm plugin."""
 
     @classmethod
@@ -1000,7 +1001,7 @@ class BasicSyncTestCase(unittest.TestCase):
         return False
 
 
-class SyncInvalidTestCase(unittest.TestCase):
+class SyncInvalidTestCase(PulpTestCase):
     """Sync a repository with a given url on the remote."""
 
     @classmethod
@@ -1043,7 +1044,7 @@ class SyncInvalidTestCase(unittest.TestCase):
         return monitor_task(sync_response.task)
 
 
-class AdditiveModeTestCase(unittest.TestCase):
+class AdditiveModeTestCase(PulpTestCase):
     """Test of additive mode.
 
     1. Create repository, remote and sync it
@@ -1092,7 +1093,7 @@ class AdditiveModeTestCase(unittest.TestCase):
         )
 
 
-class MirrorModeTestCase(unittest.TestCase):
+class MirrorModeTestCase(PulpTestCase):
     """Test of sync with mirror mode.
 
     1. Create repository, remote and sync it
