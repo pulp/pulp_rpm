@@ -1,4 +1,4 @@
-from pulpcore.plugin.importexport import QueryModelResource
+from pulpcore.plugin.importexport import BaseContentResource
 from pulp_rpm.app.models import (
     DistributionTree,
     Modulemd,
@@ -13,7 +13,7 @@ from pulp_rpm.app.models import (
 )
 
 
-class DistributionTreeResource(QueryModelResource):
+class DistributionTreeResource(BaseContentResource):
     """
     Resource for import/export of rpm_distributiontree entities.
     """
@@ -26,9 +26,10 @@ class DistributionTreeResource(QueryModelResource):
 
     class Meta:
         model = DistributionTree
+        import_id_fields = model.natural_key_fields()
 
 
-class ModulemdResource(QueryModelResource):
+class ModulemdResource(BaseContentResource):
     """
     Resource for import/export of rpm_modulemd entities.
     """
@@ -41,9 +42,10 @@ class ModulemdResource(QueryModelResource):
 
     class Meta:
         model = Modulemd
+        import_id_fields = model.natural_key_fields()
 
 
-class ModulemdDefaultsResource(QueryModelResource):
+class ModulemdDefaultsResource(BaseContentResource):
     """
     Resource for import/export of rpm_modulemddefaults entities.
     """
@@ -56,9 +58,10 @@ class ModulemdDefaultsResource(QueryModelResource):
 
     class Meta:
         model = ModulemdDefaults
+        import_id_fields = model.natural_key_fields()
 
 
-class PackageResource(QueryModelResource):
+class PackageResource(BaseContentResource):
     """
     Resource for import/export of rpm_package entities.
     """
@@ -71,9 +74,10 @@ class PackageResource(QueryModelResource):
 
     class Meta:
         model = Package
+        import_id_fields = model.natural_key_fields()
 
 
-class PackageCategoryResource(QueryModelResource):
+class PackageCategoryResource(BaseContentResource):
     """
     Resource for import/export of rpm_packagecategory entities.
     """
@@ -86,9 +90,10 @@ class PackageCategoryResource(QueryModelResource):
 
     class Meta:
         model = PackageCategory
+        import_id_fields = model.natural_key_fields()
 
 
-class PackageGroupResource(QueryModelResource):
+class PackageGroupResource(BaseContentResource):
     """
     Resource for import/export of rpm_packagegroup entities.
     """
@@ -101,9 +106,10 @@ class PackageGroupResource(QueryModelResource):
 
     class Meta:
         model = PackageGroup
+        import_id_fields = model.natural_key_fields()
 
 
-class PackageEnvironmentResource(QueryModelResource):
+class PackageEnvironmentResource(BaseContentResource):
     """
     Resource for import/export of rpm_packageenvironment entities.
     """
@@ -116,9 +122,10 @@ class PackageEnvironmentResource(QueryModelResource):
 
     class Meta:
         model = PackageEnvironment
+        import_id_fields = model.natural_key_fields()
 
 
-class PackageLangpacksResource(QueryModelResource):
+class PackageLangpacksResource(BaseContentResource):
     """
     Resource for import/export of rpm_packagelangpack entities.
     """
@@ -131,9 +138,10 @@ class PackageLangpacksResource(QueryModelResource):
 
     class Meta:
         model = PackageLangpacks
+        import_id_fields = model.natural_key_fields()
 
 
-class RepoMetadataFileResource(QueryModelResource):
+class RepoMetadataFileResource(BaseContentResource):
     """
     Resource for import/export of rpm_repometadatafile entities.
     """
@@ -146,9 +154,10 @@ class RepoMetadataFileResource(QueryModelResource):
 
     class Meta:
         model = RepoMetadataFile
+        import_id_fields = model.natural_key_fields()
 
 
-class UpdateRecordResource(QueryModelResource):
+class UpdateRecordResource(BaseContentResource):
     """
     Resource for import/export of rpm_updaterecord entities.
     """
@@ -161,6 +170,7 @@ class UpdateRecordResource(QueryModelResource):
 
     class Meta:
         model = UpdateRecord
+        import_id_fields = model.natural_key_fields()
 
 
 IMPORT_ORDER = [
