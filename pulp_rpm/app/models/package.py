@@ -13,7 +13,17 @@ from pulp_rpm.app.constants import (
     PULP_PACKAGE_ATTRS,
 )
 
+
 log = getLogger(__name__)
+
+
+# Hard to move this due to circular import problems
+class RpmVersionField(models.Field):
+    """Model Field for evr_t, a custom type for representing RPM EVR."""
+
+    def db_type(self, connection):
+        """Returns the database column type."""
+        return 'evr_t'
 
 
 class Package(Content):
@@ -121,6 +131,8 @@ class Package(Content):
     release = models.CharField(max_length=255)
     arch = models.CharField(max_length=20)
 
+    evr = RpmVersionField()
+
     pkgId = models.CharField(unique=True, max_length=128)  # formerly "checksum" in Pulp 2
     checksum_type = models.CharField(choices=CHECKSUM_CHOICES, max_length=10)
 
@@ -218,6 +230,9 @@ class Package(Content):
         unique_together = (
             'name', 'epoch', 'version', 'release', 'arch', 'checksum_type', 'pkgId'
         )
+
+    class ReadonlyMeta:
+        readonly = ["evr"]
 
     @classmethod
     def createrepo_to_dict(cls, package):
