@@ -1,6 +1,7 @@
 import argparse
 import os
 import textwrap
+from pathlib import Path
 
 from git import Repo
 
@@ -18,9 +19,9 @@ with open(f"{plugin_path}/pulp_rpm/__init__.py") as fp:
 release_version = version["__version__"].replace(".dev", "")
 
 to_close = []
-for filename in os.listdir(f"{plugin_path}/CHANGES"):
-    if filename.split(".")[0].isdigit():
-        to_close.append(filename.split(".")[0])
+for filename in Path(f"{plugin_path}/CHANGES").rglob("*"):
+    if filename.stem.isdigit():
+        to_close.append(filename.stem)
 issues = ",".join(to_close)
 
 helper = textwrap.dedent(
