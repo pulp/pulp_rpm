@@ -9,6 +9,7 @@ from django.db import (
     transaction,
 )
 
+from pulpcore.plugin.download import DownloaderFactory
 from pulpcore.plugin.models import (
     AsciiArmoredDetachedSigningService,
     CreatedResource,
@@ -34,6 +35,8 @@ from pulp_rpm.app.models import (
     ModulemdDefaults,
     UpdateRecord,
 )
+
+from pulp_rpm.app.downloaders import RpmDownloader
 
 log = getLogger(__name__)
 
@@ -148,6 +151,56 @@ class RpmRemote(Remote):
     """
 
     TYPE = 'rpm'
+    sles_auth_token = models.CharField(
+        max_length=512,
+        null=True
+    )
+
+    @property
+    def download_factory(self):
+        """
+        Return the DownloaderFactory which can be used to generate asyncio capable downloaders.
+
+        Returns:
+            DownloadFactory: The instantiated DownloaderFactory to be used by
+                get_downloader()
+
+        """
+        try:
+            return self._download_factory
+        except AttributeError:
+            self._download_factory = DownloaderFactory(
+                self,
+                downloader_overrides={
+                    'http': RpmDownloader,
+                    'https': RpmDownloader,
+                }
+            )
+            return self._download_factory
+
+    def get_downloader(self, remote_artifact=None, url=None, **kwargs):
+        """
+        Get a downloader from either a RemoteArtifact or URL that is configured with this Remote.
+
+        This method accepts either `remote_artifact` or `url` but not both. At least one is
+        required. If neither or both are passed a ValueError is raised.
+
+        Args:
+            remote_artifact (:class:`~pulpcore.app.models.RemoteArtifact`): The RemoteArtifact to
+                download.
+            url (str): The URL to download.
+            kwargs (dict): This accepts the parameters of
+                :class:`~pulpcore.plugin.download.BaseDownloader`.
+        Raises:
+            ValueError: If neither remote_artifact and url are passed, or if both are passed.
+        Returns:
+            subclass of :class:`~pulpcore.plugin.download.BaseDownloader`: A downloader that
+            is configured with the remote settings.
+
+        """
+        if self.sles_auth_token:
+            kwargs['sles_auth_token'] = self.sles_auth_token
+        return super().get_downloader(remote_artifact=remote_artifact, url=url, **kwargs)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
