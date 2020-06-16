@@ -202,7 +202,7 @@ class RpmPublicationViewSet(PublicationViewSet):
     """
 
     endpoint_name = 'rpm'
-    queryset = RpmPublication.objects.all()
+    queryset = RpmPublication.objects.exclude(complete=False)
     serializer_class = RpmPublicationSerializer
 
     @swagger_auto_schema(
