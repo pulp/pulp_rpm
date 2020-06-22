@@ -19,6 +19,7 @@ from pulpcore.plugin.serializers import (
     ModelSerializer,
     MultipleArtifactContentSerializer,
     NoArtifactContentSerializer,
+    NoArtifactContentUploadSerializer,
     PublicationDistributionSerializer,
     PublicationSerializer,
     RepositorySyncURLSerializer,
@@ -390,7 +391,7 @@ class UpdateCollectionSerializer(ModelSerializer):
         model = UpdateCollection
 
 
-class UpdateRecordSerializer(SingleArtifactContentUploadSerializer):
+class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
     """
     A Serializer for UpdateRecord.
     """
@@ -556,9 +557,6 @@ class UpdateRecordSerializer(SingleArtifactContentUploadSerializer):
         if 'file' in data:
             update_record_data.update(json.loads(data['file'].read()))
             update_record_data.update(data)
-        elif 'artifact' in data:
-            update_record_data.update(json.loads(data['artifact'].file.read()))
-            update_record_data.update(data)
         else:
             raise serializers.ValidationError("Only creation with file or artifact is allowed.")
 
@@ -587,7 +585,7 @@ class UpdateRecordSerializer(SingleArtifactContentUploadSerializer):
         return validated_data
 
     class Meta:
-        fields = SingleArtifactContentUploadSerializer.Meta.fields + (
+        fields = NoArtifactContentUploadSerializer.Meta.fields + (
             'id', 'updated_date', 'description', 'issued_date',
             'fromstr', 'status', 'title', 'summary', 'version',
             'type', 'severity', 'solution', 'release', 'rights',
@@ -602,7 +600,7 @@ class MinimalUpdateRecordSerializer(UpdateRecordSerializer):
     """
 
     class Meta:
-        fields = SingleArtifactContentUploadSerializer.Meta.fields + (
+        fields = NoArtifactContentUploadSerializer.Meta.fields + (
             'id', 'title', 'severity', 'type'
         )
         model = UpdateRecord
