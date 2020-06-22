@@ -37,6 +37,8 @@ from pulp_rpm.tests.functional.constants import (
     RPM_INVALID_FIXTURE_URL,
     RPM_KICKSTART_FIXTURE_SUMMARY,
     RPM_KICKSTART_FIXTURE_URL,
+    RPM_MIRROR_LIST_GOOD_FIXTURE_URL,
+    RPM_MIRROR_LIST_BAD_FIXTURE_URL,
     RPM_MODULAR_FIXTURE_SUMMARY,
     RPM_MODULAR_FIXTURE_URL,
     RPM_PACKAGE_CONTENT_NAME,
@@ -114,6 +116,41 @@ class BasicSyncTestCase(PulpTestCase):
 
         self.assertEqual(latest_version_href, repo.latest_version_href)
         self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
+
+    def test_sync_from_valid_mirror_list_feed(self):
+        """Sync RPM content from a mirror list feed which contains a valid remote URL."""
+        remote = self.remote_api.create(gen_rpm_remote(RPM_MIRROR_LIST_GOOD_FIXTURE_URL))
+        repo, remote = self.do_test(remote=remote)
+
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
+        self.assertDictEqual(get_added_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
+
+    def test_sync_from_invalid_mirror_list_feed(self):
+        """Sync RPM content from a mirror list feed which contains an invalid remote URL."""
+        repo = self.repo_api.create(gen_repo())
+        self.assertEqual(repo.latest_version_href, f"{repo.pulp_href}versions/0/")
+
+        remote = self.remote_api.create(gen_rpm_remote(RPM_MIRROR_LIST_BAD_FIXTURE_URL))
+        remote = self.remote_api.read(remote.pulp_href)
+        repo, remote = self.do_test(remote=remote)
+
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        task_result = monitor_task(sync_response.task)
+
+        if isinstance(task_result, dict):
+            self.assertEqual(
+                task_result["error"]["description"],
+                "A no valid remote URL was provided."
+            )
+        else:
+            self.fail("A task was completed without a failure.")
 
     def test_sync_modular(self):
         """Sync RPM modular content.

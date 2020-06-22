@@ -9,13 +9,12 @@ from productmd.common import SortedConfigParser
 from productmd.treeinfo import TreeInfo
 
 
-def get_treeinfo_data(remote):
+def get_treeinfo_data(remote, remote_url):
     """
     Get Treeinfo data from remote.
 
     """
     treeinfo_serialized = {}
-    remote_url = remote.url if remote.url[-1] == "/" else f"{remote.url}/"
     namespaces = [".treeinfo", "treeinfo"]
     for namespace in namespaces:
         downloader = remote.get_downloader(url=urljoin(remote_url, namespace))

@@ -87,6 +87,9 @@ RPM_UNSIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-unsigned/')
 
 RPM_INVALID_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-missing-filelists/')
 
+RPM_MIRROR_LIST_GOOD_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-mirrorlist-good')
+RPM_MIRROR_LIST_BAD_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-mirrorlist-bad')
+
 RPM_PACKAGE_COUNT = 35
 """The number of packages available at
 :data:`RPM_SIGNED_FIXTURE_URL` and :data:`RPM_UNSIGNED_FIXTURE_URL`
