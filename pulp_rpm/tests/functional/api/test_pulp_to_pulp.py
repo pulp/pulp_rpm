@@ -1,7 +1,5 @@
 # coding=utf-8
 """Tests that verify download of content served by Pulp."""
-import unittest
-
 from pulp_smash.pulp3.constants import ON_DEMAND_DOWNLOAD_POLICIES
 from pulp_smash.pulp3.utils import (
     gen_distribution,
@@ -17,6 +15,7 @@ from pulp_rpm.tests.functional.utils import (
     monitor_task,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+from pulp_rpm.tests.functional.utils import PulpTestCase
 
 from pulpcore.client.pulp_rpm import (
     DistributionsRpmApi,
@@ -28,7 +27,7 @@ from pulpcore.client.pulp_rpm import (
 )
 
 
-class SynctoSyncTestCase(unittest.TestCase):
+class SynctoSyncTestCase(PulpTestCase):
     """Sync repositories with the rpm plugin."""
 
     def test_immediate(self):

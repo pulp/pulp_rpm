@@ -54,7 +54,7 @@ Remote GET response:
         "pulp_href": "/pulp/api/v3/remotes/rpm/rpm/2ceb5262-a5b2-4297-afdf-a31f7e46dfc5/",
         "pulp_last_updated": "2019-11-27T13:30:29.199187Z",
         "tls_validation": true,
-        "url": "https://repos.fedorapeople.org/pulp/pulp/fixtures/rpm/"
+        "url": "https://fixtures.pulpproject.org/rpm-unsigned/"
     }
 
 .. _versioned-repo-created:

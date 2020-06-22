@@ -1,7 +1,6 @@
 # coding=utf-8
 """Tests that CRUD rpm remotes."""
 from random import choice
-import unittest
 
 from pulp_smash import utils
 
@@ -13,12 +12,13 @@ from pulp_rpm.tests.functional.utils import (
     skip_if,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+from pulp_rpm.tests.functional.utils import PulpTestCase
 
 from pulpcore.client.pulp_rpm import RemotesRpmApi
 from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 
-class CRUDRemotesTestCase(unittest.TestCase):
+class CRUDRemotesTestCase(PulpTestCase):
     """CRUD remotes."""
 
     @classmethod
@@ -100,7 +100,7 @@ class CRUDRemotesTestCase(unittest.TestCase):
             self.remote_api.read(self.remote.pulp_href)
 
 
-class CreateRemoteNoURLTestCase(unittest.TestCase):
+class CreateRemoteNoURLTestCase(PulpTestCase):
     """Verify whether is possible to create a remote without a URL."""
 
     def test_all(self):
@@ -117,7 +117,7 @@ class CreateRemoteNoURLTestCase(unittest.TestCase):
             RemotesRpmApi(gen_rpm_client()).create(body)
 
 
-class RemoteDownloadPolicyTestCase(unittest.TestCase):
+class RemoteDownloadPolicyTestCase(PulpTestCase):
     """Verify download policy behavior for valid and invalid values.
 
     In Pulp 3, there are are different download policies.

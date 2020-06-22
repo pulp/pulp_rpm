@@ -1,8 +1,8 @@
-import unittest
 import requests
 
-from pulp_smash import api, config
+from pulp_smash import config
 from pulp_smash.pulp3.utils import (
+    delete_orphans,
     gen_distribution,
     gen_repo,
 )
@@ -10,6 +10,7 @@ from pulp_smash.pulp3.utils import (
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
     monitor_task,
+    PulpTestCase,
 )
 
 from pulpcore.client.pulp_rpm import (
@@ -20,41 +21,40 @@ from pulpcore.client.pulp_rpm import (
 )
 
 
-class ContentHandlerTests(unittest.TestCase):
+class ContentHandlerTests(PulpTestCase):
     """Whether the RpmDistribution.content_handler* methods work."""
 
     @classmethod
     def tearDownClass(cls) -> None:
         """Clean up after testing."""
-        for f, x in cls.cleanUp:
-            f(x)
+        delete_orphans(cls.cfg)
 
     @classmethod
     def setUpClass(cls) -> None:
         """Set up the class."""
         cls.cfg = config.get_config()
-        cls.api_client = api.Client(cls.cfg, api.json_handler)
         cls.client = gen_rpm_client()
         cls.repo_api = RepositoriesRpmApi(cls.client)
         cls.publications_api = PublicationsRpmApi(cls.client)
         cls.distributions_api = DistributionsRpmApi(cls.client)
+        delete_orphans(cls.cfg)
 
-        cls.cleanUp = list()
-
-        repo = cls.repo_api.create(gen_repo())
-        cls.cleanUp.append((cls.repo_api.delete, repo.pulp_href))
+    def setUp(self) -> None:
+        """Set up the test."""
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
 
         publish_data = RpmRpmPublication(repository=repo.pulp_href)
-        publish_response = cls.publications_api.create(publish_data)
+        publish_response = self.publications_api.create(publish_data)
         created_resources = monitor_task(publish_response.task)
         publication_href = created_resources[0]
-        cls.cleanUp.append((cls.publications_api.delete, publication_href))
+        self.addCleanup(self.publications_api.delete, publication_href)
 
         dist_data = gen_distribution(publication=publication_href)
-        dist_response = cls.distributions_api.create(dist_data)
+        dist_response = self.distributions_api.create(dist_data)
         created_resources = monitor_task(dist_response.task)
-        cls.dist = cls.distributions_api.read(created_resources[0])
-        cls.cleanUp.append((cls.distributions_api.delete, cls.dist.pulp_href))
+        self.dist = self.distributions_api.read(created_resources[0])
+        self.addCleanup(self.distributions_api.delete, self.dist.pulp_href)
 
     def testConfigRepoInListingUnsigned(self):
         """Whether the served resources are in the directory listing."""
