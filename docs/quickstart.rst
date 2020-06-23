@@ -6,13 +6,12 @@ Run Pulplift
 
 Use pulplift to try out Pulp. Pulplift uses `Vagrant <https://www.vagrantup.com/docs/installation/>`_ so you'll need to have that installed.
 
-Download pulplift and RPM plugin prerequisite role.
+Download pulplift.
 
 ::
 
     git clone --recurse-submodules https://github.com/pulp/pulplift.git
     cd pulplift
-    ansible-galaxy install pulp.pulp_rpm_prerequisites -p ./pulp_installer/roles/
 
 
 Use ``example.user-config.yml`` as a template for your config yaml file or directly edit that one.
@@ -22,15 +21,12 @@ Use ``example.user-config.yml`` as a template for your config yaml file or direc
     cp example.user-config.yml local.user-config.yml
 
 Edit the config file as show below.
-Do not forget to set up ``prereq_role`` to previously installed ``pulp.pulp_rpm_prerequisites`` and uncomment
-``pulp_use_system_wide_pkg`` as advised.
 
 .. code-block:: yaml
 
     pulp_default_admin_password: password
     pulp_install_plugins:
-      pulp-rpm:
-        prereq_role: "pulp.pulp_rpm_prerequisites"
+      pulp-rpm: {}
       pulp-file: {}
 
     pulp_settings:

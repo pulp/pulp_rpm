@@ -6,51 +6,40 @@ User setup
 Install with pulp_installer (recommended)
 -----------------------------------------
 
-With the use of the ``pulp_installer`` installer you need to download a supportive
-role before you run installer.
+Only Fedora 29+ and CentOS 7+ are supported.
 
-Only Fedora 29+ and CentOS 7 (with epel repository and python36) are supported.
+pulpcore provides an `Ansible Installer <https://galaxy.ansible.com/pulp/pulp_installer>`_ that can be used to
+install ``pulp_rpm``. For example if your host is in your Ansible inventory as ``myhost`` you
+can install onto it with:
 
 .. code-block:: bash
 
-   git clone https://github.com/pulp/pulp_installer.git
-   cd pulp_installer
-   ansible-galaxy install pulp.pulp_rpm_prerequisites -p ./roles/
+   ansible-galaxy install geerlingguy.postgresql
+   ansible-galaxy collection install pulp.pulp_installer
 
-Create ``playbook.yml`` as example you can use ``example-use/playbook.yml`` from ``pulp_installer`` directory.
-Do not forget about ``group_vars`` as dependency in same directory.
-
-Add the ``pulp_rpm`` plugin with the ``prereq_role`` downloaded to ``pulp_install_plugins`` under ``vars``.
-
-Final ``playbook.yml`` can looks like:
+Create your pulp_rpm.yml playbook to use with the installer:
 
 .. code-block:: yaml
 
     ---
     - hosts: all
       vars:
+        pulp_settings:
+          secret_key: << YOUR SECRET HERE >>
+          content_origin: "http://{{ ansible_fqdn }}"
+        pulp_default_admin_password: << YOUR PASSWORD HERE >>
         pulp_install_plugins:
-          pulp-rpm:
-            prereq_role: "pulp.pulp_rpm_prerequisites"  # https://galaxy.ansible.com/pulp/pulp_rpm_prerequisites
-      pre_tasks:
-        # The version string below is the highest of all those in roles' metadata:
-        # "min_ansible_version". It needs to be kept manually up-to-date.
-        - name: Verify Ansible meets min required version
-          assert:
-            that: "ansible_version.full is version_compare('2.8', '>=')"
-            msg: >
-              "You must update Ansible to at least 2.8 to use this version of Pulp 3 Installer."
-      roles:
-        - pulp_database
-        - pulp_workers
-        - pulp_resource_manager
-        - pulp_webserver
-        - pulp_content
-      environment:
+          pulp-rpm: {}
+        roles:
+          - pulp.pulp_installer.pulp_all_services
+        environment:
         DJANGO_SETTINGS_MODULE: pulpcore.app.settings
 
-Now you can run installer against your desired host following instructions
-in the `pulp_installer <https://github.com/pulp/pulp_installer>`__ installer.
+Then install it onto ``myhost`` with:
+
+.. code-block:: bash
+
+    ansible-playbook pulp_pm.yml -l myhost
 
 
 Pip install
