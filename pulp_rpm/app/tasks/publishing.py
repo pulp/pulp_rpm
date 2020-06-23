@@ -2,11 +2,13 @@ import os
 from gettext import gettext as _
 import logging
 import shutil
+from tempfile import NamedTemporaryFile
 
 import createrepo_c as cr
 import libcomps
 
 from django.core.files import File
+from django.core.files.storage import default_storage as storage
 
 from pulpcore.plugin.models import (
     AsciiArmoredDetachedSigningService,
@@ -20,6 +22,7 @@ from pulpcore.plugin.tasking import WorkingDirectory
 
 from pulp_rpm.app.comps import dict_to_strdict
 from pulp_rpm.app.constants import CHECKSUM_TYPES, PACKAGES_DIRECTORY
+from pulp_rpm.app.kickstart.treeinfo import PulpTreeInfo, TreeinfoData
 from pulp_rpm.app.models import (
     DistributionTree,
     Modulemd,
@@ -94,12 +97,13 @@ class PublicationData:
 
         return repomdrecords
 
-    def publish_artifacts(self, content):
+    def publish_artifacts(self, content, prefix=''):
         """
         Publish artifacts.
 
         Args:
             content (pulpcore.plugin.models.Content): content set.
+            prefix (str): a relative path prefix for the published artifact
 
         """
         published_artifacts = []
@@ -107,12 +111,13 @@ class PublicationData:
                 content__in=content.exclude(
                     pulp_type__in=[RepoMetadataFile.get_pulp_type(),
                                    Modulemd.get_pulp_type(),
-                                   ModulemdDefaults.get_pulp_type()]
+                                   ModulemdDefaults.get_pulp_type()],
                 ).distinct()
-        ).iterator():
+        ).exclude(relative_path__in=["treeinfo", ".treeinfo"]).iterator():
             relative_path = content_artifact.relative_path
             if content_artifact.content.pulp_type == Package.get_pulp_type():
                 relative_path = os.path.join(
+                    prefix,
                     PACKAGES_DIRECTORY,
                     relative_path.lower()[0],
                     content_artifact.relative_path
@@ -133,6 +138,27 @@ class PublicationData:
             distribution_tree (pulp_rpm.models.DistributionTree): A distribution_tree object.
 
         """
+        original_treeinfo_content_artifact = distribution_tree.contentartifact_set.get(
+            relative_path__in=['.treeinfo', 'treeinfo']
+        )
+        artifact_file = storage.open(original_treeinfo_content_artifact.artifact.file.name)
+        with NamedTemporaryFile('wb') as temp_file:
+            shutil.copyfileobj(artifact_file, temp_file)
+            temp_file.flush()
+            treeinfo = PulpTreeInfo()
+            treeinfo.load(f=temp_file.name)
+            treeinfo_parsed = treeinfo.parsed_sections()
+            treeinfodata = TreeinfoData(treeinfo_parsed)
+            for variant in treeinfo.variants.get_variants():
+                variant.paths.repository = treeinfodata.variants[variant.id]["repository"]
+                variant.paths.packages = treeinfodata.variants[variant.id]["packages"]
+            treeinfo_file = NamedTemporaryFile()
+            treeinfo.dump(treeinfo_file.name)
+            PublishedMetadata.create_from_file(
+                relative_path=original_treeinfo_content_artifact.relative_path,
+                publication=self.publication,
+                file=File(open(treeinfo_file.name, 'rb'))
+            )
         relations = ["addon", "variant"]
         for relation in relations:
             addons_or_variants = getattr(distribution_tree, f"{relation}s").all()
@@ -158,6 +184,8 @@ class PublicationData:
         main_content = self.publication.repository_version.content
         self.repomdrecords = self.prepare_metadata_files(main_content)
 
+        self.publish_artifacts(main_content)
+
         distribution_trees = DistributionTree.objects.filter(
             pk__in=main_content
         ).prefetch_related(
@@ -171,14 +199,12 @@ class PublicationData:
         for distribution_tree in distribution_trees:
             self.handle_sub_repos(distribution_tree)
 
-        all_content = main_content
         for name, content, checksum_types in self.sub_repos:
             os.mkdir(name)
             setattr(self, f"{name}_content", content)
             setattr(self, f"{name}_checksums", checksum_types)
             setattr(self, f"{name}_repomdrecords", self.prepare_metadata_files(content, name))
-            all_content |= content
-        self.publish_artifacts(all_content)
+            self.publish_artifacts(content, name)
 
 
 def get_checksum_type(name, checksum_types):
