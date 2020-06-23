@@ -138,7 +138,12 @@ class YumHTTPDistributor(Distributor):
 
         # If the only file is the listing file, it is safe to delete the file and containing dir.
         if os.listdir(up_dir) == ['listing']:
-            os.remove(os.path.join(up_dir, 'listing'))
+            try:
+                os.remove(os.path.join(up_dir, 'listing'))
+            except OSError as e:
+                if e.errno != errno.ENOENT:
+                    raise
+
             try:
                 os.rmdir(up_dir)
             except OSError:
@@ -146,7 +151,13 @@ class YumHTTPDistributor(Distributor):
                 # remove the directory. It is possible that the concurrent operation created the
                 # listing file before this operation deleted it, so to be safe, we need to
                 # regenerate the listing file.
-                util.generate_listing_files(up_dir, up_dir)
+                try:
+                    util.generate_listing_files(up_dir, up_dir)
+                except OSError as e:
+                    # can potentially happen if the directory was removed by other tasks due to a
+                    # race condition
+                    if e.errno != errno.ENOENT:
+                        raise
                 return
 
         self.clean_simple_hosting_directories(up_dir, containing_dir)
