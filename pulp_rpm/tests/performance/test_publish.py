@@ -2,9 +2,13 @@
 """Tests that publish rpm plugin repositories."""
 import unittest
 from datetime import datetime
+from html.parser import HTMLParser
+from tempfile import NamedTemporaryFile
 from urllib.parse import urljoin
 
-from pulp_smash import api, config
+from productmd.treeinfo import TreeInfo
+
+from pulp_smash import api, config, utils
 from pulp_smash.pulp3.utils import (
     delete_orphans,
     gen_repo,
@@ -14,6 +18,7 @@ from pulp_smash.pulp3.utils import (
 )
 
 from pulp_rpm.tests.functional.constants import (
+    RPM_DISTRIBUTION_PATH,
     RPM_KICKSTART_CONTENT_NAME,
     RPM_PACKAGE_CONTENT_NAME,
     RPM_KICKSTART_FIXTURE_URL,
@@ -30,6 +35,24 @@ from pulp_rpm.tests.functional.constants import (
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_remote
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+
+
+class PackagesHtmlParser(HTMLParser):
+    """HTML parser that looks for the first link to a file.
+
+    This parser look for the first link that doesn't have a trailing slash. It then sets the
+    package_href attribute to the value of the href.
+    """
+
+    package_href = None
+
+    def handle_starttag(self, tag, attrs):
+        """Looks for a tags that don't end with a slash."""
+        if not self.package_href:
+            if tag == "a" and not attrs[0][1].endswith("/"):
+                self.package_href = attrs[0][1]
+        else:
+            super().handle_starttag(tag, attrs)
 
 
 class PublishTestCase(unittest.TestCase):
@@ -128,6 +151,7 @@ class PublishTestCase(unittest.TestCase):
             wait=waiting_time.total_seconds(),
             service=task_duration.total_seconds()
         ))
+        return publish_task["created_resources"][0]
 
     def test_epel7(self):
         """Publish EPEL 7."""
@@ -143,7 +167,37 @@ class PublishTestCase(unittest.TestCase):
 
     def test_centos8_baseos(self):
         """Publish CentOS 8 BaseOS."""
-        self.rpm_publish(url=CENTOS8_BASEOS_URL)
+        publication_href = self.rpm_publish(url=CENTOS8_BASEOS_URL)
+        # Test that the .treeinfo file is available and AppStream sub-repo is published correctly
+        body = {"publication": publication_href,
+                "name": "centos8",
+                "base_path": "centos8"}
+        response = self.client.using_handler(api.json_handler).post(RPM_DISTRIBUTION_PATH, body)
+        distribution_task = self.client.get(response["task"])
+        distribution_href = distribution_task["created_resources"][0]
+        self.addCleanup(self.client.delete, distribution_href)
+        distribution = self.client.get(distribution_href)
+        treeinfo_file = utils.http_get(urljoin(distribution["base_url"], ".treeinfo"))
+        treeinfo = TreeInfo()
+        with NamedTemporaryFile('wb') as temp_file:
+            temp_file.write(treeinfo_file)
+            temp_file.flush()
+            treeinfo.load(f=temp_file.name)
+        for variant_name, variant in treeinfo.variants.variants.items():
+            if variant_name == "BaseOS":
+                self.assertEqual(variant.paths.repository, ".")
+                self.assertEqual(variant.paths.packages, "Packages")
+            elif variant_name == "AppStream":
+                self.assertEqual(variant.paths.repository, "AppStream")
+                self.assertEqual(variant.paths.packages, "AppStream/Packages")
+                # Find the first package in the 'AppStream/Packages/a/' directory and download it
+                parser = PackagesHtmlParser()
+                a_packages_href = urljoin(distribution["base_url"],
+                                          "{}/a/".format(variant.paths.packages))
+                a_packages_listing = utils.http_get(a_packages_href)
+                parser.feed(a_packages_listing.__str__())
+                full_package_path = urljoin(a_packages_href, parser.package_href)
+                utils.http_get(full_package_path)
 
     def test_centos8_appstream(self):
         """Publish CentOS 8 AppStream."""

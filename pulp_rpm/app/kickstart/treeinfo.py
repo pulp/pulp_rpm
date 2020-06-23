@@ -8,6 +8,8 @@ from django.utils.timezone import now
 from productmd.common import SortedConfigParser
 from productmd.treeinfo import TreeInfo
 
+from pulp_rpm.app.constants import PACKAGES_DIRECTORY
+
 
 def get_treeinfo_data(remote):
     """
@@ -159,6 +161,7 @@ class TreeinfoData:
         self._data = data
         self._addon_uids = []
         self._repodata_paths = []
+        self._repository_map = {}
 
     @property
     def distribution_tree(self):
@@ -292,24 +295,30 @@ class TreeinfoData:
         Variant data.
 
         Returns:
-            list: List of variant data
+            dict: Dictionary where each key is the id and value is a dictionary of variant data
 
         """
         variant_uids = self._data.get("tree", {}).get("variants")
         variant_uids = variant_uids.split(",") if variant_uids else []
-        variants = []
+        variants = {}
 
         self._addon_uids = []
 
         for variant_uid in variant_uids:
             variant_key = "variant-" + variant_uid
+            if self._data[variant_key]["repository"] != '.':
+                repository = self._data[variant_key]["id"]
+                packages = "{}/{}".format(repository, PACKAGES_DIRECTORY)
+            else:
+                repository = self._data[variant_key]["repository"]
+                packages = PACKAGES_DIRECTORY
             variant = {
                 "variant_id": self._data[variant_key]["id"],
                 "uid": self._data[variant_key]["uid"],
                 "name": self._data[variant_key]["name"],
                 "type": self._data[variant_key]["type"],
-                "packages": self._data[variant_key]["packages"],
-                "repository": self._data[variant_key]["repository"],
+                "packages": packages,
+                "repository": repository,
             }
             keys = [
                 "source_packages",
@@ -320,6 +329,7 @@ class TreeinfoData:
             ]
 
             self._repodata_paths.append(self._data[variant_key]["repository"])
+            self._repository_map[self._data[variant_key]["repository"]] = repository
 
             for key in keys:
                 if key in self._data[variant_key].keys():
@@ -328,7 +338,7 @@ class TreeinfoData:
             addons = self._data[variant_key].get("addons")
             if addons:
                 self._addon_uids.extend(addons.split(","))
-            variants.append(variant)
+            variants[variant["variant_id"]] = variant
 
         return variants
 
@@ -338,28 +348,35 @@ class TreeinfoData:
         Addon data.
 
         Returns:
-            list: List of addon data
+            dict: Dictionary where each key is the id and value is a dictionary of addon data
 
         """
-        addons = []
+        addons = {}
 
         if not self._addon_uids:
             self.variants
 
         for addon_uid in self._addon_uids:
             addon_key = "addon-" + addon_uid
+            if self._data[addon_key]["repository"] != '.':
+                repository = self._data[addon_key]["id"]
+                packages = "{}/{}".format(repository, PACKAGES_DIRECTORY)
+            else:
+                repository = self._data[addon_key]["repository"]
+                packages = PACKAGES_DIRECTORY
             addon = {
                 "addon_id": self._data[addon_key]["id"],
                 "uid": self._data[addon_key]["uid"],
                 "name": self._data[addon_key]["name"],
                 "type": self._data[addon_key]["type"],
-                "packages": self._data[addon_key]["packages"],
-                "repository": self._data[addon_key]["repository"],
+                "packages": packages,
+                "repository": repository,
             }
 
             self._repodata_paths.append(self._data[addon_key]["repository"])
+            self._repository_map[self._data[addon_key]["repository"]] = repository
 
-            addons.append(addon)
+            addons[addon["addon_id"]] = addon
 
         return addons
 
@@ -383,5 +400,6 @@ class TreeinfoData:
 
         self._image_paths.update(self._images)
         data["download"] = dict(repodatas=self._repodata_paths, images=self._image_paths)
+        data["repo_map"] = self._repository_map
 
         return data
