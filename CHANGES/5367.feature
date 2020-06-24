@@ -1,0 +1,1 @@
+Add a retention policy feature - when specified, the latest N versions of each package will be kept and older versions will be purged.

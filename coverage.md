@@ -12,7 +12,7 @@ Manual Coverage
 | As a user, I can sync all yum content types ( NO drpm) in additive mode (default) | PART | checking counts of packages and advisories |
 | As a user, I can sync and skip specific type (srpm) | NO |  |
 | As a user, I can sync opensuse repository | NO |  |
-| As a user, I can sync from a mirror list | YES | |
+| As a user, I can sync from a mirror list | YES |  |
 | **Duplicates** |  |  |
 | As a user, I have only one advisory with the same id in a repo version | YES |  |
 | As a user, I have only one module with the same NSVCA in a repo version | NO |  |
@@ -41,3 +41,6 @@ Manual Coverage
 | As a user, when a module is removed, its packages are removed as well ( not referenced by other modules) | NO |  |
 | **Consumer cases** |  |  |
 | As a user, I can use dnf to install all the content served by Pulp | PART | only covers rpm installation |
+| **Retention** |  |  |
+| As a user, I can have a repository option that retains the latest N packages of the same name | PART | No coverage of packages with differing arch in same repo (src, i686, x86_64), no coverage of non-sync repo modifications, no coverage of modular RPMs being exempted. |
+

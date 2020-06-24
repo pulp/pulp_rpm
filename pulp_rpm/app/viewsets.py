@@ -132,6 +132,9 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin):
         skip_types = serializer.validated_data.get('skip_types')
         optimize = serializer.validated_data.get('optimize')
 
+        if repository.retain_package_versions > 0 and mirror:
+            raise DRFValidationError("Cannot use 'retain_package_versions' with mirror-mode sync")
+
         result = enqueue_with_reservation(
             tasks.synchronize,
             [repository, remote],

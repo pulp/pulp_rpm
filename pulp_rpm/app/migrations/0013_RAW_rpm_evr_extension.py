@@ -166,7 +166,7 @@ from django.contrib.postgres.operations import CreateExtension
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('rpm', '0011_rpmremote_sles_auth_token'),
+        ('rpm', '0012_remove_pkg_group_env_cat_related_pkgs'),
     ]
 
     operations = [
