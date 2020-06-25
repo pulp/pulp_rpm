@@ -25,6 +25,19 @@ def resolve_advisories(version, previous_version):
     """
     Decide which advisories to add to a repo version and which to remove, and adjust a repo version.
 
+    Advisory can be in 3 different states with relation to a repository version:
+     - in-memory and added before this function call, so it's a part of the current incomplete
+       repository version only
+     - in the db, it's been added in some previous repository version
+     - has no relation to any repository version because it's been created in this function as an
+       outcome of conflict resolution.
+
+    All 3 states need to be handled differently.
+    The in-db ones and newly created are straightforward, just remove/add in a standard way.
+    To remove in-memory ones (`content_pks_to_exclude`) from an incomplete repo version,
+    one needs to do it directly from RepositoryContent. They've never been a part of a repo
+    version, they are also not among the `content_pks_to_add` or `content_pks_to_remove` ones.
+
     Args:
         version (pulpcore.app.models.RepositoryVersion): current incomplete repository version
         previous_version (pulpcore.app.models.RepositoryVersion):  a version preceding
@@ -41,10 +54,9 @@ def resolve_advisories(version, previous_version):
         pk__in=version.content.filter(pulp_type=advisory_pulp_type))
     added_advisories = current_advisories
     advisory_conflicts = []
-    # check for IDs if any conflict
-    # e.g. mirror mode can already removed advisories with same ID
-    current_ids = [adv.id for adv in current_advisories]
 
+    # check for any conflict
+    current_ids = [adv.id for adv in current_advisories]
     if previous_version and len(current_ids) != len(set(current_ids)):
         previous_advisories = UpdateRecord.objects.filter(
             pk__in=previous_version.content.filter(pulp_type=advisory_pulp_type))
