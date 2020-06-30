@@ -928,16 +928,8 @@ class RpmInterrelateContent(Stage):
         async for batch in self.batches():
             with transaction.atomic():
                 ModulemdPackages = Modulemd.packages.through
-                PackageGroupPackages = PackageGroup.related_packages.through
-                PackageCategoryGroups = PackageCategory.packagegroups.through
-                PackageEnvironmentGroups = PackageEnvironment.packagegroups.through
-                PackageEnvironmentOptionalGroups = PackageEnvironment.optionalgroups.through
 
                 modulemd_pkgs_to_save = []
-                group_pkgs_to_save = []
-                category_groups_to_save = []
-                env_groups_to_save = []
-                env_optgroups_to_save = []
 
                 for d_content in batch:
                     if d_content is None:
@@ -952,65 +944,6 @@ class RpmInterrelateContent(Stage):
                                 )
                                 modulemd_pkgs_to_save.append(module_package)
 
-                    elif isinstance(d_content.content, PackageCategory):
-                        for grp in d_content.extra_data['packagegroups']:
-                            if not grp.content._state.adding:
-                                category_group = PackageCategoryGroups(
-                                    packagegroup_id=grp.content.pk,
-                                    packagecategory_id=d_content.content.pk,
-                                )
-                                category_groups_to_save.append(category_group)
-
-                    elif isinstance(d_content.content, PackageEnvironment):
-                        for grp in d_content.extra_data['packagegroups']:
-                            if not grp.content._state.adding:
-                                env_group = PackageEnvironmentGroups(
-                                    packagegroup_id=grp.content.pk,
-                                    packageenvironment_id=d_content.content.pk,
-                                )
-                                env_groups_to_save.append(env_group)
-
-                        for opt in d_content.extra_data['optionalgroups']:
-                            if not opt.content._state.adding:
-                                env_optgroup = PackageEnvironmentOptionalGroups(
-                                    packagegroup_id=opt.content.pk,
-                                    packageenvironment_id=d_content.content.pk,
-                                )
-                                env_optgroups_to_save.append(env_optgroup)
-
-                    elif isinstance(d_content.content, PackageGroup):
-                        for pkg in d_content.extra_data['related_packages']:
-                            if not pkg.content._state.adding:
-                                group_pkg = PackageGroupPackages(
-                                    package_id=pkg.content.pk,
-                                    packagegroup_id=d_content.content.pk
-                                )
-                                group_pkgs_to_save.append(group_pkg)
-
-                        for packagecategory in d_content.extra_data['category_relations']:
-                            if not packagecategory.content._state.adding:
-                                category_group = PackageCategoryGroups(
-                                    packagegroup_id=d_content.content.pk,
-                                    packagecategory_id=packagecategory.content.pk,
-                                )
-                                category_groups_to_save.append(category_group)
-
-                        for packageenvironment in d_content.extra_data['environment_relations']:
-                            if not packageenvironment.content._state.adding:
-                                env_group = PackageEnvironmentGroups(
-                                    packagegroup_id=d_content.content.pk,
-                                    packageenvironment_id=packageenvironment.content.pk,
-                                )
-                                env_groups_to_save.append(env_group)
-
-                        for packageenvironment in d_content.extra_data['env_relations_optional']:
-                            if not packageenvironment.content._state.adding:
-                                env_optgroup = PackageEnvironmentOptionalGroups(
-                                    packagegroup_id=d_content.content.pk,
-                                    packageenvironment_id=packageenvironment.content.pk,
-                                )
-                                env_optgroups_to_save.append(env_optgroup)
-
                     elif isinstance(d_content.content, Package):
                         for modulemd in d_content.extra_data['modulemd_relation']:
                             if not modulemd.content._state.adding:
@@ -1020,35 +953,9 @@ class RpmInterrelateContent(Stage):
                                 )
                                 modulemd_pkgs_to_save.append(module_package)
 
-                        for packagegroup in d_content.extra_data['group_relations']:
-                            if not packagegroup.content._state.adding:
-                                group_pkg = PackageGroupPackages(
-                                    package_id=d_content.content.pk,
-                                    packagegroup_id=packagegroup.content.pk,
-                                )
-                                group_pkgs_to_save.append(group_pkg)
-
                 if modulemd_pkgs_to_save:
                     ModulemdPackages.objects.bulk_create(modulemd_pkgs_to_save,
                                                          ignore_conflicts=True)
-
-                if group_pkgs_to_save:
-                    PackageGroupPackages.objects.bulk_create(group_pkgs_to_save,
-                                                             ignore_conflicts=True)
-
-                if category_groups_to_save:
-                    PackageCategoryGroups.objects.bulk_create(
-                        category_groups_to_save, ignore_conflicts=True
-                    )
-
-                if env_groups_to_save:
-                    PackageEnvironmentGroups.objects.bulk_create(env_groups_to_save,
-                                                                 ignore_conflicts=True)
-
-                if env_optgroups_to_save:
-                    PackageEnvironmentOptionalGroups.objects.bulk_create(
-                        env_optgroups_to_save, ignore_conflicts=True
-                    )
 
             for declarative_content in batch:
                 await self.put(declarative_content)
