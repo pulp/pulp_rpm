@@ -23,7 +23,6 @@ from pulpcore.plugin.serializers import (
     PublicationDistributionSerializer,
     PublicationSerializer,
     RepositorySyncURLSerializer,
-    RelatedField,
     RemoteSerializer,
     RepositorySerializer,
     SingleArtifactContentUploadSerializer,
@@ -725,20 +724,12 @@ class PackageGroupSerializer(NoArtifactContentSerializer):
     digest = serializers.CharField(
         help_text=_("PackageGroup digest."),
     )
-    related_packages = RelatedField(
-        help_text=_("Packages related to this PackageGroup."),
-        allow_null=True,
-        required=False,
-        queryset=Package.objects.all(),
-        many=True,
-        view_name='content-rpm/packages-detail'
-    )
 
     class Meta:
         fields = NoArtifactContentSerializer.Meta.fields + (
             'id', 'default', 'user_visible', 'display_order',
             'name', 'description', 'packages', 'biarch_only',
-            'desc_by_lang', 'name_by_lang', 'digest', 'related_packages'
+            'desc_by_lang', 'name_by_lang', 'digest'
         )
         model = PackageGroup
 
@@ -778,20 +769,11 @@ class PackageCategorySerializer(NoArtifactContentSerializer):
     digest = serializers.CharField(
         help_text=_("Category digest."),
     )
-    packagegroups = RelatedField(
-        help_text=_("PackageGroups related to this category."),
-        allow_null=True,
-        required=False,
-        queryset=PackageGroup.objects.all(),
-        many=True,
-        view_name='content-rpm/packagegroups-detail'
-    )
 
     class Meta:
         fields = NoArtifactContentSerializer.Meta.fields + (
             'id', 'name', 'description', 'display_order',
-            'group_ids', 'desc_by_lang', 'name_by_lang', 'digest',
-            'packagegroups'
+            'group_ids', 'desc_by_lang', 'name_by_lang', 'digest'
         )
         model = PackageCategory
 
@@ -835,28 +817,12 @@ class PackageEnvironmentSerializer(NoArtifactContentSerializer):
     digest = serializers.CharField(
         help_text=_("Environment digest.")
     )
-    packagegroups = RelatedField(
-        help_text=_("Groups related to this Environment."),
-        allow_null=True,
-        required=False,
-        queryset=PackageGroup.objects.all(),
-        many=True,
-        view_name='content-rpm/packagegroups-detail'
-    )
-    optionalgroups = RelatedField(
-        help_text=_("Groups optionally related to this Environment."),
-        allow_null=True,
-        required=False,
-        queryset=PackageGroup.objects.all(),
-        many=True,
-        view_name='content-rpm/packagegroups-detail'
-    )
 
     class Meta:
         fields = NoArtifactContentSerializer.Meta.fields + (
             'id', 'name', 'description', 'display_order',
             'group_ids', 'option_ids', 'desc_by_lang', 'name_by_lang',
-            'digest', 'packagegroups', 'optionalgroups'
+            'digest'
         )
         model = PackageEnvironment
 

@@ -18,7 +18,6 @@ from pulp_rpm.app.constants import (
 )
 
 from pulp_rpm.app.comps import dict_to_strdict, list_to_idlist, strdict_to_dict
-from pulp_rpm.app.models.package import Package
 
 log = getLogger(__name__)
 
@@ -55,8 +54,6 @@ class PackageGroup(Content):
             A dictionary of names by language
         digest (Text):
             A checksum for the group
-        related_packages (ManyToMany):
-            Packages related to this PackageGroup
     """
 
     TYPE = 'packagegroup'
@@ -78,8 +75,6 @@ class PackageGroup(Content):
     name_by_lang = JSONField(default=dict)
 
     digest = models.CharField(unique=True, max_length=64)
-
-    related_packages = models.ManyToManyField(Package)
 
     repo_key_fields = ('id',)
 
@@ -219,8 +214,6 @@ class PackageCategory(Content):
             A dictionary of names by language
         digest (Text):
             A checksum for the category
-        packagegroups (ManyToMany):
-            PackageGroups related to this category
     """
 
     TYPE = 'packagecategory'
@@ -238,8 +231,6 @@ class PackageCategory(Content):
     name_by_lang = JSONField(default=dict)
 
     digest = models.CharField(unique=True, max_length=64)
-
-    packagegroups = models.ManyToManyField(PackageGroup)
 
     repo_key_fields = ('id',)
 
@@ -349,10 +340,6 @@ class PackageEnvironment(Content):
             A dictionary of names by language
         digest (Text):
             A checksum for the environment
-        packagegroups (ManyToMany):
-            PackageGroups related to this environment
-        optionalgroups (ManyToMany):
-            PackageGroups optionally related to this environment
     """
 
     TYPE = 'packageenvironment'
@@ -371,9 +358,6 @@ class PackageEnvironment(Content):
     name_by_lang = JSONField(default=dict)
 
     digest = models.CharField(unique=True, max_length=64)
-
-    packagegroups = models.ManyToManyField(PackageGroup, related_name='packagegroups_to_env')
-    optionalgroups = models.ManyToManyField(PackageGroup, related_name='optionalgroups_to_env')
 
     repo_key_fields = ('id',)
 
