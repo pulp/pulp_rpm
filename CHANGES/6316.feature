@@ -1,0 +1,1 @@
+Comps types (PackageCategory, PackageEnvironment, PackageGroup) can copy its children.
