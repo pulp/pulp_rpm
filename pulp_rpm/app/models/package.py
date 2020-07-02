@@ -4,6 +4,8 @@ import createrepo_c as cr
 
 from django.contrib.postgres.fields import JSONField
 from django.db import models
+from django.db.models import Window, F
+from django.db.models.functions import RowNumber
 
 from pulpcore.plugin.models import Content
 
@@ -13,7 +15,42 @@ from pulp_rpm.app.constants import (
     PULP_PACKAGE_ATTRS,
 )
 
+
 log = getLogger(__name__)
+
+
+# Hard to move this due to circular import problems
+class RpmVersionField(models.Field):
+    """Model Field for evr_t, a custom type for representing RPM EVR."""
+
+    def db_type(self, connection):
+        """Returns the database column type."""
+        return 'evr_t'
+
+
+class PackageManager(models.Manager):
+    """Custom Package object manager."""
+
+    def with_age(self):
+        """Provide an "age" score for each Package object in the queryset.
+
+        Annotate the Package objects with an "age". Age is calculated with a postgresql
+        window function which partitions the Packages by name and architecture, orders the
+        packages in each group by 'evr', and returns the row number of each package, which
+        is the relative "age" within the group. The newest package gets age=1, second newest
+        age=2, and so on.
+
+        A second partition by architecture is important because there can be packages with
+        the same name and verison numbers but they are not interchangeable because they have
+        differing arch, such as 'x86_64' and 'i686', or 'src' (SRPM) and any other arch.
+        """
+        return self.annotate(
+            age=Window(
+                expression=RowNumber(),
+                partition_by=[F('name'), F('arch')],
+                order_by=F('evr').desc()
+            )
+        )
 
 
 class Package(Content):
@@ -112,6 +149,8 @@ class Package(Content):
             attribute in the primary XML.
     """
 
+    objects = PackageManager()
+
     TYPE = 'package'
 
     # Required metadata
@@ -120,6 +159,9 @@ class Package(Content):
     version = models.CharField(max_length=255)
     release = models.CharField(max_length=255)
     arch = models.CharField(max_length=20)
+
+    # Currently filled by a database trigger - consider eventually switching to generated column
+    evr = RpmVersionField()
 
     pkgId = models.CharField(unique=True, max_length=128)  # formerly "checksum" in Pulp 2
     checksum_type = models.CharField(choices=CHECKSUM_CHOICES, max_length=10)
@@ -218,6 +260,9 @@ class Package(Content):
         unique_together = (
             'name', 'epoch', 'version', 'release', 'arch', 'checksum_type', 'pkgId'
         )
+
+    class ReadonlyMeta:
+        readonly = ["evr"]
 
     @classmethod
     def createrepo_to_dict(cls, package):

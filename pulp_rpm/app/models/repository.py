@@ -8,10 +8,10 @@ from django.db import (
     models,
     transaction,
 )
-
 from pulpcore.plugin.download import DownloaderFactory
 from pulpcore.plugin.models import (
     AsciiArmoredDetachedSigningService,
+    Content,
     CreatedResource,
     Remote,
     Repository,
@@ -77,6 +77,7 @@ class RpmRepository(Repository):
     last_sync_remote = models.ForeignKey(Remote, null=True, on_delete=models.SET_NULL)
     last_sync_repo_version = models.PositiveIntegerField(default=0)
     original_checksum_types = JSONField(default=dict)
+    retain_package_versions = models.PositiveIntegerField(default=0)
 
     def new_version(self, base_version=None):
         """
@@ -124,8 +125,8 @@ class RpmRepository(Repository):
         Resolve advisory conflicts when there is more than one advisory with the same id.
 
         Args:
-            new_version (pulpcore.app.models.RepositoryVersion): The incomplete RepositoryVersion to
-                finalize.
+            new_version (pulpcore.app.models.RepositoryVersion): The incomplete RepositoryVersion
+                to finalize.
         """
         if new_version.base_version:
             previous_version = new_version.base_version
@@ -140,9 +141,45 @@ class RpmRepository(Repository):
         from pulp_rpm.app.modulemd import resolve_module_packages  # avoid circular import
         resolve_module_packages(new_version, previous_version)
 
+        self._apply_retention_policy(new_version)
+
         from pulp_rpm.app.advisory import resolve_advisories  # avoid circular import
         resolve_advisories(new_version, previous_version)
         validate_repo_version(new_version)
+
+    def _apply_retention_policy(self, new_version):
+        """Apply the repository's "retain_package_versions" settings to the new version.
+
+        Remove all non-modular packages that are older than the retention policy. A value of 0
+        for the package retention policy represents disabled. A value of 3 would mean that the
+        3 most recent versions of each package would be kept while older versions are discarded.
+
+        Args:
+            new_version (models.RepositoryVersion): Repository version to filter
+        """
+        assert not new_version.complete, \
+            "Cannot apply retention policy to completed repository versions"
+
+        if self.retain_package_versions > 0:
+            # It would be more ideal if, instead of annotating with an age and filtering manually,
+            # we could use Django to filter the particular Package content we want to delete.
+            # Something like ".filter(F('age') > self.retain_package_versions)" would be better
+            # however this is not currently possible with Django. It would be possible with raw
+            # SQL but the repository version content membership subquery is currently
+            # django-managed and would be difficult to share.
+            #
+            # Instead we have to do the filtering manually.
+            nonmodular_packages = Package.objects.with_age().filter(
+                pk__in=new_version.content.filter(pulp_type=Package.get_pulp_type()),
+                is_modular=False,  # don't want to filter out modular RPMs
+            ).only('pk')
+
+            old_packages = []
+            for package in nonmodular_packages:
+                if package.age > self.retain_package_versions:
+                    old_packages.append(package.pk)
+
+            new_version.remove_content(Content.objects.filter(pk__in=old_packages))
 
 
 class RpmRemote(Remote):

@@ -25,6 +25,12 @@ Repository GET response:
         "versions_href": "/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/versions/"
     }
 
+RPM Repositories support several additional options.
+
+- metadata_signing_service:
+    See :ref:`metadata_signing`.
+- retain_package_versions:
+    The maximum number of versions of each package to keep; as new versions of packages are added by upload, sync, or copy, older versions of the same packages are automatically removed. A value of 0 means "unlimited".
 
 .. _create-remote:
 

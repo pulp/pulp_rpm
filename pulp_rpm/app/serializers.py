@@ -305,16 +305,25 @@ class RpmRepositorySerializer(RepositorySerializer):
     """
 
     metadata_signing_service = serializers.HyperlinkedRelatedField(
-        help_text="A reference to an associated signing service.",
+        help_text=_("A reference to an associated signing service."),
         view_name='signing-services-detail',
         queryset=AsciiArmoredDetachedSigningService.objects.all(),
         many=False,
         required=False,
         allow_null=True
     )
+    retain_package_versions = serializers.IntegerField(
+        help_text=_("The number of versions of each package to keep in the repository; "
+                    "older versions will be purged. The default is '0', which will disable "
+                    "this feature and keep all versions of each package."),
+        min_value=0,
+        required=False,
+    )
 
     class Meta:
-        fields = RepositorySerializer.Meta.fields + ('metadata_signing_service',)
+        fields = RepositorySerializer.Meta.fields + (
+            'metadata_signing_service', 'retain_package_versions'
+        )
         model = RpmRepository
 
 
@@ -324,13 +333,13 @@ class RpmRemoteSerializer(RemoteSerializer):
     """
 
     sles_auth_token = serializers.CharField(
-        help_text="Authentication token for SLES repositories.",
+        help_text=_("Authentication token for SLES repositories."),
         required=False, allow_null=True
     )
 
     policy = serializers.ChoiceField(
-        help_text="The policy to use when downloading content. The possible values include: "
-                  "'immediate', 'on_demand', and 'streamed'. 'immediate' is the default.",
+        help_text=_("The policy to use when downloading content. The possible values include: "
+                    "'immediate', 'on_demand', and 'streamed'. 'immediate' is the default."),
         choices=Remote.POLICY_CHOICES,
         default=Remote.IMMEDIATE
     )
