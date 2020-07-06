@@ -63,11 +63,14 @@ class TestRemoveMissing(TestPurgeBase):
         mock_get_remote_units.assert_called_once_with(ANY,
                                                       primary.PACKAGE_TAG,
                                                       primary.process_package_element)
-        mock_remove.assert_called_once_with(
-            self.conduit,
-            models.RPM,
-            mock_get_remote_units.return_value,
-            catalog)
+
+        mock_remote_units = mock_get_remote_units.return_value
+        calls = [
+            mock.call(self.conduit, models.RPM, mock_remote_units, catalog),
+            mock.call(self.conduit, models.SRPM, mock_remote_units, catalog)
+        ]
+        self.assertEquals(mock_remove.call_count, 2)
+        mock_remove.assert_has_calls(calls)
 
     @mock.patch.object(purge, 'get_remote_units', autospec=True)
     @mock.patch.object(purge, 'remove_missing_units', autospec=True)
