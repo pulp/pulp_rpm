@@ -21,11 +21,11 @@ log = getLogger(__name__)
 
 # Hard to move this due to circular import problems
 class RpmVersionField(models.Field):
-    """Model Field for evr_t, a custom type for representing RPM EVR."""
+    """Model Field for pulp_evr_t, a custom type for representing RPM EVR."""
 
     def db_type(self, connection):
         """Returns the database column type."""
-        return 'evr_t'
+        return 'pulp_evr_t'
 
 
 class PackageManager(models.Manager):
