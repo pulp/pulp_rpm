@@ -80,7 +80,6 @@ class PackageFilter(ContentFilter):
             'arch': ['exact', 'in', 'ne'],
             'pkgId': ['exact', 'in'],
             'checksum_type': ['exact', 'in', 'ne'],
-            'sha256': ['exact'],
         }
 
 
@@ -402,7 +401,6 @@ class ModulemdFilter(ContentFilter):
         fields = {
             'name': ['exact', 'in'],
             'stream': ['exact', 'in'],
-            'sha256': ['exact'],
         }
 
 
@@ -429,7 +427,6 @@ class ModulemdDefaultsFilter(ContentFilter):
         fields = {
             'module': ['exact', 'in'],
             'stream': ['exact', 'in'],
-            'sha256': ['exact'],
         }
 
 
