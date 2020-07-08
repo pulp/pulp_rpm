@@ -104,6 +104,7 @@ def remove_missing_rpms(metadata_files, conduit, catalog):
     remote_named_tuples = get_remote_units(file_function, primary.PACKAGE_TAG,
                                            primary.process_package_element)
     remove_missing_units(conduit, models.RPM, remote_named_tuples, catalog)
+    remove_missing_units(conduit, models.SRPM, remote_named_tuples, catalog)
 
 
 def remove_missing_drpms(metadata_files, conduit, catalog):

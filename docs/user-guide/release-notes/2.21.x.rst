@@ -9,6 +9,7 @@ Bug Fixes
 ---------
 
 * Fixed repository deletion faulure due to a missing listing file.
+* Fixed bug where remove_missing would not remove srpms.
 
 See the full list of :fixedbugs_pulp_rpm:`2.21.3`
 
