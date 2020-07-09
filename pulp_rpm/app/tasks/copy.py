@@ -5,31 +5,49 @@ from django.db.models import Q
 from pulpcore.plugin.models import Content, RepositoryVersion
 
 from pulp_rpm.app.depsolving import Solver
-from pulp_rpm.app.models import UpdateRecord, Package, RpmRepository, Modulemd
+from pulp_rpm.app.models import (
+    UpdateRecord,
+    Package,
+    PackageCategory,
+    PackageEnvironment,
+    PackageGroup,
+    RpmRepository,
+    Modulemd
+)
 
 
-def find_children_of_content(content, repository_version):
+def find_children_of_content(content, src_repo_version):
     """Finds the content referenced directly by other content and returns it all together.
 
     Finds RPMs referenced by Advisory/Errata content.
 
     Args:
         content (iterable): Content for which to resolve children
-        repository_version (pulpcore.models.RepositoryVersion): Source repo version
+        src_repo_version (pulpcore.models.RepositoryVersion): Source repo version
 
     Returns: Queryset of Content objects that are children of the intial set of content
     """
-    # Advisories that were selected to be copied
-    advisory_ids = content.filter(pulp_type=UpdateRecord.get_pulp_type()).only('pk')
-    # All packages in the source repository version
-    package_ids = repository_version.content.filter(
+    # Content that were selected to be copied
+    advisory_ids = content.filter(
+        pulp_type=UpdateRecord.get_pulp_type()).only('pk')
+    packagecategory_ids = content.filter(
+        pulp_type=PackageCategory.get_pulp_type()).only('pk')
+    packageenvironment_ids = content.filter(
+        pulp_type=PackageEnvironment.get_pulp_type()).only('pk')
+    packagegroup_ids = content.filter(
+        pulp_type=PackageGroup.get_pulp_type()).only('pk')
+
+    # Content in the source repository version
+    package_ids = src_repo_version.content.filter(
         pulp_type=Package.get_pulp_type()).only('pk')
-    # All modules in the source repository version
-    module_ids = repository_version.content.filter(
+    module_ids = src_repo_version.content.filter(
         pulp_type=Modulemd.get_pulp_type()).only('pk')
 
     advisories = UpdateRecord.objects.filter(pk__in=advisory_ids)
     packages = Package.objects.filter(pk__in=package_ids)
+    packagecategories = PackageCategory.objects.filter(pk__in=packagecategory_ids)
+    packageenvironments = PackageEnvironment.objects.filter(pk__in=packageenvironment_ids)
+    packagegroups = PackageGroup.objects.filter(pk__in=packagegroup_ids)
     modules = Modulemd.objects.filter(pk__in=module_ids)
 
     children = set()
@@ -60,8 +78,48 @@ def find_children_of_content(content, repository_version):
             except MultipleObjectsReturned:
                 raise
 
-    # TODO: Find rpms referenced by PackageGroups,
-    # PackageGroups referenced by PackageCategories, etc.
+    # PackageCategories & PackageEnvironments resolution must go before PackageGroups
+    # TODO: refactor to be more effecient (lower number of queries)
+    for packagecategory in packagecategories.iterator():
+        for category_package_group in packagecategory.group_ids:
+            category_package_groups = PackageGroup.objects.filter(
+                name=category_package_group['name'], pk__in=src_repo_version.content
+            )
+            children.update(
+                [pkggroup.pk for pkggroup in category_package_groups]
+            )
+            packagegroups = packagegroups.union(category_package_groups)
+
+    for packageenvironment in packageenvironments.iterator():
+        for env_package_group in packageenvironment.packagegroups:
+            env_package_groups = PackageGroup.objects.filter(
+                name=env_package_group['name'], pk__in=src_repo_version.content
+            )
+            children.update(
+                [envgroup.pk for envgroup in env_package_groups]
+            )
+            packagegroups = packagegroups.union(env_package_groups)
+        for optional_env_package_group in packageenvironment.optionalgroups:
+            opt_env_package_groups = PackageGroup.objects.filter(
+                name=optional_env_package_group['name'], pk__in=src_repo_version.content
+            )
+            children.update(
+                [optpkggroup.pk for optpkggroup in opt_env_package_groups]
+            )
+            packagegroups = packagegroups.union(opt_env_package_groups)
+
+    # Find rpms referenced by PackageGroups
+    for packagegroup in packagegroups.iterator():
+        group_package_names = [pkg['name'] for pkg in packagegroup.packages]
+        for pkg in group_package_names:
+            packages_by_name = [
+                pkg
+                for pkg in Package.objects.with_age().filter(
+                    name=pkg, pk__in=src_repo_version.content
+                ) if pkg.age == 1
+            ]
+            for pkg in packages_by_name:
+                children.add(pkg.pk)
 
     return Content.objects.filter(pk__in=children)
 

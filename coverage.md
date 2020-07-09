@@ -32,6 +32,7 @@ Manual Coverage
 | As a user, I can copy any content by href using Copy API | PART |  |
 | As a user, I can copy RPM package and its dependencies (if depsolving=True) | Yes | to empty and non-empty repository |
 | As a user, I can copy Advisory and packages it refers to (and their dependencies if depsolving=True) by copying the Advisory | PART |  |
+| As a user, I can copy PackageCategories, PackageEnvironments and PackageGroups (and their dependencies) | PART | no packageenvironment test |
 | As a user, I can copy Modulemd and its artifacts by copying the Modulemd | NO |  |
 | As a user, I can copy Modulemd with its artifacts and its module dependencies and artifacts’ dependencies (if depsolving=True). | NO |  |
 | As a user, if the default Modulemd is copied, its module-default is copied as well (and vice-versa) | NO |  |

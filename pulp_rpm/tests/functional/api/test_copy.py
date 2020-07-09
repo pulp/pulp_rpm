@@ -16,6 +16,8 @@ from pulp_smash.pulp3.utils import (
 from pulp_rpm.tests.functional.constants import (
     KICKSTART_CONTENT_PATH,
     PULP_TYPE_PACKAGE,
+    PULP_TYPE_PACKAGE_CATEGORY,
+    PULP_TYPE_PACKAGE_GROUP,
     RPM_KICKSTART_CONTENT_NAME,
     RPM_FIXTURE_SUMMARY,
     RPM_KICKSTART_FIXTURE_URL,
@@ -339,6 +341,79 @@ class StrictPackageCopyTestCase(PulpTestCase):
         # assert dependencies package names
         for dependency in self.test_package_dependencies:
             self.assertIn(dependency, empty_repo_packages)
+
+    def test_strict_copy_packagecategory_to_empty_repo(self):
+        """Test copy package and its dependencies to empty repository.
+
+        - Create repository and populate it
+        - Create empty destination repository
+        - Use 'copy' to copy packagecategory recursively
+        - assert packagecategory and its dependencies were copied
+        """
+        dest_repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, dest_repo.pulp_href)
+
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+
+        body = gen_rpm_remote(url=RPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+
+        repo = self.repo_api.read(repo.pulp_href)
+        package_category_to_copy = [
+            get_content(repo.to_dict())[PULP_TYPE_PACKAGE_CATEGORY][0]['pulp_href']
+        ]
+        # repository content counts
+        repo_packagecategories_count = len(
+            get_content(repo.to_dict())[PULP_TYPE_PACKAGE_CATEGORY]
+        )
+        repo_packagegroups_count = len(
+            get_content(repo.to_dict())[PULP_TYPE_PACKAGE_GROUP]
+        )
+
+        # do the copy
+        config = [{
+            'source_repo_version': repo.latest_version_href,
+            'dest_repo': dest_repo.pulp_href,
+            'content': package_category_to_copy
+        }]
+        rpm_copy(self.cfg, config, recursive=True)
+        dest_repo = self.repo_api.read(dest_repo.pulp_href)
+
+        # copied repository content counts
+        dest_repo_packages_count = len(
+            get_content(dest_repo.to_dict())[PULP_TYPE_PACKAGE]
+        )
+        dest_repo_packagecategories_count = len(
+            get_content(dest_repo.to_dict())[PULP_TYPE_PACKAGE_CATEGORY]
+        )
+        dest_repo_packagegroups_count = len(
+            get_content(dest_repo.to_dict())[PULP_TYPE_PACKAGE_GROUP]
+        )
+
+        # assert that all dependencies were copied
+        self.assertEqual(
+            repo_packagecategories_count, dest_repo_packagecategories_count
+        )
+        self.assertEqual(
+            repo_packagegroups_count, dest_repo_packagegroups_count
+        )
+        # Not all packages in repository are dependecies,
+        # only packagegroups packages and its dependencies
+        self.assertEqual(dest_repo_packages_count, 30)
+        # Assert only one latest version of 'duck' pacakge was copied
+        copied_duck_pkg = [
+            duck_pkg['version']
+            for duck_pkg in get_content(dest_repo.to_dict())[PULP_TYPE_PACKAGE]
+            if duck_pkg['name'] == 'duck'
+        ]
+        self.assertEqual(len(copied_duck_pkg), 1)
+        self.assertEqual(copied_duck_pkg[0], '0.8')
 
     def test_strict_copy_package_to_existing_repo(self):
         """Test copy package and its dependencies to empty repository.

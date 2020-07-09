@@ -360,3 +360,5 @@ EPEL7_URL = "https://dl.fedoraproject.org/pub/epel/7/x86_64/"
 
 PULP_TYPE_ADVISORY = 'rpm.advisory'
 PULP_TYPE_PACKAGE = 'rpm.package'
+PULP_TYPE_PACKAGE_CATEGORY = 'rpm.packagecategory'
+PULP_TYPE_PACKAGE_GROUP = 'rpm.packagegroup'
