@@ -5,47 +5,35 @@
 from django.db import migrations
 from pulp_rpm.app.models.package import RpmVersionField
 
-evr_extension_sql = """
-create type evr_array_item as (
+extension_sql = """
+create type pulp_evr_array_item as (
   n       NUMERIC,
   s       TEXT
 );
 
-create type evr_t as (
+create type pulp_evr_t as (
   epoch INT,
-  version evr_array_item[],
-  release evr_array_item[]
+  version pulp_evr_array_item[],
+  release pulp_evr_array_item[]
 );
 
-CREATE FUNCTION evr_trigger() RETURNS trigger AS $$
+CREATE FUNCTION pulp_evr_trigger() RETURNS trigger AS $$
   BEGIN
     NEW.evr = (select ROW(coalesce(NEW.epoch::numeric,0),
-                          rpmver_array(coalesce(NEW.version,'empty'))::evr_array_item[],
-                          rpmver_array(coalesce(NEW.release,'empty'))::evr_array_item[])::evr_t);
+                          pulp_rpmver_array(coalesce(NEW.version,'pulp_isempty'))::pulp_evr_array_item[],
+                          pulp_rpmver_array(coalesce(NEW.release,'pulp_isempty'))::pulp_evr_array_item[])::pulp_evr_t);
     RETURN NEW;
   END;
 $$ language 'plpgsql';
 
-create or replace FUNCTION empty(t TEXT)
+create or replace FUNCTION pulp_isempty(t TEXT)
   RETURNS BOOLEAN as $$
   BEGIN
     return t ~ '^[[:space:]]*$';
   END;
 $$ language 'plpgsql';
 
-create or replace FUNCTION isalpha(ch CHAR)
-  RETURNS BOOLEAN as $$
-  BEGIN
-    if ascii(ch) between ascii('a') and ascii('z') or
-        ascii(ch) between ascii('A') and ascii('Z')
-    then
-      return TRUE;
-    end if;
-    return FALSE;
-  END;
-$$ language 'plpgsql';
-
-create or replace FUNCTION isalphanum(ch CHAR)
+create or replace FUNCTION pulp_isalphanum(ch CHAR)
   RETURNS BOOLEAN as $$
   BEGIN
     if ascii(ch) between ascii('a') and ascii('z') or
@@ -58,7 +46,7 @@ create or replace FUNCTION isalphanum(ch CHAR)
   END;
 $$ language 'plpgsql';
 
-create or replace function isdigit(ch CHAR)
+create or replace function pulp_isdigit(ch CHAR)
   RETURNS BOOLEAN as $$
   BEGIN
     if ascii(ch) between ascii('0') and ascii('9')
@@ -69,8 +57,8 @@ create or replace function isdigit(ch CHAR)
   END ;
 $$ language 'plpgsql';
 
-create or replace FUNCTION rpmver_array (string1 IN VARCHAR)
-  RETURNS evr_array_item[] as $$
+create or replace FUNCTION pulp_rpmver_array (string1 IN VARCHAR)
+  RETURNS pulp_evr_array_item[] as $$
   declare
     str1 VARCHAR := string1;
     digits VARCHAR(10) := '0123456789';
@@ -79,7 +67,7 @@ create or replace FUNCTION rpmver_array (string1 IN VARCHAR)
     alpha VARCHAR(54) := lc_alpha || uc_alpha;
     one VARCHAR;
     isnum BOOLEAN;
-    ver_array evr_array_item[] := ARRAY[]::evr_array_item[];
+    ver_array pulp_evr_array_item[] := ARRAY[]::pulp_evr_array_item[];
   BEGIN
     if str1 is NULL
     then
@@ -95,12 +83,12 @@ create or replace FUNCTION rpmver_array (string1 IN VARCHAR)
         segm1_n NUMERIC := 0;
       begin
         -- Throw out all non-alphanum characters
-        while one <> '' and not isalphanum(one)
+        while one <> '' and not pulp_isalphanum(one)
         loop
           one := substr(one, 2);
         end loop;
         str1 := one;
-        if str1 <> '' and isdigit(str1)
+        if str1 <> '' and pulp_isdigit(str1)
         then
           str1 := ltrim(str1, digits);
           isnum := true;
@@ -121,7 +109,7 @@ create or replace FUNCTION rpmver_array (string1 IN VARCHAR)
           segm1 := NULL;
         else
         end if;
-        ver_array := array_append(ver_array, (segm1_n, segm1)::evr_array_item);
+        ver_array := array_append(ver_array, (segm1_n, segm1)::pulp_evr_array_item);
         one := str1;
       end;
     end loop segment_loop;
@@ -132,24 +120,16 @@ $$ language 'plpgsql';
 """
 
 
-migration_sql = """
--- update existing Packages to populate their evr field
-update rpm_package set evr = (
-  select ROW(coalesce(epoch::numeric,0),
-             rpmver_array(version)::evr_array_item[],
-             rpmver_array(release)::evr_array_item[])::evr_t
-  );
-
--- create evr_t on insert, so it matches the provided E/V/R cols
-CREATE TRIGGER evr_insert_trigger
+triggers_sql = """
+-- create pulp_evr_t on insert, so it matches the provided E/V/R cols
+CREATE TRIGGER pulp_evr_insert_trigger
   BEFORE INSERT
   ON rpm_package
   FOR EACH ROW
-  EXECUTE PROCEDURE evr_trigger();
+  EXECUTE PROCEDURE pulp_evr_trigger();
 
--- create evr_t on update, so it continues to match the provided E/V/R cols,
--- but only if Something Changed
-CREATE TRIGGER evr_update_trigger
+-- create pulp_evr_t on update, so it continues to match the provided E/V/R cols, but only if Something Changed
+CREATE TRIGGER pulp_evr_update_trigger
   BEFORE UPDATE OF epoch, version, release
   ON rpm_package
   FOR EACH ROW
@@ -158,10 +138,18 @@ CREATE TRIGGER evr_update_trigger
     OLD.version IS DISTINCT FROM NEW.version OR
     OLD.release IS DISTINCT FROM NEW.release
   )
-  EXECUTE PROCEDURE evr_trigger();
+  EXECUTE PROCEDURE pulp_evr_trigger();
 """
 
-from django.contrib.postgres.operations import CreateExtension
+# update existing Packages to populate their evr field
+migration_sql = """
+update rpm_package set evr = (
+  select ROW(coalesce(epoch::numeric,0),
+             pulp_rpmver_array(version)::pulp_evr_array_item[],
+             pulp_rpmver_array(release)::pulp_evr_array_item[])::pulp_evr_t
+  );
+"""
+
 
 class Migration(migrations.Migration):
 
@@ -170,8 +158,8 @@ class Migration(migrations.Migration):
     ]
 
     operations = [
-        # CreateExtension('evr'),
-        migrations.RunSQL(evr_extension_sql),
+        migrations.RunSQL(extension_sql),
+        migrations.RunSQL(triggers_sql),
         migrations.AddField(
             model_name='package',
             name='evr',
