@@ -26,9 +26,10 @@ class RepoMetadataFile(Content):
     data_type = models.CharField(max_length=20)
     checksum_type = models.CharField(max_length=6)
     checksum = models.CharField(max_length=128)
+    relative_path = models.TextField()
 
     repo_key_fields = ('data_type',)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-        unique_together = ("data_type", "checksum")
+        unique_together = ("data_type", "checksum", "relative_path")
