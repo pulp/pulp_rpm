@@ -713,6 +713,7 @@ class RepositoryMetadataParser:
                 data_type=record.type,
                 checksum_type=record.checksum_type,
                 checksum=record.checksum,
+                relative_path=record.location_href
             )
             dc = DeclarativeContent(content=repo_metadata_file, d_artifacts=[da])
             self.repomd_dcs.append(dc)

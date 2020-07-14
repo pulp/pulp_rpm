@@ -1,0 +1,1 @@
+Fixed the sync issue for repositories with the same metadata files but different filenames. E.g. productid in RHEL8 BaseOS and Appstream.
