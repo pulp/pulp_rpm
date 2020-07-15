@@ -177,7 +177,8 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
             )
             if created:
                 sub_repo.save()
-            treeinfo["repositories"].update({repodata: str(sub_repo.pk)})
+            directory = treeinfo["repo_map"][repodata]
+            treeinfo["repositories"].update({directory: str(sub_repo.pk)})
             path = f"{repodata}/"
             new_url = urljoin(remote_url, path)
             if repodata_exists(remote, new_url):
@@ -990,7 +991,7 @@ class RpmContentSaver(ContentSaver):
 
             resources = ["addons", "variants"]
             for resource_name in resources:
-                for resource in treeinfo_data[resource_name]:
+                for resource_id, resource in treeinfo_data[resource_name].items():
                     key = resource["repository"]
                     del resource["repository"]
                     resource["repository_id"] = treeinfo_data["repositories"][key]
@@ -1000,7 +1001,7 @@ class RpmContentSaver(ContentSaver):
             images = []
             variants = []
 
-            for addon in treeinfo_data["addons"]:
+            for addon_id, addon in treeinfo_data["addons"].items():
                 instance = Addon(**addon)
                 instance.distribution_tree = distribution_tree
                 addons.append(instance)
@@ -1015,7 +1016,7 @@ class RpmContentSaver(ContentSaver):
                 instance.distribution_tree = distribution_tree
                 images.append(instance)
 
-            for variant in treeinfo_data["variants"]:
+            for variant_id, variant in treeinfo_data["variants"].items():
                 instance = Variant(**variant)
                 instance.distribution_tree = distribution_tree
                 variants.append(instance)
