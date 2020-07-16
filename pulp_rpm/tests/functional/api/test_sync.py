@@ -58,7 +58,7 @@ from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
     gen_rpm_remote,
     monitor_task,
-    progress_reports,
+    progress_reports
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 from pulp_rpm.tests.functional.utils import PulpTestCase
