@@ -239,6 +239,8 @@ class UpdateCollection(BaseModel):
             Name of the collection e.g. RHN Tools for RHEL AUS (v. 6.5 for 64-bit x86_64)
         shortname (Text):
             Short name e.g. rhn-tools-rhel-x86_64-server-6.5.aus
+        module (JSON):
+            Modular NSVCA connected to advisory collection.
 
     Relations:
 

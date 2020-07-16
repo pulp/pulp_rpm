@@ -45,12 +45,16 @@ class UpdateCollectionSerializer(ModelSerializer):
         help_text=_("Collection short name."), allow_blank=True, allow_null=True
     )
 
+    module = serializers.JSONField(
+        help_text=_("Collection modular NSVCA."), allow_null=True
+    )
+
     packages = UpdateCollectionPackagesField(
         source="*", read_only=True, help_text=_("List of packages")
     )
 
     class Meta:
-        fields = ("name", "shortname", "packages")
+        fields = ("name", "shortname", "module", "packages")
         model = UpdateCollection
 
 
