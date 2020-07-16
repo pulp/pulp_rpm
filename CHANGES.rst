@@ -13,6 +13,35 @@ Changelog
 
 .. towncrier release notes start
 
+3.4.2 (2020-07-16)
+==================
+
+
+Bugfixes
+--------
+
+- Fixed CentOS 8 kickstart repository publications.
+  `#6568 <https://pulp.plan.io/issues/6568>`_
+- Updating API to not return publications that aren't complete.
+  `#6974 <https://pulp.plan.io/issues/6974>`_
+
+
+Improved Documentation
+----------------------
+
+- Change fixtures URL in the docs scripts.
+  `#6656 <https://pulp.plan.io/issues/6656>`_
+
+
+Misc
+----
+
+- `#6778 <https://pulp.plan.io/issues/6778>`_
+
+
+----
+
+
 3.4.1 (2020-06-03)
 ==================
 
