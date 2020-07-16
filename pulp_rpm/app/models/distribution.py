@@ -1,12 +1,15 @@
 from logging import getLogger
 
-from django.db import models
+from django.db import (
+    IntegrityError,
+    models,
+    transaction,
+)
 
 from pulpcore.plugin.models import (
     BaseModel,
     Content,
     ContentArtifact,
-    Repository,
 )
 
 log = getLogger(__name__)
@@ -58,6 +61,9 @@ class DistributionTree(Content):
             Disc number
         totaldiscs (Integer):
             Number of discs in media set
+        repository_id(uuid):
+            Id of a repository a DistributionTree belongs to. Each repository has its own
+            DistributionTree, it cannot be shared.
 
     """
 
@@ -86,18 +92,12 @@ class DistributionTree(Content):
     discnum = models.IntegerField(null=True)
     totaldiscs = models.IntegerField(null=True)
 
-    repo_key_fields = (
-        "header_version",
-        "release_name",
-        "release_short",
-        "release_version",
-        "arch",
-        "build_timestamp",
-    )
+    repository_id = models.UUIDField()
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
         unique_together = (
+            "repository_id",
             "header_version",
             "release_name",
             "release_short",
@@ -106,8 +106,66 @@ class DistributionTree(Content):
             "build_timestamp",
         )
 
+    def get_copy(self, repository):
+        """
+        Create a copy of a distribution tree for a different repository.
+        It does NOT copy content of the main repo.
 
-class Checksum(BaseModel):
+        Args:
+            repository(RpmRepository): a repository to create a copy for
+
+        Returns:
+            new_disttree: a copy of a distribution tree for a specified repository
+        """
+        with transaction.atomic():
+            new_disttree = self
+            new_disttree.pk = None
+            new_disttree.pulp_id = None
+            new_disttree.repository_id = repository.pk
+            try:
+                with transaction.atomic():
+                    new_disttree.save()
+            except IntegrityError:
+                return __class__.objects.get(repository_id=new_disttree.repository_id,
+                                             header_version=new_disttree.header_version,
+                                             release_name=new_disttree.release_name,
+                                             release_short=new_disttree.release_short,
+                                             release_version=new_disttree.release_version,
+                                             arch=new_disttree.arch,
+                                             build_timestamp=new_disttree.build_timestamp)
+            Checksum.copy(new_disttree)
+            Image.copy(new_disttree)
+            Addon.copy(new_disttree)
+            Variant.copy(new_disttree)
+
+        return new_disttree
+
+
+class CopyDistTreeModelsMixin:
+    """
+    Mixin class providing the default method to copy auxiliary models for a DistributionTree.
+    """
+    def copy(self, disttree):
+        """
+        Create a copy of an object for a specified distribution tree which has a relation to it
+
+        Args:
+            disttree(DistributionTree): a distribution tree to create a copy for
+        """
+        new_obj = self
+        self.pk = None
+        self.pulp_id = None
+        new_obj.distribution_tree = disttree
+        try:
+            with transaction.atomic():
+                new_obj.save()
+        except IntegrityError:
+            pass
+        else:
+            return new_obj
+
+
+class Checksum(BaseModel, CopyDistTreeModelsMixin):
     """
     Distribution Tree Checksum.
 
@@ -139,7 +197,7 @@ class Checksum(BaseModel):
         )
 
 
-class Image(BaseModel):
+class Image(BaseModel, CopyDistTreeModelsMixin):
     """
     Distribution Tree Image.
 
@@ -189,7 +247,7 @@ class Image(BaseModel):
         )
 
 
-class Addon(BaseModel):
+class Addon(BaseModel, CopyDistTreeModelsMixin):
     """
     Distribution Tree Addon.
 
@@ -210,7 +268,7 @@ class Addon(BaseModel):
     Relations:
 
         distribution_tree (models.ForeignKey): The associated DistributionTree
-        repository (models.ForeignKey): The associated Repository
+        repository (models.ForeignKey): The associated RpmRepository
 
     """
 
@@ -223,7 +281,7 @@ class Addon(BaseModel):
         DistributionTree, on_delete=models.CASCADE, related_name='addons'
     )
     repository = models.ForeignKey(
-        Repository, on_delete=models.PROTECT, related_name='addons'
+        "RpmRepository", on_delete=models.PROTECT, related_name='addons'
     )
 
     class Meta:
@@ -237,7 +295,7 @@ class Addon(BaseModel):
         )
 
 
-class Variant(BaseModel):
+class Variant(BaseModel, CopyDistTreeModelsMixin):
     """
     Distribution Tree Variant.
 
@@ -266,7 +324,7 @@ class Variant(BaseModel):
     Relations:
 
         distribution_tree (models.ForeignKey): The associated DistributionTree
-        repository (models.ForeignKey): The associated Repository
+        repository (models.ForeignKey): The associated RpmRepository
 
     """
 
@@ -284,7 +342,7 @@ class Variant(BaseModel):
         DistributionTree, on_delete=models.CASCADE, related_name='variants'
     )
     repository = models.ForeignKey(
-        Repository, on_delete=models.PROTECT, related_name='+'
+        "RpmRepository", on_delete=models.PROTECT, related_name='+'
     )
 
     class Meta:
@@ -296,3 +354,20 @@ class Variant(BaseModel):
             "packages",
             "distribution_tree",
         )
+
+    def copy(self, disttree):
+        """
+        Create a copy of a Variant for a specified distribution tree.
+
+        It can be copied as any other auxiliary model except the case when a Variant is pointing
+        to a main repository. In this case it should refer to a repository a distribution tree
+        belongs to.
+
+        Args:
+            disttree(DistributionTree): a distribution tree to create a copy for
+
+        """
+        new_variant = super().copy(disttree)
+        if new_variant and not self.repository.sub_repo:
+            new_variant.repository_pk = disttree.repository_id
+            new_variant.save()

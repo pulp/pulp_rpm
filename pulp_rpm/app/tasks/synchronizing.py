@@ -433,6 +433,7 @@ class RpmFirstStage(Stage):
                 d_artifacts.append(da)
 
             distribution_tree = DistributionTree(**self.treeinfo["distribution_tree"])
+            distribution_tree.repository_id = self.repository.pk
             dc = DeclarativeContent(content=distribution_tree, d_artifacts=d_artifacts)
             dc.extra_data = self.treeinfo
             await self.put(dc)
