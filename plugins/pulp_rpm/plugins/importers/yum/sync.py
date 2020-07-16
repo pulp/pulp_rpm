@@ -831,9 +831,11 @@ class RepoSync(object):
                 catalog = PackageCatalog(self.conduit.importer_object_id, url)
                 for unit in units_to_download:
                     unit.downloaded = False
+                    # remove the original_laction_href from pulp_user_metadata
+                    download_path = unit.pulp_user_metadata.pop('original_location_href', None)
                     unit = self.add_rpm_unit(metadata_files, unit)
                     self.associate_rpm_unit(unit)
-                    catalog.add(unit, unit.download_path)
+                    catalog.add(unit, download_path)
                 return
 
             download_wrapper = alternate.Packages(

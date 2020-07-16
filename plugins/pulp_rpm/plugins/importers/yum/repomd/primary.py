@@ -139,6 +139,7 @@ def process_package_element(package_element):
     if size_element is not None:
         package_info['size'] = int(size_element.attrib['package'])
 
+    original_location_href = None
     location_element = package_element.find(LOCATION_TAG)
     if location_element is not None:
         href = location_element.attrib['href']
@@ -150,6 +151,9 @@ def process_package_element(package_element):
         filename = os.path.basename(href)
         package_info['relativepath'] = href
         package_info['filename'] = filename
+        # we want to temporarily preserve the original location href to store in
+        # the lazy catalog entry
+        original_location_href = location_element.attrib['href']
         # we don't make any attempt to preserve the original directory structure
         # this element will end up being converted back to XML and stuffed into
         # the DB on the unit object, so this  is our chance to modify it.
@@ -164,6 +168,8 @@ def process_package_element(package_element):
         model = models.RPM(**package_info)
     # add the raw XML so it can be saved in the database later
     rpm_namespace = utils.Namespace('rpm', RPM_SPEC_URL)
+    # temporarily store original_location_href
+    model.pulp_user_metadata['original_location_href'] = original_location_href
     model.raw_xml = utils.element_to_raw_xml(package_element, [rpm_namespace], COMMON_SPEC_URL)
     return model
 
