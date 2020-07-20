@@ -357,8 +357,11 @@ CENTOS8_KICKSTART_BASEOS_URL = "http://mirror.linux.duke.edu/pub/centos/8/BaseOS
 CENTOS8_APPSTREAM_URL = "http://mirror.linux.duke.edu/pub/centos/8/AppStream/x86_64/os/"
 CENTOS8_BASEOS_URL = "http://mirror.linux.duke.edu/pub/centos/8/BaseOS/x86_64/os/"
 EPEL7_URL = "https://dl.fedoraproject.org/pub/epel/7/x86_64/"
+RPM_CDN_APPSTREAM_URL = "https://cdn.redhat.com/content/dist/rhel8/8.2/x86_64/appstream/os/"
+RPM_CDN_BASEOS_URL = "https://cdn.redhat.com/content/dist/rhel8/8.2/x86_64/baseos/os/"
 
 PULP_TYPE_ADVISORY = 'rpm.advisory'
 PULP_TYPE_PACKAGE = 'rpm.package'
 PULP_TYPE_PACKAGE_CATEGORY = 'rpm.packagecategory'
 PULP_TYPE_PACKAGE_GROUP = 'rpm.packagegroup'
+PULP_TYPE_REPOMETADATA = 'rpm.repo_metadata_file'

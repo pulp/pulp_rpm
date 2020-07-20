@@ -41,6 +41,20 @@ By default ``policy='immediate`` which means that all the content is downloaded 
 Specify ``policy='on_demand'`` to make synchronization of a repository faster and only
 to download RPMs whenever they are requested by clients.
 
+Also, you can specify ``client_cert`` and ``client_key`` if your remote require authorization with a certificate.
+
+.. code:: shell
+
+    http --form POST $BASE_ADDR/pulp/api/v3/remotes/rpm/rpm/ \
+        name='bar' \
+        url="$URL" \
+        policy='on_demand' \
+        client_cert=@./certificate.crt \
+        client_key=@./certificate.key \
+        tls_validation=False
+
+If you want to use TLS validation you have to provide ``ca_cert`` too.
+
 .. literalinclude:: ../_scripts/remote.sh
    :language: bash
 
