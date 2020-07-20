@@ -140,6 +140,7 @@ class RpmRepository(Repository):
                 previous_version = None
 
         remove_duplicates(new_version)
+        self._resolve_distribution_trees(new_version, previous_version)
 
         from pulp_rpm.app.modulemd import resolve_module_packages  # avoid circular import
         resolve_module_packages(new_version, previous_version)
@@ -186,7 +187,7 @@ class RpmRepository(Repository):
 
     def _resolve_distribution_trees(self, new_version, previous_version):
         """
-        There can be only one distribution tree in a repo version
+        There can be only one distribution tree in a repo version.
         :param new_version:
         :param previous_version:
         :return:
@@ -198,8 +199,8 @@ class RpmRepository(Repository):
             return
 
         if previous_version:
-            previous_disttree_pk = previous_version.content.get(pulp_type=disttree_pulp_type)
-            new_version.remove_content(Content.objects.filter(pk=previous_disttree_pk))
+            previous_disttree = previous_version.content.get(pulp_type=disttree_pulp_type)
+            new_version.remove_content(Content.objects.filter(pk=previous_disttree.pk))
         else:
             raise DistributionTreeConflict(_("More than one distribution tree cannot be added to a "
                                              "repository version."))
