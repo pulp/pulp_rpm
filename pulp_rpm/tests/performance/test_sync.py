@@ -187,9 +187,15 @@ class CDNTestCase(unittest.TestCase):
                 and os.environ['CDN_CLIENT_KEY'] \
                 and os.environ['CDN_CA_CERT']:
             # strings have escaped newlines from environmental variable
-            cls.cdn_client_cert = os.environ['CDN_CLIENT_CERT'].replace('\\n', '\n')
-            cls.cdn_client_key = os.environ['CDN_CLIENT_KEY'].replace('\\n', '\n')
-            cls.cdn_ca_cert = os.environ['CDN_CA_CERT'].replace('\\n', '\n')
+            cls.cdn_client_cert = os.environ['CDN_CLIENT_CERT'].replace(
+                '\\n', '\n'
+            ).replace(r'\ ', ' ')
+            cls.cdn_client_key = os.environ['CDN_CLIENT_KEY'].replace(
+                '\\n', '\n'
+            ).replace(r'\ ', ' ')
+            cls.cdn_ca_cert = os.environ['CDN_CA_CERT'].replace(
+                '\\n', '\n'
+            ).replace(r'\ ', ' ')
 
     @skip_if(bool, "cdn_client_cert", False)
     def test_sync_with_certificate(self):
