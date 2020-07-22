@@ -209,6 +209,25 @@ def merge_advisories(previous_advisory, added_advisory):
     references = previous_advisory.references.all()
 
     with transaction.atomic():
+        # First thing to do is ensure collection-name-uniqueness
+        # in the newly-merged advisory.
+
+        # dictionary of collection-name:first-unused-suffix pairs
+        names_seen = {}
+        for collection in chain(previous_collections, added_collections):
+            # If we've seen a collection-name already, create a new name
+            # by appending "_<suffix>" and rename the collection before
+            # merging
+            if collection.name in names_seen.keys():
+                orig_name = collection.name
+                new_name = f"{orig_name}_{names_seen[orig_name]}"
+                names_seen[new_name] = names_seen[orig_name] + 1
+                collection.name = new_name
+                # persist the collection with its new name
+                collection.save()
+            # if we've not seen it before, store in names-seen as name:0
+            else:
+                names_seen[collection.name] = 0
         merged_advisory_cr = previous_advisory.to_createrepo_c(
             collections=chain(previous_collections, added_collections))
         merged_digest = hash_update_record(merged_advisory_cr)
