@@ -38,6 +38,7 @@ from pulp_rpm.app.advisory import hash_update_record
 from pulp_rpm.app.constants import (
     CHECKSUM_TYPES,
     COMPS_REPODATA,
+    DIST_TREE_MAIN_REPO_PATH,
     MODULAR_REPODATA,
     PACKAGE_DB_REPODATA,
     PACKAGE_REPODATA,
@@ -168,8 +169,8 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
     if treeinfo:
         treeinfo["repositories"] = {}
         for repodata in set(treeinfo["download"]["repodatas"]):
-            if repodata == ".":
-                treeinfo["repositories"].update({repodata: str(repository_pk)})
+            if repodata == DIST_TREE_MAIN_REPO_PATH:
+                treeinfo["repositories"].update({repodata: None})
                 continue
             name = f"{repodata}-{treeinfo['hash']}"
             sub_repo, created = RpmRepository.objects.get_or_create(
