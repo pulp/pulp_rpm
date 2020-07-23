@@ -21,3 +21,25 @@ class AdvisoryConflict(PulpException):
         Return a message for the exception.
         """
         return self.msg
+
+
+class DistributionTreeConflict(PulpException):
+    """
+    Raised when two or more distribution trees are being added to a repository version.
+    """
+
+    def __init__(self, msg):
+        """
+        Set the exception identifier.
+
+        Args:
+            msg(str): Detailed message about the reasons for Distribution Tree conflict
+        """
+        super().__init__("RPM0002")
+        self.msg = msg
+
+    def __str__(self):
+        """
+        Return a message for the exception.
+        """
+        return self.msg

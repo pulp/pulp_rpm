@@ -86,15 +86,6 @@ class DistributionTree(Content):
     discnum = models.IntegerField(null=True)
     totaldiscs = models.IntegerField(null=True)
 
-    repo_key_fields = (
-        "header_version",
-        "release_name",
-        "release_short",
-        "release_version",
-        "arch",
-        "build_timestamp",
-    )
-
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
         unique_together = (

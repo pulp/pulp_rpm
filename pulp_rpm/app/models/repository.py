@@ -1,4 +1,6 @@
 import urllib.parse
+
+from gettext import gettext as _
 from logging import getLogger
 
 from aiohttp.web_response import Response
@@ -37,6 +39,7 @@ from pulp_rpm.app.models import (
 )
 
 from pulp_rpm.app.downloaders import RpmDownloader
+from pulp_rpm.app.exceptions import DistributionTreeConflict
 
 log = getLogger(__name__)
 
@@ -137,6 +140,7 @@ class RpmRepository(Repository):
                 previous_version = None
 
         remove_duplicates(new_version)
+        self._resolve_distribution_trees(new_version, previous_version)
 
         from pulp_rpm.app.modulemd import resolve_module_packages  # avoid circular import
         resolve_module_packages(new_version, previous_version)
@@ -180,6 +184,30 @@ class RpmRepository(Repository):
                     old_packages.append(package.pk)
 
             new_version.remove_content(Content.objects.filter(pk__in=old_packages))
+
+    def _resolve_distribution_trees(self, new_version, previous_version):
+        """
+        There can be only one distribution tree in a repo version.
+
+        Args:
+            version (pulpcore.app.models.RepositoryVersion): current incomplete repository version
+            previous_version (pulpcore.app.models.RepositoryVersion):  a version preceding
+                                                                       the current incomplete one
+        """
+        disttree_pulp_type = DistributionTree.get_pulp_type()
+        current_disttrees = new_version.content.filter(pulp_type=disttree_pulp_type)
+
+        if len(current_disttrees) < 2:
+            return
+
+        if previous_version:
+            previous_disttree = previous_version.content.get(pulp_type=disttree_pulp_type)
+            new_version.remove_content(Content.objects.filter(pk=previous_disttree.pk))
+
+        incoming_disttrees = new_version.content.filter(pulp_type=disttree_pulp_type)
+        if len(incoming_disttrees) != 1:
+            raise DistributionTreeConflict(_("More than one distribution tree cannot be added to a "
+                                             "repository version."))
 
 
 class RpmRemote(Remote):
