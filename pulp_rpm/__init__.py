@@ -1,4 +1,4 @@
-__version__ = '3.5.0.dev'
+__version__ = '3.6.0.dev'
 
 
 default_app_config = 'pulp_rpm.app.PulpRpmPluginAppConfig'
