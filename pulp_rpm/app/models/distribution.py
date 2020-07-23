@@ -266,7 +266,9 @@ class Variant(BaseModel):
     Relations:
 
         distribution_tree (models.ForeignKey): The associated DistributionTree
-        repository (models.ForeignKey): The associated Repository
+        repository (models.ForeignKey): The associated Repository. If it's a main repo ('.'),
+                                        it's not set and a reference to a repository a distribution
+                                        tree belongs to is implied.
 
     """
 
@@ -284,7 +286,7 @@ class Variant(BaseModel):
         DistributionTree, on_delete=models.CASCADE, related_name='variants'
     )
     repository = models.ForeignKey(
-        Repository, on_delete=models.PROTECT, related_name='+'
+        Repository, on_delete=models.PROTECT, related_name='+', null=True
     )
 
     class Meta:

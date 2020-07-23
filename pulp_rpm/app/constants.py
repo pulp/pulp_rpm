@@ -236,6 +236,7 @@ PULP_ENVIRONMENT_ATTRS = SimpleNamespace(
 )
 
 PACKAGES_DIRECTORY = "Packages"
+DIST_TREE_MAIN_REPO_PATH = '.'
 
 # Mappings of the possible integer values of "sum_type" on Advisory packages to their user-facing
 # string representation. Should mirror the createrepo_c source code:

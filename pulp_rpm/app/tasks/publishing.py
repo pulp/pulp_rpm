@@ -163,6 +163,9 @@ class PublicationData:
         for relation in relations:
             addons_or_variants = getattr(distribution_tree, f"{relation}s").all()
             for addon_or_variant in addons_or_variants:
+                if not addon_or_variant.repository:
+                    # a variant of the main repo
+                    continue
                 repository = addon_or_variant.repository.cast()
                 repository_version = repository.latest_version()
 

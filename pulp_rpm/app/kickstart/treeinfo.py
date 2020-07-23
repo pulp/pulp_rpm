@@ -8,7 +8,10 @@ from django.utils.timezone import now
 from productmd.common import SortedConfigParser
 from productmd.treeinfo import TreeInfo
 
-from pulp_rpm.app.constants import PACKAGES_DIRECTORY
+from pulp_rpm.app.constants import (
+    DIST_TREE_MAIN_REPO_PATH,
+    PACKAGES_DIRECTORY
+)
 
 
 def get_treeinfo_data(remote, remote_url):
@@ -305,12 +308,14 @@ class TreeinfoData:
 
         for variant_uid in variant_uids:
             variant_key = "variant-" + variant_uid
-            if self._data[variant_key]["repository"] != '.':
+            is_main_repo = self._data[variant_key]["repository"] == DIST_TREE_MAIN_REPO_PATH
+            if is_main_repo:
+                repository = DIST_TREE_MAIN_REPO_PATH
+                packages = PACKAGES_DIRECTORY
+            else:
                 repository = self._data[variant_key]["id"]
                 packages = "{}/{}".format(repository, PACKAGES_DIRECTORY)
-            else:
-                repository = self._data[variant_key]["repository"]
-                packages = PACKAGES_DIRECTORY
+
             variant = {
                 "variant_id": self._data[variant_key]["id"],
                 "uid": self._data[variant_key]["uid"],
@@ -357,12 +362,9 @@ class TreeinfoData:
 
         for addon_uid in self._addon_uids:
             addon_key = "addon-" + addon_uid
-            if self._data[addon_key]["repository"] != '.':
-                repository = self._data[addon_key]["id"]
-                packages = "{}/{}".format(repository, PACKAGES_DIRECTORY)
-            else:
-                repository = self._data[addon_key]["repository"]
-                packages = PACKAGES_DIRECTORY
+            repository = self._data[addon_key]["id"]
+            packages = "{}/{}".format(repository, PACKAGES_DIRECTORY)
+
             addon = {
                 "addon_id": self._data[addon_key]["id"],
                 "uid": self._data[addon_key]["uid"],
