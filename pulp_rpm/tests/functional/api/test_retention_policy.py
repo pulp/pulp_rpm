@@ -78,7 +78,7 @@ class RetentionPolicyTestCase(PulpTestCase):
         # Set the retention policy to retain only 1 version of each package
         repo_data = repo.to_dict()
         repo_data.update({'retain_package_versions': 1})
-        self.repo_api.update(repo.pulp_href, data=repo_data)
+        self.repo_api.update(repo.pulp_href, repo_data)
         repo = self.repo_api.read(repo.pulp_href)
 
         self.sync(repository=repo, remote=remote, optimize=False)

@@ -1,7 +1,7 @@
 from django_filters import CharFilter
 from gettext import gettext as _
 
-from drf_yasg.utils import swagger_auto_schema
+from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets, mixins
 from rest_framework.decorators import action
 from rest_framework.serializers import ValidationError as DRFValidationError
@@ -110,9 +110,9 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin):
     queryset = RpmRepository.objects.exclude(sub_repo=True)
     serializer_class = RpmRepositorySerializer
 
-    @swagger_auto_schema(
-        operation_description="Trigger an asynchronous task to sync RPM content.",
-        operation_summary="Sync from remote",
+    @extend_schema(
+        description="Trigger an asynchronous task to sync RPM content.",
+        summary="Sync from remote",
         responses={202: AsyncOperationResponseSerializer}
     )
     @action(detail=True, methods=['post'], serializer_class=RpmRepositorySyncURLSerializer)
@@ -208,9 +208,9 @@ class RpmPublicationViewSet(PublicationViewSet):
     queryset = RpmPublication.objects.exclude(complete=False)
     serializer_class = RpmPublicationSerializer
 
-    @swagger_auto_schema(
-        operation_description="Trigger an asynchronous task to create a new RPM "
-                              "content publication.",
+    @extend_schema(
+        description="Trigger an asynchronous task to create a new RPM "
+                    "content publication.",
         responses={202: AsyncOperationResponseSerializer}
     )
     def create(self, request):
@@ -257,13 +257,13 @@ class CopyViewSet(viewsets.ViewSet):
 
     serializer_class = CopySerializer
 
-    @swagger_auto_schema(
-        operation_description="Trigger an asynchronous task to copy RPM content"
-                              "from one repository into another, creating a new"
-                              "repository version.",
-        operation_summary="Copy content",
+    @extend_schema(
+        description="Trigger an asynchronous task to copy RPM content"
+                    "from one repository into another, creating a new"
+                    "repository version.",
+        summary="Copy content",
         operation_id="copy_content",
-        request_body=CopySerializer,
+        request=CopySerializer,
         responses={202: AsyncOperationResponseSerializer}
     )
     def create(self, request):
