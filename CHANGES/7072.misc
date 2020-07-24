@@ -1,1 +1,0 @@
-Split serializer.py into many files mirroring how the models are split up.

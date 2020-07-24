@@ -1,1 +1,0 @@
-Added support for syncing Suse enterprise repositories with authentication token.
