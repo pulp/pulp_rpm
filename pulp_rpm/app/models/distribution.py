@@ -1,8 +1,10 @@
+from functools import reduce
 from logging import getLogger
 
 from django.db import models
 
 from pulpcore.plugin.models import (
+    Artifact,
     BaseModel,
     Content,
     ContentArtifact,
@@ -85,6 +87,43 @@ class DistributionTree(Content):
     # media
     discnum = models.IntegerField(null=True)
     totaldiscs = models.IntegerField(null=True)
+
+    def repositories(self):
+        """
+        Return the subrepos in this DistributionTree.
+
+        Returns:
+            django.db.models.QuerySet: Repos that are contained within this tree.
+
+        """
+        from pulp_rpm.app.models import RpmRepository
+        repo_ids = list(self.addons.values_list("repository__pk", flat=True))
+        repo_ids += list(self.variants.values_list("repository__pk", flat=True))
+        return RpmRepository.objects.filter(pk__in=repo_ids)
+
+    def content(self):
+        """
+        Return the subrepo content for this DistributionTree.
+
+        Returns:
+            django.db.models.QuerySet: Content that is contained within this tree.
+
+        """
+        if not self.repositories():
+            return []
+
+        version_content = [repo.latest_version().content for repo in self.repositories()]
+        return reduce(lambda v1, v2: v1 | v2, version_content)
+
+    def artifacts(self):
+        """
+        Return the subrepo artifacts for this DistributionTree.
+
+        Returns:
+            django.db.models.QuerySet: Content that is contained within this tree.
+
+        """
+        return Artifact.objects.filter(content__pk__in=self.content())
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
