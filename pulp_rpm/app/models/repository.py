@@ -12,6 +12,7 @@ from django.db import (
 )
 from pulpcore.plugin.download import DownloaderFactory
 from pulpcore.plugin.models import (
+    Artifact,
     AsciiArmoredDetachedSigningService,
     Content,
     CreatedResource,
@@ -178,6 +179,26 @@ class RpmRepository(Repository):
                 resource = CreatedResource(content_object=version)
                 resource.save()
             return version
+
+    @staticmethod
+    def artifacts_for_version(version):
+        """
+        Return the artifacts for an RpmRepository version.
+
+        Override the default behavior to include DistributionTree artifacts from nested repos.
+
+        Args:
+            version (pulpcore.app.models.RepositoryVersion): to get the artifacts for
+
+        Returns:
+            django.db.models.QuerySet: The artifacts that are contained within this version.
+
+        """
+        qs = Artifact.objects.filter(content__pk__in=version.content)
+        for tree in DistributionTree.objects.filter(pk__in=version.content):
+            qs |= tree.artifacts()
+
+        return qs
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
