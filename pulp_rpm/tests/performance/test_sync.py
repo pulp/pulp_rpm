@@ -216,7 +216,8 @@ class CDNTestCase(unittest.TestCase):
             url=RPM_CDN_APPSTREAM_URL,
             client_cert=self.cdn_client_cert,
             client_key=self.cdn_client_key,
-            ca_cert=self.cdn_ca_cert
+            ca_cert=self.cdn_ca_cert,
+            policy="on_demand"
         )
         appstream_remote = self.remote_api.create(body)
         self.addCleanup(self.remote_api.delete, appstream_remote.pulp_href)
@@ -233,6 +234,7 @@ class CDNTestCase(unittest.TestCase):
             url=RPM_CDN_BASEOS_URL, tls_validation=False,
             client_cert=self.cdn_client_cert,
             client_key=self.cdn_client_key,
+            policy="on_demand"
         )
         baseos_remote = self.remote_api.create(body)
         self.addCleanup(self.remote_api.delete, baseos_remote.pulp_href)
