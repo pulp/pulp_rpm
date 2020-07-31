@@ -13,6 +13,60 @@ Changelog
 
 .. towncrier release notes start
 
+3.5.0 (2020-07-24)
+==================
+
+
+Features
+--------
+
+- Add a retention policy feature - when specified, the latest N versions of each package will be kept and older versions will be purged.
+  `#5367 <https://pulp.plan.io/issues/5367>`_
+- Add support for comparing Packages by EVR (epoch, version, release).
+  `#5402 <https://pulp.plan.io/issues/5402>`_
+- Added support for syncing from a mirror list feed
+  `#6225 <https://pulp.plan.io/issues/6225>`_
+- Comps types (PackageCategory, PackageEnvironment, PackageGroup) can copy its children.
+  `#6316 <https://pulp.plan.io/issues/6316>`_
+- Added support for syncing Suse enterprise repositories with authentication token.
+  `#6729 <https://pulp.plan.io/issues/6729>`_
+
+
+Bugfixes
+--------
+
+- Fixed the sync issue for repositories with the same metadata files but different filenames. E.g. productid in RHEL8 BaseOS and Appstream.
+  `#5847 <https://pulp.plan.io/issues/5847>`_
+- Fixed an issue with an incorrect copy of a distribution tree.
+  `#7046 <https://pulp.plan.io/issues/7046>`_
+- Fixed a repository deletion when a distribution tree is a part of it.
+  `#7096 <https://pulp.plan.io/issues/7096>`_
+- Corrected several viewset-filters to be django-filter-2.3.0-compliant.
+  `#7103 <https://pulp.plan.io/issues/7103>`_
+- Allow only one distribution tree in a repo version at a time.
+  `#7115 <https://pulp.plan.io/issues/7115>`_
+- API is able to show modular data on advisory collection.
+  `#7116 <https://pulp.plan.io/issues/7116>`_
+
+
+Deprecations and Removals
+-------------------------
+
+- Remove PackageGroup, PackageCategory and PackageEnvironment relations to packages and to each other.
+  `#6410 <https://pulp.plan.io/issues/6410>`_
+- Removed the query parameter relative_path from the API which was used when uploading an advisory
+  `#6554 <https://pulp.plan.io/issues/6554>`_
+
+
+Misc
+----
+
+- `#7072 <https://pulp.plan.io/issues/7072>`_, `#7134 <https://pulp.plan.io/issues/7134>`_, `#7150 <https://pulp.plan.io/issues/7150>`_
+
+
+----
+
+
 3.4.2 (2020-07-16)
 ==================
 
