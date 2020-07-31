@@ -9,6 +9,7 @@ import libcomps
 
 from django.core.files import File
 from django.core.files.storage import default_storage as storage
+from django.db.models import Q
 
 from pulpcore.plugin.models import (
     AsciiArmoredDetachedSigningService,
@@ -107,21 +108,42 @@ class PublicationData:
 
         """
         published_artifacts = []
-        for content_artifact in ContentArtifact.objects.filter(
-                content__in=content.exclude(
-                    pulp_type__in=[RepoMetadataFile.get_pulp_type(),
-                                   Modulemd.get_pulp_type(),
-                                   ModulemdDefaults.get_pulp_type()],
-                ).distinct()
-        ).exclude(relative_path__in=["treeinfo", ".treeinfo"]).iterator():
+
+        # Special case for Packages
+        contentartifact_qs = ContentArtifact.objects.filter(
+            content__in=content).filter(content__pulp_type=Package.get_pulp_type())
+
+        for content_artifact in contentartifact_qs:
             relative_path = content_artifact.relative_path
-            if content_artifact.content.pulp_type == Package.get_pulp_type():
-                relative_path = os.path.join(
-                    prefix,
-                    PACKAGES_DIRECTORY,
-                    relative_path.lower()[0],
-                    content_artifact.relative_path
-                )
+            relative_path = os.path.join(
+                prefix,
+                PACKAGES_DIRECTORY,
+                relative_path.lower()[0],
+                relative_path
+            )
+            published_artifacts.append(PublishedArtifact(
+                relative_path=relative_path,
+                publication=self.publication,
+                content_artifact=content_artifact)
+            )
+
+        # Handle everything else
+        is_treeinfo = Q(relative_path__in=["treeinfo", ".treeinfo"])
+        unpublishable_types = Q(
+            content__pulp_type__in=[
+                RepoMetadataFile.get_pulp_type(),
+                Modulemd.get_pulp_type(),
+                ModulemdDefaults.get_pulp_type(),
+                # already dealt with
+                Package.get_pulp_type()
+            ]
+        )
+
+        contentartifact_qs = ContentArtifact.objects.filter(
+            content__in=content).exclude(unpublishable_types).exclude(is_treeinfo)
+
+        for content_artifact in contentartifact_qs.iterator():
+            relative_path = content_artifact.relative_path
             published_artifacts.append(PublishedArtifact(
                 relative_path=relative_path,
                 publication=self.publication,
@@ -207,7 +229,7 @@ class PublicationData:
             setattr(self, f"{name}_content", content)
             setattr(self, f"{name}_checksums", checksum_types)
             setattr(self, f"{name}_repomdrecords", self.prepare_metadata_files(content, name))
-            self.publish_artifacts(content, name)
+            self.publish_artifacts(content, prefix=name)
 
 
 def get_checksum_type(name, checksum_types):
