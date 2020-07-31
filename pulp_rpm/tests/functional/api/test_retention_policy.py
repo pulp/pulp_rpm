@@ -99,7 +99,7 @@ class RetentionPolicyTestCase(PulpTestCase):
         )
         self.assertDictEqual(
             versions_for_packages,
-            {'duck': ['0.7', '0.6'], 'kangaroo': ['0.2'], 'walrus': ['0.71']},
+            {'duck': ['0.6', '0.7'], 'kangaroo': ['0.2'], 'walrus': ['0.71']},
             versions_for_packages
         )
         # TODO: Test that modular RPMs unaffected?
@@ -135,6 +135,9 @@ class RetentionPolicyTestCase(PulpTestCase):
 
         for package in packages:
             packages_by_version[package['name']].append(package['version'])
+
+        for pkg_list in packages_by_version.values():
+            pkg_list.sort()
 
         return packages_by_version
 
