@@ -113,8 +113,8 @@ class PublicationData:
         contentartifact_qs = ContentArtifact.objects.filter(
             content__in=content).filter(content__pulp_type=Package.get_pulp_type())
 
-        for content_artifact in contentartifact_qs:
-            relative_path = content_artifact.relative_path
+        for content_artifact in contentartifact_qs.values('pk', 'relative_path').iterator():
+            relative_path = content_artifact['relative_path']
             relative_path = os.path.join(
                 prefix,
                 PACKAGES_DIRECTORY,
@@ -124,7 +124,7 @@ class PublicationData:
             published_artifacts.append(PublishedArtifact(
                 relative_path=relative_path,
                 publication=self.publication,
-                content_artifact=content_artifact)
+                content_artifact_id=content_artifact['pk'])
             )
 
         # Handle everything else
@@ -142,12 +142,11 @@ class PublicationData:
         contentartifact_qs = ContentArtifact.objects.filter(
             content__in=content).exclude(unpublishable_types).exclude(is_treeinfo)
 
-        for content_artifact in contentartifact_qs.iterator():
-            relative_path = content_artifact.relative_path
+        for content_artifact in contentartifact_qs.values('pk', 'relative_path').iterator():
             published_artifacts.append(PublishedArtifact(
-                relative_path=relative_path,
+                relative_path=content_artifact['relative_path'],
                 publication=self.publication,
-                content_artifact=content_artifact)
+                content_artifact_id=content_artifact['pk'])
             )
 
         PublishedArtifact.objects.bulk_create(published_artifacts, batch_size=2000)
