@@ -352,9 +352,50 @@ def create_repomd_xml(content, publication, checksum_types, extra_repomdrecords,
     fil_xml.set_num_of_pkgs(total_packages)
     oth_xml.set_num_of_pkgs(total_packages)
 
+    # We want to support publishing with a different checksum type than the one built-in to the
+    # package itself, so we need to get the correct checksums somehow if there is an override.
+    # We must also take into consideration that if the package has not been downloaded the only
+    # checksum that is available is the one built-in.
+    #
+    # Since this lookup goes from Package->Content->ContentArtifact->Artifact, performance is a
+    # challenge. We use ContentArtifact as our starting point because it enables us to work with
+    # simple foreign keys and avoid messing with the many-to-many relationship, which doesn't
+    # work with select_related() and performs poorly with prefetch_related(). This is fine
+    # because we know that Packages should only ever have one artifact per content.
+    contentartifact_qs = ContentArtifact.objects.filter(
+        content__in=packages.only('pk')
+    ).select_related(
+        # content__rpm_package is a bit of a hack, exploiting the way django sets up model
+        # inheritance, but it works and is unlikely to break. All content artifacts being
+        # accessed here have an associated Package since they originally came from the
+        # Package queryset.
+        'artifact', 'content__rpm_package'
+    ).only(
+        'artifact', 'content__rpm_package__checksum_type', 'content__rpm_package__pkgId'
+    )
+
+    pkg_to_hash = {}
+    for ca in contentartifact_qs.iterator():
+        pkgid = None
+        if package_checksum_type:
+            package_checksum_type = package_checksum_type.lower()
+            pkgid = getattr(ca.artifact, package_checksum_type, None)
+        if pkgid:
+            pkg_to_hash[ca.content_id] = (package_checksum_type, pkgid)
+        else:
+            pkg_to_hash[ca.content_id] = (
+                ca.content.rpm_package.checksum_type, ca.content.rpm_package.pkgId
+            )
+
     # Process all packages
     for package in packages.iterator():
-        pkg = package.to_createrepo_c(package_checksum_type)
+        pkg = package.to_createrepo_c()
+
+        # rewrite the checksum and checksum type with the desired ones
+        (checksum, pkgId) = pkg_to_hash[package.pk]
+        pkg.checksum_type = checksum
+        pkg.pkgId = pkgId
+
         pkg_filename = os.path.basename(package.location_href)
         # this can cause an issue when two same RPM package names appears
         # a/name1.rpm b/name1.rpm
