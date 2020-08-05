@@ -91,7 +91,7 @@ def find_children_of_content(content, src_repo_version):
             packagegroups = packagegroups.union(category_package_groups)
 
     for packageenvironment in packageenvironments.iterator():
-        for env_package_group in packageenvironment.packagegroups:
+        for env_package_group in packageenvironment.group_ids:
             env_package_groups = PackageGroup.objects.filter(
                 name=env_package_group['name'], pk__in=src_repo_version.content
             )
@@ -99,7 +99,7 @@ def find_children_of_content(content, src_repo_version):
                 [envgroup.pk for envgroup in env_package_groups]
             )
             packagegroups = packagegroups.union(env_package_groups)
-        for optional_env_package_group in packageenvironment.optionalgroups:
+        for optional_env_package_group in packageenvironment.option_ids:
             opt_env_package_groups = PackageGroup.objects.filter(
                 name=optional_env_package_group['name'], pk__in=src_repo_version.content
             )
