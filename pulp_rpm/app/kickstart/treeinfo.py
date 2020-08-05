@@ -2,7 +2,6 @@ from gettext import gettext as _
 from configparser import MissingSectionHeaderError
 from urllib.parse import urljoin
 
-from aiohttp import ClientResponseError
 from django.utils.timezone import now
 
 from productmd.common import SortedConfigParser
@@ -22,14 +21,12 @@ def get_treeinfo_data(remote, remote_url):
     treeinfo_serialized = {}
     namespaces = [".treeinfo", "treeinfo"]
     for namespace in namespaces:
-        downloader = remote.get_downloader(url=urljoin(remote_url, namespace))
+        downloader = remote.get_downloader(
+            url=urljoin(remote_url, namespace), silence_errors_for_response_status_codes={404}
+        )
 
         try:
             result = downloader.fetch()
-        except ClientResponseError as exc:
-            if 404 == exc.status:
-                continue
-            raise
         except FileNotFoundError:
             continue
 
