@@ -1,5 +1,6 @@
 # coding=utf-8
 """Tests that verify download of content served by Pulp."""
+from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
 from pulp_smash.pulp3.constants import ON_DEMAND_DOWNLOAD_POLICIES
 from pulp_smash.pulp3.utils import (
     gen_distribution,
@@ -12,10 +13,8 @@ from pulp_rpm.tests.functional.constants import RPM_KICKSTART_FIXTURE_URL
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
     gen_rpm_remote,
-    monitor_task,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-from pulp_rpm.tests.functional.utils import PulpTestCase
 
 from pulpcore.client.pulp_rpm import (
     DistributionsRpmApi,

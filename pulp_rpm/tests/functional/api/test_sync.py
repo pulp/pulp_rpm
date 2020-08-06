@@ -7,6 +7,7 @@ from random import choice
 from django.utils.dateparse import parse_datetime
 
 from pulp_smash import cli, config
+from pulp_smash.pulp3.bindings import PulpTaskError, PulpTestCase, monitor_task
 from pulp_smash.pulp3.constants import MEDIA_PATH
 from pulp_smash.pulp3.utils import (
     gen_repo,
@@ -57,11 +58,9 @@ from pulp_rpm.tests.functional.constants import (
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
     gen_rpm_remote,
-    monitor_task,
     progress_reports
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-from pulp_rpm.tests.functional.utils import PulpTestCase
 
 from pulpcore.client.pulp_rpm import (
     RepositoriesRpmApi,
@@ -135,18 +134,17 @@ class BasicSyncTestCase(PulpTestCase):
 
         remote = self.remote_api.create(gen_rpm_remote(RPM_MIRROR_LIST_BAD_FIXTURE_URL))
         remote = self.remote_api.read(remote.pulp_href)
-        repo, remote = self.do_test(remote=remote)
 
         self.addCleanup(self.repo_api.delete, repo.pulp_href)
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
         repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
         sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
-        task_result = monitor_task(sync_response.task)
-
-        if isinstance(task_result, dict):
+        try:
+            monitor_task(sync_response.task)
+        except PulpTaskError as exc:
             self.assertEqual(
-                task_result["error"]["description"],
+                exc.task.to_dict()['error']['description'],
                 "A no valid remote URL was provided."
             )
         else:
@@ -810,7 +808,10 @@ class BasicSyncTestCase(PulpTestCase):
 
         repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
         sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
-        task_result = monitor_task(sync_response.task)
+        try:
+            monitor_task(sync_response.task)
+        except PulpTaskError as exc:
+            task_result = exc.task.to_dict()
         error_msg = 'Incoming and existing advisories have the same id but different ' \
             'timestamps and intersecting package lists. It is likely that they are from ' \
             'two different incompatible remote repositories. E.g. RHELX-repo and ' \
@@ -846,7 +847,10 @@ class BasicSyncTestCase(PulpTestCase):
 
         repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
         sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
-        task_result = monitor_task(sync_response.task)
+        try:
+            monitor_task(sync_response.task)
+        except PulpTaskError as exc:
+            task_result = exc.task.to_dict()
         error_msg = 'Incoming and existing advisories have the same id ' \
             'and timestamp but different and intersecting package lists. ' \
             'At least one of them is wrong. Advisory id: {}'.format(RPM_ADVISORY_TEST_ID)
@@ -1078,7 +1082,11 @@ class SyncInvalidTestCase(PulpTestCase):
 
         repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
         sync_response = repo_api.sync(repo.pulp_href, repository_sync_data)
-        return monitor_task(sync_response.task)
+        try:
+            task_result = monitor_task(sync_response.task)
+        except PulpTaskError as exc:
+            task_result = exc.task.to_dict()
+        return task_result
 
 
 class AdditiveModeTestCase(PulpTestCase):

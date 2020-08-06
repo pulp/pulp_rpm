@@ -4,6 +4,7 @@
 from collections import defaultdict
 
 from pulp_smash import config
+from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
 from pulp_smash.pulp3.utils import (
     gen_repo,
     get_added_content_summary,
@@ -21,11 +22,9 @@ from pulp_rpm.tests.functional.constants import (
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
     gen_rpm_remote,
-    monitor_task,
     progress_reports,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-from pulp_rpm.tests.functional.utils import PulpTestCase
 
 from pulpcore.client.pulp_rpm import (
     RepositoriesRpmApi,

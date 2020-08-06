@@ -3,20 +3,20 @@
 import os
 from tempfile import NamedTemporaryFile
 
+from pulp_smash.pulp3.bindings import PulpTaskError, PulpTestCase, monitor_task
 from pulp_smash.pulp3.utils import delete_orphans
 from pulp_smash.utils import http_get
 
 from pulp_rpm.tests.functional.utils import (
     core_client,
     gen_rpm_client,
-    monitor_task,)
+)
 from pulp_rpm.tests.functional.constants import (
     RPM_UNSIGNED_FIXTURE_URL,
     RPM_PACKAGE_FILENAME,
     RPM_WITH_NON_ASCII_URL
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-from pulp_rpm.tests.functional.utils import PulpTestCase
 
 from pulpcore.client.pulpcore import TasksApi
 from pulpcore.client.pulp_rpm import ContentPackagesApi
@@ -59,7 +59,10 @@ class ContentUnitTestCase(PulpTestCase):
 
         # Duplicate unit
         upload = self.do_test(self.file_to_use)
-        monitor_task(upload.task)
+        try:
+            monitor_task(upload.task)
+        except PulpTaskError:
+            pass
         task_report = self.tasks_api.read(upload.task)
         msg = 'There is already a package with'
         self.assertTrue(msg in task_report.error['description'])

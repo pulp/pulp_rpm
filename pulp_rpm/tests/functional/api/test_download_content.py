@@ -5,6 +5,7 @@ from random import choice
 from urllib.parse import urljoin
 
 from pulp_smash import config, utils
+from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
 from pulp_smash.pulp3.utils import download_content_unit, gen_distribution, gen_repo
 
 from pulp_rpm.tests.functional.constants import RPM_UNSIGNED_FIXTURE_URL
@@ -13,10 +14,8 @@ from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
     get_rpm_package_paths,
     gen_rpm_remote,
-    monitor_task,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-from pulp_rpm.tests.functional.utils import PulpTestCase
 
 from pulpcore.client.pulp_rpm import (
     DistributionsRpmApi,

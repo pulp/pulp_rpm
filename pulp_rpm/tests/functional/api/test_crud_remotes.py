@@ -2,17 +2,16 @@
 """Tests that CRUD rpm remotes."""
 from random import choice
 
+from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
 from pulp_smash import utils
 
 from pulp_rpm.tests.functional.constants import DOWNLOAD_POLICIES
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
     gen_rpm_remote,
-    monitor_task,
     skip_if,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-from pulp_rpm.tests.functional.utils import PulpTestCase
 
 from pulpcore.client.pulp_rpm import RemotesRpmApi
 from pulpcore.client.pulp_rpm.exceptions import ApiException
