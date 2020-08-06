@@ -10,6 +10,7 @@ from gettext import gettext as _
 
 from nectar.downloaders.local import LocalFileDownloader
 from nectar.downloaders.threaded import HTTPThreadedDownloader
+from nectar.downloaders.ulnthreaded import ULNHTTPThreadedDownloader
 
 
 # Mapping from scheme string to downloader class to instantiate
@@ -17,6 +18,7 @@ SCHEME_DOWNLOADERS = {
     'file': LocalFileDownloader,
     'http': HTTPThreadedDownloader,
     'https': HTTPThreadedDownloader,
+    'uln': ULNHTTPThreadedDownloader,
 }
 
 
