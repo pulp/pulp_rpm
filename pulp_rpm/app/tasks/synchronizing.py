@@ -84,22 +84,29 @@ from gi.repository import Modulemd as mmdlib  # noqa: E402
 log = logging.getLogger(__name__)
 
 
-def repodata_exists(remote, url):
+def get_repomd_file(remote, url):
     """
     Check if repodata exists.
+
+    Args:
+        remote(RpmRemote): An RpmRemote to download with.
+        url(str): A remote repository URL
+
+    Returns:
+        pulpcore.plugin.download.DownloadResult: downloaded repomd.xml
 
     """
     downloader = remote.get_downloader(url=urljoin(url, "repodata/repomd.xml"))
 
     try:
-        downloader.fetch()
+        result = downloader.fetch()
     except ClientResponseError as exc:
         if 404 == exc.status:
-            return False
+            return
     except FileNotFoundError:
-        return False
+        return
 
-    return True
+    return result
 
 
 def fetch_mirror(remote):
@@ -114,7 +121,8 @@ def fetch_mirror(remote):
     with open(result.path) as mirror_list_file:
         for mirror in mirror_list_file:
             match = re.match(url_pattern, mirror)
-            if match and repodata_exists(remote, match.group(2)):
+            repodata_exists = get_repomd_file(remote, match.group(2))
+            if match and repodata_exists:
                 return match.group(2)
 
     return None
@@ -132,6 +140,46 @@ def fetch_remote_url(remote):
         return remote_url
 
 
+def is_optimized_sync(repository, remote, url):
+    """
+    Check whether it is possible to optimize the synchronization or not.
+
+    Caution: we are not storing when the remote was last updated, so the order of this
+    logic must remain in this order where we first check the version number as other
+    changes than sync could have taken place such that the date or repo version will be
+    different from last sync.
+
+    Args:
+        repository(RpmRepository): An RpmRepository to check optimization for.
+        remote(RpmRemote): An RPMRemote to check optimization for.
+        url(str): A remote repository URL.
+
+    Returns:
+        bool: True, if sync is optimized; False, otherwise.
+
+    """
+    result = get_repomd_file(remote, url)
+    if not result:
+        return False
+
+    repomd_path = result.path
+    repomd = cr.Repomd(repomd_path)
+    is_optimized = (
+        repository.last_sync_remote and
+        remote.pk == repository.last_sync_remote.pk and
+        repository.last_sync_repo_version == repository.latest_version().number and
+        remote.pulp_last_updated <= repository.latest_version().pulp_created and
+        is_previous_version(repomd.revision, repository.last_sync_revision_number)
+    )
+    if is_optimized:
+        optimize_data = dict(message='Optimizing Sync', code='optimizing.sync')
+        with ProgressReport(**optimize_data) as optimize_pb:
+            optimize_pb.done = 1
+            optimize_pb.save()
+
+    return is_optimized
+
+
 def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
     """
     Sync content from the remote repository.
@@ -141,8 +189,9 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
     Args:
         remote_pk (str): The remote PK.
         repository_pk (str): The repository PK.
-        mirror (bool): Mirror mode
+        mirror (bool): Mirror mode.
         skip_types (list): List of content to skip.
+        optimize(bool): Optimize mode.
 
     Raises:
         ValueError: If the remote does not specify a url to sync.
@@ -165,6 +214,9 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
     else:
         remote_url = remote_url.rstrip("/") + "/"
 
+    if optimize and is_optimized_sync(repository, remote, remote_url):
+        return
+
     treeinfo = get_treeinfo_data(remote, remote_url)
     if treeinfo:
         treeinfo["repositories"] = {}
@@ -182,23 +234,27 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
             treeinfo["repositories"].update({directory: str(sub_repo.pk)})
             path = f"{repodata}/"
             new_url = urljoin(remote_url, path)
-            if repodata_exists(remote, new_url):
+            repodata_exists = get_repomd_file(remote, new_url)
+            if repodata_exists:
+                if optimize and is_optimized_sync(sub_repo, remote, new_url):
+                    continue
                 stage = RpmFirstStage(
                     remote,
                     sub_repo,
                     deferred_download,
-                    optimize=optimize,
                     skip_types=skip_types,
                     new_url=new_url,
                 )
                 dv = RpmDeclarativeVersion(first_stage=stage,
                                            repository=sub_repo)
                 dv.create()
+                sub_repo.last_sync_remote = remote
+                sub_repo.last_sync_repo_version = sub_repo.latest_version().number
+                sub_repo.save()
 
     first_stage = RpmFirstStage(remote,
                                 repository,
                                 deferred_download,
-                                optimize=optimize,
                                 skip_types=skip_types,
                                 treeinfo=treeinfo,
                                 new_url=remote_url)
@@ -251,8 +307,8 @@ class RpmFirstStage(Stage):
     that should exist in the new :class:`~pulpcore.plugin.models.RepositoryVersion`.
     """
 
-    def __init__(self, remote, repository, deferred_download, optimize=True, skip_types=None,
-                 new_url=None, treeinfo=None):
+    def __init__(self, remote, repository, deferred_download, skip_types=None, new_url=None,
+                 treeinfo=None):
         """
         The first stage of a pulp_rpm sync pipeline.
 
@@ -266,7 +322,6 @@ class RpmFirstStage(Stage):
             skip_types (list): List of content to skip
             new_url(str): URL to replace remote url
             treeinfo(dict): Treeinfo data
-            optimize(bool): Optimize sync
 
         """
         super().__init__()
@@ -277,7 +332,6 @@ class RpmFirstStage(Stage):
         self.new_url = new_url
         self.treeinfo = treeinfo
         self.skip_types = [] if skip_types is None else skip_types
-        self.optimize = optimize
 
         self.data = FirstStageData()
 
@@ -372,17 +426,9 @@ class RpmFirstStage(Stage):
             repomd_path = result.path
             self.data.repomd = cr.Repomd(repomd_path)
 
-            if self.should_optimize_sync():
-                optimize_data = dict(message='Optimizing Sync', code='optimizing.sync')
-                with ProgressReport(**optimize_data) as optimize_pb:
-                    optimize_pb.done = 1
-                    optimize_pb.save()
-                    return
-
             self.repository.last_sync_revision_number = self.data.repomd.revision
 
             await self.parse_distribution_tree()
-
             await self.parse_repository_metadata()
             await self.parse_modules_metadata()
             await self.parse_packages_components()
@@ -394,21 +440,6 @@ class RpmFirstStage(Stage):
 
             for dc_group in self.data.dc_groups:
                 await self.put(dc_group)
-
-    def should_optimize_sync(self):
-        """Check whether it is possible to optimize the synchronization or not."""
-        # Caution: we are not storing when the remote was last updated, so the order of this
-        # logic must remain in this order where we first check the version number as other
-        # changes than sync could have taken place such that the date or repo version will be
-        # different from last sync
-        return (
-            self.optimize and self.repository.last_sync_remote and
-            self.remote.pk == self.repository.last_sync_remote.pk and
-            self.repository.last_sync_repo_version == self.repository.latest_version().number and
-            self.remote.pulp_last_updated <= self.repository.latest_version().pulp_created and
-            is_previous_version(self.data.repomd.revision,
-                                self.repository.last_sync_revision_number)
-        )
 
     async def parse_distribution_tree(self):
         """Parse content from the file treeinfo if present."""
