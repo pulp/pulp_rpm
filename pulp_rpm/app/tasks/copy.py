@@ -146,7 +146,7 @@ def copy_content(config, dependency_solving):
         else:
             dest_repo_version = dest_repo.latest_version()
 
-        if entry.get("content"):
+        if entry.get("content") is not None:
             content_filter = Q(pk__in=entry.get("content"))
         else:
             content_filter = Q()
