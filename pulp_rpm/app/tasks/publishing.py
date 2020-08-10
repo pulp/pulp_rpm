@@ -9,6 +9,7 @@ import libcomps
 
 from django.core.files import File
 from django.core.files.storage import default_storage as storage
+from django.db.models import Q
 
 from pulpcore.plugin.models import (
     AsciiArmoredDetachedSigningService,
@@ -107,25 +108,45 @@ class PublicationData:
 
         """
         published_artifacts = []
-        for content_artifact in ContentArtifact.objects.filter(
-                content__in=content.exclude(
-                    pulp_type__in=[RepoMetadataFile.get_pulp_type(),
-                                   Modulemd.get_pulp_type(),
-                                   ModulemdDefaults.get_pulp_type()],
-                ).distinct()
-        ).exclude(relative_path__in=["treeinfo", ".treeinfo"]).iterator():
-            relative_path = content_artifact.relative_path
-            if content_artifact.content.pulp_type == Package.get_pulp_type():
-                relative_path = os.path.join(
-                    prefix,
-                    PACKAGES_DIRECTORY,
-                    relative_path.lower()[0],
-                    content_artifact.relative_path
-                )
+
+        # Special case for Packages
+        contentartifact_qs = ContentArtifact.objects.filter(
+            content__in=content).filter(content__pulp_type=Package.get_pulp_type())
+
+        for content_artifact in contentartifact_qs.values('pk', 'relative_path').iterator():
+            relative_path = content_artifact['relative_path']
+            relative_path = os.path.join(
+                prefix,
+                PACKAGES_DIRECTORY,
+                relative_path.lower()[0],
+                relative_path
+            )
             published_artifacts.append(PublishedArtifact(
                 relative_path=relative_path,
                 publication=self.publication,
-                content_artifact=content_artifact)
+                content_artifact_id=content_artifact['pk'])
+            )
+
+        # Handle everything else
+        is_treeinfo = Q(relative_path__in=["treeinfo", ".treeinfo"])
+        unpublishable_types = Q(
+            content__pulp_type__in=[
+                RepoMetadataFile.get_pulp_type(),
+                Modulemd.get_pulp_type(),
+                ModulemdDefaults.get_pulp_type(),
+                # already dealt with
+                Package.get_pulp_type()
+            ]
+        )
+
+        contentartifact_qs = ContentArtifact.objects.filter(
+            content__in=content).exclude(unpublishable_types).exclude(is_treeinfo)
+
+        for content_artifact in contentartifact_qs.values('pk', 'relative_path').iterator():
+            published_artifacts.append(PublishedArtifact(
+                relative_path=content_artifact['relative_path'],
+                publication=self.publication,
+                content_artifact_id=content_artifact['pk'])
             )
 
         PublishedArtifact.objects.bulk_create(published_artifacts, batch_size=2000)
@@ -207,7 +228,7 @@ class PublicationData:
             setattr(self, f"{name}_content", content)
             setattr(self, f"{name}_checksums", checksum_types)
             setattr(self, f"{name}_repomdrecords", self.prepare_metadata_files(content, name))
-            self.publish_artifacts(content, name)
+            self.publish_artifacts(content, prefix=name)
 
 
 def get_checksum_type(name, checksum_types):
@@ -331,9 +352,50 @@ def create_repomd_xml(content, publication, checksum_types, extra_repomdrecords,
     fil_xml.set_num_of_pkgs(total_packages)
     oth_xml.set_num_of_pkgs(total_packages)
 
+    # We want to support publishing with a different checksum type than the one built-in to the
+    # package itself, so we need to get the correct checksums somehow if there is an override.
+    # We must also take into consideration that if the package has not been downloaded the only
+    # checksum that is available is the one built-in.
+    #
+    # Since this lookup goes from Package->Content->ContentArtifact->Artifact, performance is a
+    # challenge. We use ContentArtifact as our starting point because it enables us to work with
+    # simple foreign keys and avoid messing with the many-to-many relationship, which doesn't
+    # work with select_related() and performs poorly with prefetch_related(). This is fine
+    # because we know that Packages should only ever have one artifact per content.
+    contentartifact_qs = ContentArtifact.objects.filter(
+        content__in=packages.only('pk')
+    ).select_related(
+        # content__rpm_package is a bit of a hack, exploiting the way django sets up model
+        # inheritance, but it works and is unlikely to break. All content artifacts being
+        # accessed here have an associated Package since they originally came from the
+        # Package queryset.
+        'artifact', 'content__rpm_package'
+    ).only(
+        'artifact', 'content__rpm_package__checksum_type', 'content__rpm_package__pkgId'
+    )
+
+    pkg_to_hash = {}
+    for ca in contentartifact_qs.iterator():
+        pkgid = None
+        if package_checksum_type:
+            package_checksum_type = package_checksum_type.lower()
+            pkgid = getattr(ca.artifact, package_checksum_type, None)
+        if pkgid:
+            pkg_to_hash[ca.content_id] = (package_checksum_type, pkgid)
+        else:
+            pkg_to_hash[ca.content_id] = (
+                ca.content.rpm_package.checksum_type, ca.content.rpm_package.pkgId
+            )
+
     # Process all packages
     for package in packages.iterator():
-        pkg = package.to_createrepo_c(package_checksum_type)
+        pkg = package.to_createrepo_c()
+
+        # rewrite the checksum and checksum type with the desired ones
+        (checksum, pkgId) = pkg_to_hash[package.pk]
+        pkg.checksum_type = checksum
+        pkg.pkgId = pkgId
+
         pkg_filename = os.path.basename(package.location_href)
         # this can cause an issue when two same RPM package names appears
         # a/name1.rpm b/name1.rpm
