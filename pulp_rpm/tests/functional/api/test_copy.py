@@ -111,6 +111,21 @@ class BasicCopyTestCase(BaseCopy):
             get_added_content_summary(dest_repo), results,
         )
 
+    def test_copy_none(self):
+        """Test copying NO CONTENT from one repo to another."""
+        source_repo, dest_repo = self._setup_repos()
+        config = [{
+            'source_repo_version': source_repo['latest_version_href'],
+            'dest_repo': dest_repo['pulp_href'],
+            'content': [],
+        }]
+
+        rpm_copy(self.cfg, config)
+        dest_repo = self.client.get(dest_repo['pulp_href'])
+        dest_repo_latest = dest_repo['latest_version_href']
+        # Check that no new repo-version was created in dest_repo
+        self.assertEqual("{}versions/0/".format(dest_repo['pulp_href']), dest_repo_latest)
+
     def test_invalid_config(self):
         """Test invalid config."""
         source_repo, dest_repo = self._setup_repos()

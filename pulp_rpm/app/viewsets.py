@@ -312,7 +312,7 @@ class CopyViewSet(viewsets.ViewSet):
                                                     repo=dest_repo.name)
                     raise DRFValidationError(detail=message)
 
-            if entry.get("content"):
+            if entry.get("content") is not None:
                 r["content"] = []
                 for c in entry["content"]:
                     r["content"].append(NamedModelViewSet().get_resource(c, Content).pk)
