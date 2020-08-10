@@ -1062,10 +1062,7 @@ class RpmContentSaver(ContentSaver):
             if variants:
                 Variant.objects.bulk_create(variants)
 
-        UpdateRecordCollections = UpdateRecord.collections.through
-
         update_collection_to_save = []
-        update_record_collections_to_save = []
         update_references_to_save = []
         update_collection_packages_to_save = []
         seen_updaterecords = []
@@ -1100,10 +1097,9 @@ class RpmContentSaver(ContentSaver):
                 update_references = future_relations.get('references', [])
 
                 for update_collection, packages in update_collections.items():
+                    update_collection.update_record = update_record
                     update_collection_to_save.append(update_collection)
-                    update_record_collections_to_save.append(UpdateRecordCollections(
-                        updaterecord=update_record, updatecollection=update_collection
-                    ))
+
                     for update_collection_package in packages:
                         update_collection_package.update_collection = update_collection
                         update_collection_packages_to_save.append(update_collection_package)
@@ -1114,10 +1110,6 @@ class RpmContentSaver(ContentSaver):
 
         if update_collection_to_save:
             UpdateCollection.objects.bulk_create(update_collection_to_save)
-
-        if update_record_collections_to_save:
-            # Saving UpdateRecord -> UpdateCollection relations
-            UpdateRecordCollections.objects.bulk_create(update_record_collections_to_save)
 
         if update_collection_packages_to_save:
             UpdateCollectionPackage.objects.bulk_create(update_collection_packages_to_save)

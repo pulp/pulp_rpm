@@ -193,15 +193,16 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
     return to_add, to_remove, to_exclude
 
 
-def _copy_update_collections_for(collections):
+def _copy_update_collections_for(advisory, collections):
     """
-    Deep-copy each UpdateCollection in the_collections, and its UpdateCollectionPackages.
+    Deep-copy each UpdateCollection in the_collections, and assign to its new advisory.
     """
     new_collections = []
     with transaction.atomic():
-        for collection in collections.all().iterator():
+        for collection in collections:
             uc_packages = collection.packages.all()
             collection.pk = None
+            collection.update_record = advisory
             collection.save()
             new_packages = []
             for a_package in uc_packages:
@@ -227,10 +228,8 @@ def merge_advisories(previous_advisory, added_advisory):
                                                            package list from the other two ones.
 
     """
-    # For UpdateCollections, make sure we don't re-use the collections for either of the
-    # advisories being merged
-    previous_collections = _copy_update_collections_for(previous_advisory.collections)
-    added_collections = _copy_update_collections_for(added_advisory.collections)
+    previous_collections = previous_advisory.collections.all()
+    added_collections = added_advisory.collections.all()
     references = previous_advisory.references.all()
 
     with transaction.atomic():
@@ -246,10 +245,8 @@ def merge_advisories(previous_advisory, added_advisory):
             if collection.name in names_seen.keys():
                 orig_name = collection.name
                 new_name = f"{orig_name}_{names_seen[orig_name]}"
-                names_seen[new_name] = names_seen[orig_name] + 1
+                names_seen[orig_name] += 1
                 collection.name = new_name
-                # persist the collection with its new name
-                collection.save()
             # if we've not seen it before, store in names-seen as name:0
             else:
                 names_seen[collection.name] = 0
@@ -268,8 +265,10 @@ def merge_advisories(previous_advisory, added_advisory):
         except IntegrityError:
             merged_advisory = UpdateRecord.objects.get(digest=merged_digest)
         else:
-            for collection in chain(previous_collections, added_collections):
-                merged_advisory.collections.add(collection)
+            # For UpdateCollections, make sure we don't re-use the collections for either of the
+            # advisories being merged
+            _copy_update_collections_for(merged_advisory, chain(previous_collections,
+                                                                added_collections))
             for reference in references:
                 # copy reference and add relation for advisory
                 reference.pk = None
