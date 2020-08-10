@@ -508,7 +508,7 @@ class BasicSyncTestCase(PulpTestCase):
             mutated_updaterecords[RPM_ADVISORY_TEST_ID_NEW],
         )
 
-    def test_file_decriptors(self):
+    def test_file_descriptors(self):
         """Test whether file descriptors are closed properly.
 
         This test targets the following issue:
@@ -650,6 +650,35 @@ class BasicSyncTestCase(PulpTestCase):
 
         # check that sync was optimized
         self.assertTrue(optimized)
+
+    def test_mirror_mode_optimize(self):
+        """
+        Ensure mirror mode and optimize work correctly together.
+
+        Content is fully present and sync is optimized.
+
+        Do the following:
+        1. Sync (a repo and a remote will be created automatically).
+        2. Sync again with optimize=True and mirror=True
+        3. Assert an "Optimizing Sync" progress report is present.
+        4. Assert that no changes were made to a repo.
+        """
+        # sync
+        repo, remote = self.do_test()
+        first_sync_repo_version = repo.latest_version_href
+
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # re-sync, get progress reports from task
+        report_list = self.sync(repository=repo, remote=remote, optimize=True, mirror=True)
+        second_sync_repo_version = repo.latest_version_href
+
+        is_optimized = self.optimize_report(progress_reports=report_list)
+        self.assertTrue(is_optimized)
+
+        self.assertEqual(first_sync_repo_version, second_sync_repo_version)
 
     def test_sync_advisory_new_version(self):
         """Sync a repository and re-sync with newer version of Advisory.
@@ -1014,7 +1043,7 @@ class BasicSyncTestCase(PulpTestCase):
         monitor_task(sync_response.task)
         return self.repo_api.read(repo.pulp_href), self.remote_api.read(remote.pulp_href)
 
-    def sync(self, repository=None, remote=None, optimize=True):
+    def sync(self, repository=None, remote=None, optimize=True, mirror=False):
         """Sync a repository and return the task.
 
         Args:
@@ -1025,7 +1054,9 @@ class BasicSyncTestCase(PulpTestCase):
         Returns (list):
             list of the ProgressReport objects created from this sync
         """
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, optimize=optimize)
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href,
+                                                    optimize=optimize,
+                                                    mirror=mirror)
         sync_response = self.repo_api.sync(repository.pulp_href, repository_sync_data)
         monitor_task(sync_response.task)
         return progress_reports(sync_response.task)
