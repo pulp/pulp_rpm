@@ -17,7 +17,10 @@ from pulpcore.plugin.models import (
 )
 
 from pulp_rpm.app.exceptions import AdvisoryConflict
-from pulp_rpm.app.models import UpdateRecord
+from pulp_rpm.app.models import (
+    UpdateCollectionPackage,
+    UpdateRecord,
+)
 from pulp_rpm.app.shared_utils import is_previous_version
 
 
@@ -190,6 +193,26 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
     return to_add, to_remove, to_exclude
 
 
+def _copy_update_collections_for(collections):
+    """
+    Deep-copy each UpdateCollection in the_collections, and its UpdateCollectionPackages.
+    """
+    new_collections = []
+    with transaction.atomic():
+        for collection in collections.all().iterator():
+            uc_packages = collection.packages.all()
+            collection.pk = None
+            collection.save()
+            new_packages = []
+            for a_package in uc_packages:
+                a_package.pk = None
+                a_package.update_collection = collection
+                new_packages.append(a_package)
+            UpdateCollectionPackage.objects.bulk_create(new_packages)
+            new_collections.append(collection)
+    return new_collections
+
+
 def merge_advisories(previous_advisory, added_advisory):
     """
     Create a new advisory with the merged pkglist.
@@ -204,8 +227,10 @@ def merge_advisories(previous_advisory, added_advisory):
                                                            package list from the other two ones.
 
     """
-    previous_collections = previous_advisory.collections.all()
-    added_collections = added_advisory.collections.all()
+    # For UpdateCollections, make sure we don't re-use the collections for either of the
+    # advisories being merged
+    previous_collections = _copy_update_collections_for(previous_advisory.collections)
+    added_collections = _copy_update_collections_for(added_advisory.collections)
     references = previous_advisory.references.all()
 
     with transaction.atomic():
@@ -232,6 +257,8 @@ def merge_advisories(previous_advisory, added_advisory):
             collections=chain(previous_collections, added_collections))
         merged_digest = hash_update_record(merged_advisory_cr)
         merged_advisory = previous_advisory
+        # Need to null both pk (content_ptr_id) and pulp_id here to insure django doesn't
+        # find the original advisory instead of making a copy for us
         merged_advisory.pk = None
         merged_advisory.pulp_id = None
         merged_advisory.digest = merged_digest
