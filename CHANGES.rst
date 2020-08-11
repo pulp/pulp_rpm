@@ -13,6 +13,24 @@ Changelog
 
 .. towncrier release notes start
 
+3.5.1 (2020-08-11)
+==================
+
+
+Bugfixes
+--------
+
+- Handle optimize=True and mirror=True on sync correctly.
+  `#7228 <https://pulp.plan.io/issues/7228>`_
+- Fix copy with depsolving for packageenvironments.
+  `#7248 <https://pulp.plan.io/issues/7248>`_
+- Taught copy that empty-content means 'copy nothing'.
+  `#7284 <https://pulp.plan.io/issues/7284>`_
+
+
+----
+
+
 3.5.0 (2020-07-24)
 ==================
 
