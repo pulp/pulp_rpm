@@ -4,6 +4,7 @@ from urllib.parse import urljoin
 
 from pulp_smash import api, config, utils
 from pulp_smash.exceptions import TaskReportError
+from pulp_smash.pulp3.bindings import PulpTestCase
 from pulp_smash.pulp3.constants import ARTIFACTS_PATH
 from pulp_smash.pulp3.utils import (
     delete_orphans,
@@ -20,7 +21,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_WITH_NON_UTF_8_URL,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-from pulp_rpm.tests.functional.utils import PulpTestCase
 
 
 class UploadEncodingMetadataTestCase(PulpTestCase):

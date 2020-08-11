@@ -4,6 +4,7 @@ from random import choice
 from requests.exceptions import HTTPError
 
 from pulp_smash import api, config
+from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
 from pulp_smash.pulp3.utils import (
     delete_orphans,
     gen_repo,
@@ -28,9 +29,8 @@ from pulp_rpm.tests.functional.constants import (
     UPDATERECORD_CONTENT_PATH,
     RPM_CONTENT_PATH,
 )
-from pulp_rpm.tests.functional.utils import gen_rpm_client, gen_rpm_remote, monitor_task, rpm_copy
+from pulp_rpm.tests.functional.utils import gen_rpm_client, gen_rpm_remote, rpm_copy
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-from pulp_rpm.tests.functional.utils import PulpTestCase
 
 from pulpcore.client.pulp_rpm import (
     ContentPackagesApi,

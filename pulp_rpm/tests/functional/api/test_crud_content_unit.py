@@ -1,12 +1,12 @@
 # coding=utf-8
 """Tests that perform actions over content unit."""
+from pulp_smash.pulp3.bindings import PulpTaskError, PulpTestCase, monitor_task
 from pulp_smash.pulp3.utils import delete_orphans, gen_repo
 
 from pulp_rpm.tests.functional.utils import (
     gen_artifact,
     gen_rpm_client,
     gen_rpm_content_attrs,
-    monitor_task,
     skip_if,
 )
 from pulp_rpm.tests.functional.constants import (
@@ -16,7 +16,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_SIGNED_URL2
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-from pulp_rpm.tests.functional.utils import PulpTestCase
 
 from pulpcore.client.pulp_rpm import ContentPackagesApi, RepositoriesRpmApi
 
@@ -114,7 +113,10 @@ class ContentUnitTestCase(PulpTestCase):
         """Attempt to create duplicate package."""
         attrs = gen_rpm_content_attrs(self.artifact, RPM_PACKAGE_FILENAME)
         response = self.rpm_content_api.create(**attrs)
-        task_result = monitor_task(response.task)
+        try:
+            task_result = monitor_task(response.task)
+        except PulpTaskError as exc:
+            task_result = exc.task.to_dict()
         msg = "There is already a package with"
         self.assertTrue(msg in task_result['error']['description'])
 
@@ -146,7 +148,10 @@ class ContentUnitTestCase(PulpTestCase):
 
         data = {"add_content_units": [c.pulp_href for c in self.rpm_content_api.list().results]}
         response = repo_api.modify(repo.pulp_href, data)
-        task = monitor_task(response.task)
+        try:
+            task = monitor_task(response.task)
+        except PulpTaskError as exc:
+            task = exc.task.to_dict()
 
         error_message = "Cannot create repository version. Path is duplicated: {}.".format(
             content_attrs["relative_path"]

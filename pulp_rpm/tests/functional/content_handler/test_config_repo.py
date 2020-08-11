@@ -1,17 +1,14 @@
 import requests
 
 from pulp_smash import config
+from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
 from pulp_smash.pulp3.utils import (
     delete_orphans,
     gen_distribution,
     gen_repo,
 )
 
-from pulp_rpm.tests.functional.utils import (
-    gen_rpm_client,
-    monitor_task,
-    PulpTestCase,
-)
+from pulp_rpm.tests.functional.utils import gen_rpm_client
 
 from pulpcore.client.pulp_rpm import (
     DistributionsRpmApi,

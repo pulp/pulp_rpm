@@ -6,6 +6,7 @@ from datetime import datetime
 from urllib.parse import urljoin
 
 from pulp_smash import api, config
+from pulp_smash.pulp3.bindings import monitor_task
 from pulp_smash.pulp3.utils import (
     delete_orphans,
     gen_repo,
@@ -31,7 +32,6 @@ from pulp_rpm.tests.functional.constants import (
 )
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
-    monitor_task,
     skip_if
 )
 from pulpcore.client.pulp_rpm import (

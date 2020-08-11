@@ -6,7 +6,7 @@ import subprocess
 
 from functools import partial
 from io import StringIO
-from unittest import SkipTest, TestCase
+from unittest import SkipTest
 from time import sleep
 from tempfile import NamedTemporaryFile
 
@@ -197,30 +197,6 @@ def gen_artifact(url=RPM_SIGNED_URL):
         return artifact.to_dict()
 
 
-def monitor_task(task_href):
-    """Polls the Task API until the task is in a completed state.
-
-    Prints the task details and a success or failure message. Exits on failure.
-
-    Args:
-        task_href(str): The href of the task to monitor
-
-    Returns:
-        list[str]: List of hrefs that identify resource created by the task
-
-    """
-    completed = ["completed", "failed", "canceled"]
-    task = tasks.read(task_href)
-    while task.state not in completed:
-        sleep(2)
-        task = tasks.read(task_href)
-
-    if task.state == "completed":
-        return task.created_resources
-
-    return task.to_dict()
-
-
 def init_signed_repo_configuration():
     """Initialize the configuration required for verifying a signed repository.
 
@@ -285,20 +261,3 @@ def get_package_repo_path(package_filename):
     return os.path.join(
         PACKAGES_DIRECTORY, package_filename.lower()[0], package_filename
     )
-
-
-class PulpTestCase(TestCase):
-    """Pulp customized test case."""
-
-    def doCleanups(self):
-        """
-        Execute all cleanup functions and waits the deletion tasks.
-
-        Normally called for you after tearDown.
-        """
-        output = super().doCleanups()
-        running_tasks = tasks.list(state="running", name__contains="delete")
-        while running_tasks.count:
-            sleep(0.3)
-            running_tasks = tasks.list(state="running", name__contains="delete")
-        return output
