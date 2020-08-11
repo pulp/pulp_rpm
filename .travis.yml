@@ -89,6 +89,12 @@ jobs:
       env:
         - TEST=performance PERFORMANCE_TEST=pulp_to_pulp
       if: type = cron
+    - stage: update-redmine
+      before_install: skip
+      install: skip
+      before_script: skip
+      script: bash .travis/update_redmine.sh
+      if: tag IS present
     - stage: cherry-pick
       if: type = cron
       before_install: skip
