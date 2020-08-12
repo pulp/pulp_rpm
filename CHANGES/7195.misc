@@ -1,0 +1,1 @@
+Made UpdateCollection be unique on (name, update_record).

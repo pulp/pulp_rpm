@@ -251,7 +251,11 @@ class UpdateCollection(BaseModel):
     shortname = models.TextField(null=True)
     module = JSONField(null=True)
 
-    update_record = models.ManyToManyField(UpdateRecord, related_name="collections")
+    update_record = models.ForeignKey(UpdateRecord, related_name="collections",
+                                      on_delete=models.deletion.CASCADE)
+
+    class Meta:
+        unique_together = ['name', 'update_record']
 
     @classmethod
     def createrepo_to_dict(cls, collection):
