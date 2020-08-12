@@ -22,7 +22,11 @@ plugin_dash: pulp-rpm
 plugin_dash_short: rpm
 plugin_name: pulp_rpm
 plugin_snake: pulp_rpm
-pulp_settings: null
+pulp_settings:
+  allowed_export_paths:
+  - /tmp
+  allowed_import_paths:
+  - /tmp
 pulpcore_branch: master
 pulpcore_pip_version_specifier: null
 pydocstyle: true
@@ -37,5 +41,5 @@ test_performance:
 test_s3: true
 travis_addtl_services: []
 travis_notifications: None
-update_redmine: true 
+update_redmine: true
 
