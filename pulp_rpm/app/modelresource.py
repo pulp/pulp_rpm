@@ -19,7 +19,10 @@ from pulp_rpm.app.models import (
     PackageLangpacks,
     RepoMetadataFile,
     RpmRepository,
+    UpdateCollection,
+    UpdateCollectionPackage,
     UpdateRecord,
+    UpdateReference,
     Variant,
 )
 
@@ -154,6 +157,10 @@ class UpdateRecordResource(RpmContentResource):
     class Meta:
         model = UpdateRecord
         import_id_fields = model.natural_key_fields()
+        exclude = BaseContentResource.Meta.exclude + (
+            "collections",
+            "references",
+        )
 
 
 # Distribution Tree
@@ -346,8 +353,143 @@ class DistributionTreeRepositoryResource(QueryModelResource):
 
     class Meta:
         model = RpmRepository
-        import_id_fields = ('name',)
+        import_id_fields = ("name",)
         fields = ("name", "pulp_type", "description", "original_checksum_types", "sub_repo")
+
+
+class UpdateCollectionResource(QueryModelResource):
+    """
+    Resource for import/export of rpm_updatecollection entities.
+    """
+
+    update_record = fields.Field(
+        column_name="update_record",
+        attribute="update_record",
+        widget=ForeignKeyWidget(UpdateRecord, field="digest"),
+    )
+
+    def set_up_queryset(self):
+        """
+        Set up a queryset for UpdateCollections.
+
+        Returns:
+            UpdateCollections belonging to UpdateRecords for a specified repo-version.
+
+        """
+        return UpdateCollection.objects.filter(
+            update_record__in=UpdateRecord.objects.filter(
+                pk__in=self.repo_version.content
+            )
+        )
+
+    class Meta:
+        model = UpdateCollection
+        exclude = QueryModelResource.Meta.exclude + ("packages",)
+        import_id_fields = tuple(
+            chain.from_iterable(UpdateCollection._meta.unique_together)
+        )
+
+
+class UpdateReferenceResource(QueryModelResource):
+    """
+    Resource for import/export of rpm_updatereference entities.
+    """
+
+    update_record = fields.Field(
+        column_name="update_record",
+        attribute="update_record",
+        widget=ForeignKeyWidget(UpdateRecord, field="digest"),
+    )
+
+    def set_up_queryset(self):
+        """
+        Set up a queryset for UpdateReferences.
+
+        Returns:
+            UpdateReferences belonging to UpdateRecords for a specified repo-version.
+
+        """
+        return UpdateReference.objects.filter(
+            update_record__in=UpdateRecord.objects.filter(pk__in=self.repo_version.content)
+        )
+
+    class Meta:
+        model = UpdateReference
+        import_id_fields = (
+            "href",
+            "ref_type",
+            "update_record",
+        )
+
+
+class UpdateCollectionPackageResource(QueryModelResource):
+    """
+    Resource for import/export of rpm_updatecollectionpackage entities.
+    """
+
+    class UpdateCollectionForeignKeyWidget(ForeignKeyWidget):
+        """
+        Class that lets us specify a multi-key link to UpdateCollection.
+
+        Format is str(<name>|<update_record.digest>), to be used at import-row time.
+        """
+
+        def render(self, value, obj):
+            """Render formatted string to use as unique-identifier."""
+            return f"{obj.update_collection.name}|{obj.update_collection.update_record.digest}"
+
+    update_collection = fields.Field(
+        column_name="update_collection",
+        attribute="update_collection",
+        widget=UpdateCollectionForeignKeyWidget(UpdateCollection),
+    )
+
+    def before_import_row(self, row, **kwargs):
+        """
+        Find the new-uuid of the UpdateCollection for this row.
+
+        We start with the update_collection identified as "<uc-name>|<uc-updaterecord-digest>"
+        Find the UpdateRecord, find the UpdateCollection by (name,update-record), and then
+        replace row[update_collection] with the pulp_id of the (previously-saved) UpdateCollection.
+
+        Args:
+            row (tablib.Dataset row): import-row representing a single UpdateCollectionPackage.
+            kwargs: args passed along from the import() call.
+        """
+        (uc_name, uc_updrec_digest) = row["update_collection"].split("|")
+        uc_updrecord = UpdateRecord.objects.filter(digest=uc_updrec_digest).first()
+        uc = UpdateCollection.objects.filter(
+            name=uc_name, update_record=uc_updrecord
+        ).first()
+        row["update_collection"] = str(uc.pulp_id)
+
+    def set_up_queryset(self):
+        """
+        Set up a queryset for UpdateCollectionPackages.
+
+        Returns:
+            UpdateCollectionPackages specific to a specified repo-version.
+
+        """
+        return UpdateCollectionPackage.objects.filter(
+            update_collection__in=UpdateCollection.objects.filter(
+                update_record__in=UpdateRecord.objects.filter(
+                    pk__in=self.repo_version.content
+                )
+            )
+        )
+
+    class Meta:
+        model = UpdateCollectionPackage
+        import_id_fields = (
+            "name",
+            "epoch",
+            "version",
+            "release",
+            "sum",
+            "filename",
+            "update_collection"
+        )
 
 
 IMPORT_ORDER = [
@@ -366,4 +508,7 @@ IMPORT_ORDER = [
     ImageResource,
     AddonResource,
     VariantResource,
+    UpdateReferenceResource,
+    UpdateCollectionResource,
+    UpdateCollectionPackageResource,
 ]

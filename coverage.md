@@ -48,4 +48,5 @@ Manual Coverage
 | As a user, I can use dnf to install all the content served by Pulp | PART | only covers rpm installation |
 | **Retention** |  |  |
 | As a user, I can have a repository option that retains the latest N packages of the same name | PART | No coverage of packages with differing arch in same repo (src, i686, x86_64), no coverage of non-sync repo modifications, no coverage of modular RPMs being exempted. |
-
+| As a user, I can export RPM-repository content to be consumed by a downstream Pulp3 instance. | PART | basic pulp-export succeeds |
+| As a user, I can import RPM-repository content exported from an upstream Pulp3 instance. | PART | basic pulp-import succeeds |

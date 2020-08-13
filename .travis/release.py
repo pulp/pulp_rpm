@@ -37,13 +37,14 @@ def validate_redmine_data(redmine_query_url, redmine_issues):
         status = redmine_issue.status.name
         if "CLOSE" not in status and status != "MODIFIED":
             stats["status_not_modified"].append(issue)
+        milestone_id = None
         try:
             milestone = redmine_issue.fixed_version.name
             milestone_id = redmine_issue.fixed_version.id
             stats[f"milestone_{milestone}"].append(issue)
         except ResourceAttrError:
             stats["without_milestone"].append(issue)
-
+    if milestone_id is not None:
         milestone_url = f"RedmineMilestone: {REDMINE_URL}/versions/{milestone_id}.json\n[noissue]"
 
     print(f"\n\nRedmine stats: {json.dumps(stats, indent=2)}")
@@ -166,7 +167,7 @@ short_sha = git.rev_parse(sha, short=7)
 # Third commit: bump to .dev
 with open(f"{plugin_path}/requirements.txt", "wt") as setup_file:
     for line in setup_lines:
-        if "pulpcore" in line and "pulpcore" not in release_path:
+        if "pulpcore" in line and "pulpcore" not in release_path and release_type != "patch":
             line = f"pulpcore>={lower_pulpcore_version}\n"
 
         setup_file.write(line)
