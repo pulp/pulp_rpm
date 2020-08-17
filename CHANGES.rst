@@ -13,6 +13,42 @@ Changelog
 
 .. towncrier release notes start
 
+3.6.0 (2020-08-17)
+==================
+
+
+Features
+--------
+
+- Taught advisory-merge to proactively avoid package-collection-name collisions.
+  `#5740 <https://pulp.plan.io/issues/5740>`_
+- Added the ability for users to import and export distribution trees.
+  `#6739 <https://pulp.plan.io/issues/6739>`_
+- Added import/export support for remaining advisory-related entities.
+  `#6815 <https://pulp.plan.io/issues/6815>`_
+- Allow a Remote to be associated with a Repository and automatically use it when syncing the
+  Repository.
+  `#7159 <https://pulp.plan.io/issues/7159>`_
+- Improved publishing performance by around 40%.
+  `#7289 <https://pulp.plan.io/issues/7289>`_
+
+
+Bugfixes
+--------
+
+- Prevented advisory-merge from 'reusing' UpdateCollections from the merging advisories.
+  `#7291 <https://pulp.plan.io/issues/7291>`_
+
+
+Misc
+----
+
+- `#6937 <https://pulp.plan.io/issues/6937>`_, `#7095 <https://pulp.plan.io/issues/7095>`_, `#7195 <https://pulp.plan.io/issues/7195>`_
+
+
+----
+
+
 3.5.1 (2020-08-11)
 ==================
 
