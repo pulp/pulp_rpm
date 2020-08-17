@@ -3,6 +3,6 @@ django_readonly_field
 jsonschema>=3.0
 libcomps~=0.1.11
 productmd>=1.25
-pulpcore>=3.4
+pulpcore>=3.6,<3.7
 PyGObject~=3.22
 solv
