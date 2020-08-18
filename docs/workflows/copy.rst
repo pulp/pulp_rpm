@@ -16,29 +16,8 @@ Like all Pulp repositories, you can use the ${repo_href}/modify/ endpoint to:
 * roll back the content present in a repository to that of a previous version using 'base_version'
 * clone a repository version from another repo using 'base_version'
 
-.. code-block:: bash
-
-    export CONTENT_HHREF=/pulp/api/v3/content/rpm/packages/9ee09de7-5fff-4805-8b30-9ab95493317d/
-
-    # Add content units to the repository
-    http POST $BASE_ADDR$REPO_HREF'modify'/ add_content_units:=["$CONTENT_HREF"]
-
-    # Remove content units from the repository
-    http POST $BASE_ADDR$REPO_HREF'modify'/ remove_content_units:=["$CONTENT_HREF"]
-
-    # Clone a repository (can be composed with addition or removal of units)
-    export TASK_URL=$(http POST $BASE_ADDR$REPO_HREF'modify'/ \
-        base_version=$REPOVERSION_HREF_WITH_PKG | jq -r '.task')
-
-    # Poll the task (here we use a function defined in docs/_scripts/base.sh)
-    wait_until_task_finished $BASE_ADDR$TASK_URL
-
-    # After the task is complete, it gives us a new repository version
-    echo "Set REPOVERSION_HREF from finished task."
-    export REPOVERSION_HREF=$(http $BASE_ADDR$TASK_URL| jq -r '.created_resources | first')
-
-    echo "Inspecting RepositoryVersion."
-    http $BASE_ADDR$REPOVERSION_HREF
+.. literalinclude:: ../_scripts/copy_basic.sh
+   :language: bash
 
 
 .. copy-workflow:
