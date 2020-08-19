@@ -39,7 +39,7 @@ from pulp_rpm.app.models import (
     UpdateRecord,
 )
 
-from pulp_rpm.app.downloaders import RpmDownloader
+from pulp_rpm.app.downloaders import RpmDownloader, RpmFileDownloader
 from pulp_rpm.app.exceptions import DistributionTreeConflict
 
 log = getLogger(__name__)
@@ -74,6 +74,7 @@ class RpmRemote(Remote):
                 downloader_overrides={
                     'http': RpmDownloader,
                     'https': RpmDownloader,
+                    'file': RpmFileDownloader,
                 }
             )
             return self._download_factory
