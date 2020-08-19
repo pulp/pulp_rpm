@@ -1,10 +1,29 @@
 from logging import getLogger
 from urllib.parse import urljoin
 
-from pulpcore.plugin.download import HttpDownloader
+from pulpcore.plugin.download import FileDownloader, HttpDownloader
 
 
 log = getLogger(__name__)
+
+
+class RpmFileDownloader(FileDownloader):
+    """
+    FileDownloader that strips out RPM's custom http downloader arguments.
+
+    This is unfortunate, but there isn't currently a good pattern for customizing the downloader
+    factory machinery such that certain types of arguments only apply to certain downloaders,
+    so passing a kwarg into get_downloader() will pass it to constructor for any downloader.
+
+    TODO: https://pulp.plan.io/issues/7352
+    """
+
+    def __init__(self, *args, **kwargs):
+        """
+        Initialize the downloader.
+        """
+        kwargs.pop('silence_errors_for_response_status_codes', None)
+        super().__init__(*args, **kwargs)
 
 
 class RpmDownloader(HttpDownloader):
@@ -21,12 +40,15 @@ class RpmDownloader(HttpDownloader):
 
     """
 
-    def __init__(self, *args, silence_errors_for_response_status_codes=set(), sles_auth_token=None,
+    def __init__(self, *args, silence_errors_for_response_status_codes=None, sles_auth_token=None,
                  **kwargs):
         """
         Initialize the downloader.
         """
         self.sles_auth_token = sles_auth_token
+
+        if silence_errors_for_response_status_codes is None:
+            silence_errors_for_response_status_codes = set()
         self.silence_errors_for_response_status_codes = silence_errors_for_response_status_codes
 
         super().__init__(*args, **kwargs)
