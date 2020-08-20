@@ -39,7 +39,7 @@ depend on the existence of other content units to be "correct" or meaningful. Fo
 
 #. An Advisory (Errata) references RPM Packages and Modules that are needed to address a
    particular bug or security concern. In order for the Advisory to be useful, these RPM packages
-   or Modules must be present in the same repository - otherwise when a client tries to install
+   or Modules should be present in the same repository - otherwise when a client tries to install
    them it will not be able to fully apply the Advisory fix.
 #. A Package Group is a group of RPM packages. If the RPM packages that a Package Group contains
    are not present in the same repository, the Package Group is effectively "broken" and won't be
@@ -58,8 +58,10 @@ copy content in the background which you, the user, did not explicitly tell it t
 example:
 
 * When copying an Advisory (Errata) from one repository to another, all of the RPM packages
-  directly referenced by the Advisory will also be copied.
-* When copying a RPM packages from one repository to another, all of the RPM packages that those
+  directly referenced by the Advisory will also be copied. (note: this is best-effort, if the
+  source repository doesn't contain some of the packages referenced, the copy will proceed
+  without them).
+* When copying RPM packages from one repository to another, all of the RPM packages that those
   packages depend on will also be copied.
 
 The goal is to be as easy to use as possible while maintaining the "correctness" of the repository.
