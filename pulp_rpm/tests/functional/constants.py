@@ -359,6 +359,7 @@ CENTOS8_BASEOS_URL = "http://mirror.linux.duke.edu/pub/centos/8/BaseOS/x86_64/os
 EPEL7_URL = "https://dl.fedoraproject.org/pub/epel/7/x86_64/"
 RPM_CDN_APPSTREAM_URL = "https://cdn.redhat.com/content/dist/rhel8/8.2/x86_64/appstream/os/"
 RPM_CDN_BASEOS_URL = "https://cdn.redhat.com/content/dist/rhel8/8.2/x86_64/baseos/os/"
+EPEL8_MIRRORLIST_URL = "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-8&arch=x86_64"
 
 PULP_TYPE_ADVISORY = 'rpm.advisory'
 PULP_TYPE_PACKAGE = 'rpm.package'
