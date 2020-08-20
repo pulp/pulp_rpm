@@ -89,26 +89,26 @@ class Package(Content):
             URL with more information about the packaged software. This could be the project's
             website or its code repository.
 
-        changelogs (Text):
+        changelogs (JSON):
             Changelogs that package contains - see comments below
-        files (Text):
+        files (JSON):
             Files that package contains - see comments below
 
-        requires (Text):
+        requires (JSON):
             Capabilities the package requires - see comments below
-        provides (Text):
+        provides (JSON):
             Capabilities the package provides - see comments below
-        conflicts (Text):
+        conflicts (JSON):
             Capabilities the package conflicts with - see comments below
-        obsoletes (Text):
+        obsoletes (JSON):
             Capabilities the package obsoletes - see comments below
-        suggests (Text):
+        suggests (JSON):
             Capabilities the package suggests - see comments below
-        enhances (Text):
+        enhances (JSON):
             Capabilities the package enhances - see comments below
-        recommends (Text):
+        recommends (JSON):
             Capabilities the package recommends - see comments below
-        supplements (Text):
+        supplements (JSON):
             Capabilities the package supplements - see comments below
 
         location_base (Text):
@@ -171,24 +171,24 @@ class Package(Content):
     description = models.TextField()
     url = models.TextField()
 
-    # A string containing a JSON-encoded list of dictionaries, each of which represents a single
-    # changelog. Each changelog dict contains the following fields:
+    # A JSON-encoded list of dictionaries, each of which represents a single changelog.
+    # Each changelog dict contains the following fields:
     #
     #   date (int):     date of changelog - seconds since epoch
     #   author (str):   author of the changelog
     #   changelog (str: changelog text
     changelogs = JSONField(default=list)
 
-    # A string containing a JSON-encoded list of dictionaries, each of which represents a single
-    # file. Each file dict contains the following fields:
+    # A JSON-encoded list of dictionaries, each of which represents a single file.
+    # Each file dict contains the following fields:
     #
     #   type (str):     one of "" (regular file), "dir", "ghost"
     #   path (str):     path to file
     #   name (str):     filename
     files = JSONField(default=list)
 
-    # Each of these is a string containing a JSON-encoded list of dictionaries, each of which
-    # represents a dependency. Each dependency dict contains the following fields:
+    # Each of these is a JSON-encoded list of dictionaries, each of which represents a dependency.
+    # Each dependency dict contains the following fields:
     #
     #   name (str):     name
     #   flags (str):    flags
