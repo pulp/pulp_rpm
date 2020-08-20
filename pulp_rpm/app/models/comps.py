@@ -191,7 +191,7 @@ class PackageGroup(Content):
 
 class PackageCategory(Content):
     """
-    The "Category" content type. Formerly "PackageCategory" in Pulp 2.
+    The "PackageCategory" content type.
 
     Maps directly to the fields provided by libcomps.
     https://github.com/rpm-software-management/libcomps
@@ -315,7 +315,7 @@ class PackageCategory(Content):
 
 class PackageEnvironment(Content):
     """
-    The "Environment" content type. Formerly "PackageEnvironment" in Pulp 2.
+    The "PackageEnvironment" content type.
 
     Maps directly to the fields provided by libcomps.
     https://github.com/rpm-software-management/libcomps
@@ -447,7 +447,7 @@ class PackageEnvironment(Content):
 
 class PackageLangpacks(Content):
     """
-    The "Langpacks" content type. Formerly "PackageLangpacks" in Pulp 2.
+    The "PackageLangpacks" content type.
 
     Maps directly to the fields provided by libcomps.
     https://github.com/rpm-software-management/libcomps
