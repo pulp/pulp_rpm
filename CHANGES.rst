@@ -13,6 +13,29 @@ Changelog
 
 .. towncrier release notes start
 
+3.6.1 (2020-08-20)
+==================
+
+
+Bugfixes
+--------
+
+- Updated Rest API docs to contain only rpm endpoints.
+  `#7332 <https://pulp.plan.io/issues/7332>`_
+- Fix sync from local (on-disk) repository.
+  `#7342 <https://pulp.plan.io/issues/7342>`_
+
+
+Improved Documentation
+----------------------
+
+- Fix copy script example typos.
+  `#7176 <https://pulp.plan.io/issues/7176>`_
+
+
+----
+
+
 3.6.0 (2020-08-17)
 ==================
 
