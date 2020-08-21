@@ -136,6 +136,9 @@ def rpm_to_solvable(solv_repo, unit):
 
         for file_repr in unit.get('files', []):
             dir_path = file_repr[1]
+            if not dir_path:
+                # https://github.com/openSUSE/libsolv/issues/397
+                continue
             dirname_id = repodata.str2dir(dir_path)
             repodata.add_dirstr(
                 solvable.id, solv.SOLVABLE_FILELIST,
