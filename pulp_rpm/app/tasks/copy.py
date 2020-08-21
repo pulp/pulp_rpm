@@ -1,4 +1,3 @@
-from django.core.exceptions import MultipleObjectsReturned
 from django.db import transaction
 from django.db.models import Q
 
@@ -55,28 +54,22 @@ def find_children_of_content(content, src_repo_version):
     for advisory in advisories:
         # Find rpms referenced by Advisories/Errata
         package_nevras = advisory.get_pkglist()
+        advisory_package_q = Q()
         for nevra in package_nevras:
             (name, epoch, version, release, arch) = nevra
-            try:
-                package = packages.get(
-                    name=name, epoch=epoch, version=version, release=release, arch=arch)
-                children.add(package.pk)
-            except Package.DoesNotExist:
-                raise
-            except MultipleObjectsReturned:
-                raise
+            advisory_package_q |= Q(
+                name=name, epoch=epoch, version=version, release=release, arch=arch
+            )
+        children.update(packages.filter(advisory_package_q).values_list('pk', flat=True))
 
         module_nsvcas = advisory.get_module_list()
+        advisory_module_q = Q()
         for nsvca in module_nsvcas:
             (name, stream, version, context, arch) = nsvca
-            try:
-                module = modules.get(
-                    name=name, stream=stream, version=version, context=context, arch=arch)
-                children.add(module.pk)
-            except Modulemd.DoesNotExist:
-                raise
-            except MultipleObjectsReturned:
-                raise
+            advisory_module_q |= Q(
+                name=name, stream=stream, version=version, context=context, arch=arch
+            )
+        children.update(modules.filter(advisory_module_q).values_list('pk', flat=True))
 
     # PackageCategories & PackageEnvironments resolution must go before PackageGroups
     # TODO: refactor to be more effecient (lower number of queries)
