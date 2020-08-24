@@ -121,6 +121,8 @@ def fetch_mirror(remote):
     with open(result.path) as mirror_list_file:
         for mirror in mirror_list_file:
             match = re.match(url_pattern, mirror)
+            if not match:
+                continue
             repodata_exists = get_repomd_file(remote, match.group(2))
             if match and repodata_exists:
                 return match.group(2)
