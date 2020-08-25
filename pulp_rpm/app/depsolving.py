@@ -1,7 +1,5 @@
 import collections
 import logging
-import os
-
 import solv
 
 from pulp_rpm.app import models
@@ -135,14 +133,16 @@ def rpm_to_solvable(solv_repo, unit):
         repodata = solv_repo.first_repodata()
 
         for file_repr in unit.get('files', []):
-            dir_path = file_repr[1]
-            if not dir_path:
+            # file_repr = e.g. (None, '/usr/bin/', 'bash')
+            file_dir = file_repr[1]
+            file_name = file_repr[2]
+            if not file_dir:
                 # https://github.com/openSUSE/libsolv/issues/397
                 continue
-            dirname_id = repodata.str2dir(dir_path)
+            dirname_id = repodata.str2dir(file_dir)
             repodata.add_dirstr(
                 solvable.id, solv.SOLVABLE_FILELIST,
-                dirname_id, os.path.basename(dir_path)
+                dirname_id, file_name
             )
 
     def rpm_basic_deps(solvable, name, evr, arch):
@@ -869,7 +869,10 @@ class Solver:
                 # The solver is simply ignoring the problems encountered and proceeds associating
                 # any new solvables/units. This might be reported back to the user one day over
                 # the REST API.
-                logger.debug('Encountered problems solving: {}'.format(', '.join(problems)))
+                logger.warning(
+                    'Encountered problems solving dependencies, '
+                    'copy may be incomplete: {}'.format(', '.join(problems))
+                )
 
             transaction = solver.transaction()
             return set(transaction.newsolvables())
