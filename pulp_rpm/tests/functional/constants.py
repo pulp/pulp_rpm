@@ -334,6 +334,12 @@ KICKSTART_CONTENT_PATH = urljoin(BASE_CONTENT_PATH, 'rpm/distribution_trees/')
 """The location of RPM Distribution Trees on the content endpoint."""
 
 RPM_KICKSTART_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-distribution-tree/')
+RPM_DISTRIBUTION_TREE_CHANGED_ADDON_URL = urljoin(
+    PULP_FIXTURES_BASE_URL, 'rpm-distribution-tree-changed-addon/')
+RPM_DISTRIBUTION_TREE_CHANGED_MAIN_URL = urljoin(
+    PULP_FIXTURES_BASE_URL, 'rpm-distribution-tree-changed-main/')
+RPM_DISTRIBUTION_TREE_CHANGED_VARIANT_URL = urljoin(
+    PULP_FIXTURES_BASE_URL, 'rpm-distribution-tree-changed-variant/')
 
 RPM_KICKSTART_CONTENT_NAME = 'rpm.distribution_tree'
 
@@ -376,6 +382,7 @@ EPEL8_MIRRORLIST_URL = "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-8
 EPEL8_PLAYGROUND_KICKSTART_URL = "http://mirrors.sonic.net/epel/playground/8/Everything/x86_64/os/"
 
 PULP_TYPE_ADVISORY = 'rpm.advisory'
+PULP_TYPE_DISTRIBUTION_TREE = 'rpm.distribution_tree'
 PULP_TYPE_PACKAGE = 'rpm.package'
 PULP_TYPE_PACKAGE_CATEGORY = 'rpm.packagecategory'
 PULP_TYPE_PACKAGE_GROUP = 'rpm.packagegroup'
