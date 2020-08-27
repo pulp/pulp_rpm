@@ -23,8 +23,8 @@ plugin_dash_short: rpm
 plugin_name: pulp_rpm
 plugin_snake: pulp_rpm
 pulp_settings: null
-pulpcore_branch: master
-pulpcore_pip_version_specifier: null
+pulpcore_branch: "3.5"
+pulpcore_pip_version_specifier: ">=3.4,<3.6"
 pydocstyle: true
 pypi_username: pulp
 redmine_project: pulp_rpm
@@ -37,5 +37,5 @@ test_performance:
 test_s3: true
 travis_addtl_services: []
 travis_notifications: None
-update_redmine: true 
+update_redmine: true
 
