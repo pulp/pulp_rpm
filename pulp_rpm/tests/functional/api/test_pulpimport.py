@@ -12,12 +12,11 @@ from pulp_smash.pulp3.utils import (
     gen_repo,
 )
 
+from pulp_rpm.tests.functional.constants import RPM_KICKSTART_FIXTURE_URL
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
     gen_rpm_remote,
 )
-
-from pulpcore.tests.functional.utils import monitor_task_group
 
 from pulpcore.client.pulpcore import (
     ApiClient as CoreApiClient,
@@ -26,23 +25,24 @@ from pulpcore.client.pulpcore import (
     ImportersPulpApi,
     ImportersCoreImportsApi,
 )
-
 from pulpcore.client.pulp_rpm import (
+    ContentDistributionTreesApi,
     RepositoriesRpmApi,
     RpmRepositorySyncURL,
     RemotesRpmApi,
 )
+from pulpcore.tests.functional.utils import monitor_task_group
 
 NUM_REPOS = 2
 
 
-class PulpImportTestCase(PulpTestCase):
+class PulpImportTestBase(PulpTestCase):
     """
     Base functionality for PulpImporter and PulpImport test classes.
     """
 
     @classmethod
-    def _setup_repositories(cls):
+    def _setup_repositories(cls, url=None):
         """Create and sync a number of repositories to be exported."""
         # create and remember a set of repo
         import_repos = []
@@ -51,8 +51,13 @@ class PulpImportTestCase(PulpTestCase):
         for r in range(NUM_REPOS):
             import_repo = cls.repo_api.create(gen_repo())
             export_repo = cls.repo_api.create(gen_repo())
-            body = gen_rpm_remote()
+
+            if url:
+                body = gen_rpm_remote(url)
+            else:
+                body = gen_rpm_remote()
             remote = cls.remote_api.create(body)
+
             repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
             sync_response = cls.repo_api.sync(
                 export_repo.pulp_href, repository_sync_data
@@ -95,26 +100,6 @@ class PulpImportTestCase(PulpTestCase):
         export_href = resources[0]
         export = cls.exports_api.read(export_href)
         return export
-
-    @classmethod
-    def setUpClass(cls):
-        """Create class-wide variables."""
-        cls.cfg = config.get_config()
-        cls.client = api.Client(cls.cfg, api.json_handler)
-        cls.core_client = CoreApiClient(configuration=cls.cfg.get_bindings_config())
-        cls.rpm_client = gen_rpm_client()
-
-        cls.repo_api = RepositoriesRpmApi(cls.rpm_client)
-        cls.remote_api = RemotesRpmApi(cls.rpm_client)
-        cls.exporter_api = ExportersPulpApi(cls.core_client)
-        cls.exports_api = ExportersCoreExportsApi(cls.core_client)
-        cls.importer_api = ImportersPulpApi(cls.core_client)
-        cls.imports_api = ImportersCoreImportsApi(cls.core_client)
-
-        (cls.import_repos, cls.export_repos, cls.remotes) = cls._setup_repositories()
-        cls.exporter = cls._create_exporter()
-        cls.export = cls._create_export()
-        cls.chunked_export = cls._create_chunked_export()
 
     @classmethod
     def _delete_exporter(cls):
@@ -190,6 +175,32 @@ class PulpImportTestCase(PulpTestCase):
 
         return task_group
 
+
+class PulpImportTestCase(PulpImportTestBase):
+    """
+    Basic tests for PulpImporter and PulpImport.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.cfg = config.get_config()
+        cls.client = api.Client(cls.cfg, api.json_handler)
+        cls.core_client = CoreApiClient(configuration=cls.cfg.get_bindings_config())
+        cls.rpm_client = gen_rpm_client()
+
+        cls.repo_api = RepositoriesRpmApi(cls.rpm_client)
+        cls.remote_api = RemotesRpmApi(cls.rpm_client)
+        cls.exporter_api = ExportersPulpApi(cls.core_client)
+        cls.exports_api = ExportersCoreExportsApi(cls.core_client)
+        cls.importer_api = ImportersPulpApi(cls.core_client)
+        cls.imports_api = ImportersCoreImportsApi(cls.core_client)
+
+        cls.import_repos, cls.export_repos, cls.remotes = cls._setup_repositories()
+        cls.exporter = cls._create_exporter()
+        cls.export = cls._create_export()
+        cls.chunked_export = cls._create_chunked_export()
+
     def test_import(self):
         """Test an import."""
         importer = self._create_importer()
@@ -212,3 +223,41 @@ class PulpImportTestCase(PulpTestCase):
             repo = self.repo_api.read(repo.pulp_href)
             # still only one version as pulp won't create a new version if nothing changed
             self.assertEqual(f"{repo.pulp_href}versions/1/", repo.latest_version_href)
+
+
+class DistributionTreePulpImportTestCase(PulpImportTestBase):
+    """
+    Tests for PulpImporter and PulpImport for repos with DistributionTrees.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.cfg = config.get_config()
+        cls.client = api.Client(cls.cfg, api.json_handler)
+        cls.core_client = CoreApiClient(configuration=cls.cfg.get_bindings_config())
+        cls.rpm_client = gen_rpm_client()
+
+        cls.repo_api = RepositoriesRpmApi(cls.rpm_client)
+        cls.remote_api = RemotesRpmApi(cls.rpm_client)
+        cls.exporter_api = ExportersPulpApi(cls.core_client)
+        cls.exports_api = ExportersCoreExportsApi(cls.core_client)
+        cls.importer_api = ImportersPulpApi(cls.core_client)
+        cls.imports_api = ImportersCoreImportsApi(cls.core_client)
+        cls.dist_tree_api = ContentDistributionTreesApi(cls.rpm_client)
+
+        cls.import_repos, cls.export_repos, cls.remotes = \
+            cls._setup_repositories(RPM_KICKSTART_FIXTURE_URL)
+        cls.exporter = cls._create_exporter()
+        cls.export = cls._create_export()
+
+    def test_import(self):
+        """Test an import."""
+        importer = self._create_importer()
+        task_group = self._perform_import(importer)
+        self.assertEqual(len(self.import_repos), task_group.completed)
+        for repo in self.import_repos:
+            repo = self.repo_api.read(repo.pulp_href)
+            self.assertEqual(f"{repo.pulp_href}versions/1/", repo.latest_version_href)
+            trees = self.dist_tree_api.list(repository_version=repo.latest_version_href)
+            self.assertEqual(trees.count, 1)
