@@ -1186,7 +1186,7 @@ class GenerateSqliteForRepoStep(platform_steps.PluginStep):
         Call out to createrepo command line in order to process the files.
         """
         checksum_type = self.parent.get_checksum_type()
-        pipe = subprocess.Popen('sqliterepo_c --local-sqlite -f '
+        pipe = subprocess.Popen('sqliterepo_c -f '
                                 '--checksum %(checksum_type)s '
                                 '%(content_dir)s' %
                                 {'checksum_type': checksum_type,
