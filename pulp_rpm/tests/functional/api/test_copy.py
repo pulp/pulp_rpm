@@ -497,7 +497,7 @@ class StrictPackageCopyTestCase(PulpTestCase):
         copy_response = rpm_copy(self.cfg, config, recursive=True)
 
         # check only two packages was copied, original package to copy and only one
-        # of its dependency as one is already present
+        # of its dependency as one is already present.
         self.assertEqual(
             copy_response['content_summary']['added'][PULP_TYPE_PACKAGE]['count'], 2
         )
