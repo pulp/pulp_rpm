@@ -1492,7 +1492,7 @@ class GenerateSqliteForRepoStepTests(BaseYumDistributorPublishStepTests):
         step.parent = mock.MagicMock()
         step.parent.get_checksum_type.return_value = 'sha1'
         step.process_main()
-        Popen.assert_called_once_with('sqliterepo_c --local-sqlite -f '
+        Popen.assert_called_once_with('sqliterepo_c -f '
                                       '--checksum sha1 '
                                       '/foo',
                                       shell=True, stderr=mock.ANY, stdout=mock.ANY)
