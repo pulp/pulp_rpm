@@ -13,6 +13,30 @@ Changelog
 
 .. towncrier release notes start
 
+3.6.2 (2020-09-04)
+==================
+
+
+Bugfixes
+--------
+
+- Fixed a bug where dependency solving did not work correctly with packages that depend on files, e.g. depending on /usr/bin/bash.
+  `#7202 <https://pulp.plan.io/issues/7202>`_
+- Fixed crashes while copying SRPMs with depsolving enabled.
+  `#7290 <https://pulp.plan.io/issues/7290>`_
+- Fix sync using proxy server.
+  `#7321 <https://pulp.plan.io/issues/7321>`_
+- Fix sync from mirrorlist with comments (like fedora's mirrorlist).
+  `#7354 <https://pulp.plan.io/issues/7354>`_
+- Copying advisories/errata no longer fails if one of the packages is not present in the repository.
+  `#7369 <https://pulp.plan.io/issues/7369>`_
+- Fixing OpenAPI schema for Variant
+  `#7394 <https://pulp.plan.io/issues/7394>`_
+
+
+----
+
+
 3.6.1 (2020-08-20)
 ==================
 
