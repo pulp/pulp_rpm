@@ -84,7 +84,7 @@ class RpmDownloader(HttpDownloader):
         else:
             url = self.url
 
-        async with self.session.get(url) as response:
+        async with self.session.get(url, proxy=self.proxy, auth=self.auth) as response:
             self.raise_for_status(response)
             to_return = await self._handle_response(response)
             await response.release()
