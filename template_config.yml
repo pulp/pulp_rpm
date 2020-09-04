@@ -28,7 +28,7 @@ pulp_settings:
   allowed_import_paths:
   - /tmp
 pulpcore_branch: "3.6"
-pulpcore_pip_version_specifier: ">=3.6,<3.7"
+pulpcore_pip_version_specifier: "<3.7"
 pydocstyle: true
 pypi_username: pulp
 redmine_project: pulp_rpm
