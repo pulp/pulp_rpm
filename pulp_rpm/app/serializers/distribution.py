@@ -75,19 +75,19 @@ class VariantSerializer(serializers.ModelSerializer):
         help_text=_("Relative path to directory with binary RPMs.")
     )
     source_packages = serializers.CharField(
-        help_text=_("Relative path to directory with source RPMs.")
+        help_text=_("Relative path to directory with source RPMs."), allow_null=True
     )
     source_repository = serializers.CharField(
-        help_text=_("Relative path to YUM repository with source RPMs.")
+        help_text=_("Relative path to YUM repository with source RPMs."), allow_null=True
     )
     debug_packages = serializers.CharField(
-        help_text=_("Relative path to directory with debug RPMs.")
+        help_text=_("Relative path to directory with debug RPMs."), allow_null=True
     )
     debug_repository = serializers.CharField(
-        help_text=_("Relative path to YUM repository with debug RPMs.")
+        help_text=_("Relative path to YUM repository with debug RPMs."), allow_null=True
     )
     identity = serializers.CharField(
-        help_text=_("Relative path to a pem file that identifies a product.")
+        help_text=_("Relative path to a pem file that identifies a product."), allow_null=True
     )
 
     class Meta:

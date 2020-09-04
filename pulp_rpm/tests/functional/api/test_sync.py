@@ -63,6 +63,7 @@ from pulp_rpm.tests.functional.utils import (
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 from pulpcore.client.pulp_rpm import (
+    ContentDistributionTreesApi,
     RepositoriesRpmApi,
     RpmRepositorySyncURL,
     RemotesRpmApi,
@@ -253,6 +254,10 @@ class BasicSyncTestCase(PulpTestCase):
 
         # sync again
         repo, remote = self.do_test(repository=repo, remote=remote)
+
+        # Test distribution tree API
+        dist_tree_api = ContentDistributionTreesApi(self.client)
+        self.assertEqual(dist_tree_api.list().results[0].release_short, "RHEL")
 
         # Check that nothing has changed since the last sync.
         self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_KICKSTART_FIXTURE_SUMMARY)
