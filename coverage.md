@@ -16,6 +16,7 @@ Manual Coverage
 | As a user, I can sync and skip specific type (srpm) | NO |  |
 | As a user, I can sync opensuse repository | NO |  |
 | As a user, I can sync from a mirror list | YES |  |
+| As a user, I can sync from a mirror list with comments | YES |  |
 | As a user, I can sync from CDN using certificates | YES |  |
 | **Duplicates** |  |  |
 | As a user, I have only one advisory with the same id in a repo version | YES |  |
