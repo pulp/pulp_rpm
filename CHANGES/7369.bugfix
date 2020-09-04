@@ -1,0 +1,1 @@
+Copying advisories/errata no longer fails if one of the packages is not present in the repository.
