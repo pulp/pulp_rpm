@@ -65,7 +65,7 @@ class SyncTestCase(unittest.TestCase):
         """
         return datetime.strptime(s, parse_format)
 
-    def rpm_sync(self, url=RPM_KICKSTART_FIXTURE_URL, policy='on_demand'):
+    def rpm_sync(self, url=RPM_KICKSTART_FIXTURE_URL, policy='on_demand', check_dist_tree=True):
         """Sync repositories with the rpm plugin.
 
         This test targets the following issue:
@@ -116,14 +116,15 @@ class SyncTestCase(unittest.TestCase):
         # Check that we have the correct content counts.
         self.assertIsNotNone(repo['latest_version_href'])
 
-        self.assertIn(
-            list(RPM_KICKSTART_FIXTURE_SUMMARY.items())[0],
-            get_content_summary(repo).items(),
-        )
-        self.assertIn(
-            list(RPM_KICKSTART_FIXTURE_SUMMARY.items())[0],
-            get_added_content_summary(repo).items(),
-        )
+        if check_dist_tree:
+            self.assertIn(
+                list(RPM_KICKSTART_FIXTURE_SUMMARY.items())[0],
+                get_content_summary(repo).items(),
+            )
+            self.assertIn(
+                list(RPM_KICKSTART_FIXTURE_SUMMARY.items())[0],
+                get_added_content_summary(repo).items(),
+            )
 
         # Sync the repository again.
         latest_version_href = repo['latest_version_href']
@@ -171,7 +172,8 @@ class SyncTestCase(unittest.TestCase):
 
     def test_epel8_mirrorlist_with_comment(self):
         """Kickstart Sync EPEL 8 (which includes a comment line)."""
-        self.rpm_sync(url=EPEL8_MIRRORLIST_URL)
+        # EPEL8 doesn't contain distribution tree
+        self.rpm_sync(url=EPEL8_MIRRORLIST_URL, check_dist_tree=False)
 
 
 class CDNTestCase(unittest.TestCase):
