@@ -1,1 +1,0 @@
-Fixed a bug where dependency solving did not work correctly with packages that depend on files, e.g. depending on /usr/bin/bash.
