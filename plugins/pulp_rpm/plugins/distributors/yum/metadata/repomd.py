@@ -129,10 +129,18 @@ class RepomdXMLFileContext(MetadataFileContext):
 
             else:
                 try:
-                    content = file_handle.read()
-                    open_size_element.text = str(len(content))
-                    open_checksum_element.text = self.checksum_constructor(content).hexdigest()
+                    open_size = 0
+                    checksum_const = self.checksum_constructor()
+                    while True:
+                        # Read 1MB each time to save memory
+                        content = file_handle.read(1048576)
+                        if not content:
+                            break
+                        open_size += len(content)
+                        checksum_const.update(content)
 
+                    open_size_element.text = str(open_size)
+                    open_checksum_element.text = checksum_const.hexdigest()
                 finally:
                     file_handle.close()
 
