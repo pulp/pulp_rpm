@@ -484,7 +484,10 @@ class YumDistributorMetadataTests(unittest.TestCase):
             self.assertEqual(content.count('<checksum type="sha256">'), 1)
             self.assertEqual(
                 content.count('<open-size>%s</open-size>' % len(test_metadata_content)), 1)
-            self.assertEqual(content.count('<open-checksum type="sha256">'), 1)
+            self.assertEqual(content.count(
+                '<open-checksum type="sha256">'
+                'd7a8fbb307d7809469ca9abcb0082e4f8d5651e46d3cdb762d02d0bf37c9e592'
+                '</open-checksum>'), 1)
 
     @mock.patch("pulp_rpm.yum_plugin.util.Signer")
     def test_finalize_sign(self, _signer):
