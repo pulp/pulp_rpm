@@ -6,10 +6,7 @@ from logging import getLogger
 from aiohttp.web_response import Response
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
-from django.db import (
-    models,
-    transaction,
-)
+from django.db import models, transaction
 from pulpcore.plugin.download import DownloaderFactory
 from pulpcore.plugin.models import (
     Artifact,
@@ -164,6 +161,10 @@ class RpmRepository(Repository):
 
         """
         with transaction.atomic():
+            latest_version = self.versions.latest()
+            if not latest_version.complete:
+                latest_version.delete()
+
             version = RepositoryVersion(
                 repository=self,
                 number=int(self.next_version),
