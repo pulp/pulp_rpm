@@ -449,23 +449,23 @@ class ChecksumTypeTestCase(PulpTestCase):
     def test_specified_package_checksum_type(self):
         """Sync and publish an RPM repository and verify the checksum."""
         repomd_checksum_types, primary_checksum_types = self.get_checksum_types(
-            package_checksum_type="md5"
+            package_checksum_type="sha256"
         )
 
         for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
             self.assertEqual(repomd_checksum_type, "sha256")
 
         for package, package_checksum_type in primary_checksum_types.items():
-            self.assertEqual(package_checksum_type, "md5")
+            self.assertEqual(package_checksum_type, "sha256")
 
     def test_specified_metadata_checksum_type(self):
         """Sync and publish an RPM repository and verify the checksum."""
         repomd_checksum_types, primary_checksum_types = self.get_checksum_types(
-            metadata_checksum_type="md5"
+            metadata_checksum_type="sha256"
         )
 
         for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
-            self.assertEqual(repomd_checksum_type, "md5")
+            self.assertEqual(repomd_checksum_type, "sha256")
 
         for package, package_checksum_type in primary_checksum_types.items():
             self.assertEqual(package_checksum_type, "sha256")
@@ -473,14 +473,14 @@ class ChecksumTypeTestCase(PulpTestCase):
     def test_specified_metadata_and_package_checksum_type(self):
         """Sync and publish an RPM repository and verify the checksum."""
         repomd_checksum_types, primary_checksum_types = self.get_checksum_types(
-            package_checksum_type="md5", metadata_checksum_type="md5"
+            package_checksum_type="sha256", metadata_checksum_type="sha256"
         )
 
         for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
-            self.assertEqual(repomd_checksum_type, "md5")
+            self.assertEqual(repomd_checksum_type, "sha256")
 
         for package, package_checksum_type in primary_checksum_types.items():
-            self.assertEqual(package_checksum_type, "md5")
+            self.assertEqual(package_checksum_type, "sha256")
 
 
 class PublishDirectoryLayoutTestCase(PulpTestCase):
