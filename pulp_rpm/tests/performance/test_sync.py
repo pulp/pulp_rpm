@@ -30,6 +30,7 @@ from pulp_rpm.tests.functional.constants import (
     CENTOS8_KICKSTART_APP_URL,
     CENTOS8_KICKSTART_BASEOS_URL,
     EPEL8_MIRRORLIST_URL,
+    EPEL8_PLAYGROUND_KICKSTART_URL,
 )
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
@@ -174,6 +175,10 @@ class SyncTestCase(unittest.TestCase):
         """Kickstart Sync EPEL 8 (which includes a comment line)."""
         # EPEL8 doesn't contain distribution tree
         self.rpm_sync(url=EPEL8_MIRRORLIST_URL, check_dist_tree=False)
+
+    def test_epel8_playground_kickstart_on_demand(self):
+        """Kickstart Sync Epel 8 playground."""
+        self.rpm_sync(url=EPEL8_PLAYGROUND_KICKSTART_URL)
 
 
 class CDNTestCase(unittest.TestCase):

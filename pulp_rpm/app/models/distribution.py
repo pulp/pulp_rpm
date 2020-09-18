@@ -68,12 +68,12 @@ class DistributionTree(Content):
     header_version = models.CharField(max_length=10)
 
     release_name = models.CharField(max_length=50)
-    release_short = models.CharField(max_length=20)
+    release_short = models.CharField(max_length=50)
     release_version = models.CharField(max_length=10)
     release_is_layered = models.BooleanField(default=False)
 
     base_product_name = models.CharField(max_length=50, null=True)
-    base_product_short = models.CharField(max_length=20, null=True)
+    base_product_short = models.CharField(max_length=50, null=True)
     base_product_version = models.CharField(max_length=10, null=True)
 
     # tree
@@ -189,7 +189,7 @@ class Image(BaseModel):
 
     """
 
-    name = models.CharField(max_length=20)
+    name = models.CharField(max_length=50)
     path = models.CharField(max_length=128)
     platforms = models.CharField(max_length=20)
     distribution_tree = models.ForeignKey(
