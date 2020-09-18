@@ -201,8 +201,14 @@ class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
         """
         update_record_data = dict()
         if "file" in data:
-            update_record_data.update(json.loads(data["file"].read()))
-            update_record_data.update(data)
+            try:
+                update_record_data.update(json.loads(data["file"].read()))
+            except UnicodeDecodeError:
+                raise serializers.ValidationError(
+                    "JSON file is expected"
+                )
+            else:
+                update_record_data.update(data)
         else:
             raise serializers.ValidationError(
                 "Only creation with file or artifact is allowed."
