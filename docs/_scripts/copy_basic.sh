@@ -11,6 +11,9 @@ export REPOVERSION_HREF_WITH_PKG
 http POST "$BASE_ADDR""$REPO_HREF"'modify'/ remove_content_units:="[\"$PACKAGE_HREF\"]"
 
 # Clone a repository (can be composed with addition or removal of units)
+# This operation will create a new repository version in the current repository which
+# is a copy of the one specified as the 'base_version', regardless of what content
+# was previously present in the repository.
 echo "Clone a repository with a content."
 TASK_URL=$(http POST "$BASE_ADDR""$REPO_HREF"'modify'/ \
     base_version="$REPOVERSION_HREF_WITH_PKG" | jq -r '.task')
