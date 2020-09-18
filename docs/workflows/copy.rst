@@ -14,7 +14,10 @@ Like all Pulp repositories, you can use the ${repo_href}/modify/ endpoint to:
 
 * add or remove individual content units from a repository by HREF
 * roll back the content present in a repository to that of a previous version using 'base_version'
-* clone a repository version from another repo using 'base_version'
+* clone a repository version using '"base_version". This operation will create a new repository
+  version in the current repository which is a copy of the one specified as the "base_version",
+  regardless of what content was previously present in the repository. This can be combined with
+  adding and removing content units in the same call. For worklows check the :ref:`Recipes section <copy-recipes>`.
 
 .. literalinclude:: ../_scripts/copy_basic.sh
    :language: bash
@@ -106,11 +109,32 @@ In order to copy RPMs from a Pulp-clone of the "AppStream" repository, you must 
 recipe section below for more details on how to do this.
 
 
+.. _copy-recipes:
+
 Recipes
 _______
 
 These are examples of how the RPM copy API should be used. This code isn't intended to be runnable
 as-is, but rather as a template for how the calls should be constructed.
+
+Create a new repository version in "dest_repo" containing all content units which are present in
+the "source_repo_version". This essentially copies all content from the "source_repo_version" into
+the "dest_repo", while leaving the content that was previously in the repository untouched, unless
+retain package policy is set on the "dest_repo"
+
+.. code-block:: sh
+
+    POST /pulp/api/v3/rpm/copy/
+    config:=[
+        {"source_repo_version": "$SRC_REPO_VERS_HREF", "dest_repo": "$DEST_REPO_HREF"}
+    ]
+
+.. note::
+
+   Retain package policy is set by `retain_package_versions` option.
+   When set, it identifies the maximum number of versions of each package to keep; as new versions of
+   packages are added by upload, sync, or copy, older versions of the same packages are automatically
+   removed. A value of 0 means "unlimited" and will keep all versions of each package.
 
 Create a new repository version in "dest_repo" containing the two "content" units specified by href,
 which are present in the "source_repo_version".
