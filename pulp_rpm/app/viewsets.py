@@ -7,7 +7,7 @@ from rest_framework.decorators import action
 from rest_framework.serializers import ValidationError as DRFValidationError
 
 from pulpcore.plugin.actions import ModifyRepositoryActionMixin
-from pulpcore.plugin.models import RepositoryVersion, Content
+from pulpcore.plugin.models import RepositoryVersion
 from pulpcore.plugin.tasking import enqueue_with_reservation
 from pulpcore.plugin.serializers import AsyncOperationResponseSerializer
 from pulpcore.plugin.viewsets import (
@@ -315,7 +315,7 @@ class CopyViewSet(viewsets.ViewSet):
             if entry.get("content") is not None:
                 r["content"] = []
                 for c in entry["content"]:
-                    r["content"].append(NamedModelViewSet().get_resource(c, Content).pk)
+                    r["content"].append(NamedModelViewSet().extract_pk(c))
             result.append(r)
 
         return result, repos
