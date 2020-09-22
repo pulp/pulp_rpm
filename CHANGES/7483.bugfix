@@ -1,0 +1,1 @@
+Avoid intensive queries taking place during the handling of the "copy" API web request.
