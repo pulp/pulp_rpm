@@ -2,6 +2,8 @@ from functools import reduce
 from logging import getLogger
 
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 
 from pulpcore.plugin.models import (
     Artifact,
@@ -316,7 +318,7 @@ class Variant(BaseModel):
         DistributionTree, on_delete=models.CASCADE, related_name='variants'
     )
     repository = models.ForeignKey(
-        Repository, on_delete=models.PROTECT, related_name='+', null=True
+        Repository, on_delete=models.PROTECT, related_name='variants', null=True
     )
 
     class Meta:
@@ -328,3 +330,15 @@ class Variant(BaseModel):
             "packages",
             "distribution_tree",
         )
+
+
+@receiver(post_delete, sender=Addon)
+@receiver(post_delete, sender=Variant)
+def cleanup_subrepos(sender, instance, **kwargs):
+    """
+    Remove subrepos when a DistributionTree is being removed.
+
+    """
+    subrepo = instance.repository
+    if subrepo:
+        subrepo.delete()
