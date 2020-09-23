@@ -1,1 +1,0 @@
-Updated pulp_rpm tests to no longer rely on md5 checksums.

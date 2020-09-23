@@ -13,6 +13,30 @@ Changelog
 
 .. towncrier release notes start
 
+3.7.0 (2020-09-23)
+==================
+
+
+Bugfixes
+--------
+
+- Remove distribution tree subrepositories when a distribution tree is removed.
+  `#7440 <https://pulp.plan.io/issues/7440>`_
+- Avoid intensive queries taking place during the handling of the "copy" API web request.
+  `#7483 <https://pulp.plan.io/issues/7483>`_
+- Fixed "Value too long" error for the distribution tree sync.
+  `#7498 <https://pulp.plan.io/issues/7498>`_
+
+
+Misc
+----
+
+- `#7040 <https://pulp.plan.io/issues/7040>`_, `#7422 <https://pulp.plan.io/issues/7422>`_, `#7519 <https://pulp.plan.io/issues/7519>`_
+
+
+----
+
+
 3.6.2 (2020-09-04)
 ==================
 
