@@ -26,6 +26,8 @@ RPM_PACKAGE_CONTENT_NAME = 'rpm.package'
 
 RPM_PACKAGECATEGORY_CONTENT_NAME = 'rpm.packagecategory'
 
+RPM_PACKAGEENVIRONMENT_CONTENT_NAME = 'rpm.packageenvironment'
+
 RPM_PACKAGEGROUP_CONTENT_NAME = 'rpm.packagegroup'
 
 RPM_PACKAGELANGPACKS_CONTENT_NAME = 'rpm.packagelangpacks'
@@ -328,21 +330,29 @@ UPDATERECORD_CONTENT_PATH = urljoin(BASE_CONTENT_PATH, 'rpm/advisories/')
 KICKSTART_CONTENT_PATH = urljoin(BASE_CONTENT_PATH, 'rpm/distribution_trees/')
 """The location of RPM Distribution Trees on the content endpoint."""
 
-RPM_KICKSTART_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-kickstart/')
+RPM_KICKSTART_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-distribution-tree/')
 
 RPM_KICKSTART_CONTENT_NAME = 'rpm.distribution_tree'
 
 RPM_KICKSTART_COUNT = 1
 
 RPM_KICKSTART_FIXTURE_SUMMARY = {
-    RPM_KICKSTART_CONTENT_NAME: RPM_KICKSTART_COUNT
+    RPM_KICKSTART_CONTENT_NAME: RPM_KICKSTART_COUNT,
+    RPM_PACKAGE_CONTENT_NAME: 1,
+    RPM_PACKAGECATEGORY_CONTENT_NAME: 1,
+    RPM_PACKAGEENVIRONMENT_CONTENT_NAME: 1,
+    RPM_PACKAGEGROUP_CONTENT_NAME: 1,
+    RPM_PACKAGELANGPACKS_CONTENT_NAME: 1,
 }
 
 RPM_KICKSTART_REPOSITORY_ROOT_CONTENT = [
     '.treeinfo',
-    'HighAvailability/',
+    'Dolphin/',
+    'External/',
+    'Land/',
     'LiveOS/',
-    'ResilientStorage/',
+    'Packages/',
+    'Whale/',
     'images/'
 ]
 
