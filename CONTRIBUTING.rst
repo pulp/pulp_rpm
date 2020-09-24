@@ -5,10 +5,12 @@ To contribute to the ``pulp_rpm`` package follow this process:
 
 1. Clone the GitHub repo
 2. Make a change
-3. Make sure all tests passed
-4. Add a file into CHANGES folder (Changelog update).
-5. Commit changes to own ``pulp_rpm`` clone
-6. Make pull request from github page for your clone against master branch
+3. Add a functional test when you fix a bug or introduce a feature
+4. Make sure all tests passed
+5. Add a file into CHANGES folder (Changelog update).
+6. If your PR introduces a new feature or updates the existing one update coverage.md
+7. Commit changes to own ``pulp_rpm`` clone
+8. Make pull request from github page for your clone against master branch
 
 
 .. _changelog-update:
@@ -33,3 +35,14 @@ of them with the exact same contents and Towncrier will deduplicate them.
 The contents of this file are reStructuredText formatted text that will be used as the content of
 the news file entry. You do not need to reference the issue or PR numbers here as towncrier will
 automatically add a reference to all of the affected issues when rendering the news file.
+
+
+.. _coverage-update:
+
+Coverage update
+***************
+
+The coverage.md file contains a table that keeps track of how well features are backed by functional
+tests. If you are adding a new feature or updating the existing one, specify in this table whether
+it has any coverage, partial of full coverage.
+Every update to this table should be accompanied with a functional test.

@@ -30,6 +30,9 @@ from pulp_rpm.app.models import (
     UpdateRecord,
     UpdateReference,
 )
+# make some code changes
+import time
+time.sleep(1)
 
 
 class UpdateCollectionSerializer(ModelSerializer):
