@@ -1,5 +1,5 @@
 #!/bin/bash
-# Simple check if 'coverage.md' was updated with PR.
+# Simple check if a test was added and 'coverage.md' was updated with PR.
 
 set -euv
 
@@ -8,28 +8,29 @@ if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then
   return 0
 fi
 
-# skip if '[nocoverage]' found
-if [ "$TRAVIS_COMMIT_RANGE" != "" ]; then
-  RANGE=$TRAVIS_COMMIT_RANGE
-elif [ "$TRAVIS_COMMIT" != "" ]; then
-  RANGE=$TRAVIS_COMMIT
-fi
-
-# Travis sends the ranges with 3 dots. Git only wants two.
-if [[ "$RANGE" == *...* ]]; then
-  RANGE=`echo $TRAVIS_COMMIT_RANGE | sed 's/\.\.\./../'`
-else
-  RANGE="$RANGE~..$RANGE"
-fi
+# Switch to using ".." for git log to capture only PR commits
+RANGE=`echo $TRAVIS_COMMIT_RANGE | sed 's/\.\.\./../'`
 
 # check for code changes
-if [[ ! `git log --no-merges --pretty='format:' --name-only "$RANGE" | grep -v "pulp_rpm/__init__.py" | grep "pulp_rpm/.*.py"` ]]
+if [[ ! `git log --no-merges --pretty='format:' --name-only "$RANGE" | grep -v "pulp_rpm/__init__.py" | grep "pulp_rpm/.*.py" || true` ]]
 then
-  echo "No code changes detected. Skipping coverage check."
+  echo "No code changes detected. Skipping coverage and test check."
   return 0
 fi
 
-if [[ $(git log --format=medium --no-merges "$RANGE" | grep "\[nocoverage\]") ]]
+# check if a test was added
+NEEDS_TEST="$(git diff --name-only $TRAVIS_COMMIT_RANGE | grep -E 'feature|bugfix' || true)"
+CONTAINS_TEST="$(git diff --name-only $TRAVIS_COMMIT_RANGE | grep -E 'test_' || true)"
+
+if [[ $(git log --format=medium --no-merges "$RANGE" | grep "\[notest\]" || true) ]]
+then
+  echo "[notest] is present - skipping the check for the test requirement"
+elif [ -n "$NEEDS_TEST" ] && [ -z "$CONTAINS_TEST" ]; then
+  echo "Every feature and bugfix should come with a test."
+  exit 1
+fi
+
+if [[ $(git log --format=medium --no-merges "$RANGE" | grep "\[nocoverage\]" || true) ]]
 then
   echo "[nocoverage] is present - skipping this check"
   return 0
@@ -46,7 +47,7 @@ curl --silent $master_version -o $coverage_original_file_name
 if diff -qs $coverage_file_name $coverage_original_file_name
 then
   echo "ERROR: coverage.md file is not updated."
-  echo "Please update 'coverage.md' file or use '[nocoverage]' in your commit message."
+  echo "Please update 'coverage.md' file if you are adding a new feature or updating an existing one."
   rm $coverage_original_file_name
   exit 1
 else

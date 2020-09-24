@@ -27,6 +27,7 @@ def validate_redmine_data(redmine_query_url, redmine_issues):
     project_set = set()
     stats = defaultdict(list)
     milestone_url = "\n[noissue]"
+    milestone_id = None
     for issue in redmine_issues:
         redmine_issue = redmine.issue.get(int(issue))
 
@@ -37,13 +38,14 @@ def validate_redmine_data(redmine_query_url, redmine_issues):
         status = redmine_issue.status.name
         if "CLOSE" not in status and status != "MODIFIED":
             stats["status_not_modified"].append(issue)
-        milestone_id = None
+
         try:
             milestone = redmine_issue.fixed_version.name
             milestone_id = redmine_issue.fixed_version.id
             stats[f"milestone_{milestone}"].append(issue)
         except ResourceAttrError:
             stats["without_milestone"].append(issue)
+
     if milestone_id is not None:
         milestone_url = f"Redmine Milestone: {REDMINE_URL}/versions/{milestone_id}.json\n[noissue]"
 

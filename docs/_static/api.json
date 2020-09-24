@@ -5729,22 +5729,27 @@
                     },
                     "source_packages": {
                         "type": "string",
+                        "nullable": true,
                         "description": "Relative path to directory with source RPMs."
                     },
                     "source_repository": {
                         "type": "string",
+                        "nullable": true,
                         "description": "Relative path to YUM repository with source RPMs."
                     },
                     "debug_packages": {
                         "type": "string",
+                        "nullable": true,
                         "description": "Relative path to directory with debug RPMs."
                     },
                     "debug_repository": {
                         "type": "string",
+                        "nullable": true,
                         "description": "Relative path to YUM repository with debug RPMs."
                     },
                     "identity": {
                         "type": "string",
+                        "nullable": true,
                         "description": "Relative path to a pem file that identifies a product."
                     }
                 },
