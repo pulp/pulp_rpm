@@ -1,5 +1,7 @@
-Manual Coverage
-===============
+Functional Tests Coverage
+=========================
+
+This file contains list of features and their test coverage.
 
 | Feature | Coverage | Notes |
 |--|--|--|
