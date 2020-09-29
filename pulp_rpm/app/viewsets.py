@@ -227,6 +227,10 @@ class RpmPublicationViewSet(PublicationViewSet):
             metadata=metadata_checksum_type,
             package=package_checksum_type,
         )
+        gpgcheck_options = dict(
+            gpgcheck=serializer.validated_data.get('gpgcheck'),
+            repo_gpgcheck=serializer.validated_data.get('repo_gpgcheck')
+        )
 
         result = enqueue_with_reservation(
             tasks.publish,
@@ -235,6 +239,7 @@ class RpmPublicationViewSet(PublicationViewSet):
                 'repository_version_pk': repository_version.pk,
                 'metadata_signing_service': repository.metadata_signing_service,
                 'checksum_types': checksum_types,
+                'gpgcheck_options': gpgcheck_options,
             }
         )
         return OperationPostponedResponse(result, request)

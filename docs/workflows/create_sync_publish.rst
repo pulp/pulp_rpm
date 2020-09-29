@@ -218,6 +218,16 @@ Publication GET response (when task complete):
         "repository_version": "/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/versions/1/"
     }
 
+The GPG signature check options are configurable from this REST API endpoint as well. This can be
+done via the following options:
+
+- gpgcheck: perform a GPG signature check on the packages retrieved from this repository.
+
+- repo_gpgcheck: perform a GPG signature check on the repodata.
+
+We encourage users to take a look at the `pulp_rpm API documentation <../restapi.html#operation/publications_rpm_rpm_create>`_
+to see the default values for these options.
+
 
 Create a Distribution for the Publication
 -----------------------------------------

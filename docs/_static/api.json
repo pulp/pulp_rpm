@@ -210,27 +210,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer",
-                                            "example": 123
-                                        },
-                                        "next": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "previous": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "results": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/rpm.UpdateRecordResponse"
-                                            }
-                                        }
-                                    }
+                                    "$ref": "#/components/schemas/Paginatedrpm.UpdateRecordResponseList"
                                 }
                             }
                         },
@@ -431,27 +411,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer",
-                                            "example": 123
-                                        },
-                                        "next": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "previous": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "results": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/rpm.DistributionTreeResponse"
-                                            }
-                                        }
-                                    }
+                                    "$ref": "#/components/schemas/Paginatedrpm.DistributionTreeResponseList"
                                 }
                             }
                         },
@@ -654,27 +614,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer",
-                                            "example": 123
-                                        },
-                                        "next": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "previous": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "results": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/rpm.ModulemdDefaultsResponse"
-                                            }
-                                        }
-                                    }
+                                    "$ref": "#/components/schemas/Paginatedrpm.ModulemdDefaultsResponseList"
                                 }
                             }
                         },
@@ -920,27 +860,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer",
-                                            "example": 123
-                                        },
-                                        "next": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "previous": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "results": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/rpm.ModulemdResponse"
-                                            }
-                                        }
-                                    }
+                                    "$ref": "#/components/schemas/Paginatedrpm.ModulemdResponseList"
                                 }
                             }
                         },
@@ -1141,27 +1061,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer",
-                                            "example": 123
-                                        },
-                                        "next": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "previous": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "results": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/rpm.PackageCategoryResponse"
-                                            }
-                                        }
-                                    }
+                                    "$ref": "#/components/schemas/Paginatedrpm.PackageCategoryResponseList"
                                 }
                             }
                         },
@@ -1319,27 +1219,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer",
-                                            "example": 123
-                                        },
-                                        "next": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "previous": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "results": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/rpm.PackageEnvironmentResponse"
-                                            }
-                                        }
-                                    }
+                                    "$ref": "#/components/schemas/Paginatedrpm.PackageEnvironmentResponseList"
                                 }
                             }
                         },
@@ -1497,27 +1377,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer",
-                                            "example": 123
-                                        },
-                                        "next": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "previous": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "results": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/rpm.PackageGroupResponse"
-                                            }
-                                        }
-                                    }
+                                    "$ref": "#/components/schemas/Paginatedrpm.PackageGroupResponseList"
                                 }
                             }
                         },
@@ -1675,27 +1535,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer",
-                                            "example": 123
-                                        },
-                                        "next": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "previous": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "results": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/rpm.PackageLangpacksResponse"
-                                            }
-                                        }
-                                    }
+                                    "$ref": "#/components/schemas/Paginatedrpm.PackageLangpacksResponseList"
                                 }
                             }
                         },
@@ -2052,27 +1892,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer",
-                                            "example": 123
-                                        },
-                                        "next": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "previous": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "results": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/rpm.PackageResponse"
-                                            }
-                                        }
-                                    }
+                                    "$ref": "#/components/schemas/Paginatedrpm.PackageResponseList"
                                 }
                             }
                         },
@@ -2273,27 +2093,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer",
-                                            "example": 123
-                                        },
-                                        "next": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "previous": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "results": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/rpm.RepoMetadataFileResponse"
-                                            }
-                                        }
-                                    }
+                                    "$ref": "#/components/schemas/Paginatedrpm.RepoMetadataFileResponseList"
                                 }
                             }
                         },
@@ -2478,27 +2278,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer",
-                                            "example": 123
-                                        },
-                                        "next": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "previous": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "results": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/rpm.RpmDistributionResponse"
-                                            }
-                                        }
-                                    }
+                                    "$ref": "#/components/schemas/Paginatedrpm.RpmDistributionResponseList"
                                 }
                             }
                         },
@@ -2616,69 +2396,6 @@
                 "summary": "Update a rpm distribution",
                 "parameters": [
                     {
-                        "name": "base_path",
-                        "required": false,
-                        "in": "query",
-                        "description": "base_path",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "base_path__contains",
-                        "required": false,
-                        "in": "query",
-                        "description": "base_path__contains",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "base_path__icontains",
-                        "required": false,
-                        "in": "query",
-                        "description": "base_path__icontains",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "base_path__in",
-                        "required": false,
-                        "in": "query",
-                        "description": "base_path__in",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "name",
-                        "required": false,
-                        "in": "query",
-                        "description": "name",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "name__in",
-                        "required": false,
-                        "in": "query",
-                        "description": "name__in",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "ordering",
-                        "required": false,
-                        "in": "query",
-                        "description": "Which field to use when ordering the results.",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
                         "in": "path",
                         "name": "rpm_rpm_distribution_href",
                         "schema": {
@@ -2737,69 +2454,6 @@
                 "summary": "Update a rpm distribution",
                 "parameters": [
                     {
-                        "name": "base_path",
-                        "required": false,
-                        "in": "query",
-                        "description": "base_path",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "base_path__contains",
-                        "required": false,
-                        "in": "query",
-                        "description": "base_path__contains",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "base_path__icontains",
-                        "required": false,
-                        "in": "query",
-                        "description": "base_path__icontains",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "base_path__in",
-                        "required": false,
-                        "in": "query",
-                        "description": "base_path__in",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "name",
-                        "required": false,
-                        "in": "query",
-                        "description": "name",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "name__in",
-                        "required": false,
-                        "in": "query",
-                        "description": "name__in",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "ordering",
-                        "required": false,
-                        "in": "query",
-                        "description": "Which field to use when ordering the results.",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
                         "in": "path",
                         "name": "rpm_rpm_distribution_href",
                         "schema": {
@@ -2857,69 +2511,6 @@
                 "description": "Trigger an asynchronous delete task",
                 "summary": "Delete a rpm distribution",
                 "parameters": [
-                    {
-                        "name": "base_path",
-                        "required": false,
-                        "in": "query",
-                        "description": "base_path",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "base_path__contains",
-                        "required": false,
-                        "in": "query",
-                        "description": "base_path__contains",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "base_path__icontains",
-                        "required": false,
-                        "in": "query",
-                        "description": "base_path__icontains",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "base_path__in",
-                        "required": false,
-                        "in": "query",
-                        "description": "base_path__in",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "name",
-                        "required": false,
-                        "in": "query",
-                        "description": "name",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "name__in",
-                        "required": false,
-                        "in": "query",
-                        "description": "name__in",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "ordering",
-                        "required": false,
-                        "in": "query",
-                        "description": "Which field to use when ordering the results.",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
                     {
                         "in": "path",
                         "name": "rpm_rpm_distribution_href",
@@ -3083,27 +2674,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer",
-                                            "example": 123
-                                        },
-                                        "next": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "previous": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "results": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/rpm.RpmPublicationResponse"
-                                            }
-                                        }
-                                    }
+                                    "$ref": "#/components/schemas/Paginatedrpm.RpmPublicationResponseList"
                                 }
                             }
                         },
@@ -3385,27 +2956,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer",
-                                            "example": 123
-                                        },
-                                        "next": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "previous": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "results": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/rpm.RpmRemoteResponse"
-                                            }
-                                        }
-                                    }
+                                    "$ref": "#/components/schemas/Paginatedrpm.RpmRemoteResponseList"
                                 }
                             }
                         },
@@ -3523,87 +3074,6 @@
                 "summary": "Update a rpm remote",
                 "parameters": [
                     {
-                        "name": "name",
-                        "required": false,
-                        "in": "query",
-                        "description": "name",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "name__in",
-                        "required": false,
-                        "in": "query",
-                        "description": "name__in",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "ordering",
-                        "required": false,
-                        "in": "query",
-                        "description": "Which field to use when ordering the results.",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_last_updated",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_last_updated",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_last_updated__gt",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_last_updated__gt",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_last_updated__gte",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_last_updated__gte",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_last_updated__lt",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_last_updated__lt",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_last_updated__lte",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_last_updated__lte",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_last_updated__range",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_last_updated__range",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
                         "in": "path",
                         "name": "rpm_rpm_remote_href",
                         "schema": {
@@ -3662,87 +3132,6 @@
                 "summary": "Update a rpm remote",
                 "parameters": [
                     {
-                        "name": "name",
-                        "required": false,
-                        "in": "query",
-                        "description": "name",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "name__in",
-                        "required": false,
-                        "in": "query",
-                        "description": "name__in",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "ordering",
-                        "required": false,
-                        "in": "query",
-                        "description": "Which field to use when ordering the results.",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_last_updated",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_last_updated",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_last_updated__gt",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_last_updated__gt",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_last_updated__gte",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_last_updated__gte",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_last_updated__lt",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_last_updated__lt",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_last_updated__lte",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_last_updated__lte",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_last_updated__range",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_last_updated__range",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
                         "in": "path",
                         "name": "rpm_rpm_remote_href",
                         "schema": {
@@ -3800,87 +3189,6 @@
                 "description": "Trigger an asynchronous delete task",
                 "summary": "Delete a rpm remote",
                 "parameters": [
-                    {
-                        "name": "name",
-                        "required": false,
-                        "in": "query",
-                        "description": "name",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "name__in",
-                        "required": false,
-                        "in": "query",
-                        "description": "name__in",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "ordering",
-                        "required": false,
-                        "in": "query",
-                        "description": "Which field to use when ordering the results.",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_last_updated",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_last_updated",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_last_updated__gt",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_last_updated__gt",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_last_updated__gte",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_last_updated__gte",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_last_updated__lt",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_last_updated__lt",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_last_updated__lte",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_last_updated__lte",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_last_updated__range",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_last_updated__range",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
                     {
                         "in": "path",
                         "name": "rpm_rpm_remote_href",
@@ -3999,27 +3307,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer",
-                                            "example": 123
-                                        },
-                                        "next": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "previous": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "results": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/rpm.RpmRepositoryResponse"
-                                            }
-                                        }
-                                    }
+                                    "$ref": "#/components/schemas/Paginatedrpm.RpmRepositoryResponseList"
                                 }
                             }
                         },
@@ -4137,33 +3425,6 @@
                 "summary": "Update a rpm repository",
                 "parameters": [
                     {
-                        "name": "name",
-                        "required": false,
-                        "in": "query",
-                        "description": "name",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "name__in",
-                        "required": false,
-                        "in": "query",
-                        "description": "name__in",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "ordering",
-                        "required": false,
-                        "in": "query",
-                        "description": "Which field to use when ordering the results.",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
                         "in": "path",
                         "name": "rpm_rpm_repository_href",
                         "schema": {
@@ -4222,33 +3483,6 @@
                 "summary": "Update a rpm repository",
                 "parameters": [
                     {
-                        "name": "name",
-                        "required": false,
-                        "in": "query",
-                        "description": "name",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "name__in",
-                        "required": false,
-                        "in": "query",
-                        "description": "name__in",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "ordering",
-                        "required": false,
-                        "in": "query",
-                        "description": "Which field to use when ordering the results.",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
                         "in": "path",
                         "name": "rpm_rpm_repository_href",
                         "schema": {
@@ -4306,33 +3540,6 @@
                 "description": "Trigger an asynchronous delete task",
                 "summary": "Delete a rpm repository",
                 "parameters": [
-                    {
-                        "name": "name",
-                        "required": false,
-                        "in": "query",
-                        "description": "name",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "name__in",
-                        "required": false,
-                        "in": "query",
-                        "description": "name__in",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "ordering",
-                        "required": false,
-                        "in": "query",
-                        "description": "Which field to use when ordering the results.",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
                     {
                         "in": "path",
                         "name": "rpm_rpm_repository_href",
@@ -4687,27 +3894,7 @@
                         "content": {
                             "application/json": {
                                 "schema": {
-                                    "type": "object",
-                                    "properties": {
-                                        "count": {
-                                            "type": "integer",
-                                            "example": 123
-                                        },
-                                        "next": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "previous": {
-                                            "type": "string",
-                                            "nullable": true
-                                        },
-                                        "results": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/components/schemas/RepositoryVersionResponse"
-                                            }
-                                        }
-                                    }
+                                    "$ref": "#/components/schemas/PaginatedRepositoryVersionResponseList"
                                 }
                             }
                         },
@@ -4776,141 +3963,6 @@
                 "description": "Trigger an asynchronous task to delete a repositroy version.",
                 "summary": "Delete a repository version",
                 "parameters": [
-                    {
-                        "name": "content",
-                        "required": false,
-                        "in": "query",
-                        "description": "content",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "content__in",
-                        "required": false,
-                        "in": "query",
-                        "description": "content__in",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "number",
-                        "required": false,
-                        "in": "query",
-                        "description": "number",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "number__gt",
-                        "required": false,
-                        "in": "query",
-                        "description": "number__gt",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "number__gte",
-                        "required": false,
-                        "in": "query",
-                        "description": "number__gte",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "number__lt",
-                        "required": false,
-                        "in": "query",
-                        "description": "number__lt",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "number__lte",
-                        "required": false,
-                        "in": "query",
-                        "description": "number__lte",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "number__range",
-                        "required": false,
-                        "in": "query",
-                        "description": "number__range",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "ordering",
-                        "required": false,
-                        "in": "query",
-                        "description": "Which field to use when ordering the results.",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_created",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_created",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_created__gt",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_created__gt",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_created__gte",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_created__gte",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_created__lt",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_created__lt",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_created__lte",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_created__lte",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
-                    {
-                        "name": "pulp_created__range",
-                        "required": false,
-                        "in": "query",
-                        "description": "pulp_created__range",
-                        "schema": {
-                            "type": "string"
-                        }
-                    },
                     {
                         "in": "path",
                         "name": "rpm_rpm_repository_version_href",
@@ -5289,6 +4341,411 @@
                 ],
                 "type": "string"
             },
+            "PaginatedRepositoryVersionResponseList": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=400&limit=100"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=200&limit=100"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/RepositoryVersionResponse"
+                        }
+                    }
+                }
+            },
+            "Paginatedrpm.DistributionTreeResponseList": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=400&limit=100"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=200&limit=100"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/rpm.DistributionTreeResponse"
+                        }
+                    }
+                }
+            },
+            "Paginatedrpm.ModulemdDefaultsResponseList": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=400&limit=100"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=200&limit=100"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/rpm.ModulemdDefaultsResponse"
+                        }
+                    }
+                }
+            },
+            "Paginatedrpm.ModulemdResponseList": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=400&limit=100"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=200&limit=100"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/rpm.ModulemdResponse"
+                        }
+                    }
+                }
+            },
+            "Paginatedrpm.PackageCategoryResponseList": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=400&limit=100"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=200&limit=100"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/rpm.PackageCategoryResponse"
+                        }
+                    }
+                }
+            },
+            "Paginatedrpm.PackageEnvironmentResponseList": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=400&limit=100"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=200&limit=100"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/rpm.PackageEnvironmentResponse"
+                        }
+                    }
+                }
+            },
+            "Paginatedrpm.PackageGroupResponseList": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=400&limit=100"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=200&limit=100"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/rpm.PackageGroupResponse"
+                        }
+                    }
+                }
+            },
+            "Paginatedrpm.PackageLangpacksResponseList": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=400&limit=100"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=200&limit=100"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/rpm.PackageLangpacksResponse"
+                        }
+                    }
+                }
+            },
+            "Paginatedrpm.PackageResponseList": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=400&limit=100"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=200&limit=100"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/rpm.PackageResponse"
+                        }
+                    }
+                }
+            },
+            "Paginatedrpm.RepoMetadataFileResponseList": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=400&limit=100"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=200&limit=100"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/rpm.RepoMetadataFileResponse"
+                        }
+                    }
+                }
+            },
+            "Paginatedrpm.RpmDistributionResponseList": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=400&limit=100"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=200&limit=100"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/rpm.RpmDistributionResponse"
+                        }
+                    }
+                }
+            },
+            "Paginatedrpm.RpmPublicationResponseList": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=400&limit=100"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=200&limit=100"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/rpm.RpmPublicationResponse"
+                        }
+                    }
+                }
+            },
+            "Paginatedrpm.RpmRemoteResponseList": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=400&limit=100"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=200&limit=100"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/rpm.RpmRemoteResponse"
+                        }
+                    }
+                }
+            },
+            "Paginatedrpm.RpmRepositoryResponseList": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=400&limit=100"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=200&limit=100"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/rpm.RpmRepositoryResponse"
+                        }
+                    }
+                }
+            },
+            "Paginatedrpm.UpdateRecordResponseList": {
+                "type": "object",
+                "properties": {
+                    "count": {
+                        "type": "integer",
+                        "example": 123
+                    },
+                    "next": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=400&limit=100"
+                    },
+                    "previous": {
+                        "type": "string",
+                        "nullable": true,
+                        "format": "uri",
+                        "example": "http://api.example.org/accounts/?offset=200&limit=100"
+                    },
+                    "results": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/rpm.UpdateRecordResponse"
+                        }
+                    }
+                }
+            },
             "Patchedrpm.RpmDistribution": {
                 "type": "object",
                 "description": "Serializer for RPM Distributions.",
@@ -5505,6 +4962,9 @@
                     "skip_types": {
                         "type": "array",
                         "items": {
+                            "enum": [
+                                "srpm"
+                            ],
                             "type": "string"
                         },
                         "default": [],
@@ -6582,6 +6042,20 @@
                         ],
                         "default": "sha256",
                         "description": "The checksum type for packages."
+                    },
+                    "gpgcheck": {
+                        "type": "integer",
+                        "maximum": 1,
+                        "default": 0,
+                        "description": "An option specifying whether a client should perform a GPG signature check on packages.",
+                        "minimum": 0
+                    },
+                    "repo_gpgcheck": {
+                        "type": "integer",
+                        "maximum": 1,
+                        "default": 0,
+                        "description": "An option specifying whether a client should perform a GPG signature check on the repodata.",
+                        "minimum": 0
                     }
                 }
             },
@@ -6626,6 +6100,20 @@
                         ],
                         "default": "sha256",
                         "description": "The checksum type for packages."
+                    },
+                    "gpgcheck": {
+                        "type": "integer",
+                        "maximum": 1,
+                        "default": 0,
+                        "description": "An option specifying whether a client should perform a GPG signature check on packages.",
+                        "minimum": 0
+                    },
+                    "repo_gpgcheck": {
+                        "type": "integer",
+                        "maximum": 1,
+                        "default": 0,
+                        "description": "An option specifying whether a client should perform a GPG signature check on the repodata.",
+                        "minimum": 0
                     }
                 }
             },

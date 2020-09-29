@@ -31,6 +31,7 @@ This file contains list of features and their test coverage.
 | As a user, I have the published root directory containing the ‘Package’ directory and packages in alphabetical order inside it. | YES | testing with modularity and kickstarter repositories, contains test if no extra files are present |
 | As a user, I can sign repository metadata using a signing service and publish such repo | PART |  |
 | As a user, I can have a config.repo file generated for any distribution at runtime | YES |  |
+| As a user I can set/update repo_gpgcheck and gpg_check options | YES | |
 | **Upload** |  |  |
 | As a user, I can upload rpm packages, advisories and modulemd[-defaults] content types and optionally add them to repository | NO |  |
 | As a user, I can upload rpm packages, advisories and modulemd[-defaults] type of content in chunks | PART |  |

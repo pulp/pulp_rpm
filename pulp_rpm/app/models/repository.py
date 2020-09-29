@@ -1,4 +1,5 @@
 import urllib.parse
+import textwrap
 
 from gettext import gettext as _
 from logging import getLogger
@@ -302,9 +303,13 @@ class RpmPublication(Publication):
     Publication for "rpm" content.
     """
 
+    GPGCHECK_CHOICES = [(0, 0), (1, 1)]
+
     TYPE = 'rpm'
     metadata_checksum_type = models.CharField(choices=CHECKSUM_CHOICES, max_length=10)
     package_checksum_type = models.CharField(choices=CHECKSUM_CHOICES, max_length=10)
+    gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
+    repo_gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
@@ -321,26 +326,30 @@ class RpmDistribution(PublicationDistribution):
     def content_handler(self, path):
         """Serve config.repo and public.key."""
         if path == self.repository_config_file_name:
-            val = f"""[{self.name}]
-enabled=1
-baseurl={settings.CONTENT_ORIGIN}{settings.CONTENT_PATH_PREFIX}{self.base_path}/
-gpgcheck=0
-"""
+            base_url = f"{settings.CONTENT_ORIGIN}{settings.CONTENT_PATH_PREFIX}{self.base_path}/"
+            publication = self.publication.cast()
+            val = textwrap.dedent(
+                f"""\
+                [{self.name}]
+                enabled=1
+                baseurl={base_url}
+                gpgcheck={publication.gpgcheck}
+                repo_gpgcheck={publication.repo_gpgcheck}
+                """
+            )
+
             repository_pk = self.publication.repository.pk
             repository = RpmRepository.objects.get(pk=repository_pk)
             signing_service = repository.metadata_signing_service
-            if signing_service is None:
-                val += 'repo_gpgcheck=0'
-            else:
+            if signing_service:
                 gpgkey_path = urllib.parse.urljoin(
                     settings.CONTENT_ORIGIN, settings.CONTENT_PATH_PREFIX
                 )
                 gpgkey_path = urllib.parse.urljoin(gpgkey_path, self.base_path, True)
                 gpgkey_path += '/repodata/public.key'
 
-                val += f"""repo_gpgcheck=1
-gpgkey={gpgkey_path}
-"""
+                val += f"gpgkey={gpgkey_path}\n"
+
             return Response(body=val)
 
     def content_handler_list_directory(self, rel_path):
