@@ -8,6 +8,7 @@ from pulpcore.plugin.models import (
     Remote,
 )
 from pulpcore.plugin.serializers import (
+    RelatedField,
     PublicationDistributionSerializer,
     PublicationSerializer,
     RemoteSerializer,
@@ -31,7 +32,7 @@ class RpmRepositorySerializer(RepositorySerializer):
     Serializer for Rpm Repositories.
     """
 
-    metadata_signing_service = serializers.HyperlinkedRelatedField(
+    metadata_signing_service = RelatedField(
         help_text="A reference to an associated signing service.",
         view_name="signing-services-detail",
         queryset=AsciiArmoredDetachedSigningService.objects.all(),
