@@ -250,12 +250,14 @@ def get_checksum_type(name, checksum_types):
     return getattr(cr, checksum_type.upper(), cr.SHA256)
 
 
-def publish(repository_version_pk, metadata_signing_service=None, checksum_types=None):
+def publish(repository_version_pk, gpgcheck_options, metadata_signing_service=None,
+            checksum_types=None):
     """
     Create a Publication based on a RepositoryVersion.
 
     Args:
         repository_version_pk (str): Create a publication from this repository version.
+        gpgcheck_options (dict): GPG signature check options.
         metadata_signing_service (pulpcore.app.models.AsciiArmoredDetachedSigningService):
             A reference to an associated signing service.
         checksum_types (dict): Checksum types for metadata and packages.
@@ -279,6 +281,9 @@ def publish(repository_version_pk, metadata_signing_service=None, checksum_types
                 "package", CHECKSUM_TYPES.SHA256)
             publication.metadata_checksum_type = checksum_types.get(
                 "metadata", original_metadata_checksum_type)
+            publication.gpgcheck = gpgcheck_options.get("gpgcheck")
+            publication.repo_gpgcheck = gpgcheck_options.get("repo_gpgcheck")
+
             publication_data = PublicationData(publication)
             publication_data.populate()
 

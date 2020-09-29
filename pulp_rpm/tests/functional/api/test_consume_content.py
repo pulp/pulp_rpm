@@ -1,6 +1,7 @@
 # coding=utf-8
 """Verify whether package manager, yum/dnf, can consume content from Pulp."""
 import unittest
+import itertools
 
 from pulp_smash import api, cli, config
 from pulp_smash.pulp3.bindings import PulpTestCase
@@ -127,23 +128,50 @@ class ConsumeSignedRepomdTestCase(PulpTestCase):
         self.install_package()
 
     def test_config_dot_repo(self):
+        """Test all possible combinations of gpgcheck options made to a publication."""
+        test_options = {
+            "gpgcheck": [0, 1], "repo_gpgcheck": [0, 1], "has_signing_service": [True, False]
+        }
+        cartesian_product = itertools.product(*test_options.values())
+        func_params = [dict(zip(test_options.keys(), a)) for a in cartesian_product]
+
+        for params in func_params:
+            self.check_config_dot_repo_options(**params)
+
+    def check_config_dot_repo_options(self, gpgcheck=0, repo_gpgcheck=0, has_signing_service=True):
         """Test if the generated config.repo has the right content."""
-        distribution = self.create_distribution()
+        distribution = self.create_distribution(
+            gpgcheck=gpgcheck, repo_gpgcheck=repo_gpgcheck, has_signing_service=has_signing_service
+        )
         response = requests.get(f'{distribution["base_url"]}/config.repo')
 
-        self.assertEqual(response.status_code, 200)
-        self.assertIn(bytes(f'[{distribution["name"]}]\n', 'utf-8'), response.content)
-        self.assertIn(bytes(f'baseurl={distribution["base_url"]}\n', 'utf-8'), response.content)
-        self.assertIn(bytes('gpgcheck=0\n', 'utf-8'), response.content)
-        self.assertIn(bytes('repo_gpgcheck=1\n', 'utf-8'), response.content)
-        self.assertIn(bytes(f'gpgkey={distribution["base_url"]}repodata/public.key', 'utf-8'),
-                      response.content)
+        options = f'gpgcheck={gpgcheck}, repo_gpgcheck={repo_gpgcheck}, ss={has_signing_service}'
 
-    def create_distribution(self):
+        self.assertEqual(response.status_code, 200, options)
+        self.assertIn(
+            bytes(f'[{distribution["name"]}]\n', 'utf-8'), response.content, options
+        )
+        self.assertIn(
+            bytes(f'baseurl={distribution["base_url"]}\n', 'utf-8'), response.content, options
+        )
+        self.assertIn(bytes(f'gpgcheck={gpgcheck}\n', 'utf-8'), response.content, options)
+        self.assertIn(bytes(f'repo_gpgcheck={repo_gpgcheck}\n', 'utf-8'), response.content, options)
+
+        if has_signing_service:
+            self.assertIn(
+                bytes(f'gpgkey={distribution["base_url"]}repodata/public.key', 'utf-8'),
+                response.content,
+                options,
+            )
+
+    def create_distribution(self, gpgcheck=0, repo_gpgcheck=0, has_signing_service=True):
         """Create a distribution with a repository that contains a signing service."""
-        repo = self.api_client.post(RPM_REPO_PATH, gen_repo(
-            metadata_signing_service=self.metadata_signing_service['pulp_href']
-        ))
+        repo_params = {}
+        if has_signing_service:
+            repo_params['metadata_signing_service'] = self.metadata_signing_service['pulp_href']
+
+        repo = self.api_client.post(RPM_REPO_PATH, gen_repo(**repo_params))
+
         self.addCleanup(self.api_client.delete, repo['pulp_href'])
 
         remote = self.api_client.post(RPM_REMOTE_PATH, gen_rpm_remote())
@@ -154,7 +182,7 @@ class ConsumeSignedRepomdTestCase(PulpTestCase):
 
         self.assertIsNotNone(repo['latest_version_href'])
 
-        publication = publish(self.cfg, repo)
+        publication = publish(self.cfg, repo, gpgcheck=gpgcheck, repo_gpgcheck=repo_gpgcheck)
         self.addCleanup(self.api_client.delete, publication['pulp_href'])
 
         body = gen_distribution()

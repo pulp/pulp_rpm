@@ -98,11 +98,33 @@ class RpmPublicationSerializer(PublicationSerializer):
         choices=CHECKSUM_CHOICES,
         default=CHECKSUM_TYPES.SHA256,
     )
+    gpgcheck = serializers.IntegerField(
+        max_value=1,
+        min_value=0,
+        default=0,
+        required=False,
+        help_text=_(
+            "An option specifying whether a client should perform "
+            "a GPG signature check on packages."
+        ),
+    )
+    repo_gpgcheck = serializers.IntegerField(
+        max_value=1,
+        min_value=0,
+        default=0,
+        required=False,
+        help_text=_(
+            "An option specifying whether a client should perform "
+            "a GPG signature check on the repodata."
+        ),
+    )
 
     class Meta:
         fields = PublicationSerializer.Meta.fields + (
             "metadata_checksum_type",
             "package_checksum_type",
+            "gpgcheck",
+            "repo_gpgcheck",
         )
         model = RpmPublication
 
