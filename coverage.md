@@ -46,6 +46,7 @@ Manual Coverage
 | Dependencies can be solved for RPM packages which depend on specific files (such as /usr/bin/bash) present only in filelists.xml | NO | needs a fixture change/improvement |
 | **Remove** |  |  |
 | As a user, when a module is removed, its packages are removed as well ( not referenced by other modules) | NO |  |
+| As a user, I can't remove content when it is used in a repository | PART | covered list in test_crud_content |
 | **Consumer cases** |  |  |
 | As a user, I can use dnf to install all the content served by Pulp | PART | only covers rpm installation |
 | **Retention** |  |  |

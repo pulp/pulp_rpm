@@ -19,7 +19,6 @@ from pulp_rpm.tests.functional.constants import (
     PULP_TYPE_PACKAGE,
     PULP_TYPE_PACKAGE_CATEGORY,
     PULP_TYPE_PACKAGE_GROUP,
-    RPM_KICKSTART_CONTENT_NAME,
     RPM_FIXTURE_SUMMARY,
     RPM_KICKSTART_FIXTURE_URL,
     RPM_KICKSTART_FIXTURE_SUMMARY,
@@ -69,9 +68,6 @@ class BaseCopy(PulpTestCase):
                          f"{source_repo['pulp_href']}versions/0/")
         sync(self.cfg, remote, source_repo)
         source_repo = self.client.get(source_repo['pulp_href'])
-
-        for kickstart_content in get_content(source_repo).get(RPM_KICKSTART_CONTENT_NAME, []):
-            self.addCleanup(self.client.delete, kickstart_content['pulp_href'])
 
         # Check that we have the correct content counts.
         self.assertDictEqual(get_content_summary(source_repo), summary)
