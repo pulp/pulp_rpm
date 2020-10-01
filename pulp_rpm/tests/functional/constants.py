@@ -292,6 +292,9 @@ RPM_ADVISORY_TEST_REMOVE_COUNT = 3
 RPM_ADVISORY_TEST_ADDED_COUNT = 6
 
 
+RPM_REPO_METADATA_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, 'rpm-repo-metadata/')
+"""The URL to RPM repository with custom repository metadata."""
+
 RPM_UPDATERECORD_RPM_NAME = 'gorilla'
 """The name of the RPM named by :data:`RPM_UPDATERECORD_ID`."""
 

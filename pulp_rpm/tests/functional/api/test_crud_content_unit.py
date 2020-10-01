@@ -1,23 +1,37 @@
 # coding=utf-8
 """Tests that perform actions over content unit."""
+import requests
+
+from urllib.parse import urljoin
+
 from pulp_smash.pulp3.bindings import PulpTaskError, PulpTestCase, monitor_task
-from pulp_smash.pulp3.utils import delete_orphans, gen_repo
+from pulp_smash.pulp3.utils import delete_orphans, gen_repo, get_content
 
 from pulp_rpm.tests.functional.utils import (
     gen_artifact,
     gen_rpm_client,
     gen_rpm_content_attrs,
+    gen_rpm_remote,
     skip_if,
 )
 from pulp_rpm.tests.functional.constants import (
-    RPM_SIGNED_URL,
+    RPM_KICKSTART_FIXTURE_URL,
+    RPM_MODULAR_FIXTURE_URL,
+    RPM_REPO_METADATA_FIXTURE_URL,
     RPM_PACKAGE_FILENAME,
     RPM_PACKAGE_FILENAME2,
-    RPM_SIGNED_URL2
+    RPM_SIGNED_URL,
+    RPM_SIGNED_URL2,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
-from pulpcore.client.pulp_rpm import ContentPackagesApi, RepositoriesRpmApi
+from pulpcore.client.pulp_rpm import (
+    Configuration,
+    ContentPackagesApi,
+    RemotesRpmApi,
+    RepositoriesRpmApi,
+    RpmRepositorySyncURL,
+)
 
 
 class ContentUnitTestCase(PulpTestCase):
@@ -158,3 +172,66 @@ class ContentUnitTestCase(PulpTestCase):
         )
 
         self.assertEqual(task["error"]["description"], error_message)
+
+
+class ContentUnitRemoveTestCase(PulpTestCase):
+    """
+    Test of content removal.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variable."""
+        delete_orphans()
+        cls.client = gen_rpm_client()
+        cls.cfg = Configuration(cls.client)
+        cls.repo_api = RepositoriesRpmApi(cls.client)
+        cls.remote_api = RemotesRpmApi(cls.client)
+
+    def do_test_remove_unit(self, remote_url):
+        """
+        Sync repository and test that content can't be removed directly.
+        """
+        repo = self.repo_api.create(gen_repo())
+        remote_body = gen_rpm_remote(remote_url, policy="on_demand")
+        remote = self.remote_api.create(remote_body)
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+        repo = self.repo_api.read(repo.pulp_href)
+
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # Test remove content by types contained in repository.
+        repo_content = get_content(repo.to_dict())
+        base_addr = self.cfg.get_host_settings()[0]['url']
+
+        for content_type in repo_content.keys():
+            response = requests.delete(
+                urljoin(base_addr, repo_content[content_type][0]["pulp_href"])
+            )
+            # check that '405' (method not allowed) is returned
+            self.assertEqual(
+                response.status_code, 405
+            )
+
+    def test_all(self):
+        """
+        Test three repositories to cover RPM content types.
+
+        - advisory
+        - distribution_tree
+        - modulemd
+        - modulemd_defaults
+        - package
+        - packagecategory
+        - packageenvironment
+        - packagegroup
+        - packagelangpacks
+        - repo metadata
+        """
+        self.do_test_remove_unit(RPM_MODULAR_FIXTURE_URL)
+        self.do_test_remove_unit(RPM_KICKSTART_FIXTURE_URL)
+        self.do_test_remove_unit(RPM_REPO_METADATA_FIXTURE_URL)

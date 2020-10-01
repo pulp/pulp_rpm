@@ -2,7 +2,7 @@ from django_filters import CharFilter
 from gettext import gettext as _
 
 from drf_spectacular.utils import extend_schema
-from rest_framework import viewsets, mixins
+from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.serializers import ValidationError as DRFValidationError
 
@@ -321,8 +321,7 @@ class CopyViewSet(viewsets.ViewSet):
         return result, repos
 
 
-class PackageGroupViewSet(ReadOnlyContentViewSet,
-                          mixins.DestroyModelMixin):
+class PackageGroupViewSet(ReadOnlyContentViewSet):
     """
     PackageGroup ViewSet.
     """
@@ -332,8 +331,7 @@ class PackageGroupViewSet(ReadOnlyContentViewSet,
     serializer_class = PackageGroupSerializer
 
 
-class PackageCategoryViewSet(ReadOnlyContentViewSet,
-                             mixins.DestroyModelMixin):
+class PackageCategoryViewSet(ReadOnlyContentViewSet):
     """
     PackageCategory ViewSet.
     """
@@ -343,8 +341,7 @@ class PackageCategoryViewSet(ReadOnlyContentViewSet,
     serializer_class = PackageCategorySerializer
 
 
-class PackageEnvironmentViewSet(ReadOnlyContentViewSet,
-                                mixins.DestroyModelMixin):
+class PackageEnvironmentViewSet(ReadOnlyContentViewSet):
     """
     PackageEnvironment ViewSet.
     """
@@ -354,8 +351,7 @@ class PackageEnvironmentViewSet(ReadOnlyContentViewSet,
     serializer_class = PackageEnvironmentSerializer
 
 
-class PackageLangpacksViewSet(ReadOnlyContentViewSet,
-                              mixins.DestroyModelMixin):
+class PackageLangpacksViewSet(ReadOnlyContentViewSet):
     """
     PackageLangpacks ViewSet.
     """
@@ -365,8 +361,7 @@ class PackageLangpacksViewSet(ReadOnlyContentViewSet,
     serializer_class = PackageLangpacksSerializer
 
 
-class DistributionTreeViewSet(ReadOnlyContentViewSet,
-                              mixins.DestroyModelMixin):
+class DistributionTreeViewSet(ReadOnlyContentViewSet):
     """
     Distribution Tree Viewset.
 
@@ -377,8 +372,7 @@ class DistributionTreeViewSet(ReadOnlyContentViewSet,
     serializer_class = DistributionTreeSerializer
 
 
-class RepoMetadataFileViewSet(ReadOnlyContentViewSet,
-                              mixins.DestroyModelMixin):
+class RepoMetadataFileViewSet(ReadOnlyContentViewSet):
     """
     RepoMetadataFile Viewset.
 
