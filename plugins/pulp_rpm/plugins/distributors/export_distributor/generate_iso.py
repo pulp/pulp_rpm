@@ -7,6 +7,7 @@ import tempfile
 import hashlib
 from stat import ST_SIZE
 from pulp.server.util import md5 as pulp_md5
+from pulp.plugins.util import misc
 
 from pulp_rpm.yum_plugin.util import getLogger
 
@@ -77,7 +78,7 @@ def _make_iso(file_list, target_dir, output_dir, filename):
 
     # If the output directory doesn't exist, make it
     if not os.path.isdir(output_dir):
-        os.makedirs(output_dir)
+        misc.mkdir(output_dir)
 
     # Create a pathspec file using the files in this image.
     pathspec_file = _get_pathspec_file(file_list, target_dir)

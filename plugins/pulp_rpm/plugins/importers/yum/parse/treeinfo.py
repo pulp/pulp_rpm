@@ -13,6 +13,8 @@ from mongoengine import NotUniqueError, Q
 from nectar.listener import AggregatingEventListener
 from nectar.request import DownloadRequest
 
+from pulp.plugins.util import misc
+
 from pulp.server.db.model import LazyCatalogEntry, RepositoryContentUnit
 from pulp.server.exceptions import PulpCodedValidationException
 from pulp.server.controllers import repository as repo_controller
@@ -358,8 +360,7 @@ class DistSync(object):
         """
         destination = os.path.join(tmp_dir, file_dict[RELATIVE_PATH])
         # make directories such as "images"
-        if not os.path.exists(os.path.dirname(destination)):
-            os.makedirs(os.path.dirname(destination))
+        misc.mkdir(os.path.dirname(destination))
         return DownloadRequest(
             os.path.join(self.feed, file_dict[RELATIVE_PATH]),
             destination,
