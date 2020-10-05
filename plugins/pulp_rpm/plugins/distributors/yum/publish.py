@@ -240,7 +240,7 @@ class ExportRepoGroupPublisher(platform_steps.PluginStep):
             publisher.description = _("Exporting Repo: %s") % repo.id
             self.add_child(publisher)
         if empty_repos:
-            os.makedirs(realized_dir)
+            plugin_misc.mkdir(realized_dir)
             self.add_child(GenerateListingFileStep(realized_dir, realized_dir))
 
         # If we aren't exporting to a directory add the ISO create & publish steps
@@ -782,8 +782,7 @@ class PublishRpmAndDrpmStepIncremental(platform_steps.UnitModelPluginStep):
         Its existence is required by the CopyDirectoryStep.
         """
         super(PublishRpmAndDrpmStepIncremental, self).initialize()
-        if not os.path.exists(self.get_working_dir()):
-            os.makedirs(self.get_working_dir())
+        plugin_misc.mkdir(self.get_working_dir())
 
     @property
     def unit_querysets(self):

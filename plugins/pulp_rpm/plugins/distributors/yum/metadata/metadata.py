@@ -4,6 +4,8 @@ import os
 import traceback
 from gettext import gettext as _
 
+from pulp.plugins.util import misc
+
 from pulp_rpm.yum_plugin import util
 
 _LOG = util.getLogger(__name__)
@@ -119,10 +121,8 @@ class MetadataFileContext(object):
         if not os.path.exists(self.metadata_file_path):
 
             parent_dir = os.path.dirname(self.metadata_file_path)
-
             if not os.path.exists(parent_dir):
-                os.makedirs(parent_dir, mode=0770)
-
+                misc.mkdir(parent_dir, mode=0770)
             elif not os.access(parent_dir, os.R_OK | os.W_OK | os.X_OK):
                 msg = _('Insufficient permissions to write metadata file in directory [%(d)s]')
                 raise RuntimeError(msg % {'d': parent_dir})
