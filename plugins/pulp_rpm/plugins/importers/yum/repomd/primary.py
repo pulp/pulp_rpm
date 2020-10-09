@@ -132,8 +132,8 @@ def process_package_element(package_element):
 
     time_element = package_element.find(TIME_TAG)
     if time_element is not None:
-        package_info['time'] = int(time_element.attrib['file'])
-        package_info['build_time'] = int(time_element.attrib['build'])
+        package_info['time'] = int(float(time_element.attrib['file']))
+        package_info['build_time'] = int(float(time_element.attrib['build']))
 
     size_element = package_element.find(SIZE_TAG)
     if size_element is not None:
