@@ -158,7 +158,7 @@ class Checksum(BaseModel):
     """
 
     path = models.CharField(max_length=128)
-    checksum = models.CharField(max_length=128, null=True)
+    checksum = models.CharField(max_length=128)
     distribution_tree = models.ForeignKey(
         DistributionTree, on_delete=models.CASCADE, related_name='checksums'
     )
