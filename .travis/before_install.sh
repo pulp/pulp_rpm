@@ -52,6 +52,9 @@ pip install -r dev_requirements.txt
 # Lint code.
 flake8 --config flake8.cfg
 
+# check for any files unintentionally left out of MANIFEST.in
+check-manifest
+
 # check for imports from pulpcore that aren't pulpcore.plugin
 ./.travis/check_pulpcore_imports.sh
 

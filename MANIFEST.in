@@ -1,4 +1,12 @@
+include CHANGES.rst
+include COMMITMENT
+include COPYRIGHT
+include coverage.md
+include functest_requirements.txt
 include LICENSE
 include pulp_rpm/app/schema/*
-include requirements.txt
+include pulp_rpm/tests/functional/sign-metadata.sh
 include pyproject.toml
+include requirements.txt
+include test_requirements.txt
+include unittest_requirements.txt
