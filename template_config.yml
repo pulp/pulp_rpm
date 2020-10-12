@@ -4,6 +4,7 @@
 additional_plugins: []
 black: false
 check_commit_message: true
+check_manifest: true
 cherry_pick_automation: true
 coverage: false
 deploy_client_to_pypi: true
