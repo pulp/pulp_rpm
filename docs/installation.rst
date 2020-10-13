@@ -50,7 +50,7 @@ Install ``pulpcore``
 ********************
 
 Follow the `installation
-instructions <https://docs.pulpproject.org/en/3.0/nightly/installation/instructions.html>`__
+instructions <https://docs.pulpproject.org/installation/instructions.html>`__
 provided with pulpcore.
 
 Install prerequisites
