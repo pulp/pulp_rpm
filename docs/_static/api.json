@@ -514,37 +514,6 @@
                         "description": ""
                     }
                 }
-            },
-            "delete": {
-                "operationId": "content_rpm_distribution_trees_delete",
-                "description": "Distribution Tree Viewset.",
-                "summary": "Delete a distribution tree",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "rpm_distribution_tree_href",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "Content: Distribution_Trees"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No response body"
-                    }
-                }
             }
         },
         "/pulp/api/v3/content/rpm/modulemd_defaults/": {
@@ -1255,37 +1224,6 @@
                         "description": ""
                     }
                 }
-            },
-            "delete": {
-                "operationId": "content_rpm_packagecategories_delete",
-                "description": "PackageCategory ViewSet.",
-                "summary": "Delete a package category",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "rpm_package_category_href",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "Content: Packagecategories"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No response body"
-                    }
-                }
             }
         },
         "/pulp/api/v3/content/rpm/packageenvironments/": {
@@ -1462,37 +1400,6 @@
                             }
                         },
                         "description": ""
-                    }
-                }
-            },
-            "delete": {
-                "operationId": "content_rpm_packageenvironments_delete",
-                "description": "PackageEnvironment ViewSet.",
-                "summary": "Delete a package environment",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "rpm_package_environment_href",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "Content: Packageenvironments"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No response body"
                     }
                 }
             }
@@ -1673,37 +1580,6 @@
                         "description": ""
                     }
                 }
-            },
-            "delete": {
-                "operationId": "content_rpm_packagegroups_delete",
-                "description": "PackageGroup ViewSet.",
-                "summary": "Delete a package group",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "rpm_package_group_href",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "Content: Packagegroups"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No response body"
-                    }
-                }
             }
         },
         "/pulp/api/v3/content/rpm/packagelangpacks/": {
@@ -1880,37 +1756,6 @@
                             }
                         },
                         "description": ""
-                    }
-                }
-            },
-            "delete": {
-                "operationId": "content_rpm_packagelangpacks_delete",
-                "description": "PackageLangpacks ViewSet.",
-                "summary": "Delete a package langpacks",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "rpm_package_langpacks_href",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "Content: Packagelangpacks"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No response body"
                     }
                 }
             }
@@ -2509,37 +2354,6 @@
                             }
                         },
                         "description": ""
-                    }
-                }
-            },
-            "delete": {
-                "operationId": "content_rpm_repo_metadata_files_delete",
-                "description": "RepoMetadataFile Viewset.",
-                "summary": "Delete a repo metadata file",
-                "parameters": [
-                    {
-                        "in": "path",
-                        "name": "rpm_repo_metadata_file_href",
-                        "schema": {
-                            "type": "string"
-                        },
-                        "required": true
-                    }
-                ],
-                "tags": [
-                    "Content: Repo_Metadata_Files"
-                ],
-                "security": [
-                    {
-                        "cookieAuth": []
-                    },
-                    {
-                        "basicAuth": []
-                    }
-                ],
-                "responses": {
-                    "204": {
-                        "description": "No response body"
                     }
                 }
             }
@@ -5729,22 +5543,27 @@
                     },
                     "source_packages": {
                         "type": "string",
+                        "nullable": true,
                         "description": "Relative path to directory with source RPMs."
                     },
                     "source_repository": {
                         "type": "string",
+                        "nullable": true,
                         "description": "Relative path to YUM repository with source RPMs."
                     },
                     "debug_packages": {
                         "type": "string",
+                        "nullable": true,
                         "description": "Relative path to directory with debug RPMs."
                     },
                     "debug_repository": {
                         "type": "string",
+                        "nullable": true,
                         "description": "Relative path to YUM repository with debug RPMs."
                     },
                     "identity": {
                         "type": "string",
+                        "nullable": true,
                         "description": "Relative path to a pem file that identifies a product."
                     }
                 },

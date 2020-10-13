@@ -1,7 +1,7 @@
 REST API
 ========
 
-Pulpcore Reference: `pulpcore API documentation <https://docs.pulpproject.org/en/3.0/nightly/restapi.html>`_.
+Pulpcore Reference: `pulpcore API documentation <https://docs.pulpproject.org/restapi.html>`_.
 
 Pulp RPM API
 ----------------
