@@ -2,6 +2,8 @@ import createrepo_c
 import tempfile
 import shutil
 
+from hashlib import sha256
+
 from django.core.files.storage import default_storage as storage
 
 from pulp_rpm.app.models import Package
@@ -30,6 +32,24 @@ def _prepare_package(artifact, filename):
 
     package['location_href'] = filename
     return package
+
+
+def get_sha256(file_path):
+    """
+    Get sha256 of file.
+
+    Args:
+        file_path(string): path of file
+
+    Returns:
+        String: SHA256 of file
+
+    """
+    try:
+        with open(file_path, 'rb') as file_obj:
+            return sha256(file_obj.read()).hexdigest()
+    except FileNotFoundError:
+        return None
 
 
 def is_previous_version(version, target_version):

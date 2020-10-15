@@ -20,6 +20,7 @@ This file contains list of features and their test coverage.
 | As a user, I can sync from a mirror list | YES |  |
 | As a user, I can sync from a mirror list with comments | YES |  |
 | As a user, I can sync from CDN using certificates | YES |  |
+| As a user, I can re-sync custom reposotory metadata when it was the only change in a repository | YES |  |
 | **Duplicates** |  |  |
 | As a user, I have only one advisory with the same id in a repo version | YES |  |
 | As a user, I have only one module with the same NSVCA in a repo version | NO |  |

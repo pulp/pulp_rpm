@@ -119,6 +119,8 @@ class RpmRepository(Repository):
             The remote used for the last sync
         last_sync_repo_version (Integer):
             The repo version number of the last sync
+        last_sync_repomd_checksum (Text):
+            The repo version repomd.xml file sha256
         original_checksum_types (JSON):
             Checksum for each metadata type
     """
@@ -143,6 +145,7 @@ class RpmRepository(Repository):
     last_sync_revision_number = models.CharField(max_length=20, null=True)
     last_sync_remote = models.ForeignKey(Remote, null=True, on_delete=models.SET_NULL)
     last_sync_repo_version = models.PositiveIntegerField(default=0)
+    last_sync_repomd_checksum = models.CharField(max_length=64, null=True)
     original_checksum_types = JSONField(default=dict)
     retain_package_versions = models.PositiveIntegerField(default=0)
 

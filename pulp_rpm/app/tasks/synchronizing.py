@@ -75,7 +75,7 @@ from pulp_rpm.app.modulemd import (
 from pulp_rpm.app.kickstart.treeinfo import get_treeinfo_data
 
 from pulp_rpm.app.comps import strdict_to_dict, dict_digest
-from pulp_rpm.app.shared_utils import is_previous_version
+from pulp_rpm.app.shared_utils import is_previous_version, get_sha256
 
 import gi
 gi.require_version('Modulemd', '2.0')
@@ -166,12 +166,14 @@ def is_optimized_sync(repository, remote, url):
 
     repomd_path = result.path
     repomd = cr.Repomd(repomd_path)
+    repomd_checksum = get_sha256(repomd_path)
     is_optimized = (
         repository.last_sync_remote and
         remote.pk == repository.last_sync_remote.pk and
         repository.last_sync_repo_version == repository.latest_version().number and
         remote.pulp_last_updated <= repository.latest_version().pulp_created and
-        is_previous_version(repomd.revision, repository.last_sync_revision_number)
+        is_previous_version(repomd.revision, repository.last_sync_revision_number) and
+        repository.last_sync_repomd_checksum == repomd_checksum
     )
     if is_optimized:
         optimize_data = dict(message='Optimizing Sync', code='optimizing.sync')
@@ -429,6 +431,7 @@ class RpmFirstStage(Stage):
             self.data.repomd = cr.Repomd(repomd_path)
 
             self.repository.last_sync_revision_number = self.data.repomd.revision
+            self.repository.last_sync_repomd_checksum = get_sha256(repomd_path)
 
             await self.parse_distribution_tree()
             await self.parse_repository_metadata()

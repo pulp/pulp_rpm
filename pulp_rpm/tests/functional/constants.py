@@ -368,6 +368,12 @@ RPM_KICKSTART_REPOSITORY_ROOT_CONTENT = [
 PULP_FIXTURES_COMMON_URL = 'https://github.com/pulp/pulp-fixtures/raw/master/common/'
 PRIVATE_GPG_KEY_URL = urljoin(PULP_FIXTURES_COMMON_URL, 'GPG-PRIVATE-KEY-pulp-qe')
 
+RPM_CUSTOM_REPO_METADATA_FIXTURE_URL = urljoin(
+    PULP_FIXTURES_BASE_URL, 'rpm-repo-metadata/'
+)
+RPM_CUSTOM_REPO_METADATA_CHANGED_FIXTURE_URL = urljoin(
+    PULP_FIXTURES_BASE_URL, 'rpm-repo-metadata-changed/'
+)
 
 CENTOS6_URL = "http://mirror.centos.org/centos-6/6.10/os/x86_64/"
 CENTOS7_URL = "http://mirror.linux.duke.edu/pub/centos/7/os/x86_64/"
