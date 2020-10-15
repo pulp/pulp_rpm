@@ -1,0 +1,1 @@
+Fixed re-syncing of custom repository metadata when it was the only change in a repository.

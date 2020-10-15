@@ -22,37 +22,40 @@ from pulp_smash.pulp3.utils import (
 from pulp_rpm.tests.functional.constants import (
     PULP_TYPE_ADVISORY,
     PULP_TYPE_PACKAGE,
-    RPM_ADVISORY_COUNT,
+    PULP_TYPE_REPOMETADATA,
     RPM_ADVISORY_CONTENT_NAME,
-    RPM_ADVISORY_INCOMPLETE_PKG_LIST_URL,
-    RPM_ADVISORY_UPDATED_VERSION_URL,
+    RPM_ADVISORY_COUNT,
     RPM_ADVISORY_DIFFERENT_PKGLIST_URL,
     RPM_ADVISORY_DIFFERENT_REPO_URL,
+    RPM_ADVISORY_INCOMPLETE_PKG_LIST_URL,
     RPM_ADVISORY_NO_DATES,
-    RPM_ADVISORY_TEST_ID,
-    RPM_ADVISORY_TEST_REMOVE_COUNT,
     RPM_ADVISORY_TEST_ADDED_COUNT,
+    RPM_ADVISORY_TEST_ID,
+    RPM_ADVISORY_TEST_ID_NEW,
+    RPM_ADVISORY_TEST_REMOVE_COUNT,
+    RPM_ADVISORY_UPDATED_VERSION_URL,
+    RPM_CUSTOM_REPO_METADATA_CHANGED_FIXTURE_URL,
+    RPM_CUSTOM_REPO_METADATA_FIXTURE_URL,
     RPM_EPEL_URL,
     RPM_FIXTURE_SUMMARY,
     RPM_INVALID_FIXTURE_URL,
     RPM_KICKSTART_FIXTURE_SUMMARY,
     RPM_KICKSTART_FIXTURE_URL,
-    RPM_MIRROR_LIST_GOOD_FIXTURE_URL,
     RPM_MIRROR_LIST_BAD_FIXTURE_URL,
+    RPM_MIRROR_LIST_GOOD_FIXTURE_URL,
     RPM_MODULAR_FIXTURE_SUMMARY,
     RPM_MODULAR_FIXTURE_URL,
     RPM_PACKAGE_CONTENT_NAME,
     RPM_PACKAGE_COUNT,
-    RPM_RICH_WEAK_FIXTURE_URL,
-    RPM_ADVISORY_TEST_ID_NEW,
-    RPM_UPDATED_UPDATEINFO_FIXTURE_URL,
     RPM_REFERENCES_UPDATEINFO_URL,
+    RPM_RICH_WEAK_FIXTURE_URL,
+    RPM_SHA512_FIXTURE_URL,
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
-    RPM_SHA512_FIXTURE_URL,
-    SRPM_UNSIGNED_FIXTURE_URL,
+    RPM_UPDATED_UPDATEINFO_FIXTURE_URL,
     SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT,
-    SRPM_UNSIGNED_FIXTURE_PACKAGE_COUNT
+    SRPM_UNSIGNED_FIXTURE_PACKAGE_COUNT,
+    SRPM_UNSIGNED_FIXTURE_URL
 )
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
@@ -984,6 +987,32 @@ class BasicSyncTestCase(PulpTestCase):
             RPM_ADVISORY_TEST_ID,
             added_advisories
         )
+
+    def test_sync_repo_metadata_change(self):
+        """Sync RPM modular content.
+
+        This test targets sync issue when only custom metadata changes:
+
+        * `Pulp #7030 <https://pulp.plan.io/issues/7030>`_
+        """
+        body = gen_rpm_remote(RPM_CUSTOM_REPO_METADATA_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+
+        repo, remote = self.do_test(remote=remote)
+
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        body = gen_rpm_remote(RPM_CUSTOM_REPO_METADATA_CHANGED_FIXTURE_URL)
+        remote_changed = self.remote_api.create(body)
+
+        self.addCleanup(self.remote_api.delete, remote_changed.pulp_href)
+
+        repo, remote = self.do_test(repository=repo, remote=remote_changed)
+
+        # Check if repository was updated with repository metadata
+        self.assertEqual(repo.latest_version_href.rstrip('/')[-1], '2')
+        self.assertTrue(PULP_TYPE_REPOMETADATA in get_added_content(repo.to_dict()))
 
     def do_test(self, repository=None, remote=None):
         """Sync a repository.
