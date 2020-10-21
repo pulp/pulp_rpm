@@ -22,7 +22,7 @@ def get_treeinfo_data(remote, remote_url):
     namespaces = [".treeinfo", "treeinfo"]
     for namespace in namespaces:
         downloader = remote.get_downloader(
-            url=urljoin(remote_url, namespace), silence_errors_for_response_status_codes={404}
+            url=urljoin(remote_url, namespace), silence_errors_for_response_status_codes={403, 404}
         )
 
         try:

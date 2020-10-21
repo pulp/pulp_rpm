@@ -58,7 +58,7 @@ class RpmDownloader(HttpDownloader):
         Raise error if aiohttp response status is >= 400 and not silenced.
 
         Raises:
-            FileNotFoundError: If aiohttp response status is 404 and silenced.
+            FileNotFoundError: If aiohttp response status is 403 or 404 and silenced.
             aiohttp.ClientResponseError: If the response status is 400 or higher and not silenced.
 
         """
@@ -67,7 +67,7 @@ class RpmDownloader(HttpDownloader):
         if not silenced:
             response.raise_for_status()
 
-        if response.status == 404:
+        if response.status in (404, 403):
             raise FileNotFoundError()
 
     async def _run(self, extra_data=None):
