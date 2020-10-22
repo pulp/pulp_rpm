@@ -2,6 +2,20 @@
 Pulp 2.21 Release Notes
 =======================
 
+Pulp 2.21.4
+===========
+
+Bug Fixes
+---------
+
+* Fixed a permissions-issue that blocked pulp2to3 migrations.
+* Fixed memory-usage issue when publishing repositories with large metadata files.
+* Fixed an issue with handling Amazon Linux repositories.
+* Dropped a createrepo_c option that could thrash /tmp .
+
+
+See the full list of :fixedbugs_pulp_rpm:`2.21.4`
+
 Pulp 2.21.3
 ===========
 
