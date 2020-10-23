@@ -28,7 +28,7 @@ def check_checksum(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('rpm', '0025_remove_orphaned_subrepos'),
+        ('rpm', '0026_add_gpgcheck_options'),
     ]
 
     operations = [
