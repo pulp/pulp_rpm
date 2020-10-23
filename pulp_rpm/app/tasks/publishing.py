@@ -250,7 +250,7 @@ def get_checksum_type(name, checksum_types):
     return getattr(cr, checksum_type.upper(), cr.SHA256)
 
 
-def publish(repository_version_pk, gpgcheck_options, metadata_signing_service=None,
+def publish(repository_version_pk, gpgcheck_options=None, metadata_signing_service=None,
             checksum_types=None):
     """
     Create a Publication based on a RepositoryVersion.
@@ -281,8 +281,10 @@ def publish(repository_version_pk, gpgcheck_options, metadata_signing_service=No
                 "package", CHECKSUM_TYPES.SHA256)
             publication.metadata_checksum_type = checksum_types.get(
                 "metadata", original_metadata_checksum_type)
-            publication.gpgcheck = gpgcheck_options.get("gpgcheck")
-            publication.repo_gpgcheck = gpgcheck_options.get("repo_gpgcheck")
+
+            if gpgcheck_options is not None:
+                publication.gpgcheck = gpgcheck_options.get("gpgcheck")
+                publication.repo_gpgcheck = gpgcheck_options.get("repo_gpgcheck")
 
             publication_data = PublicationData(publication)
             publication_data.populate()
