@@ -33,6 +33,7 @@ from pulpcore.plugin.stages import (
     QueryExistingArtifacts,
     QueryExistingContents
 )
+from pulpcore.plugin.tasking import WorkingDirectory
 
 from pulp_rpm.app.advisory import hash_update_record
 from pulp_rpm.app.constants import (
@@ -160,13 +161,15 @@ def is_optimized_sync(repository, remote, url):
         bool: True, if sync is optimized; False, otherwise.
 
     """
-    result = get_repomd_file(remote, url)
-    if not result:
-        return False
+    with WorkingDirectory():
+        result = get_repomd_file(remote, url)
+        if not result:
+            return False
 
-    repomd_path = result.path
-    repomd = cr.Repomd(repomd_path)
-    repomd_checksum = get_sha256(repomd_path)
+        repomd_path = result.path
+        repomd = cr.Repomd(repomd_path)
+        repomd_checksum = get_sha256(repomd_path)
+
     is_optimized = (
         repository.last_sync_remote and
         remote.pk == repository.last_sync_remote.pk and
@@ -212,7 +215,8 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
 
     deferred_download = (remote.policy != Remote.IMMEDIATE)  # Interpret download policy
 
-    remote_url = fetch_remote_url(remote)
+    with WorkingDirectory():
+        remote_url = fetch_remote_url(remote)
     if not remote_url:
         raise ValueError(_("A no valid remote URL was provided."))
     else:
@@ -221,7 +225,8 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
     if optimize and is_optimized_sync(repository, remote, remote_url):
         return
 
-    treeinfo = get_treeinfo_data(remote, remote_url)
+    with WorkingDirectory():
+        treeinfo = get_treeinfo_data(remote, remote_url)
     if treeinfo:
         treeinfo["repositories"] = {}
         for repodata in set(treeinfo["download"]["repodatas"]):
@@ -238,7 +243,8 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
             treeinfo["repositories"].update({directory: str(sub_repo.pk)})
             path = f"{repodata}/"
             new_url = urljoin(remote_url, path)
-            repodata_exists = get_repomd_file(remote, new_url)
+            with WorkingDirectory():
+                repodata_exists = get_repomd_file(remote, new_url)
             if repodata_exists:
                 if optimize and is_optimized_sync(sub_repo, remote, new_url):
                     continue
