@@ -13,13 +13,11 @@ from pulp_smash.pulp3.utils import (
     delete_orphans,
     gen_repo,
     get_added_content_summary,
-    get_content,
     get_content_summary,
 )
 
 from pulp_rpm.tests.functional.constants import (
     RPM_DISTRIBUTION_PATH,
-    RPM_KICKSTART_CONTENT_NAME,
     RPM_PACKAGE_CONTENT_NAME,
     RPM_KICKSTART_FIXTURE_URL,
     RPM_PUBLICATION_PATH,
@@ -121,8 +119,6 @@ class PublishTestCase(unittest.TestCase):
         ))
 
         repo = self.client.get(repo['pulp_href'])
-        for kickstart_content in get_content(repo)[RPM_KICKSTART_CONTENT_NAME]:
-            self.addCleanup(self.client.delete, kickstart_content['pulp_href'])
 
         # Check that we have the correct content counts.
         self.assertIsNotNone(repo['latest_version_href'])

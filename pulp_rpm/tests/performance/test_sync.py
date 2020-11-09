@@ -19,7 +19,6 @@ from pulp_rpm.tests.functional.constants import (
     PULP_TYPE_REPOMETADATA,
     RPM_CDN_APPSTREAM_URL,
     RPM_CDN_BASEOS_URL,
-    RPM_KICKSTART_CONTENT_NAME,
     RPM_KICKSTART_FIXTURE_SUMMARY,
     RPM_KICKSTART_FIXTURE_URL,
     RPM_REMOTE_PATH,
@@ -111,8 +110,6 @@ class SyncTestCase(unittest.TestCase):
         ))
 
         repo = self.client.get(repo['pulp_href'])
-        for kickstart_content in get_content(repo)[RPM_KICKSTART_CONTENT_NAME]:
-            self.addCleanup(self.client.delete, kickstart_content['pulp_href'])
 
         # Check that we have the correct content counts.
         self.assertIsNotNone(repo['latest_version_href'])
