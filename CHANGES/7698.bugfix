@@ -1,1 +1,0 @@
-Fixed the case when downloads were happening outside of the task working directory during sync.
