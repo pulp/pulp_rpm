@@ -13,6 +13,54 @@ Changelog
 
 .. towncrier release notes start
 
+3.8.0 (2020-11-12)
+==================
+
+
+Features
+--------
+
+- Added new fields allowing users to customize gpgcheck signature options in a publication.
+  `#6926 <https://pulp.plan.io/issues/6926>`_
+
+
+Bugfixes
+--------
+
+- Fixed re-syncing of custom repository metadata when it was the only change in a repository.
+  `#7030 <https://pulp.plan.io/issues/7030>`_
+- User should not be able to remove distribution trees, custom repository metadata and comps if they are used in repository.
+  `#7431 <https://pulp.plan.io/issues/7431>`_
+- Raise ValidationError when other type than JSON is provided during Advisory upload.
+  `#7468 <https://pulp.plan.io/issues/7468>`_
+- Added handling of HTTP 403 Forbidden during DistributionTree detection.
+  `#7691 <https://pulp.plan.io/issues/7691>`_
+- Fixed the case when downloads were happening outside of the task working directory during sync.
+  `#7698 <https://pulp.plan.io/issues/7698>`_
+
+
+Improved Documentation
+----------------------
+
+- Fixed broken documentation links.
+  `#6981 <https://pulp.plan.io/issues/6981>`_
+- Added documentation clarification around how checksum_types work during the Publication.
+  `#7203 <https://pulp.plan.io/issues/7203>`_
+- Added examples how to copy all content.
+  `#7494 <https://pulp.plan.io/issues/7494>`_
+- Clarified the advanced-copy section.
+  `#7705 <https://pulp.plan.io/issues/7705>`_
+
+
+Misc
+----
+
+- `#7414 <https://pulp.plan.io/issues/7414>`_, `#7567 <https://pulp.plan.io/issues/7567>`_, `#7571 <https://pulp.plan.io/issues/7571>`_, `#7650 <https://pulp.plan.io/issues/7650>`_, `#7807 <https://pulp.plan.io/issues/7807>`_
+
+
+----
+
+
 3.7.0 (2020-09-23)
 ==================
 
