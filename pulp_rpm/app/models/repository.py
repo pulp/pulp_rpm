@@ -37,7 +37,7 @@ from pulp_rpm.app.models import (
     UpdateRecord,
 )
 
-from pulp_rpm.app.downloaders import RpmDownloader, RpmFileDownloader
+from pulp_rpm.app.downloaders import RpmDownloader, RpmFileDownloader, UlnDownloader
 from pulp_rpm.app.exceptions import DistributionTreeConflict
 from pulp_rpm.app.shared_utils import urlpath_sanitize
 
@@ -98,6 +98,74 @@ class RpmRemote(Remote):
         if self.sles_auth_token:
             kwargs["sles_auth_token"] = self.sles_auth_token
         return super().get_downloader(remote_artifact=remote_artifact, url=url, **kwargs)
+
+    class Meta:
+        default_related_name = "%(app_label)s_%(model_name)s"
+
+
+class UlnRemote(Remote):
+    """
+    Remote for "uln" content.
+    """
+
+    TYPE = "uln"
+    uln_server_base_url = models.CharField(max_length=512, null=True)
+
+    @property
+    def download_factory(self):
+        """
+        Return the DownloaderFactory which can be used to generate asyncio capable downloaders.
+
+        Returns:
+            DownloadFactory: The instantiated DownloaderFactory to be used by
+                get_downloader()
+
+        """
+        try:
+            return self._download_factory
+        except AttributeError:
+            self._download_factory = DownloaderFactory(
+                self,
+                downloader_overrides={
+                    "uln": UlnDownloader,
+                },
+            )
+            self._download_factory._handler_map["uln"] = self._download_factory._http_or_https
+            return self._download_factory
+
+    def get_downloader(self, remote_artifact=None, url=None, **kwargs):
+        """
+        Get a downloader from either a RemoteArtifact or URL that is configured with this Remote.
+
+        This method accepts either `remote_artifact` or `url` but not both. At least one is
+        required. If neither or both are passed a ValueError is raised.
+
+        Args:
+            remote_artifact (:class:`~pulpcore.app.models.RemoteArtifact`): The RemoteArtifact to
+                download.
+            url (str): The URL to download. Can be a ULN url.
+            kwargs (dict): This accepts the parameters of
+                :class:`~pulpcore.plugin.download.BaseDownloader`.
+        Raises:
+            ValueError: If neither remote_artifact and url are passed, or if both are passed.
+        Returns:
+            subclass of :class:`~pulpcore.plugin.download.BaseDownloader`: A downloader that
+            is configured with the remote settings.
+
+        """
+        if self.uln_server_base_url:
+            uln_server_base_url = self.uln_server_base_url
+        else:
+            uln_server_base_url = settings.DEFAULT_ULN_SERVER_BASE_URL
+
+        return super().get_downloader(
+            remote_artifact=remote_artifact,
+            url=url,
+            username=self.username,
+            password=self.password,
+            uln_server_base_url=uln_server_base_url,
+            **kwargs,
+        )
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"

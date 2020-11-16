@@ -8,6 +8,7 @@ from collections import defaultdict
 from gettext import gettext as _  # noqa:F401
 
 from django.db import transaction
+from django.core.exceptions import ObjectDoesNotExist
 
 from aiohttp.client_exceptions import ClientResponseError
 from aiohttp.web_exceptions import HTTPNotFound
@@ -62,6 +63,7 @@ from pulp_rpm.app.models import (
     PackageLangpacks,
     RpmRemote,
     RpmRepository,
+    UlnRemote,
     UpdateCollection,
     UpdateCollectionPackage,
     UpdateRecord,
@@ -89,7 +91,7 @@ def get_repomd_file(remote, url):
     Check if repodata exists.
 
     Args:
-        remote(RpmRemote): An RpmRemote to download with.
+        remote(RpmRemote or UlnRemote): An RpmRemote or UlnRemote to download with.
         url(str): A remote repository URL
 
     Returns:
@@ -153,7 +155,7 @@ def is_optimized_sync(repository, remote, url):
 
     Args:
         repository(RpmRepository): An RpmRepository to check optimization for.
-        remote(RpmRemote): An RPMRemote to check optimization for.
+        remote(RpmRemote or UlnRemote): An RPMRemote or UlnRemote to check optimization for.
         url(str): A remote repository URL.
 
     Returns:
@@ -203,7 +205,10 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
         ValueError: If the remote does not specify a url to sync.
 
     """
-    remote = RpmRemote.objects.get(pk=remote_pk)
+    try:
+        remote = RpmRemote.objects.get(pk=remote_pk)
+    except ObjectDoesNotExist:
+        remote = UlnRemote.objects.get(pk=remote_pk)
     repository = RpmRepository.objects.get(pk=repository_pk)
 
     if not remote.url:
@@ -319,7 +324,7 @@ class RpmFirstStage(Stage):
         The first stage of a pulp_rpm sync pipeline.
 
         Args:
-            remote (RpmRemote): The remote data to be used when syncing
+            remote (RpmRemote or UlnRemote): The remote data to be used when syncing
             repository (RpmRepository): The repository to be compared when optimizing sync
             deferred_download (bool): if True the downloading will not happen now. If False, it will
                 happen immediately.

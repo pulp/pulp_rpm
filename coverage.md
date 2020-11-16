@@ -17,6 +17,7 @@ This file contains list of features and their test coverage.
    | only types contained in rpm-unsigned |
 | As a user, I can sync and skip specific type (srpm) | NO |  |
 | As a user, I can sync opensuse repository | NO |  |
+| As a user, I can sync Oracle repository using ULN | NO | |
 | As a user, I can sync from a mirror list | YES |  |
 | As a user, I can sync from a mirror list with comments | YES |  |
 | As a user, I can sync from CDN using certificates | YES |  |

@@ -29,6 +29,7 @@ from pulp_rpm.app.models import (
     RpmRemote,
     RpmRepository,
     RpmPublication,
+    UlnRemote,
 )
 from pulp_rpm.app.schema import COPY_CONFIG_SCHEMA
 
@@ -64,16 +65,10 @@ class RpmRepositorySerializer(RepositorySerializer):
         model = RpmRepository
 
 
-class RpmRemoteSerializer(RemoteSerializer):
+class RpmBaseRemoteSerializer(RemoteSerializer):
     """
-    A Serializer for RpmRemote.
+    A common base serializer for multiple RPM based remotes.
     """
-
-    sles_auth_token = serializers.CharField(
-        help_text=_("Authentication token for SLES repositories."),
-        required=False,
-        allow_null=True,
-    )
 
     policy = serializers.ChoiceField(
         help_text=_(
@@ -84,9 +79,58 @@ class RpmRemoteSerializer(RemoteSerializer):
         default=Remote.IMMEDIATE,
     )
 
+
+class RpmRemoteSerializer(RpmBaseRemoteSerializer):
+    """
+    A Serializer for RpmRemote.
+    """
+
+    sles_auth_token = serializers.CharField(
+        help_text=_("Authentication token for SLES repositories."),
+        required=False,
+        allow_null=True,
+    )
+
     class Meta:
         fields = RemoteSerializer.Meta.fields + ("sles_auth_token",)
         model = RpmRemote
+
+
+class UlnRemoteSerializer(RpmBaseRemoteSerializer):
+    """
+    A Serializer for UlnRemote.
+    """
+
+    username = serializers.CharField(
+        help_text=_("Your ULN account username."),
+        required=True,
+    )
+
+    password = serializers.CharField(
+        help_text=_("Your ULN account password."),
+        required=True,
+    )
+
+    url = serializers.CharField(
+        help_text=_(
+            "The ULN repo URL of the remote content source."
+            '"This is "uln://" followed by the channel name. E.g.: "uln://ol7_x86_64_oracle"'
+        ),
+        required=True,
+    )
+
+    uln_server_base_url = serializers.CharField(
+        help_text=_(
+            "Base URL of the ULN server. If the uln_server_base_url is not provided pulp_rpm will"
+            "use the contents of the DEFAULT_ULN_SERVER_BASE_URL setting instead."
+        ),
+        required=False,
+        allow_null=True,
+    )
+
+    class Meta:
+        fields = RemoteSerializer.Meta.fields + ("uln_server_base_url",)
+        model = UlnRemote
 
 
 class RpmPublicationSerializer(PublicationSerializer):
