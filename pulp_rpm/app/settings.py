@@ -7,3 +7,4 @@ Check `Plugin Writer's Guide`_ for more details.
 
 INSTALLED_APPS = ["django_readonly_field", "dynaconf_merge"]
 ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION = False
+DEFAULT_ULN_SERVER_BASE_URL = "https://linux-update.oracle.com/"

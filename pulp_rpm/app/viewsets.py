@@ -37,6 +37,7 @@ from pulp_rpm.app.models import (
     RepoMetadataFile,
     RpmDistribution,
     RpmRemote,
+    UlnRemote,
     RpmRepository,
     RpmPublication,
     UpdateRecord,
@@ -56,6 +57,7 @@ from pulp_rpm.app.serializers import (
     RepoMetadataFileSerializer,
     RpmDistributionSerializer,
     RpmRemoteSerializer,
+    UlnRemoteSerializer,
     RpmRepositorySerializer,
     RpmRepositorySyncURLSerializer,
     RpmPublicationSerializer,
@@ -163,6 +165,16 @@ class RpmRemoteViewSet(RemoteViewSet):
     endpoint_name = "rpm"
     queryset = RpmRemote.objects.all()
     serializer_class = RpmRemoteSerializer
+
+
+class UlnRemoteViewSet(RemoteViewSet):
+    """
+    A ViewSet for UlnRemote.
+    """
+
+    endpoint_name = "uln"
+    queryset = UlnRemote.objects.all()
+    serializer_class = UlnRemoteSerializer
 
 
 class UpdateRecordFilter(ContentFilter):
