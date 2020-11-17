@@ -12,9 +12,7 @@ from pulp_rpm.app.models import Package
 from pulp_rpm.app.shared_utils import _prepare_package
 
 
-class PackageSerializer(
-    SingleArtifactContentUploadSerializer, ContentChecksumSerializer
-):
+class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSerializer):
     """
     A Serializer for Package.
 
@@ -22,7 +20,10 @@ class PackageSerializer(
     keeping fields from the parent class as well. Provide help_text.
     """
 
-    name = serializers.CharField(help_text=_("Name of the package"), read_only=True,)
+    name = serializers.CharField(
+        help_text=_("Name of the package"),
+        read_only=True,
+    )
     epoch = serializers.CharField(
         help_text=_("The package's epoch"),
         allow_blank=True,
@@ -30,27 +31,27 @@ class PackageSerializer(
         read_only=True,
     )
     version = serializers.CharField(
-        help_text=_("The version of the package. For example, '2.8.0'"), read_only=True,
+        help_text=_("The version of the package. For example, '2.8.0'"),
+        read_only=True,
     )
     release = serializers.CharField(
-        help_text=_(
-            "The release of a particular version of the package. e.g. '1.el7' or '3.f24'"
-        ),
+        help_text=_("The release of a particular version of the package. e.g. '1.el7' or '3.f24'"),
         read_only=True,
     )
     arch = serializers.CharField(
         help_text=_(
-            "The target architecture for a package."
-            "For example, 'x86_64', 'i686', or 'noarch'"
+            "The target architecture for a package." "For example, 'x86_64', 'i686', or 'noarch'"
         ),
         read_only=True,
     )
 
     pkgId = serializers.CharField(
-        help_text=_("Checksum of the package file"), read_only=True,
+        help_text=_("Checksum of the package file"),
+        read_only=True,
     )
     checksum_type = serializers.CharField(
-        help_text=_("Type of checksum, e.g. 'sha256', 'md5'"), read_only=True,
+        help_text=_("Type of checksum, e.g. 'sha256', 'md5'"),
+        read_only=True,
     )
 
     summary = serializers.CharField(
@@ -141,7 +142,8 @@ class PackageSerializer(
         read_only=True,
     )
     location_href = serializers.CharField(
-        help_text=_("Relative location of package to the repodata"), read_only=True,
+        help_text=_("Relative location of package to the repodata"),
+        read_only=True,
     )
 
     rpm_buildhost = serializers.CharField(
@@ -181,10 +183,12 @@ class PackageSerializer(
         read_only=True,
     )
     rpm_header_start = serializers.IntegerField(
-        help_text=_("First byte of the header"), read_only=True,
+        help_text=_("First byte of the header"),
+        read_only=True,
     )
     rpm_header_end = serializers.IntegerField(
-        help_text=_("Last byte of the header"), read_only=True,
+        help_text=_("Last byte of the header"),
+        read_only=True,
     )
     is_modular = serializers.BooleanField(
         help_text=_("Flag to identify if the package is modular"),
@@ -193,9 +197,7 @@ class PackageSerializer(
     )
 
     size_archive = serializers.IntegerField(
-        help_text=_(
-            "Size, in bytes, of the archive portion of the original package file"
-        ),
+        help_text=_("Size, in bytes, of the archive portion of the original package file"),
         read_only=True,
     )
     size_installed = serializers.IntegerField(
@@ -203,7 +205,8 @@ class PackageSerializer(
         read_only=True,
     )
     size_package = serializers.IntegerField(
-        help_text=_("Size, in bytes, of the package"), read_only=True,
+        help_text=_("Size, in bytes, of the package"),
+        read_only=True,
     )
 
     time_build = serializers.IntegerField(
@@ -254,9 +257,7 @@ class PackageSerializer(
             )
 
             raise serializers.ValidationError(
-                _("There is already a package with: {values}.").format(
-                    values=error_data
-                )
+                _("There is already a package with: {values}.").format(values=error_data)
             )
 
         data.update(new_pkg)

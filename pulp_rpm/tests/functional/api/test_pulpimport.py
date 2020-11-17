@@ -59,9 +59,7 @@ class PulpImportTestBase(PulpTestCase):
             remote = cls.remote_api.create(body)
 
             repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
-            sync_response = cls.repo_api.sync(
-                export_repo.pulp_href, repository_sync_data
-            )
+            sync_response = cls.repo_api.sync(export_repo.pulp_href, repository_sync_data)
             monitor_task(sync_response.task)
             # remember it
             export_repos.append(export_repo)
@@ -91,9 +89,7 @@ class PulpImportTestBase(PulpTestCase):
 
     @classmethod
     def _create_chunked_export(cls):
-        export_response = cls.exports_api.create(
-            cls.exporter.pulp_href, {"chunk_size": "5KB"}
-        )
+        export_response = cls.exports_api.create(cls.exporter.pulp_href, {"chunk_size": "5KB"})
         monitor_task(export_response.task)
         task = cls.client.get(export_response.task)
         resources = task["created_resources"]
@@ -151,22 +147,14 @@ class PulpImportTestBase(PulpTestCase):
         """Perform an import with importer."""
         if chunked:
             filenames = [
-                f
-                for f in list(self.chunked_export.output_file_info.keys())
-                if f.endswith("json")
+                f for f in list(self.chunked_export.output_file_info.keys()) if f.endswith("json")
             ]
-            import_response = self.imports_api.create(
-                importer.pulp_href, {"toc": filenames[0]}
-            )
+            import_response = self.imports_api.create(importer.pulp_href, {"toc": filenames[0]})
         else:
             filenames = [
-                f
-                for f in list(self.export.output_file_info.keys())
-                if f.endswith("tar.gz")
+                f for f in list(self.export.output_file_info.keys()) if f.endswith("tar.gz")
             ]
-            import_response = self.imports_api.create(
-                importer.pulp_href, {"path": filenames[0]}
-            )
+            import_response = self.imports_api.create(importer.pulp_href, {"path": filenames[0]})
         monitor_task(import_response.task)
         task = self.client.get(import_response.task)
         resources = task["created_resources"]
@@ -246,8 +234,9 @@ class DistributionTreePulpImportTestCase(PulpImportTestBase):
         cls.imports_api = ImportersCoreImportsApi(cls.core_client)
         cls.dist_tree_api = ContentDistributionTreesApi(cls.rpm_client)
 
-        cls.import_repos, cls.export_repos, cls.remotes = \
-            cls._setup_repositories(RPM_KICKSTART_FIXTURE_URL)
+        cls.import_repos, cls.export_repos, cls.remotes = cls._setup_repositories(
+            RPM_KICKSTART_FIXTURE_URL
+        )
         cls.exporter = cls._create_exporter()
         cls.export = cls._create_export()
 

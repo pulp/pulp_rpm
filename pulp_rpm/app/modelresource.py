@@ -56,8 +56,9 @@ class RpmContentResource(BaseContentResource):
 
         """
         content = self.Meta.model.objects.filter(pk__in=self.repo_version.content)
-        self._add_to_mapping(self.repo_version.repository, content.values_list("pulp_id",
-                                                                               flat=True))
+        self._add_to_mapping(
+            self.repo_version.repository, content.values_list("pulp_id", flat=True)
+        )
 
         tree = DistributionTree.objects.filter(pk__in=self.repo_version.content).first()
         if tree:
@@ -165,6 +166,7 @@ class UpdateRecordResource(RpmContentResource):
 
 # Distribution Tree
 
+
 class DistributionTreeResource(RpmContentResource):
     """
     Resource for import/export of rpm_distributiontree entities.
@@ -255,7 +257,7 @@ class AddonResource(QueryModelResource):
     repository = fields.Field(
         column_name="repository",
         attribute="repository",
-        widget=ForeignKeyWidget(RpmRepository, "name")
+        widget=ForeignKeyWidget(RpmRepository, "name"),
     )
 
     def before_import_row(self, row, **kwargs):
@@ -297,7 +299,7 @@ class VariantResource(QueryModelResource):
     repository = fields.Field(
         column_name="repository",
         attribute="repository",
-        widget=ForeignKeyWidget(RpmRepository, "name")
+        widget=ForeignKeyWidget(RpmRepository, "name"),
     )
 
     def before_import_row(self, row, **kwargs):
@@ -377,17 +379,13 @@ class UpdateCollectionResource(QueryModelResource):
 
         """
         return UpdateCollection.objects.filter(
-            update_record__in=UpdateRecord.objects.filter(
-                pk__in=self.repo_version.content
-            )
+            update_record__in=UpdateRecord.objects.filter(pk__in=self.repo_version.content)
         )
 
     class Meta:
         model = UpdateCollection
         exclude = QueryModelResource.Meta.exclude + ("packages",)
-        import_id_fields = tuple(
-            chain.from_iterable(UpdateCollection._meta.unique_together)
-        )
+        import_id_fields = tuple(chain.from_iterable(UpdateCollection._meta.unique_together))
 
 
 class UpdateReferenceResource(QueryModelResource):
@@ -458,9 +456,7 @@ class UpdateCollectionPackageResource(QueryModelResource):
         """
         (uc_name, uc_updrec_digest) = row["update_collection"].split("|")
         uc_updrecord = UpdateRecord.objects.filter(digest=uc_updrec_digest).first()
-        uc = UpdateCollection.objects.filter(
-            name=uc_name, update_record=uc_updrecord
-        ).first()
+        uc = UpdateCollection.objects.filter(name=uc_name, update_record=uc_updrecord).first()
         row["update_collection"] = str(uc.pulp_id)
 
     def set_up_queryset(self):
@@ -473,9 +469,7 @@ class UpdateCollectionPackageResource(QueryModelResource):
         """
         return UpdateCollectionPackage.objects.filter(
             update_collection__in=UpdateCollection.objects.filter(
-                update_record__in=UpdateRecord.objects.filter(
-                    pk__in=self.repo_version.content
-                )
+                update_record__in=UpdateRecord.objects.filter(pk__in=self.repo_version.content)
             )
         )
 
@@ -488,7 +482,7 @@ class UpdateCollectionPackageResource(QueryModelResource):
             "release",
             "sum",
             "filename",
-            "update_collection"
+            "update_collection",
         )
 
 

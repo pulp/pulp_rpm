@@ -6,5 +6,5 @@ class PulpRpmPluginAppConfig(PulpPluginAppConfig):
     Entry point for pulp_rpm plugin.
     """
 
-    name = 'pulp_rpm.app'
-    label = 'rpm'
+    name = "pulp_rpm.app"
+    label = "rpm"

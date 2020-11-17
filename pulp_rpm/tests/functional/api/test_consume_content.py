@@ -38,10 +38,7 @@ class PackageManagerConsumeTestCase(PulpTestCase):
         """Verify whether dnf or yum are present."""
         cls.cfg = config.get_config()
         cls.pkg_mgr = cli.PackageManager(cls.cfg)
-        cls.pkg_mgr.raise_if_unsupported(
-            unittest.SkipTest,
-            'This test requires dnf or yum.'
-        )
+        cls.pkg_mgr.raise_if_unsupported(unittest.SkipTest, "This test requires dnf or yum.")
 
     def test_on_demand_policies(self):
         """Verify whether content on demand synced can be consumed.
@@ -61,40 +58,46 @@ class PackageManagerConsumeTestCase(PulpTestCase):
 
         `Pulp #3204 <https://pulp.plan.io/issues/3204>`_
         """
-        self.do_test('immediate')
+        self.do_test("immediate")
 
     def do_test(self, policy):
         """Verify whether package manager can consume content from Pulp."""
         client = api.Client(self.cfg, api.json_handler)
         body = gen_rpm_remote(policy=policy)
         remote = client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(client.delete, remote['pulp_href'])
+        self.addCleanup(client.delete, remote["pulp_href"])
 
         repo = client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(client.delete, repo['pulp_href'])
+        self.addCleanup(client.delete, repo["pulp_href"])
 
         sync(self.cfg, remote, repo)
 
         publication = publish(self.cfg, repo)
-        self.addCleanup(client.delete, publication['pulp_href'])
+        self.addCleanup(client.delete, publication["pulp_href"])
 
         body = gen_distribution()
-        body['publication'] = publication['pulp_href']
-        distribution = client.using_handler(api.task_handler).post(
-            RPM_DISTRIBUTION_PATH, body
-        )
-        self.addCleanup(client.delete, distribution['pulp_href'])
+        body["publication"] = publication["pulp_href"]
+        distribution = client.using_handler(api.task_handler).post(RPM_DISTRIBUTION_PATH, body)
+        self.addCleanup(client.delete, distribution["pulp_href"])
 
         cli_client = cli.Client(self.cfg)
-        cli_client.run(('sudo', 'dnf', 'config-manager', '--add-repo', distribution['base_url']))
-        repo_id = '*{}_'.format(distribution['base_path'])
-        cli_client.run(('sudo', 'dnf', 'config-manager', '--save',
-                        '--setopt={}.gpgcheck=0'.format(repo_id), repo_id))
-        self.addCleanup(cli_client.run, ('sudo', 'dnf', 'config-manager', '--disable', repo_id))
-        rpm_name = 'walrus'
+        cli_client.run(("sudo", "dnf", "config-manager", "--add-repo", distribution["base_url"]))
+        repo_id = "*{}_".format(distribution["base_path"])
+        cli_client.run(
+            (
+                "sudo",
+                "dnf",
+                "config-manager",
+                "--save",
+                "--setopt={}.gpgcheck=0".format(repo_id),
+                repo_id,
+            )
+        )
+        self.addCleanup(cli_client.run, ("sudo", "dnf", "config-manager", "--disable", repo_id))
+        rpm_name = "walrus"
         self.pkg_mgr.install(rpm_name)
         self.addCleanup(self.pkg_mgr.uninstall, rpm_name)
-        rpm = cli_client.run(('rpm', '-q', rpm_name)).stdout.strip().split('-')
+        rpm = cli_client.run(("rpm", "-q", rpm_name)).stdout.strip().split("-")
         self.assertEqual(rpm_name, rpm[0])
 
 
@@ -110,13 +113,13 @@ class ConsumeSignedRepomdTestCase(PulpTestCase):
         cls.api_client = api.Client(cls.cfg, api.json_handler)
 
         signing_services = cls.api_client.using_handler(api.page_handler).get(
-            'pulp/api/v3/signing-services/', params={'name': 'sign-metadata'}
+            "pulp/api/v3/signing-services/", params={"name": "sign-metadata"}
         )
         if not signing_services:
             init_signed_repo_configuration()
 
             signing_services = cls.api_client.using_handler(api.page_handler).get(
-                'pulp/api/v3/signing-services/', params={'name': 'sign-metadata'}
+                "pulp/api/v3/signing-services/", params={"name": "sign-metadata"}
             )
 
         cls.metadata_signing_service = signing_services[0]
@@ -130,7 +133,9 @@ class ConsumeSignedRepomdTestCase(PulpTestCase):
     def test_config_dot_repo(self):
         """Test all possible combinations of gpgcheck options made to a publication."""
         test_options = {
-            "gpgcheck": [0, 1], "repo_gpgcheck": [0, 1], "has_signing_service": [True, False]
+            "gpgcheck": [0, 1],
+            "repo_gpgcheck": [0, 1],
+            "has_signing_service": [True, False],
         }
         cartesian_product = itertools.product(*test_options.values())
         func_params = [dict(zip(test_options.keys(), a)) for a in cartesian_product]
@@ -145,21 +150,19 @@ class ConsumeSignedRepomdTestCase(PulpTestCase):
         )
         response = requests.get(f'{distribution["base_url"]}/config.repo')
 
-        options = f'gpgcheck={gpgcheck}, repo_gpgcheck={repo_gpgcheck}, ss={has_signing_service}'
+        options = f"gpgcheck={gpgcheck}, repo_gpgcheck={repo_gpgcheck}, ss={has_signing_service}"
 
         self.assertEqual(response.status_code, 200, options)
+        self.assertIn(bytes(f'[{distribution["name"]}]\n', "utf-8"), response.content, options)
         self.assertIn(
-            bytes(f'[{distribution["name"]}]\n', 'utf-8'), response.content, options
+            bytes(f'baseurl={distribution["base_url"]}\n', "utf-8"), response.content, options
         )
-        self.assertIn(
-            bytes(f'baseurl={distribution["base_url"]}\n', 'utf-8'), response.content, options
-        )
-        self.assertIn(bytes(f'gpgcheck={gpgcheck}\n', 'utf-8'), response.content, options)
-        self.assertIn(bytes(f'repo_gpgcheck={repo_gpgcheck}\n', 'utf-8'), response.content, options)
+        self.assertIn(bytes(f"gpgcheck={gpgcheck}\n", "utf-8"), response.content, options)
+        self.assertIn(bytes(f"repo_gpgcheck={repo_gpgcheck}\n", "utf-8"), response.content, options)
 
         if has_signing_service:
             self.assertIn(
-                bytes(f'gpgkey={distribution["base_url"]}repodata/public.key', 'utf-8'),
+                bytes(f'gpgkey={distribution["base_url"]}repodata/public.key', "utf-8"),
                 response.content,
                 options,
             )
@@ -168,29 +171,29 @@ class ConsumeSignedRepomdTestCase(PulpTestCase):
         """Create a distribution with a repository that contains a signing service."""
         repo_params = {}
         if has_signing_service:
-            repo_params['metadata_signing_service'] = self.metadata_signing_service['pulp_href']
+            repo_params["metadata_signing_service"] = self.metadata_signing_service["pulp_href"]
 
         repo = self.api_client.post(RPM_REPO_PATH, gen_repo(**repo_params))
 
-        self.addCleanup(self.api_client.delete, repo['pulp_href'])
+        self.addCleanup(self.api_client.delete, repo["pulp_href"])
 
         remote = self.api_client.post(RPM_REMOTE_PATH, gen_rpm_remote())
-        self.addCleanup(self.api_client.delete, remote['pulp_href'])
+        self.addCleanup(self.api_client.delete, remote["pulp_href"])
 
         sync(self.cfg, remote, repo)
-        repo = self.api_client.get(repo['pulp_href'])
+        repo = self.api_client.get(repo["pulp_href"])
 
-        self.assertIsNotNone(repo['latest_version_href'])
+        self.assertIsNotNone(repo["latest_version_href"])
 
         publication = publish(self.cfg, repo, gpgcheck=gpgcheck, repo_gpgcheck=repo_gpgcheck)
-        self.addCleanup(self.api_client.delete, publication['pulp_href'])
+        self.addCleanup(self.api_client.delete, publication["pulp_href"])
 
         body = gen_distribution()
-        body['publication'] = publication['pulp_href']
+        body["publication"] = publication["pulp_href"]
         distribution = self.api_client.using_handler(api.task_handler).post(
             RPM_DISTRIBUTION_PATH, body
         )
-        self.addCleanup(self.api_client.delete, distribution['pulp_href'])
+        self.addCleanup(self.api_client.delete, distribution["pulp_href"])
 
         return distribution
 
@@ -201,23 +204,30 @@ class ConsumeSignedRepomdTestCase(PulpTestCase):
         This configuration is going to be used by the package manager (dnf) afterwards.
         """
         self.cli_client.run(
-            ('sudo', 'dnf', 'config-manager', '--add-repo', distribution['base_url'])
+            ("sudo", "dnf", "config-manager", "--add-repo", distribution["base_url"])
         )
-        repo_id = '*{}_'.format(distribution['base_path'])
+        repo_id = "*{}_".format(distribution["base_path"])
         public_key_url = f"{distribution['base_url']}repodata/public.key"
         self.cli_client.run(
-            ('sudo', 'dnf', 'config-manager', '--save', f'--setopt={repo_id}.gpgcheck=0',
-             f'--setopt={repo_id}.repo_gpgcheck=1', f'--setopt={repo_id}.gpgkey={public_key_url}',
-             repo_id)
+            (
+                "sudo",
+                "dnf",
+                "config-manager",
+                "--save",
+                f"--setopt={repo_id}.gpgcheck=0",
+                f"--setopt={repo_id}.repo_gpgcheck=1",
+                f"--setopt={repo_id}.gpgkey={public_key_url}",
+                repo_id,
+            )
         )
         self.addCleanup(
-            self.cli_client.run, ('sudo', 'dnf', 'config-manager', '--disable', repo_id)
+            self.cli_client.run, ("sudo", "dnf", "config-manager", "--disable", repo_id)
         )
 
     def install_package(self):
         """Install and verify the installed package."""
-        rpm_name = 'walrus'
+        rpm_name = "walrus"
         self.pkg_mgr.install(rpm_name)
         self.addCleanup(self.pkg_mgr.uninstall, rpm_name)
-        rpm = self.cli_client.run(('rpm', '-q', rpm_name)).stdout.strip().split('-')
+        rpm = self.cli_client.run(("rpm", "-q", rpm_name)).stdout.strip().split("-")
         self.assertEqual(rpm_name, rpm[0])

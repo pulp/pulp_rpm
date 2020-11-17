@@ -53,27 +53,26 @@ class BaseCopy(PulpTestCase):
         4. Assert that the correct number of units were added and are present in the repo.
         """
         source_repo = self.client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, source_repo['pulp_href'])
+        self.addCleanup(self.client.delete, source_repo["pulp_href"])
 
         dest_repo = self.client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, dest_repo['pulp_href'])
+        self.addCleanup(self.client.delete, dest_repo["pulp_href"])
 
         # Create a remote with the standard test fixture url.
         body = gen_rpm_remote(url=remote_url)
         remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote['pulp_href'])
+        self.addCleanup(self.client.delete, remote["pulp_href"])
 
         # Sync the repository.
-        self.assertEqual(source_repo["latest_version_href"],
-                         f"{source_repo['pulp_href']}versions/0/")
+        self.assertEqual(
+            source_repo["latest_version_href"], f"{source_repo['pulp_href']}versions/0/"
+        )
         sync(self.cfg, remote, source_repo)
-        source_repo = self.client.get(source_repo['pulp_href'])
+        source_repo = self.client.get(source_repo["pulp_href"])
 
         # Check that we have the correct content counts.
         self.assertDictEqual(get_content_summary(source_repo), summary)
-        self.assertDictEqual(
-            get_added_content_summary(source_repo), summary
-        )
+        self.assertDictEqual(get_added_content_summary(source_repo), summary)
 
         return source_repo, dest_repo
 
@@ -93,34 +92,39 @@ class BasicCopyTestCase(BaseCopy):
         """Test copying all the content from one repo to another."""
         source_repo, dest_repo = self._setup_repos()
         results = RPM_FIXTURE_SUMMARY
-        config = [{
-            'source_repo_version': source_repo['latest_version_href'],
-            'dest_repo': dest_repo['pulp_href'],
-        }]
+        config = [
+            {
+                "source_repo_version": source_repo["latest_version_href"],
+                "dest_repo": dest_repo["pulp_href"],
+            }
+        ]
 
         rpm_copy(self.cfg, config)
-        dest_repo = self.client.get(dest_repo['pulp_href'])
+        dest_repo = self.client.get(dest_repo["pulp_href"])
 
         # Check that we have the correct content counts.
         self.assertDictEqual(get_content_summary(dest_repo), results)
         self.assertDictEqual(
-            get_added_content_summary(dest_repo), results,
+            get_added_content_summary(dest_repo),
+            results,
         )
 
     def test_copy_none(self):
         """Test copying NO CONTENT from one repo to another."""
         source_repo, dest_repo = self._setup_repos()
-        config = [{
-            'source_repo_version': source_repo['latest_version_href'],
-            'dest_repo': dest_repo['pulp_href'],
-            'content': [],
-        }]
+        config = [
+            {
+                "source_repo_version": source_repo["latest_version_href"],
+                "dest_repo": dest_repo["pulp_href"],
+                "content": [],
+            }
+        ]
 
         rpm_copy(self.cfg, config)
-        dest_repo = self.client.get(dest_repo['pulp_href'])
-        dest_repo_latest = dest_repo['latest_version_href']
+        dest_repo = self.client.get(dest_repo["pulp_href"])
+        dest_repo_latest = dest_repo["latest_version_href"]
         # Check that no new repo-version was created in dest_repo
-        self.assertEqual("{}versions/0/".format(dest_repo['pulp_href']), dest_repo_latest)
+        self.assertEqual("{}versions/0/".format(dest_repo["pulp_href"]), dest_repo_latest)
 
     def test_invalid_config(self):
         """Test invalid config."""
@@ -129,27 +133,27 @@ class BasicCopyTestCase(BaseCopy):
         with self.assertRaises(HTTPError):
             # no list
             config = {
-                'source_repo_version': source_repo['latest_version_href'],
-                'dest_repo': dest_repo['pulp_href'],
+                "source_repo_version": source_repo["latest_version_href"],
+                "dest_repo": dest_repo["pulp_href"],
             }
             rpm_copy(self.cfg, config)
 
         with self.assertRaises(HTTPError):
             good = {
-                'source_repo_version': source_repo['latest_version_href'],
-                'dest_repo': dest_repo['pulp_href']
+                "source_repo_version": source_repo["latest_version_href"],
+                "dest_repo": dest_repo["pulp_href"],
             }
-            bad = {
-                'source_repo_version': source_repo['latest_version_href']
-            }
+            bad = {"source_repo_version": source_repo["latest_version_href"]}
             config = [good, bad]
             rpm_copy(self.cfg, config)
 
         with self.assertRaises(HTTPError):
-            config = [{
-                'source_repo': source_repo['latest_version_href'],
-                'dest_repo': dest_repo['pulp_href'],
-            }]
+            config = [
+                {
+                    "source_repo": source_repo["latest_version_href"],
+                    "dest_repo": dest_repo["pulp_href"],
+                }
+            ]
             rpm_copy(self.cfg, config)
 
     def test_content(self):
@@ -160,15 +164,17 @@ class BasicCopyTestCase(BaseCopy):
         content = self.client.get(f"{UPDATERECORD_CONTENT_PATH}?repository_version={latest_href}")
         content_to_copy = (content["results"][0]["pulp_href"], content["results"][1]["pulp_href"])
 
-        config = [{
-            'source_repo_version': latest_href,
-            'dest_repo': dest_repo['pulp_href'],
-            'content': content_to_copy
-        }]
+        config = [
+            {
+                "source_repo_version": latest_href,
+                "dest_repo": dest_repo["pulp_href"],
+                "content": content_to_copy,
+            }
+        ]
 
         rpm_copy(self.cfg, config)
 
-        dest_repo = self.client.get(dest_repo['pulp_href'])
+        dest_repo = self.client.get(dest_repo["pulp_href"])
         latest_href = dest_repo["latest_version_href"]
         dc = self.client.get(f"{UPDATERECORD_CONTENT_PATH}?repository_version={latest_href}")
         dest_content = [c["pulp_href"] for c in dc["results"]]
@@ -182,18 +188,21 @@ class BasicCopyTestCase(BaseCopy):
             summary=RPM_KICKSTART_FIXTURE_SUMMARY,
         )
         results = RPM_KICKSTART_FIXTURE_SUMMARY
-        config = [{
-            'source_repo_version': source_repo['latest_version_href'],
-            'dest_repo': dest_repo['pulp_href'],
-        }]
+        config = [
+            {
+                "source_repo_version": source_repo["latest_version_href"],
+                "dest_repo": dest_repo["pulp_href"],
+            }
+        ]
 
         rpm_copy(self.cfg, config)
-        dest_repo = self.client.get(dest_repo['pulp_href'])
+        dest_repo = self.client.get(dest_repo["pulp_href"])
 
         # Check that we have the correct content counts.
         self.assertDictEqual(get_content_summary(dest_repo), results)
         self.assertDictEqual(
-            get_added_content_summary(dest_repo), results,
+            get_added_content_summary(dest_repo),
+            results,
         )
 
     def test_kickstart_content(self):
@@ -207,15 +216,17 @@ class BasicCopyTestCase(BaseCopy):
         content = self.client.get(f"{KICKSTART_CONTENT_PATH}?repository_version={latest_href}")
         content_to_copy = [content["results"][0]["pulp_href"]]
 
-        config = [{
-            'source_repo_version': latest_href,
-            'dest_repo': dest_repo['pulp_href'],
-            'content': content_to_copy
-        }]
+        config = [
+            {
+                "source_repo_version": latest_href,
+                "dest_repo": dest_repo["pulp_href"],
+                "content": content_to_copy,
+            }
+        ]
 
         rpm_copy(self.cfg, config)
 
-        dest_repo = self.client.get(dest_repo['pulp_href'])
+        dest_repo = self.client.get(dest_repo["pulp_href"])
         latest_href = dest_repo["latest_version_href"]
         dc = self.client.get(f"{KICKSTART_CONTENT_PATH}?repository_version={latest_href}")
         dest_content = [c["pulp_href"] for c in dc["results"]]
@@ -244,12 +255,13 @@ class DependencySolvingTestCase(BaseCopy):
         """
         source_repo, dest_repo = self._setup_repos()
         rpm_copy(self.cfg, source_repo, dest_repo, criteria, recursive=True)
-        dest_repo = self.client.get(dest_repo['pulp_href'])
+        dest_repo = self.client.get(dest_repo["pulp_href"])
 
         # Check that we have the correct content counts.
         self.assertDictEqual(get_content_summary(dest_repo), expected_results)
         self.assertDictEqual(
-            get_added_content_summary(dest_repo), expected_results,
+            get_added_content_summary(dest_repo),
+            expected_results,
         )
 
     def test_all_content_recursive(self):
@@ -257,24 +269,26 @@ class DependencySolvingTestCase(BaseCopy):
         source_repo, dest_repo = self._setup_repos()
         latest_href = source_repo["latest_version_href"]
 
-        advisory_content = \
-            self.client.get(f"{UPDATERECORD_CONTENT_PATH}?repository_version={latest_href}")
-        advisories_to_copy = \
-            [rslt["pulp_href"] for rslt in advisory_content["results"]]
+        advisory_content = self.client.get(
+            f"{UPDATERECORD_CONTENT_PATH}?repository_version={latest_href}"
+        )
+        advisories_to_copy = [rslt["pulp_href"] for rslt in advisory_content["results"]]
         rpm_content = self.client.get(f"{RPM_CONTENT_PATH}?repository_version={latest_href}")
         rpms_to_copy = [rslt["pulp_href"] for rslt in rpm_content["results"]]
         content_to_copy = set()
         content_to_copy.update(advisories_to_copy)
         content_to_copy.update(rpms_to_copy)
-        config = [{
-            'source_repo_version': latest_href,
-            'dest_repo': dest_repo['pulp_href'],
-            'content': list(content_to_copy)
-        }]
+        config = [
+            {
+                "source_repo_version": latest_href,
+                "dest_repo": dest_repo["pulp_href"],
+                "content": list(content_to_copy),
+            }
+        ]
 
         rpm_copy(self.cfg, config, recursive=True)
 
-        dest_repo = self.client.get(dest_repo['pulp_href'])
+        dest_repo = self.client.get(dest_repo["pulp_href"])
         latest_href = dest_repo["latest_version_href"]
 
         # check advisories copied
@@ -299,8 +313,8 @@ class StrictPackageCopyTestCase(PulpTestCase):
         cls.repo_api = RepositoriesRpmApi(cls.client)
         cls.remote_api = RemotesRpmApi(cls.client)
         cls.rpm_content_api = ContentPackagesApi(cls.client)
-        cls.test_package = 'whale'
-        cls.test_package_dependencies = ['shark', 'stork']
+        cls.test_package = "whale"
+        cls.test_package_dependencies = ["shark", "stork"]
         delete_orphans(cls.cfg)
 
     def test_strict_copy_package_to_empty_repo(self):
@@ -329,22 +343,23 @@ class StrictPackageCopyTestCase(PulpTestCase):
         test_package_href = [
             pkg
             for pkg in get_content(repo.to_dict())[PULP_TYPE_PACKAGE]
-            if pkg['name'] == self.test_package
-        ][0]['pulp_href']
+            if pkg["name"] == self.test_package
+        ][0]["pulp_href"]
         package_to_copy = []
         package_to_copy.append(test_package_href)
 
-        config = [{
-            'source_repo_version': repo.latest_version_href,
-            'dest_repo': empty_repo.pulp_href,
-            'content': package_to_copy
-        }]
+        config = [
+            {
+                "source_repo_version": repo.latest_version_href,
+                "dest_repo": empty_repo.pulp_href,
+                "content": package_to_copy,
+            }
+        ]
 
         rpm_copy(self.cfg, config, recursive=True)
         empty_repo = self.repo_api.read(empty_repo.pulp_href)
         empty_repo_packages = [
-            pkg['name']
-            for pkg in get_content(empty_repo.to_dict())[PULP_TYPE_PACKAGE]
+            pkg["name"] for pkg in get_content(empty_repo.to_dict())[PULP_TYPE_PACKAGE]
         ]
 
         # assert that only 3 packages are copied (original package with its two dependencies)
@@ -377,29 +392,25 @@ class StrictPackageCopyTestCase(PulpTestCase):
 
         repo = self.repo_api.read(repo.pulp_href)
         package_category_to_copy = [
-            get_content(repo.to_dict())[PULP_TYPE_PACKAGE_CATEGORY][0]['pulp_href']
+            get_content(repo.to_dict())[PULP_TYPE_PACKAGE_CATEGORY][0]["pulp_href"]
         ]
         # repository content counts
-        repo_packagecategories_count = len(
-            get_content(repo.to_dict())[PULP_TYPE_PACKAGE_CATEGORY]
-        )
-        repo_packagegroups_count = len(
-            get_content(repo.to_dict())[PULP_TYPE_PACKAGE_GROUP]
-        )
+        repo_packagecategories_count = len(get_content(repo.to_dict())[PULP_TYPE_PACKAGE_CATEGORY])
+        repo_packagegroups_count = len(get_content(repo.to_dict())[PULP_TYPE_PACKAGE_GROUP])
 
         # do the copy
-        config = [{
-            'source_repo_version': repo.latest_version_href,
-            'dest_repo': dest_repo.pulp_href,
-            'content': package_category_to_copy
-        }]
+        config = [
+            {
+                "source_repo_version": repo.latest_version_href,
+                "dest_repo": dest_repo.pulp_href,
+                "content": package_category_to_copy,
+            }
+        ]
         rpm_copy(self.cfg, config, recursive=True)
         dest_repo = self.repo_api.read(dest_repo.pulp_href)
 
         # copied repository content counts
-        dest_repo_packages_count = len(
-            get_content(dest_repo.to_dict())[PULP_TYPE_PACKAGE]
-        )
+        dest_repo_packages_count = len(get_content(dest_repo.to_dict())[PULP_TYPE_PACKAGE])
         dest_repo_packagecategories_count = len(
             get_content(dest_repo.to_dict())[PULP_TYPE_PACKAGE_CATEGORY]
         )
@@ -408,23 +419,19 @@ class StrictPackageCopyTestCase(PulpTestCase):
         )
 
         # assert that all dependencies were copied
-        self.assertEqual(
-            repo_packagecategories_count, dest_repo_packagecategories_count
-        )
-        self.assertEqual(
-            repo_packagegroups_count, dest_repo_packagegroups_count
-        )
+        self.assertEqual(repo_packagecategories_count, dest_repo_packagecategories_count)
+        self.assertEqual(repo_packagegroups_count, dest_repo_packagegroups_count)
         # Not all packages in repository are dependecies,
         # only packagegroups packages and its dependencies
         self.assertEqual(dest_repo_packages_count, 30)
         # Assert only one latest version of 'duck' pacakge was copied
         copied_duck_pkg = [
-            duck_pkg['version']
+            duck_pkg["version"]
             for duck_pkg in get_content(dest_repo.to_dict())[PULP_TYPE_PACKAGE]
-            if duck_pkg['name'] == 'duck'
+            if duck_pkg["name"] == "duck"
         ]
         self.assertEqual(len(copied_duck_pkg), 1)
-        self.assertEqual(copied_duck_pkg[0], '0.8')
+        self.assertEqual(copied_duck_pkg[0], "0.8")
 
     def test_strict_copy_package_to_existing_repo(self):
         """Test copy package and its dependencies to empty repository.
@@ -479,21 +486,21 @@ class StrictPackageCopyTestCase(PulpTestCase):
         test_package_href = [
             pkg
             for pkg in get_content(repo.to_dict())[PULP_TYPE_PACKAGE]
-            if pkg['name'] == self.test_package
-        ][0]['pulp_href']
+            if pkg["name"] == self.test_package
+        ][0]["pulp_href"]
         package_to_copy = []
         package_to_copy.append(test_package_href)
 
-        config = [{
-            'source_repo_version': repo.latest_version_href,
-            'dest_repo': final_repo.pulp_href,
-            'content': package_to_copy
-        }]
+        config = [
+            {
+                "source_repo_version": repo.latest_version_href,
+                "dest_repo": final_repo.pulp_href,
+                "content": package_to_copy,
+            }
+        ]
 
         copy_response = rpm_copy(self.cfg, config, recursive=True)
 
         # check only two packages was copied, original package to copy and only one
         # of its dependency as one is already present
-        self.assertEqual(
-            copy_response['content_summary']['added'][PULP_TYPE_PACKAGE]['count'], 2
-        )
+        self.assertEqual(copy_response["content_summary"]["added"][PULP_TYPE_PACKAGE]["count"], 2)

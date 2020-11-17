@@ -31,7 +31,7 @@ from pulpcore.plugin.stages import (
     RemoteArtifactSaver,
     Stage,
     QueryExistingArtifacts,
-    QueryExistingContents
+    QueryExistingContents,
 )
 from pulpcore.plugin.tasking import WorkingDirectory
 
@@ -46,7 +46,7 @@ from pulp_rpm.app.constants import (
     PULP_MODULE_ATTR,
     PULP_MODULEDEFAULTS_ATTR,
     SKIP_REPODATA,
-    UPDATE_REPODATA
+    UPDATE_REPODATA,
 )
 from pulp_rpm.app.models import (
     Addon,
@@ -79,7 +79,8 @@ from pulp_rpm.app.comps import strdict_to_dict, dict_digest
 from pulp_rpm.app.shared_utils import is_previous_version, get_sha256
 
 import gi
-gi.require_version('Modulemd', '2.0')
+
+gi.require_version("Modulemd", "2.0")
 from gi.repository import Modulemd as mmdlib  # noqa: E402
 
 log = logging.getLogger(__name__)
@@ -171,15 +172,15 @@ def is_optimized_sync(repository, remote, url):
         repomd_checksum = get_sha256(repomd_path)
 
     is_optimized = (
-        repository.last_sync_remote and
-        remote.pk == repository.last_sync_remote.pk and
-        repository.last_sync_repo_version == repository.latest_version().number and
-        remote.pulp_last_updated <= repository.latest_version().pulp_created and
-        is_previous_version(repomd.revision, repository.last_sync_revision_number) and
-        repository.last_sync_repomd_checksum == repomd_checksum
+        repository.last_sync_remote
+        and remote.pk == repository.last_sync_remote.pk
+        and repository.last_sync_repo_version == repository.latest_version().number
+        and remote.pulp_last_updated <= repository.latest_version().pulp_created
+        and is_previous_version(repomd.revision, repository.last_sync_revision_number)
+        and repository.last_sync_repomd_checksum == repomd_checksum
     )
     if is_optimized:
-        optimize_data = dict(message='Optimizing Sync', code='optimizing.sync')
+        optimize_data = dict(message="Optimizing Sync", code="optimizing.sync")
         with ProgressReport(**optimize_data) as optimize_pb:
             optimize_pb.done = 1
             optimize_pb.save()
@@ -208,12 +209,11 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
     repository = RpmRepository.objects.get(pk=repository_pk)
 
     if not remote.url:
-        raise ValueError(_('A remote must have a url specified to synchronize.'))
+        raise ValueError(_("A remote must have a url specified to synchronize."))
 
-    log.info(_('Synchronizing: repository={r} remote={p}').format(
-        r=repository.name, p=remote.name))
+    log.info(_("Synchronizing: repository={r} remote={p}").format(r=repository.name, p=remote.name))
 
-    deferred_download = (remote.policy != Remote.IMMEDIATE)  # Interpret download policy
+    deferred_download = remote.policy != Remote.IMMEDIATE  # Interpret download policy
 
     with WorkingDirectory():
         remote_url = fetch_remote_url(remote)
@@ -234,9 +234,7 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
                 treeinfo["repositories"].update({repodata: None})
                 continue
             name = f"{repodata}-{treeinfo['hash']}"
-            sub_repo, created = RpmRepository.objects.get_or_create(
-                name=name, sub_repo=True
-            )
+            sub_repo, created = RpmRepository.objects.get_or_create(name=name, sub_repo=True)
             if created:
                 sub_repo.save()
             directory = treeinfo["repo_map"][repodata]
@@ -255,22 +253,21 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
                     skip_types=skip_types,
                     new_url=new_url,
                 )
-                dv = RpmDeclarativeVersion(first_stage=stage,
-                                           repository=sub_repo)
+                dv = RpmDeclarativeVersion(first_stage=stage, repository=sub_repo)
                 dv.create()
                 sub_repo.last_sync_remote = remote
                 sub_repo.last_sync_repo_version = sub_repo.latest_version().number
                 sub_repo.save()
 
-    first_stage = RpmFirstStage(remote,
-                                repository,
-                                deferred_download,
-                                skip_types=skip_types,
-                                treeinfo=treeinfo,
-                                new_url=remote_url)
-    dv = RpmDeclarativeVersion(first_stage=first_stage,
-                               repository=repository,
-                               mirror=mirror)
+    first_stage = RpmFirstStage(
+        remote,
+        repository,
+        deferred_download,
+        skip_types=skip_types,
+        treeinfo=treeinfo,
+        new_url=remote_url,
+    )
+    dv = RpmDeclarativeVersion(first_stage=first_stage, repository=repository, mirror=mirror)
     dv.create()
     repository.last_sync_remote = remote
     repository.last_sync_repo_version = repository.latest_version().number
@@ -317,8 +314,9 @@ class RpmFirstStage(Stage):
     that should exist in the new :class:`~pulpcore.plugin.models.RepositoryVersion`.
     """
 
-    def __init__(self, remote, repository, deferred_download, skip_types=None, new_url=None,
-                 treeinfo=None):
+    def __init__(
+        self, remote, repository, deferred_download, skip_types=None, new_url=None, treeinfo=None
+    ):
         """
         The first stage of a pulp_rpm sync pipeline.
 
@@ -377,6 +375,7 @@ class RpmFirstStage(Stage):
             dict: createrepo_c package objects with the pkgId as a key
 
         """
+
         def pkgcb(pkg):
             """
             A callback which is used when a whole package entry in xml is parsed.
@@ -423,12 +422,12 @@ class RpmFirstStage(Stage):
         """Build `DeclarativeContent` from the repodata."""
         self.data.remote_url = self.new_url or self.remote.url
 
-        progress_data = dict(message='Downloading Metadata Files', code='downloading.metadata')
+        progress_data = dict(message="Downloading Metadata Files", code="downloading.metadata")
         with ProgressReport(**progress_data) as metadata_pb:
             self.data.metadata_pb = metadata_pb
 
             downloader = self.remote.get_downloader(
-                url=urljoin(self.data.remote_url, 'repodata/repomd.xml')
+                url=urljoin(self.data.remote_url, "repodata/repomd.xml")
             )
             result = await downloader.run()
             metadata_pb.increment()
@@ -471,7 +470,7 @@ class RpmFirstStage(Stage):
                     url=urljoin(self.data.remote_url, path),
                     relative_path=path,
                     remote=self.remote,
-                    deferred_download=self.deferred_download
+                    deferred_download=self.deferred_download,
                 )
                 d_artifacts.append(da)
 
@@ -539,10 +538,11 @@ class RpmFirstStage(Stage):
             asyncio.gather(*downloaders_group) for downloaders_group in self.data.downloaders
         ]
         data_type_handlers = defaultdict(
-            lambda: partial(asyncio.sleep, 0), {
-                self.data.package_repodata_urls['primary']: self.parse_packages,
-                self.data.updateinfo_url: self.parse_advisories
-            }
+            lambda: partial(asyncio.sleep, 0),
+            {
+                self.data.package_repodata_urls["primary"]: self.parse_packages,
+                self.data.updateinfo_url: self.parse_advisories,
+            },
         )
 
         while pending:
@@ -570,8 +570,8 @@ class RpmFirstStage(Stage):
         )
 
         # skip SRPM if defined
-        if 'srpm' in self.skip_types:
-            packages = {pkgId: pkg for pkgId, pkg in packages.items() if pkg.arch != 'src'}
+        if "srpm" in self.skip_types:
+            packages = {pkgId: pkg for pkgId, pkg in packages.items() if pkg.arch != "src"}
 
         await self._parse_packages(packages)
 
@@ -586,18 +586,16 @@ class RpmFirstStage(Stage):
 
     async def _parse_packages(self, packages):
         progress_data = {
-            'message': 'Parsed Packages',
-            'code': 'parsing.packages',
-            'total': len(packages),
+            "message": "Parsed Packages",
+            "code": "parsing.packages",
+            "total": len(packages),
         }
 
         with ProgressReport(**progress_data) as packages_pb:
             for pkg in packages.values():
                 package = Package(**Package.createrepo_to_dict(pkg))
                 artifact = Artifact(size=package.size_package)
-                checksum_type = getattr(
-                    CHECKSUM_TYPES, package.checksum_type.upper()
-                )
+                checksum_type = getattr(CHECKSUM_TYPES, package.checksum_type.upper())
                 setattr(artifact, checksum_type, package.pkgId)
                 url = urljoin(self.data.remote_url, package.location_href)
                 filename = os.path.basename(package.location_href)
@@ -606,7 +604,7 @@ class RpmFirstStage(Stage):
                     url=url,
                     relative_path=filename,
                     remote=self.remote,
-                    deferred_download=self.deferred_download
+                    deferred_download=self.deferred_download,
                 )
                 dc = DeclarativeContent(content=package, d_artifacts=[da])
                 dc.extra_data = defaultdict(list)
@@ -615,48 +613,42 @@ class RpmFirstStage(Stage):
                 if dc.content.nevra in self.data.nevra_to_module.keys():
                     dc.content.is_modular = True
                     for dc_modulemd in self.data.nevra_to_module[dc.content.nevra]:
-                        dc.extra_data['modulemd_relation'].append(dc_modulemd)
-                        dc_modulemd.extra_data['package_relation'].append(dc)
+                        dc.extra_data["modulemd_relation"].append(dc_modulemd)
+                        dc_modulemd.extra_data["package_relation"].append(dc)
 
                 if dc.content.name in self.data.pkgname_to_groups.keys():
                     for dc_group in self.data.pkgname_to_groups[dc.content.name]:
-                        dc.extra_data['group_relations'].append(dc_group)
-                        dc_group.extra_data['related_packages'].append(dc)
+                        dc.extra_data["group_relations"].append(dc_group)
+                        dc_group.extra_data["related_packages"].append(dc)
 
                 packages_pb.increment()
                 await self.put(dc)
 
     async def _parse_advisories(self, updates):
         progress_data = {
-            'message': 'Parsed Advisories',
-            'code': 'parsing.advisories',
-            'total': len(updates),
+            "message": "Parsed Advisories",
+            "code": "parsing.advisories",
+            "total": len(updates),
         }
         with ProgressReport(**progress_data) as advisories_pb:
             for update in updates:
-                update_record = UpdateRecord(
-                    **UpdateRecord.createrepo_to_dict(update)
-                )
+                update_record = UpdateRecord(**UpdateRecord.createrepo_to_dict(update))
                 update_record.digest = hash_update_record(update)
-                future_relations = {
-                    'collections': defaultdict(list), 'references': []
-                }
+                future_relations = {"collections": defaultdict(list), "references": []}
 
                 for collection in update.collections:
                     coll_dict = UpdateCollection.createrepo_to_dict(collection)
                     coll = UpdateCollection(**coll_dict)
 
                     for package in collection.packages:
-                        pkg_dict = UpdateCollectionPackage.createrepo_to_dict(
-                            package
-                        )
+                        pkg_dict = UpdateCollectionPackage.createrepo_to_dict(package)
                         pkg = UpdateCollectionPackage(**pkg_dict)
-                        future_relations['collections'][coll].append(pkg)
+                        future_relations["collections"][coll].append(pkg)
 
                 for reference in update.references:
                     reference_dict = UpdateReference.createrepo_to_dict(reference)
                     ref = UpdateReference(**reference_dict)
-                    future_relations['references'].append(ref)
+                    future_relations["references"].append(ref)
 
                 advisories_pb.increment()
                 dc = DeclarativeContent(content=update_record)
@@ -744,20 +736,20 @@ class RepositoryMetadataParser:
         self.modulemd_downloader = self.remote.get_downloader(url=self.data.modules_url)
 
     def _set_repomd_file(self, record):
-        if '_zck' not in record.type and record.type not in PACKAGE_DB_REPODATA:
+        if "_zck" not in record.type and record.type not in PACKAGE_DB_REPODATA:
             file_data = {record.checksum_type: record.checksum, "size": record.size}
             da = DeclarativeArtifact(
                 artifact=Artifact(**file_data),
                 url=urljoin(self.data.remote_url, record.location_href),
                 relative_path=record.location_href,
                 remote=self.remote,
-                deferred_download=False
+                deferred_download=False,
             )
             repo_metadata_file = RepoMetadataFile(
                 data_type=record.type,
                 checksum_type=record.checksum_type,
                 checksum=record.checksum,
-                relative_path=record.location_href
+                relative_path=record.location_href,
             )
             dc = DeclarativeContent(content=repo_metadata_file, d_artifacts=[da])
             self.repomd_dcs.append(dc)
@@ -776,8 +768,8 @@ class ModulesMetadataParser:
         """Parse module.yaml, if exists, to create relations between packages."""
         if self.data.modulemd_results:
             modulemd_index = mmdlib.ModuleIndex.new()
-            open_func = gzip.open if self.data.modulemd_results.url.endswith('.gz') else open
-            with open_func(self.data.modulemd_results.path, 'r') as moduleyaml:
+            open_func = gzip.open if self.data.modulemd_results.url.endswith(".gz") else open
+            with open_func(self.data.modulemd_results.path, "r") as moduleyaml:
                 content = moduleyaml.read()
                 module_content = content if isinstance(content, str) else content.decode()
                 modulemd_index.update_from_string(module_content, True)
@@ -791,23 +783,23 @@ class ModulesMetadataParser:
 
         # Parsing modules happens all at one time, and from here on no useful work happens.
         # So just report that it finished this stage.
-        modulemd_pb_data = {'message': 'Parsed Modulemd', 'code': 'parsing.modulemds'}
+        modulemd_pb_data = {"message": "Parsed Modulemd", "code": "parsing.modulemds"}
         with ProgressReport(**modulemd_pb_data) as modulemd_pb:
             modulemd_total = len(modulemd_all)
             modulemd_pb.total = modulemd_total
             modulemd_pb.done = modulemd_total
 
         for modulemd in modulemd_all:
-            artifact = modulemd.pop('artifact')
-            relative_path = '{}{}{}{}{}snippet'.format(
-                modulemd[PULP_MODULE_ATTR.NAME], modulemd[PULP_MODULE_ATTR.STREAM],
-                modulemd[PULP_MODULE_ATTR.VERSION], modulemd[PULP_MODULE_ATTR.CONTEXT],
-                modulemd[PULP_MODULE_ATTR.ARCH]
+            artifact = modulemd.pop("artifact")
+            relative_path = "{}{}{}{}{}snippet".format(
+                modulemd[PULP_MODULE_ATTR.NAME],
+                modulemd[PULP_MODULE_ATTR.STREAM],
+                modulemd[PULP_MODULE_ATTR.VERSION],
+                modulemd[PULP_MODULE_ATTR.CONTEXT],
+                modulemd[PULP_MODULE_ATTR.ARCH],
             )
             da = DeclarativeArtifact(
-                artifact=artifact,
-                relative_path=relative_path,
-                url=self.data.modules_url
+                artifact=artifact, relative_path=relative_path, url=self.data.modules_url
             )
             modulemd_content = Modulemd(**modulemd)
             dc = DeclarativeContent(content=modulemd_content, d_artifacts=[da])
@@ -827,7 +819,8 @@ class ModulesMetadataParser:
         # Parsing module-defaults happens all at one time, and from here on no useful
         # work happens. So just report that it finished this stage.
         modulemd_defaults_pb_data = {
-            'message': 'Parsed Modulemd-defaults', 'code': 'parsing.modulemd_defaults'
+            "message": "Parsed Modulemd-defaults",
+            "code": "parsing.modulemd_defaults",
         }
         with ProgressReport(**modulemd_defaults_pb_data) as modulemd_defaults_pb:
             modulemd_defaults_total = len(modulemd_default_names)
@@ -835,15 +828,12 @@ class ModulesMetadataParser:
             modulemd_defaults_pb.done = modulemd_defaults_total
 
         for default in modulemd_default_names:
-            artifact = default.pop('artifact')
-            relative_path = '{}{}snippet'.format(
-                default[PULP_MODULEDEFAULTS_ATTR.MODULE],
-                default[PULP_MODULEDEFAULTS_ATTR.STREAM]
+            artifact = default.pop("artifact")
+            relative_path = "{}{}snippet".format(
+                default[PULP_MODULEDEFAULTS_ATTR.MODULE], default[PULP_MODULEDEFAULTS_ATTR.STREAM]
             )
             da = DeclarativeArtifact(
-                artifact=artifact,
-                relative_path=relative_path,
-                url=self.data.modules_url
+                artifact=artifact, relative_path=relative_path, url=self.data.modules_url
             )
             default_content = ModulemdDefaults(**default)
             self.default_content_dcs.append(
@@ -876,16 +866,15 @@ class PackagesComponentsParser:
         comps = libcomps.Comps()
         comps.fromxml_f(self.comps_result.path)
 
-        with ProgressReport(message='Parsed Comps', code='parsing.comps') as comps_pb:
-            comps_total = (len(comps.groups) + len(comps.categories) + len(comps.environments))
+        with ProgressReport(message="Parsed Comps", code="parsing.comps") as comps_pb:
+            comps_total = len(comps.groups) + len(comps.categories) + len(comps.environments)
             comps_pb.total = comps_total
             comps_pb.done = comps_total
 
         if comps.langpacks:
             langpack_dict = PackageLangpacks.libcomps_to_dict(comps.langpacks)
             packagelangpack = PackageLangpacks(
-                matches=strdict_to_dict(comps.langpacks),
-                digest=dict_digest(langpack_dict)
+                matches=strdict_to_dict(comps.langpacks), digest=dict_digest(langpack_dict)
             )
             self.package_language_pack_dc = DeclarativeContent(content=packagelangpack)
             self.package_language_pack_dc.extra_data = defaultdict(list)
@@ -898,32 +887,32 @@ class PackagesComponentsParser:
         if comps.categories:
             for category in comps.categories:
                 category_dict = PackageCategory.libcomps_to_dict(category)
-                category_dict['digest'] = dict_digest(category_dict)
+                category_dict["digest"] = dict_digest(category_dict)
                 packagecategory = PackageCategory(**category_dict)
                 dc = DeclarativeContent(content=packagecategory)
                 dc.extra_data = defaultdict(list)
 
                 if packagecategory.group_ids:
                     for group_id in packagecategory.group_ids:
-                        self.group_to_categories[group_id['name']].append(dc)
+                        self.group_to_categories[group_id["name"]].append(dc)
                 self.dc_categories.append(dc)
 
     def _init_dc_environments(self, comps):
         if comps.environments:
             for environment in comps.environments:
                 environment_dict = PackageEnvironment.libcomps_to_dict(environment)
-                environment_dict['digest'] = dict_digest(environment_dict)
+                environment_dict["digest"] = dict_digest(environment_dict)
                 packageenvironment = PackageEnvironment(**environment_dict)
                 dc = DeclarativeContent(content=packageenvironment)
                 dc.extra_data = defaultdict(list)
 
                 if packageenvironment.option_ids:
                     for option_id in packageenvironment.option_ids:
-                        self.optionalgroup_to_environments[option_id['name']].append(dc)
+                        self.optionalgroup_to_environments[option_id["name"]].append(dc)
 
                 if packageenvironment.group_ids:
                     for group_id in packageenvironment.group_ids:
-                        self.group_to_environments[group_id['name']].append(dc)
+                        self.group_to_environments[group_id["name"]].append(dc)
 
                 self.dc_environments.append(dc)
 
@@ -931,29 +920,29 @@ class PackagesComponentsParser:
         if comps.groups:
             for group in comps.groups:
                 group_dict = PackageGroup.libcomps_to_dict(group)
-                group_dict['digest'] = dict_digest(group_dict)
+                group_dict["digest"] = dict_digest(group_dict)
                 packagegroup = PackageGroup(**group_dict)
                 dc = DeclarativeContent(content=packagegroup)
                 dc.extra_data = defaultdict(list)
 
                 if packagegroup.packages:
                     for package in packagegroup.packages:
-                        self.data.pkgname_to_groups[package['name']].append(dc)
+                        self.data.pkgname_to_groups[package["name"]].append(dc)
 
                 if dc.content.id in self.group_to_categories.keys():
                     for dc_category in self.group_to_categories[dc.content.id]:
-                        dc.extra_data['category_relations'].append(dc_category)
-                        dc_category.extra_data['packagegroups'].append(dc)
+                        dc.extra_data["category_relations"].append(dc_category)
+                        dc_category.extra_data["packagegroups"].append(dc)
 
                 if dc.content.id in self.group_to_environments.keys():
                     for dc_environment in self.group_to_environments[dc.content.id]:
-                        dc.extra_data['environment_relations'].append(dc_environment)
-                        dc_environment.extra_data['packagegroups'].append(dc)
+                        dc.extra_data["environment_relations"].append(dc_environment)
+                        dc_environment.extra_data["packagegroups"].append(dc)
 
                 if dc.content.id in self.optionalgroup_to_environments.keys():
                     for dc_environment in self.optionalgroup_to_environments[dc.content.id]:
-                        dc.extra_data['env_relations_optional'].append(dc_environment)
-                        dc_environment.extra_data['optionalgroups'].append(dc)
+                        dc.extra_data["env_relations_optional"].append(dc_environment)
+                        dc_environment.extra_data["optionalgroups"].append(dc)
 
                 self.data.dc_groups.append(dc)
 
@@ -981,7 +970,7 @@ class RpmInterrelateContent(Stage):
                         continue
 
                     if isinstance(d_content.content, Modulemd):
-                        for pkg in d_content.extra_data['package_relation']:
+                        for pkg in d_content.extra_data["package_relation"]:
                             if not pkg.content._state.adding:
                                 module_package = ModulemdPackages(
                                     package_id=pkg.content.pk,
@@ -990,7 +979,7 @@ class RpmInterrelateContent(Stage):
                                 modulemd_pkgs_to_save.append(module_package)
 
                     elif isinstance(d_content.content, Package):
-                        for modulemd in d_content.extra_data['modulemd_relation']:
+                        for modulemd in d_content.extra_data["modulemd_relation"]:
                             if not modulemd.content._state.adding:
                                 module_package = ModulemdPackages(
                                     package_id=d_content.content.pk,
@@ -999,8 +988,9 @@ class RpmInterrelateContent(Stage):
                                 modulemd_pkgs_to_save.append(module_package)
 
                 if modulemd_pkgs_to_save:
-                    ModulemdPackages.objects.bulk_create(modulemd_pkgs_to_save,
-                                                         ignore_conflicts=True)
+                    ModulemdPackages.objects.bulk_create(
+                        modulemd_pkgs_to_save, ignore_conflicts=True
+                    )
 
             for declarative_content in batch:
                 await self.put(declarative_content)
@@ -1025,6 +1015,7 @@ class RpmContentSaver(ContentSaver):
                 :class:`~pulpcore.plugin.stages.DeclarativeContent` objects to be saved.
 
         """
+
         def _handle_distribution_tree(declarative_content):
             distribution_tree = declarative_content.content
             treeinfo_data = declarative_content.extra_data
@@ -1104,8 +1095,8 @@ class RpmContentSaver(ContentSaver):
                 seen_updaterecords.append(update_record.digest)
 
                 future_relations = declarative_content.extra_data
-                update_collections = future_relations.get('collections', {})
-                update_references = future_relations.get('references', [])
+                update_collections = future_relations.get("collections", {})
+                update_references = future_relations.get("references", [])
 
                 for update_collection, packages in update_collections.items():
                     update_collection.update_record = update_record

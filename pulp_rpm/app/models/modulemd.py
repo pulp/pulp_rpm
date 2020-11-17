@@ -50,9 +50,7 @@ class Modulemd(Content):
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-        unique_together = (
-            'name', 'stream', 'version', 'context', 'arch'
-        )
+        unique_together = ("name", "stream", "version", "context", "arch")
 
 
 class ModulemdDefaults(Content):
@@ -78,14 +76,14 @@ class ModulemdDefaults(Content):
 
     digest = models.CharField(unique=True, max_length=64)
 
-    repo_key_fields = ('module',)
+    repo_key_fields = ("module",)
 
     @classmethod
     def natural_key_fields(cls):
         """
         Digest is used as a natural key for ModulemdDefaults.
         """
-        return ('digest',)
+        return ("digest",)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"

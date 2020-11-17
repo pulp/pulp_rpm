@@ -40,7 +40,7 @@ from pulp_rpm.app.models import (
 
 log = logging.getLogger(__name__)
 
-REPODATA_PATH = 'repodata'
+REPODATA_PATH = "repodata"
 
 
 class PublicationData:
@@ -81,8 +81,9 @@ class PublicationData:
 
         """
         repomdrecords = []
-        repo_metadata_files = RepoMetadataFile.objects.filter(
-            pk__in=content).prefetch_related('contentartifact_set')
+        repo_metadata_files = RepoMetadataFile.objects.filter(pk__in=content).prefetch_related(
+            "contentartifact_set"
+        )
 
         for repo_metadata_file in repo_metadata_files:
             content_artifact = repo_metadata_file.contentartifact_set.get()
@@ -98,7 +99,7 @@ class PublicationData:
 
         return repomdrecords
 
-    def publish_artifacts(self, content, prefix=''):
+    def publish_artifacts(self, content, prefix=""):
         """
         Publish artifacts.
 
@@ -110,21 +111,21 @@ class PublicationData:
         published_artifacts = []
 
         # Special case for Packages
-        contentartifact_qs = ContentArtifact.objects.filter(
-            content__in=content).filter(content__pulp_type=Package.get_pulp_type())
+        contentartifact_qs = ContentArtifact.objects.filter(content__in=content).filter(
+            content__pulp_type=Package.get_pulp_type()
+        )
 
-        for content_artifact in contentartifact_qs.values('pk', 'relative_path').iterator():
-            relative_path = content_artifact['relative_path']
+        for content_artifact in contentartifact_qs.values("pk", "relative_path").iterator():
+            relative_path = content_artifact["relative_path"]
             relative_path = os.path.join(
-                prefix,
-                PACKAGES_DIRECTORY,
-                relative_path.lower()[0],
-                relative_path
+                prefix, PACKAGES_DIRECTORY, relative_path.lower()[0], relative_path
             )
-            published_artifacts.append(PublishedArtifact(
-                relative_path=relative_path,
-                publication=self.publication,
-                content_artifact_id=content_artifact['pk'])
+            published_artifacts.append(
+                PublishedArtifact(
+                    relative_path=relative_path,
+                    publication=self.publication,
+                    content_artifact_id=content_artifact["pk"],
+                )
             )
 
         # Handle everything else
@@ -135,18 +136,23 @@ class PublicationData:
                 Modulemd.get_pulp_type(),
                 ModulemdDefaults.get_pulp_type(),
                 # already dealt with
-                Package.get_pulp_type()
+                Package.get_pulp_type(),
             ]
         )
 
-        contentartifact_qs = ContentArtifact.objects.filter(
-            content__in=content).exclude(unpublishable_types).exclude(is_treeinfo)
+        contentartifact_qs = (
+            ContentArtifact.objects.filter(content__in=content)
+            .exclude(unpublishable_types)
+            .exclude(is_treeinfo)
+        )
 
-        for content_artifact in contentartifact_qs.values('pk', 'relative_path').iterator():
-            published_artifacts.append(PublishedArtifact(
-                relative_path=content_artifact['relative_path'],
-                publication=self.publication,
-                content_artifact_id=content_artifact['pk'])
+        for content_artifact in contentartifact_qs.values("pk", "relative_path").iterator():
+            published_artifacts.append(
+                PublishedArtifact(
+                    relative_path=content_artifact["relative_path"],
+                    publication=self.publication,
+                    content_artifact_id=content_artifact["pk"],
+                )
             )
 
         PublishedArtifact.objects.bulk_create(published_artifacts, batch_size=2000)
@@ -160,10 +166,10 @@ class PublicationData:
 
         """
         original_treeinfo_content_artifact = distribution_tree.contentartifact_set.get(
-            relative_path__in=['.treeinfo', 'treeinfo']
+            relative_path__in=[".treeinfo", "treeinfo"]
         )
         artifact_file = storage.open(original_treeinfo_content_artifact.artifact.file.name)
-        with NamedTemporaryFile('wb') as temp_file:
+        with NamedTemporaryFile("wb") as temp_file:
             shutil.copyfileobj(artifact_file, temp_file)
             temp_file.flush()
             treeinfo = PulpTreeInfo()
@@ -178,7 +184,7 @@ class PublicationData:
             PublishedMetadata.create_from_file(
                 relative_path=original_treeinfo_content_artifact.relative_path,
                 publication=self.publication,
-                file=File(open(treeinfo_file.name, 'rb'))
+                file=File(open(treeinfo_file.name, "rb")),
             )
         relations = ["addon", "variant"]
         for relation in relations:
@@ -192,11 +198,13 @@ class PublicationData:
 
                 if repository_version and repository.sub_repo:
                     addon_or_variant_id = getattr(addon_or_variant, f"{relation}_id")
-                    self.sub_repos.append((
-                        addon_or_variant_id,
-                        repository_version.content,
-                        repository.original_checksum_types
-                    ))
+                    self.sub_repos.append(
+                        (
+                            addon_or_variant_id,
+                            repository_version.content,
+                            repository.original_checksum_types,
+                        )
+                    )
 
     def populate(self):
         """
@@ -210,14 +218,12 @@ class PublicationData:
 
         self.publish_artifacts(main_content)
 
-        distribution_trees = DistributionTree.objects.filter(
-            pk__in=main_content
-        ).prefetch_related(
+        distribution_trees = DistributionTree.objects.filter(pk__in=main_content).prefetch_related(
             "addons",
             "variants",
             "addons__repository",
             "variants__repository",
-            "contentartifact_set"
+            "contentartifact_set",
         )
 
         for distribution_tree in distribution_trees:
@@ -250,8 +256,9 @@ def get_checksum_type(name, checksum_types):
     return getattr(cr, checksum_type.upper(), cr.SHA256)
 
 
-def publish(repository_version_pk, gpgcheck_options=None, metadata_signing_service=None,
-            checksum_types=None):
+def publish(
+    repository_version_pk, gpgcheck_options=None, metadata_signing_service=None, checksum_types=None
+):
     """
     Create a Publication based on a RepositoryVersion.
 
@@ -268,19 +275,22 @@ def publish(repository_version_pk, gpgcheck_options=None, metadata_signing_servi
     checksum_types = checksum_types or {}
     checksum_types["original"] = repository.original_checksum_types
     original_metadata_checksum_type = repository.original_checksum_types.get(
-        "primary", CHECKSUM_TYPES.SHA256)
+        "primary", CHECKSUM_TYPES.SHA256
+    )
 
-    log.info(_('Publishing: repository={repo}, version={version}').format(
-        repo=repository.name,
-        version=repository_version.number,
-    ))
+    log.info(
+        _("Publishing: repository={repo}, version={version}").format(
+            repo=repository.name,
+            version=repository_version.number,
+        )
+    )
 
     with WorkingDirectory():
         with RpmPublication.create(repository_version) as publication:
-            publication.package_checksum_type = checksum_types.get(
-                "package", CHECKSUM_TYPES.SHA256)
+            publication.package_checksum_type = checksum_types.get("package", CHECKSUM_TYPES.SHA256)
             publication.metadata_checksum_type = checksum_types.get(
-                "metadata", original_metadata_checksum_type)
+                "metadata", original_metadata_checksum_type
+            )
 
             if gpgcheck_options is not None:
                 publication.gpgcheck = gpgcheck_options.get("gpgcheck")
@@ -293,8 +303,11 @@ def publish(repository_version_pk, gpgcheck_options=None, metadata_signing_servi
 
             # Main repo
             create_repomd_xml(
-                content, publication, checksum_types, publication_data.repomdrecords,
-                metadata_signing_service=metadata_signing_service
+                content,
+                publication,
+                checksum_types,
+                publication_data.repomdrecords,
+                metadata_signing_service=metadata_signing_service,
             )
 
             for sub_repo in publication_data.sub_repos:
@@ -303,13 +316,23 @@ def publish(repository_version_pk, gpgcheck_options=None, metadata_signing_servi
                 content = getattr(publication_data, f"{name}_content")
                 extra_repomdrecords = getattr(publication_data, f"{name}_repomdrecords")
                 create_repomd_xml(
-                    content, publication, checksum_types, extra_repomdrecords, name,
-                    metadata_signing_service=metadata_signing_service
+                    content,
+                    publication,
+                    checksum_types,
+                    extra_repomdrecords,
+                    name,
+                    metadata_signing_service=metadata_signing_service,
                 )
 
 
-def create_repomd_xml(content, publication, checksum_types, extra_repomdrecords,
-                      sub_folder=None, metadata_signing_service=None):
+def create_repomd_xml(
+    content,
+    publication,
+    checksum_types,
+    extra_repomdrecords,
+    sub_folder=None,
+    metadata_signing_service=None,
+):
     """
     Creates a repomd.xml file.
 
@@ -369,16 +392,17 @@ def create_repomd_xml(content, publication, checksum_types, extra_repomdrecords,
     # simple foreign keys and avoid messing with the many-to-many relationship, which doesn't
     # work with select_related() and performs poorly with prefetch_related(). This is fine
     # because we know that Packages should only ever have one artifact per content.
-    contentartifact_qs = ContentArtifact.objects.filter(
-        content__in=packages.only('pk')
-    ).select_related(
-        # content__rpm_package is a bit of a hack, exploiting the way django sets up model
-        # inheritance, but it works and is unlikely to break. All content artifacts being
-        # accessed here have an associated Package since they originally came from the
-        # Package queryset.
-        'artifact', 'content__rpm_package'
-    ).only(
-        'artifact', 'content__rpm_package__checksum_type', 'content__rpm_package__pkgId'
+    contentartifact_qs = (
+        ContentArtifact.objects.filter(content__in=packages.only("pk"))
+        .select_related(
+            # content__rpm_package is a bit of a hack, exploiting the way django sets up model
+            # inheritance, but it works and is unlikely to break. All content artifacts being
+            # accessed here have an associated Package since they originally came from the
+            # Package queryset.
+            "artifact",
+            "content__rpm_package",
+        )
+        .only("artifact", "content__rpm_package__checksum_type", "content__rpm_package__pkgId")
     )
 
     pkg_to_hash = {}
@@ -391,7 +415,8 @@ def create_repomd_xml(content, publication, checksum_types, extra_repomdrecords,
             pkg_to_hash[ca.content_id] = (package_checksum_type, pkgid)
         else:
             pkg_to_hash[ca.content_id] = (
-                ca.content.rpm_package.checksum_type, ca.content.rpm_package.pkgId
+                ca.content.rpm_package.checksum_type,
+                ca.content.rpm_package.pkgId,
             )
 
     # Process all packages
@@ -406,11 +431,7 @@ def create_repomd_xml(content, publication, checksum_types, extra_repomdrecords,
         pkg_filename = os.path.basename(package.location_href)
         # this can cause an issue when two same RPM package names appears
         # a/name1.rpm b/name1.rpm
-        pkg.location_href = os.path.join(
-            PACKAGES_DIRECTORY,
-            pkg_filename[0].lower(),
-            pkg_filename
-        )
+        pkg.location_href = os.path.join(PACKAGES_DIRECTORY, pkg_filename[0].lower(), pkg_filename)
         pri_xml.add_pkg(pkg)
         fil_xml.add_pkg(pkg)
         oth_xml.add_pkg(pkg)
@@ -423,7 +444,7 @@ def create_repomd_xml(content, publication, checksum_types, extra_repomdrecords,
         upd_xml.add_chunk(cr.xml_dump_updaterecord(update_record.to_createrepo_c()))
 
     # Process modulemd and modulemd_defaults
-    with open(mod_yml_path, 'ab') as mod_yml:
+    with open(mod_yml_path, "ab") as mod_yml:
         for modulemd in Modulemd.objects.filter(pk__in=content).iterator():
             mod_yml.write(modulemd._artifacts.get().file.read())
             has_modules = True
@@ -449,9 +470,10 @@ def create_repomd_xml(content, publication, checksum_types, extra_repomdrecords,
         comps.langpacks = dict_to_strdict(pkg_lng.matches)
         has_comps = True
 
-    comps.toxml_f(comps_xml_path, xml_options={"default_explicit": True,
-                                               "empty_groups": True,
-                                               "uservisible_explicit": True})
+    comps.toxml_f(
+        comps_xml_path,
+        xml_options={"default_explicit": True, "empty_groups": True, "uservisible_explicit": True},
+    )
 
     pri_xml.close()
     fil_xml.close()
@@ -460,13 +482,15 @@ def create_repomd_xml(content, publication, checksum_types, extra_repomdrecords,
 
     repomd = cr.Repomd()
 
-    repomdrecords = [("primary", pri_xml_path, pri_db),
-                     ("filelists", fil_xml_path, fil_db),
-                     ("other", oth_xml_path, oth_db),
-                     ("primary_db", pri_db_path, None),
-                     ("filelists_db", fil_db_path, None),
-                     ("other_db", oth_db_path, None),
-                     ("updateinfo", upd_xml_path, None)]
+    repomdrecords = [
+        ("primary", pri_xml_path, pri_db),
+        ("filelists", fil_xml_path, fil_db),
+        ("other", oth_xml_path, oth_db),
+        ("primary_db", pri_db_path, None),
+        ("filelists_db", fil_db_path, None),
+        ("other_db", oth_db_path, None),
+        ("updateinfo", upd_xml_path, None),
+    ]
 
     if has_modules:
         repomdrecords.append(("modules", mod_yml_path, None))
@@ -484,15 +508,15 @@ def create_repomd_xml(content, publication, checksum_types, extra_repomdrecords,
             record_bz = record.compress_and_fill(checksum_type, cr.BZ2)
             record_bz.type = name
             record_bz.rename_file()
-            path = record_bz.location_href.split('/')[-1]
+            path = record_bz.location_href.split("/")[-1]
             repomd.set_record(record_bz)
         else:
             record.fill(checksum_type)
-            if (db_to_update):
+            if db_to_update:
                 db_to_update.dbinfo_update(record.checksum)
                 db_to_update.close()
             record.rename_file()
-            path = record.location_href.split('/')[-1]
+            path = record.location_href.split("/")[-1]
             repomd.set_record(record)
 
         if sub_folder:
@@ -501,7 +525,7 @@ def create_repomd_xml(content, publication, checksum_types, extra_repomdrecords,
         PublishedMetadata.create_from_file(
             relative_path=os.path.join(repodata_path, os.path.basename(path)),
             publication=publication,
-            file=File(open(path, 'rb'))
+            file=File(open(path, "rb")),
         )
 
     with open(repomd_path, "w") as repomd_f:
@@ -515,27 +539,27 @@ def create_repomd_xml(content, publication, checksum_types, extra_repomdrecords,
 
         # publish a signed file
         PublishedMetadata.create_from_file(
-            relative_path=os.path.join(repodata_path, os.path.basename(sign_results['file'])),
+            relative_path=os.path.join(repodata_path, os.path.basename(sign_results["file"])),
             publication=publication,
-            file=File(open(sign_results['file'], 'rb'))
+            file=File(open(sign_results["file"], "rb")),
         )
 
         # publish a detached signature
         PublishedMetadata.create_from_file(
-            relative_path=os.path.join(repodata_path, os.path.basename(sign_results['signature'])),
+            relative_path=os.path.join(repodata_path, os.path.basename(sign_results["signature"])),
             publication=publication,
-            file=File(open(sign_results['signature'], 'rb'))
+            file=File(open(sign_results["signature"], "rb")),
         )
 
         # publish a public key required for further verification
         PublishedMetadata.create_from_file(
-            relative_path=os.path.join(repodata_path, os.path.basename(sign_results['key'])),
+            relative_path=os.path.join(repodata_path, os.path.basename(sign_results["key"])),
             publication=publication,
-            file=File(open(sign_results['key'], 'rb'))
+            file=File(open(sign_results["key"], "rb")),
         )
     else:
         PublishedMetadata.create_from_file(
             relative_path=os.path.join(repodata_path, os.path.basename(repomd_path)),
             publication=publication,
-            file=File(open(repomd_path, 'rb'))
+            file=File(open(repomd_path, "rb")),
         )

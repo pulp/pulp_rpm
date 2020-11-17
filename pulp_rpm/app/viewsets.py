@@ -73,13 +73,13 @@ class PackageFilter(ContentFilter):
     class Meta:
         model = Package
         fields = {
-            'name': ['exact', 'in', 'ne'],
-            'epoch': ['exact', 'in', 'ne'],
-            'version': ['exact', 'in', 'ne'],
-            'release': ['exact', 'in', 'ne'],
-            'arch': ['exact', 'in', 'ne'],
-            'pkgId': ['exact', 'in'],
-            'checksum_type': ['exact', 'in', 'ne'],
+            "name": ["exact", "in", "ne"],
+            "epoch": ["exact", "in", "ne"],
+            "version": ["exact", "in", "ne"],
+            "release": ["exact", "in", "ne"],
+            "arch": ["exact", "in", "ne"],
+            "pkgId": ["exact", "in"],
+            "checksum_type": ["exact", "in", "ne"],
         }
 
 
@@ -94,7 +94,7 @@ class PackageViewSet(SingleArtifactContentUploadViewSet):
     Also specify queryset and serializer for Package.
     """
 
-    endpoint_name = 'packages'
+    endpoint_name = "packages"
     queryset = Package.objects.prefetch_related("_artifacts")
     serializer_class = PackageSerializer
     minimal_serializer_class = MinimalPackageSerializer
@@ -106,30 +106,29 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin):
     A ViewSet for RpmRepository.
     """
 
-    endpoint_name = 'rpm'
+    endpoint_name = "rpm"
     queryset = RpmRepository.objects.exclude(sub_repo=True)
     serializer_class = RpmRepositorySerializer
 
     @extend_schema(
         description="Trigger an asynchronous task to sync RPM content.",
         summary="Sync from remote",
-        responses={202: AsyncOperationResponseSerializer}
+        responses={202: AsyncOperationResponseSerializer},
     )
-    @action(detail=True, methods=['post'], serializer_class=RpmRepositorySyncURLSerializer)
+    @action(detail=True, methods=["post"], serializer_class=RpmRepositorySyncURLSerializer)
     def sync(self, request, pk):
         """
         Dispatches a sync task.
         """
         repository = self.get_object()
         serializer = RpmRepositorySyncURLSerializer(
-            data=request.data,
-            context={'request': request, 'repository_pk': pk}
+            data=request.data, context={"request": request, "repository_pk": pk}
         )
         serializer.is_valid(raise_exception=True)
-        remote = serializer.validated_data.get('remote', repository.remote)
-        mirror = serializer.validated_data.get('mirror')
-        skip_types = serializer.validated_data.get('skip_types')
-        optimize = serializer.validated_data.get('optimize')
+        remote = serializer.validated_data.get("remote", repository.remote)
+        mirror = serializer.validated_data.get("mirror")
+        skip_types = serializer.validated_data.get("skip_types")
+        optimize = serializer.validated_data.get("optimize")
 
         if repository.retain_package_versions > 0 and mirror:
             raise DRFValidationError("Cannot use 'retain_package_versions' with mirror-mode sync")
@@ -138,12 +137,12 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin):
             tasks.synchronize,
             [repository, remote],
             kwargs={
-                'mirror': mirror,
-                'remote_pk': remote.pk,
-                'repository_pk': repository.pk,
-                'skip_types': skip_types,
-                'optimize': optimize
-            }
+                "mirror": mirror,
+                "remote_pk": remote.pk,
+                "repository_pk": repository.pk,
+                "skip_types": skip_types,
+                "optimize": optimize,
+            },
         )
         return OperationPostponedResponse(result, request)
 
@@ -161,7 +160,7 @@ class RpmRemoteViewSet(RemoteViewSet):
     A ViewSet for RpmRemote.
     """
 
-    endpoint_name = 'rpm'
+    endpoint_name = "rpm"
     queryset = RpmRemote.objects.all()
     serializer_class = RpmRemoteSerializer
 
@@ -174,10 +173,10 @@ class UpdateRecordFilter(ContentFilter):
     class Meta:
         model = UpdateRecord
         fields = {
-            'id': ['exact', 'in'],
-            'status': ['exact', 'in', 'ne'],
-            'severity': ['exact', 'in', 'ne'],
-            'type': ['exact', 'in', 'ne'],
+            "id": ["exact", "in"],
+            "status": ["exact", "in", "ne"],
+            "severity": ["exact", "in", "ne"],
+            "type": ["exact", "in", "ne"],
         }
 
 
@@ -192,7 +191,7 @@ class UpdateRecordViewSet(NoArtifactContentUploadViewSet):
     Also specify queryset and serializer for UpdateRecord.
     """
 
-    endpoint_name = 'advisories'
+    endpoint_name = "advisories"
     queryset = UpdateRecord.objects.all()
     serializer_class = UpdateRecordSerializer
     minimal_serializer_class = MinimalUpdateRecordSerializer
@@ -204,14 +203,13 @@ class RpmPublicationViewSet(PublicationViewSet):
     ViewSet for Rpm Publications.
     """
 
-    endpoint_name = 'rpm'
+    endpoint_name = "rpm"
     queryset = RpmPublication.objects.exclude(complete=False)
     serializer_class = RpmPublicationSerializer
 
     @extend_schema(
-        description="Trigger an asynchronous task to create a new RPM "
-                    "content publication.",
-        responses={202: AsyncOperationResponseSerializer}
+        description="Trigger an asynchronous task to create a new RPM " "content publication.",
+        responses={202: AsyncOperationResponseSerializer},
     )
     def create(self, request):
         """
@@ -219,28 +217,28 @@ class RpmPublicationViewSet(PublicationViewSet):
         """
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        repository_version = serializer.validated_data.get('repository_version')
+        repository_version = serializer.validated_data.get("repository_version")
         repository = RpmRepository.objects.get(pk=repository_version.repository.pk)
-        metadata_checksum_type = serializer.validated_data.get('metadata_checksum_type', "")
-        package_checksum_type = serializer.validated_data.get('package_checksum_type', "")
+        metadata_checksum_type = serializer.validated_data.get("metadata_checksum_type", "")
+        package_checksum_type = serializer.validated_data.get("package_checksum_type", "")
         checksum_types = dict(
             metadata=metadata_checksum_type,
             package=package_checksum_type,
         )
         gpgcheck_options = dict(
-            gpgcheck=serializer.validated_data.get('gpgcheck'),
-            repo_gpgcheck=serializer.validated_data.get('repo_gpgcheck')
+            gpgcheck=serializer.validated_data.get("gpgcheck"),
+            repo_gpgcheck=serializer.validated_data.get("repo_gpgcheck"),
         )
 
         result = enqueue_with_reservation(
             tasks.publish,
             [repository_version.repository],
             kwargs={
-                'repository_version_pk': repository_version.pk,
-                'metadata_signing_service': repository.metadata_signing_service,
-                'checksum_types': checksum_types,
-                'gpgcheck_options': gpgcheck_options,
-            }
+                "repository_version_pk": repository_version.pk,
+                "metadata_signing_service": repository.metadata_signing_service,
+                "checksum_types": checksum_types,
+                "gpgcheck_options": gpgcheck_options,
+            },
         )
         return OperationPostponedResponse(result, request)
 
@@ -250,7 +248,7 @@ class RpmDistributionViewSet(BaseDistributionViewSet):
     ViewSet for RPM Distributions.
     """
 
-    endpoint_name = 'rpm'
+    endpoint_name = "rpm"
     queryset = RpmDistribution.objects.all()
     serializer_class = RpmDistributionSerializer
 
@@ -264,27 +262,25 @@ class CopyViewSet(viewsets.ViewSet):
 
     @extend_schema(
         description="Trigger an asynchronous task to copy RPM content"
-                    "from one repository into another, creating a new"
-                    "repository version.",
+        "from one repository into another, creating a new"
+        "repository version.",
         summary="Copy content",
         operation_id="copy_content",
         request=CopySerializer,
-        responses={202: AsyncOperationResponseSerializer}
+        responses={202: AsyncOperationResponseSerializer},
     )
     def create(self, request):
         """Copy content."""
-        serializer = CopySerializer(data=request.data, context={'request': request})
+        serializer = CopySerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
-        dependency_solving = serializer.validated_data['dependency_solving']
-        config = serializer.validated_data['config']
+        dependency_solving = serializer.validated_data["dependency_solving"]
+        config = serializer.validated_data["config"]
 
         config, repos = self._process_config(config)
 
         async_result = enqueue_with_reservation(
-            tasks.copy_content, repos,
-            args=[config, dependency_solving],
-            kwargs={}
+            tasks.copy_content, repos, args=[config, dependency_solving], kwargs={}
         )
         return OperationPostponedResponse(async_result, request)
 
@@ -300,8 +296,9 @@ class CopyViewSet(viewsets.ViewSet):
 
         for entry in config:
             r = dict()
-            source_version = NamedModelViewSet().get_resource(entry["source_repo_version"],
-                                                              RepositoryVersion)
+            source_version = NamedModelViewSet().get_resource(
+                entry["source_repo_version"], RepositoryVersion
+            )
             dest_repo = NamedModelViewSet().get_resource(entry["dest_repo"], RpmRepository)
             r["source_repo_version"] = source_version.pk
             r["dest_repo"] = dest_repo.pk
@@ -309,12 +306,13 @@ class CopyViewSet(viewsets.ViewSet):
 
             if "dest_base_version" in entry:
                 try:
-                    r["dest_base_version"] = dest_repo.versions.\
-                        get(number=entry["dest_base_version"]).pk
+                    r["dest_base_version"] = dest_repo.versions.get(
+                        number=entry["dest_base_version"]
+                    ).pk
                 except RepositoryVersion.DoesNotExist:
-                    message = _("Version {version} does not exist for repository "
-                                "'{repo}'.").format(version=entry["dest_base_version"],
-                                                    repo=dest_repo.name)
+                    message = _(
+                        "Version {version} does not exist for repository " "'{repo}'."
+                    ).format(version=entry["dest_base_version"], repo=dest_repo.name)
                     raise DRFValidationError(detail=message)
 
             if entry.get("content") is not None:
@@ -331,7 +329,7 @@ class PackageGroupViewSet(ReadOnlyContentViewSet):
     PackageGroup ViewSet.
     """
 
-    endpoint_name = 'packagegroups'
+    endpoint_name = "packagegroups"
     queryset = PackageGroup.objects.all()
     serializer_class = PackageGroupSerializer
 
@@ -341,7 +339,7 @@ class PackageCategoryViewSet(ReadOnlyContentViewSet):
     PackageCategory ViewSet.
     """
 
-    endpoint_name = 'packagecategories'
+    endpoint_name = "packagecategories"
     queryset = PackageCategory.objects.all()
     serializer_class = PackageCategorySerializer
 
@@ -351,7 +349,7 @@ class PackageEnvironmentViewSet(ReadOnlyContentViewSet):
     PackageEnvironment ViewSet.
     """
 
-    endpoint_name = 'packageenvironments'
+    endpoint_name = "packageenvironments"
     queryset = PackageEnvironment.objects.all()
     serializer_class = PackageEnvironmentSerializer
 
@@ -361,7 +359,7 @@ class PackageLangpacksViewSet(ReadOnlyContentViewSet):
     PackageLangpacks ViewSet.
     """
 
-    endpoint_name = 'packagelangpacks'
+    endpoint_name = "packagelangpacks"
     queryset = PackageLangpacks.objects.all()
     serializer_class = PackageLangpacksSerializer
 
@@ -372,7 +370,7 @@ class DistributionTreeViewSet(ReadOnlyContentViewSet):
 
     """
 
-    endpoint_name = 'distribution_trees'
+    endpoint_name = "distribution_trees"
     queryset = DistributionTree.objects.all()
     serializer_class = DistributionTreeSerializer
 
@@ -383,7 +381,7 @@ class RepoMetadataFileViewSet(ReadOnlyContentViewSet):
 
     """
 
-    endpoint_name = 'repo_metadata_files'
+    endpoint_name = "repo_metadata_files"
     queryset = RepoMetadataFile.objects.all()
     serializer_class = RepoMetadataFileSerializer
 
@@ -398,8 +396,8 @@ class ModulemdFilter(ContentFilter):
     class Meta:
         model = Modulemd
         fields = {
-            'name': ['exact', 'in'],
-            'stream': ['exact', 'in'],
+            "name": ["exact", "in"],
+            "stream": ["exact", "in"],
         }
 
 
@@ -408,7 +406,7 @@ class ModulemdViewSet(SingleArtifactContentUploadViewSet):
     ViewSet for Modulemd.
     """
 
-    endpoint_name = 'modulemds'
+    endpoint_name = "modulemds"
     queryset = Modulemd.objects.all()
     serializer_class = ModulemdSerializer
     filterset_class = ModulemdFilter
@@ -424,8 +422,8 @@ class ModulemdDefaultsFilter(ContentFilter):
     class Meta:
         model = ModulemdDefaults
         fields = {
-            'module': ['exact', 'in'],
-            'stream': ['exact', 'in'],
+            "module": ["exact", "in"],
+            "stream": ["exact", "in"],
         }
 
 
@@ -434,7 +432,7 @@ class ModulemdDefaultsViewSet(SingleArtifactContentUploadViewSet):
     ViewSet for Modulemd.
     """
 
-    endpoint_name = 'modulemd_defaults'
+    endpoint_name = "modulemd_defaults"
     queryset = ModulemdDefaults.objects.all()
     serializer_class = ModulemdDefaultsSerializer
     filterset_class = ModulemdDefaultsFilter

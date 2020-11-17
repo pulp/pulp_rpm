@@ -78,10 +78,11 @@ class SynctoSyncTestCase(unittest.TestCase):
         sync_task = tasks.read(sync_response.task)
         task_duration = sync_task.finished_at - sync_task.started_at
         waiting_time = sync_task.started_at - sync_task.pulp_created
-        print("\n->     Sync => Waiting time (s): {wait} | Service time (s): {service}".format(
-            wait=waiting_time.total_seconds(),
-            service=task_duration.total_seconds()
-        ))
+        print(
+            "\n->     Sync => Waiting time (s): {wait} | Service time (s): {service}".format(
+                wait=waiting_time.total_seconds(), service=task_duration.total_seconds()
+            )
+        )
         repo = repo_api.read(repo.pulp_href)
 
         # Create a publication.
@@ -114,10 +115,11 @@ class SynctoSyncTestCase(unittest.TestCase):
         sync_task = tasks.read(sync_response.task)
         task_duration = sync_task.finished_at - sync_task.started_at
         waiting_time = sync_task.started_at - sync_task.pulp_created
-        print("\n->     Sync => Waiting time (s): {wait} | Service time (s): {service}".format(
-            wait=waiting_time.total_seconds(),
-            service=task_duration.total_seconds()
-        ))
+        print(
+            "\n->     Sync => Waiting time (s): {wait} | Service time (s): {service}".format(
+                wait=waiting_time.total_seconds(), service=task_duration.total_seconds()
+            )
+        )
         repo2 = repo_api.read(repo2.pulp_href)
 
         summary = get_content_summary(repo.to_dict())

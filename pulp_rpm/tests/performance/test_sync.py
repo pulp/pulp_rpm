@@ -31,15 +31,12 @@ from pulp_rpm.tests.functional.constants import (
     EPEL8_MIRRORLIST_URL,
     EPEL8_PLAYGROUND_KICKSTART_URL,
 )
-from pulp_rpm.tests.functional.utils import (
-    gen_rpm_client,
-    skip_if
-)
+from pulp_rpm.tests.functional.utils import gen_rpm_client, skip_if
 from pulpcore.client.pulp_rpm import (
     ContentRepoMetadataFilesApi,
     RemotesRpmApi,
     RepositoriesRpmApi,
-    RpmRepositorySyncURL
+    RpmRepositorySyncURL,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_remote
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
@@ -56,7 +53,7 @@ class SyncTestCase(unittest.TestCase):
 
         delete_orphans(cls.cfg)
 
-    def parse_date_from_string(self, s, parse_format='%Y-%m-%dT%H:%M:%S.%fZ'):
+    def parse_date_from_string(self, s, parse_format="%Y-%m-%dT%H:%M:%S.%fZ"):
         """Parse string to datetime object.
 
         :param s: str like '2018-11-18T21:03:32.493697Z'
@@ -65,7 +62,7 @@ class SyncTestCase(unittest.TestCase):
         """
         return datetime.strptime(s, parse_format)
 
-    def rpm_sync(self, url=RPM_KICKSTART_FIXTURE_URL, policy='on_demand', check_dist_tree=True):
+    def rpm_sync(self, url=RPM_KICKSTART_FIXTURE_URL, policy="on_demand", check_dist_tree=True):
         """Sync repositories with the rpm plugin.
 
         This test targets the following issue:
@@ -85,12 +82,12 @@ class SyncTestCase(unittest.TestCase):
         """
         delete_orphans(self.cfg)
         repo = self.client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['pulp_href'])
+        self.addCleanup(self.client.delete, repo["pulp_href"])
 
         # Create a remote with the standard test fixture url.
         body = gen_rpm_remote(url=url, policy=policy)
         remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote['pulp_href'])
+        self.addCleanup(self.client.delete, remote["pulp_href"])
 
         # Sync the repository.
         self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
@@ -104,15 +101,16 @@ class SyncTestCase(unittest.TestCase):
         finished_at = self.parse_date_from_string(sync_task["finished_at"])
         task_duration = finished_at - started_at
         waiting_time = started_at - created_at
-        print("\n->     Sync => Waiting time (s): {wait} | Service time (s): {service}".format(
-            wait=waiting_time.total_seconds(),
-            service=task_duration.total_seconds()
-        ))
+        print(
+            "\n->     Sync => Waiting time (s): {wait} | Service time (s): {service}".format(
+                wait=waiting_time.total_seconds(), service=task_duration.total_seconds()
+            )
+        )
 
-        repo = self.client.get(repo['pulp_href'])
+        repo = self.client.get(repo["pulp_href"])
 
         # Check that we have the correct content counts.
-        self.assertIsNotNone(repo['latest_version_href'])
+        self.assertIsNotNone(repo["latest_version_href"])
 
         if check_dist_tree:
             self.assertIn(
@@ -125,7 +123,7 @@ class SyncTestCase(unittest.TestCase):
             )
 
         # Sync the repository again.
-        latest_version_href = repo['latest_version_href']
+        latest_version_href = repo["latest_version_href"]
         response = self.client.using_handler(api.json_handler).post(
             urljoin(repo["pulp_href"], "sync/"), data
         )
@@ -135,14 +133,15 @@ class SyncTestCase(unittest.TestCase):
         finished_at = self.parse_date_from_string(sync_task["finished_at"])
         task_duration = finished_at - started_at
         waiting_time = started_at - created_at
-        print("\n->  Re-sync => Waiting time (s): {wait} | Service time (s): {service}".format(
-            wait=waiting_time.total_seconds(),
-            service=task_duration.total_seconds()
-        ))
-        repo = self.client.get(repo['pulp_href'])
+        print(
+            "\n->  Re-sync => Waiting time (s): {wait} | Service time (s): {service}".format(
+                wait=waiting_time.total_seconds(), service=task_duration.total_seconds()
+            )
+        )
+        repo = self.client.get(repo["pulp_href"])
 
         # Check that nothing has changed since the last sync.
-        self.assertEqual(latest_version_href, repo['latest_version_href'])
+        self.assertEqual(latest_version_href, repo["latest_version_href"])
 
     def test_centos7_on_demand(self):
         """Sync CentOS 7."""
@@ -150,7 +149,7 @@ class SyncTestCase(unittest.TestCase):
 
     def test_centos7_immediate(self):
         """Sync CentOS 7 with the immediate policy."""
-        self.rpm_sync(url=CENTOS7_URL, policy='immediate')
+        self.rpm_sync(url=CENTOS7_URL, policy="immediate")
 
     def test_centos8_baseos_on_demand(self):
         """Sync CentOS 8 BaseOS."""
@@ -192,13 +191,15 @@ class CDNTestCase(unittest.TestCase):
         delete_orphans(cls.cfg)
         # Certificates processing
         cls.cdn_client_cert = False
-        if os.environ['CDN_CLIENT_CERT'] \
-                and os.environ['CDN_CLIENT_KEY'] \
-                and os.environ['CDN_CA_CERT']:
+        if (
+            os.environ["CDN_CLIENT_CERT"]
+            and os.environ["CDN_CLIENT_KEY"]
+            and os.environ["CDN_CA_CERT"]
+        ):
             # strings have escaped newlines from environmental variable
-            cls.cdn_client_cert = os.environ['CDN_CLIENT_CERT'].replace('\\n', '\n')
-            cls.cdn_client_key = os.environ['CDN_CLIENT_KEY'].replace('\\n', '\n')
-            cls.cdn_ca_cert = os.environ['CDN_CA_CERT'].replace('\\n', '\n')
+            cls.cdn_client_cert = os.environ["CDN_CLIENT_CERT"].replace("\\n", "\n")
+            cls.cdn_client_key = os.environ["CDN_CLIENT_KEY"].replace("\\n", "\n")
+            cls.cdn_ca_cert = os.environ["CDN_CA_CERT"].replace("\\n", "\n")
 
     @skip_if(bool, "cdn_client_cert", False)
     def test_sync_with_certificate(self):
@@ -220,7 +221,7 @@ class CDNTestCase(unittest.TestCase):
             client_cert=self.cdn_client_cert,
             client_key=self.cdn_client_key,
             ca_cert=self.cdn_ca_cert,
-            policy="on_demand"
+            policy="on_demand",
         )
         appstream_remote = self.remote_api.create(body)
         self.addCleanup(self.remote_api.delete, appstream_remote.pulp_href)
@@ -234,10 +235,11 @@ class CDNTestCase(unittest.TestCase):
         self.addCleanup(self.repo_api.delete, repo_baseos.pulp_href)
 
         body = gen_rpm_remote(
-            url=RPM_CDN_BASEOS_URL, tls_validation=False,
+            url=RPM_CDN_BASEOS_URL,
+            tls_validation=False,
             client_cert=self.cdn_client_cert,
             client_key=self.cdn_client_key,
-            policy="on_demand"
+            policy="on_demand",
         )
         baseos_remote = self.remote_api.create(body)
         self.addCleanup(self.remote_api.delete, baseos_remote.pulp_href)
@@ -247,39 +249,26 @@ class CDNTestCase(unittest.TestCase):
         monitor_task(sync_response.task)
 
         # Get all 'productid' repo metadata files
-        productids = [productid for productid in self.repometadatafiles.list().results if
-                      productid.data_type == 'productid']
+        productids = [
+            productid
+            for productid in self.repometadatafiles.list().results
+            if productid.data_type == "productid"
+        ]
 
         # Update repositories info
         repo_baseos_dict = self.repo_api.read(repo_baseos.pulp_href).to_dict()
         repo_appstream_dict = self.repo_api.read(repo_appstream.pulp_href).to_dict()
 
         # Assert there are two productid content units and they have same checksum
-        self.assertEqual(
-            len(productids), 2
-        )
-        self.assertEqual(
-            productids[0].checksum, productids[1].checksum
-        )
+        self.assertEqual(len(productids), 2)
+        self.assertEqual(productids[0].checksum, productids[1].checksum)
         # Assert each repository has latest version 1 (it was synced)
-        self.assertEqual(
-            repo_appstream_dict['latest_version_href'].rstrip('/')[-1],
-            '1'
-        )
-        self.assertEqual(
-            repo_baseos_dict['latest_version_href'].rstrip('/')[-1],
-            '1'
-        )
+        self.assertEqual(repo_appstream_dict["latest_version_href"].rstrip("/")[-1], "1")
+        self.assertEqual(repo_baseos_dict["latest_version_href"].rstrip("/")[-1], "1")
         # Assert each repository has its own productid file
-        self.assertEqual(
-            get_content_summary(repo_appstream_dict)[PULP_TYPE_REPOMETADATA],
-            1
-        )
-        self.assertEqual(
-            get_content_summary(repo_baseos_dict)[PULP_TYPE_REPOMETADATA],
-            1
-        )
+        self.assertEqual(get_content_summary(repo_appstream_dict)[PULP_TYPE_REPOMETADATA], 1)
+        self.assertEqual(get_content_summary(repo_baseos_dict)[PULP_TYPE_REPOMETADATA], 1)
         self.assertNotEqual(
-            get_content(repo_appstream_dict)[PULP_TYPE_REPOMETADATA][0]['relative_path'],
-            get_content(repo_baseos_dict)[PULP_TYPE_REPOMETADATA][0]['relative_path']
+            get_content(repo_appstream_dict)[PULP_TYPE_REPOMETADATA][0]["relative_path"],
+            get_content(repo_baseos_dict)[PULP_TYPE_REPOMETADATA][0]["relative_path"],
         )

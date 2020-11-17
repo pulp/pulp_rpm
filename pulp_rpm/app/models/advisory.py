@@ -22,7 +22,7 @@ from pulp_rpm.app.constants import (
     PULP_UPDATE_COLLECTION_PACKAGE_ATTRS,
     PULP_UPDATE_RECORD_ATTRS,
     PULP_UPDATE_REFERENCE_ATTRS,
-    ADVISORY_SUM_TYPE_TO_NAME
+    ADVISORY_SUM_TYPE_TO_NAME,
 )
 
 log = getLogger(__name__)
@@ -72,7 +72,7 @@ class UpdateRecord(Content):
 
     """
 
-    TYPE = 'advisory'
+    TYPE = "advisory"
 
     # Required metadata
     id = models.CharField(max_length=255, db_index=True)
@@ -107,7 +107,7 @@ class UpdateRecord(Content):
         """
         Digest is used as a natural key for UpdateRecords.
         """
-        return ('digest',)
+        return ("digest",)
 
     @classmethod
     def createrepo_to_dict(cls, update):
@@ -124,27 +124,34 @@ class UpdateRecord(Content):
         return {
             PULP_UPDATE_RECORD_ATTRS.ID: getattr(update, CR_UPDATE_RECORD_ATTRS.ID),
             PULP_UPDATE_RECORD_ATTRS.UPDATED_DATE: str(
-                getattr(update, CR_UPDATE_RECORD_ATTRS.UPDATED_DATE)),
+                getattr(update, CR_UPDATE_RECORD_ATTRS.UPDATED_DATE)
+            ),
             PULP_UPDATE_RECORD_ATTRS.DESCRIPTION: getattr(
-                update, CR_UPDATE_RECORD_ATTRS.DESCRIPTION) or '',
+                update, CR_UPDATE_RECORD_ATTRS.DESCRIPTION
+            )
+            or "",
             PULP_UPDATE_RECORD_ATTRS.ISSUED_DATE: str(
-                getattr(update, CR_UPDATE_RECORD_ATTRS.ISSUED_DATE)) or '',
-            PULP_UPDATE_RECORD_ATTRS.FROMSTR: getattr(update, CR_UPDATE_RECORD_ATTRS.FROMSTR) or '',
-            PULP_UPDATE_RECORD_ATTRS.STATUS: getattr(update, CR_UPDATE_RECORD_ATTRS.STATUS) or '',
-            PULP_UPDATE_RECORD_ATTRS.TITLE: getattr(update, CR_UPDATE_RECORD_ATTRS.TITLE) or '',
-            PULP_UPDATE_RECORD_ATTRS.SUMMARY: getattr(update, CR_UPDATE_RECORD_ATTRS.SUMMARY) or '',
-            PULP_UPDATE_RECORD_ATTRS.VERSION: getattr(update, CR_UPDATE_RECORD_ATTRS.VERSION) or '',
-            PULP_UPDATE_RECORD_ATTRS.TYPE: getattr(update, CR_UPDATE_RECORD_ATTRS.TYPE) or '',
-            PULP_UPDATE_RECORD_ATTRS.SEVERITY: getattr(
-                update, CR_UPDATE_RECORD_ATTRS.SEVERITY) or '',
-            PULP_UPDATE_RECORD_ATTRS.SOLUTION: getattr(
-                update, CR_UPDATE_RECORD_ATTRS.SOLUTION) or '',
-            PULP_UPDATE_RECORD_ATTRS.RELEASE: getattr(update, CR_UPDATE_RECORD_ATTRS.RELEASE) or '',
-            PULP_UPDATE_RECORD_ATTRS.RIGHTS: getattr(update, CR_UPDATE_RECORD_ATTRS.RIGHTS) or '',
-            PULP_UPDATE_RECORD_ATTRS.PUSHCOUNT: getattr(
-                update, CR_UPDATE_RECORD_ATTRS.PUSHCOUNT) or '',
+                getattr(update, CR_UPDATE_RECORD_ATTRS.ISSUED_DATE)
+            )
+            or "",
+            PULP_UPDATE_RECORD_ATTRS.FROMSTR: getattr(update, CR_UPDATE_RECORD_ATTRS.FROMSTR) or "",
+            PULP_UPDATE_RECORD_ATTRS.STATUS: getattr(update, CR_UPDATE_RECORD_ATTRS.STATUS) or "",
+            PULP_UPDATE_RECORD_ATTRS.TITLE: getattr(update, CR_UPDATE_RECORD_ATTRS.TITLE) or "",
+            PULP_UPDATE_RECORD_ATTRS.SUMMARY: getattr(update, CR_UPDATE_RECORD_ATTRS.SUMMARY) or "",
+            PULP_UPDATE_RECORD_ATTRS.VERSION: getattr(update, CR_UPDATE_RECORD_ATTRS.VERSION) or "",
+            PULP_UPDATE_RECORD_ATTRS.TYPE: getattr(update, CR_UPDATE_RECORD_ATTRS.TYPE) or "",
+            PULP_UPDATE_RECORD_ATTRS.SEVERITY: getattr(update, CR_UPDATE_RECORD_ATTRS.SEVERITY)
+            or "",
+            PULP_UPDATE_RECORD_ATTRS.SOLUTION: getattr(update, CR_UPDATE_RECORD_ATTRS.SOLUTION)
+            or "",
+            PULP_UPDATE_RECORD_ATTRS.RELEASE: getattr(update, CR_UPDATE_RECORD_ATTRS.RELEASE) or "",
+            PULP_UPDATE_RECORD_ATTRS.RIGHTS: getattr(update, CR_UPDATE_RECORD_ATTRS.RIGHTS) or "",
+            PULP_UPDATE_RECORD_ATTRS.PUSHCOUNT: getattr(update, CR_UPDATE_RECORD_ATTRS.PUSHCOUNT)
+            or "",
             PULP_UPDATE_RECORD_ATTRS.REBOOT_SUGGESTED: getattr(
-                update, CR_UPDATE_RECORD_ATTRS.REBOOT_SUGGESTED) or False
+                update, CR_UPDATE_RECORD_ATTRS.REBOOT_SUGGESTED
+            )
+            or False,
         }
 
     def to_createrepo_c(self, collections=[]):
@@ -218,7 +225,7 @@ class UpdateRecord(Content):
         for collection in self.collections.all():
             mod = collection.module
             if mod:
-                nsvca = (mod['name'], mod['stream'], mod['version'], mod['context'], mod['arch'])
+                nsvca = (mod["name"], mod["stream"], mod["version"], mod["context"], mod["arch"])
                 modlist.append(nsvca)
         return modlist
 
@@ -251,11 +258,12 @@ class UpdateCollection(BaseModel):
     shortname = models.TextField(null=True)
     module = JSONField(null=True)
 
-    update_record = models.ForeignKey(UpdateRecord, related_name="collections",
-                                      on_delete=models.deletion.CASCADE)
+    update_record = models.ForeignKey(
+        UpdateRecord, related_name="collections", on_delete=models.deletion.CASCADE
+    )
 
     class Meta:
-        unique_together = ['name', 'update_record']
+        unique_together = ["name", "update_record"]
 
     @classmethod
     def createrepo_to_dict(cls, collection):
@@ -272,20 +280,26 @@ class UpdateCollection(BaseModel):
         ret = {
             PULP_UPDATE_COLLECTION_ATTRS.NAME: getattr(collection, CR_UPDATE_COLLECTION_ATTRS.NAME),
             PULP_UPDATE_COLLECTION_ATTRS.SHORTNAME: getattr(
-                collection, CR_UPDATE_COLLECTION_ATTRS.SHORTNAME)
+                collection, CR_UPDATE_COLLECTION_ATTRS.SHORTNAME
+            ),
         }
         if collection.module:
             ret[PULP_UPDATE_COLLECTION_ATTRS.MODULE] = {
                 PULP_UPDATE_COLLECTION_ATTRS_MODULE.NAME: getattr(
-                    collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.NAME),
+                    collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.NAME
+                ),
                 PULP_UPDATE_COLLECTION_ATTRS_MODULE.STREAM: getattr(
-                    collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.STREAM),
+                    collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.STREAM
+                ),
                 PULP_UPDATE_COLLECTION_ATTRS_MODULE.VERSION: getattr(
-                    collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.VERSION),
+                    collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.VERSION
+                ),
                 PULP_UPDATE_COLLECTION_ATTRS_MODULE.CONTEXT: getattr(
-                    collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.CONTEXT),
+                    collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.CONTEXT
+                ),
                 PULP_UPDATE_COLLECTION_ATTRS_MODULE.ARCH: getattr(
-                    collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.ARCH)
+                    collection.module, CR_UPDATE_COLLECTION_ATTRS_MODULE.ARCH
+                ),
             }
 
         return ret
@@ -303,11 +317,11 @@ class UpdateCollection(BaseModel):
         col.name = self.name
         if self.module:
             module = cr.UpdateCollectionModule()
-            module.name = self.module['name']
-            module.stream = self.module['stream']
-            module.version = self.module['version']
-            module.context = self.module['context']
-            module.arch = self.module['arch']
+            module.name = self.module["name"]
+            module.stream = self.module["stream"]
+            module.version = self.module["version"]
+            module.context = self.module["context"]
+            module.arch = self.module["arch"]
             col.module = module
 
         for package in self.packages.all():
@@ -368,14 +382,13 @@ class UpdateCollectionPackage(BaseModel):
     sum_type = models.PositiveIntegerField(
         null=True,
         default=None,
-        choices=[
-            (sum_type, sum_type) for sum_type in ADVISORY_SUM_TYPE_TO_NAME.keys()
-        ]
+        choices=[(sum_type, sum_type) for sum_type in ADVISORY_SUM_TYPE_TO_NAME.keys()],
     )
     version = models.TextField()
 
-    update_collection = models.ForeignKey(UpdateCollection, related_name='packages',
-                                          on_delete=models.CASCADE)
+    update_collection = models.ForeignKey(
+        UpdateCollection, related_name="packages", on_delete=models.CASCADE
+    )
 
     @classmethod
     def createrepo_to_dict(cls, package):
@@ -391,29 +404,50 @@ class UpdateCollectionPackage(BaseModel):
         """
         return {
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.ARCH: getattr(
-                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.ARCH) or '',
+                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.ARCH
+            )
+            or "",
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.EPOCH: getattr(
-                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.EPOCH) or '0',
+                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.EPOCH
+            )
+            or "0",
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.FILENAME: getattr(
-                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.FILENAME) or '',
+                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.FILENAME
+            )
+            or "",
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.NAME: getattr(
-                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.NAME) or '',
+                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.NAME
+            )
+            or "",
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.REBOOT_SUGGESTED: getattr(
-                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.REBOOT_SUGGESTED),  # noqa
+                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.REBOOT_SUGGESTED
+            ),  # noqa
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.RELOGIN_SUGGESTED: getattr(
-                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.RELOGIN_SUGGESTED, False),
+                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.RELOGIN_SUGGESTED, False
+            ),
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.RESTART_SUGGESTED: getattr(
-                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.RESTART_SUGGESTED, False),
+                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.RESTART_SUGGESTED, False
+            ),
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.RELEASE: getattr(
-                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.RELEASE) or '',
+                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.RELEASE
+            )
+            or "",
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.SRC: getattr(
-                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.SRC) or '',
+                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.SRC
+            )
+            or "",
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM: getattr(
-                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM) or '',
+                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM
+            )
+            or "",
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM_TYPE: getattr(
-                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM_TYPE) or None,
+                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM_TYPE
+            )
+            or None,
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.VERSION: getattr(
-                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.VERSION) or ''
+                package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.VERSION
+            )
+            or "",
         }
 
     def to_createrepo_c(self):
@@ -473,8 +507,9 @@ class UpdateReference(BaseModel):
     title = models.TextField(null=True)
     ref_type = models.TextField()
 
-    update_record = models.ForeignKey(UpdateRecord, related_name="references",
-                                      on_delete=models.CASCADE)
+    update_record = models.ForeignKey(
+        UpdateRecord, related_name="references", on_delete=models.CASCADE
+    )
 
     @classmethod
     def createrepo_to_dict(cls, reference):
@@ -492,7 +527,7 @@ class UpdateReference(BaseModel):
             PULP_UPDATE_REFERENCE_ATTRS.HREF: getattr(reference, CR_UPDATE_REFERENCE_ATTRS.HREF),
             PULP_UPDATE_REFERENCE_ATTRS.ID: getattr(reference, CR_UPDATE_REFERENCE_ATTRS.ID),
             PULP_UPDATE_REFERENCE_ATTRS.TITLE: getattr(reference, CR_UPDATE_REFERENCE_ATTRS.TITLE),
-            PULP_UPDATE_REFERENCE_ATTRS.TYPE: getattr(reference, CR_UPDATE_REFERENCE_ATTRS.TYPE)
+            PULP_UPDATE_REFERENCE_ATTRS.TYPE: getattr(reference, CR_UPDATE_REFERENCE_ATTRS.TYPE),
         }
 
     def to_createrepo_c(self):
