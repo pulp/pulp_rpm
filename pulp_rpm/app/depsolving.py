@@ -14,34 +14,34 @@ COMBINED_TARGET_REPO_NAME = "combined_target_repo"
 
 # Constants for loading data from the database.
 RPM_FIELDS = [
-    'pk',
-    'name',
-    'version',
-    'release',
-    'epoch',
-    'arch',
-    'rpm_vendor',
-    'provides',
-    'requires',
-    'files',
+    "pk",
+    "name",
+    "version",
+    "release",
+    "epoch",
+    "arch",
+    "rpm_vendor",
+    "provides",
+    "requires",
+    "files",
 ]
 
 MODULE_FIELDS = [
-    'pk',
-    'name',
-    'stream',
-    'version',
-    'context',
-    'arch',
-    'dependencies',
-    'artifacts',
+    "pk",
+    "name",
+    "stream",
+    "version",
+    "context",
+    "arch",
+    "dependencies",
+    "artifacts",
 ]
 
 MODULE_DEFAULTS_FIELDS = [
-    'pk',
-    'module',
-    'stream',
-    'profiles',
+    "pk",
+    "module",
+    "stream",
+    "profiles",
 ]
 
 
@@ -59,9 +59,9 @@ def parse_nevra(name):
         raise ValueError("failed to parse nevra '%s' not a valid nevra" % name)
 
     arch_dot_pos = name.rfind(".")
-    arch = name[arch_dot_pos + 1:]
+    arch = name[arch_dot_pos + 1 :]
 
-    return parse_nevr(name[:arch_dot_pos]) + (arch, )
+    return parse_nevr(name[:arch_dot_pos]) + (arch,)
 
 
 def parse_nevr(name):
@@ -78,12 +78,12 @@ def parse_nevr(name):
         raise ValueError("failed to parse nevr '%s' not a valid nevr" % name)
 
     release_dash_pos = name.rfind("-")
-    release = name[release_dash_pos + 1:]
+    release = name[release_dash_pos + 1 :]
     name_epoch_version = name[:release_dash_pos]
     name_dash_pos = name_epoch_version.rfind("-")
     package_name = name_epoch_version[:name_dash_pos]
 
-    epoch_version = name_epoch_version[name_dash_pos + 1:].split(":")
+    epoch_version = name_epoch_version[name_dash_pos + 1 :].split(":")
     if len(epoch_version) == 1:
         epoch = 0
         version = epoch_version[0]
@@ -108,10 +108,8 @@ def libsolv_formatted_evr(epoch, version, release):
     if version is None:
         return None
 
-    return '{}{}{}'.format(
-        '{}:'.format(epoch) if epoch else '',
-        version,
-        '-{}'.format(release) if release else ''
+    return "{}{}{}".format(
+        "{}:".format(epoch) if epoch else "", version, "-{}".format(release) if release else ""
     )
 
 
@@ -132,7 +130,7 @@ def rpm_to_solvable(solv_repo, unit):
         """A specific, rpm-unit-type filelist attribute conversion."""
         repodata = solv_repo.first_repodata()
 
-        for file_repr in unit.get('files', []):
+        for file_repr in unit.get("files", []):
             # file_repr = e.g. (None, '/usr/bin/', 'bash')
             file_dir = file_repr[1]
             file_name = file_repr[2]
@@ -140,10 +138,7 @@ def rpm_to_solvable(solv_repo, unit):
                 # https://github.com/openSUSE/libsolv/issues/397
                 continue
             dirname_id = repodata.str2dir(file_dir)
-            repodata.add_dirstr(
-                solvable.id, solv.SOLVABLE_FILELIST,
-                dirname_id, file_name
-            )
+            repodata.add_dirstr(solvable.id, solv.SOLVABLE_FILELIST, dirname_id, file_name)
 
     def rpm_basic_deps(solvable, name, evr, arch):
         # Prv: $n . $a = $evr
@@ -155,21 +150,21 @@ def rpm_to_solvable(solv_repo, unit):
         rel = pool.rel2id(rel, evr_id, solv.REL_EQ)
         solvable.add_deparray(solv.SOLVABLE_PROVIDES, rel)
 
-    name = unit.get('name')
+    name = unit.get("name")
     solvable.name = name
 
-    evr = libsolv_formatted_evr(unit.get('epoch'), unit.get('version'), unit.get('arch'))
+    evr = libsolv_formatted_evr(unit.get("epoch"), unit.get("version"), unit.get("arch"))
     solvable.evr = evr
 
-    arch = unit.get('arch', 'noarch')
+    arch = unit.get("arch", "noarch")
     solvable.arch = arch
 
-    vendor = unit.get('vendor')
+    vendor = unit.get("vendor")
     if vendor:
         vendor = vendor
         solvable.vendor = vendor
 
-    for attribute_name in ('requires', 'provides', 'recommends'):
+    for attribute_name in ("requires", "provides", "recommends"):
         for depunit in unit.get(attribute_name, []):
             rpm_dependency_conversion(solvable, depunit, attribute_name)
 
@@ -232,9 +227,9 @@ def rpm_dependency_conversion(solvable, unit, attr_name, dependency_key=None):
     unit_evr = libsolv_formatted_evr(unit[2], unit[3], unit[4])
 
     # e.g SOLVABLE_PROVIDES, SOLVABLE_REQUIRES...
-    keyname = dependency_key or getattr(solv, 'SOLVABLE_{}'.format(attr_name.upper()))
+    keyname = dependency_key or getattr(solv, "SOLVABLE_{}".format(attr_name.upper()))
     pool = solvable.repo.pool
-    if unit_name.startswith('('):
+    if unit_name.startswith("("):
         # the Rich/Boolean dependencies have just the 'name' attribute
         # this is always in the form: '(foo >= 1.2 with foo < 2.0)'
         dep = pool.parserpmrichdep(unit_name)
@@ -247,18 +242,18 @@ def rpm_dependency_conversion(solvable, unit, attr_name, dependency_key=None):
             # relationship dependency in this case is a relationship
             # towards the dependency made from the 'flags', e.g:
             # solv.REL_EQ, and the evr fields
-            if unit_flags == 'EQ':
+            if unit_flags == "EQ":
                 rel_flags = solv.REL_EQ
-            elif unit_flags == 'LT':
+            elif unit_flags == "LT":
                 rel_flags = solv.REL_LT
-            elif unit_flags == 'GT':
+            elif unit_flags == "GT":
                 rel_flags = solv.REL_GT
-            elif unit_flags == 'LE':
+            elif unit_flags == "LE":
                 rel_flags = solv.REL_EQ | solv.REL_LT
-            elif unit_flags == 'GE':
+            elif unit_flags == "GE":
                 rel_flags = solv.REL_EQ | solv.REL_GT
             else:
-                raise ValueError('Unsupported dependency flags %s' % unit_flags)
+                raise ValueError("Unsupported dependency flags %s" % unit_flags)
             dep = dep.Rel(rel_flags, pool.Dep(unit_evr))
     # register the constructed solvable dependency
     solvable.add_deparray(keyname, dep)
@@ -282,11 +277,11 @@ def module_to_solvable(solv_repo, unit):
 
         e.g. module:<name>:<stream>:<version>:<context>
         """
-        return 'module:{name}:{stream}:{version!s}:{context}'.format(
-            name=unit.get('name'),
-            stream=unit.get('stream'),
-            version=unit.get('version'),
-            context=unit.get('context'),
+        return "module:{name}:{stream}:{version!s}:{context}".format(
+            name=unit.get("name"),
+            stream=unit.get("stream"),
+            version=unit.get("version"),
+            context=unit.get("context"),
         )
 
     def module_basic_deps(pool, solvable, solvable_name, name, stream, version, arch):
@@ -295,21 +290,20 @@ def module_to_solvable(solv_repo, unit):
         """
         # Prv: module:$n:$s:$v:$c . $a
         solvable.nsvca_rel = pool.rel2id(
-            pool.str2id(solvable_name),
-            pool.str2id(arch), solv.REL_ARCH
+            pool.str2id(solvable_name), pool.str2id(arch), solv.REL_ARCH
         )
         solvable.add_deparray(solv.SOLVABLE_PROVIDES, solvable.nsvca_rel)
 
         # Prv: module()
-        dep = pool.Dep('module()')
+        dep = pool.Dep("module()")
         solvable.add_deparray(solv.SOLVABLE_PROVIDES, dep)
 
         # Prv: module($n)
-        dep_n = pool.Dep('module({})'.format(name))
+        dep_n = pool.Dep("module({})".format(name))
         solvable.add_deparray(solv.SOLVABLE_PROVIDES, dep_n)
 
         # Prv: module($n:$s)
-        dep_ns = pool.Dep('module({}:{})'.format(name, stream))
+        dep_ns = pool.Dep("module({}:{})".format(name, stream))
         solvable.add_deparray(solv.SOLVABLE_PROVIDES, dep_ns)
 
         # Prv: module($n:$s) = $v
@@ -327,41 +321,40 @@ def module_to_solvable(solv_repo, unit):
         rel = pool.rel2id(name_id, arch_id, solv.REL_ARCH)
         rel = pool.rel2id(rel, evr_id, solv.REL_EQ)
         selection = pool.matchdepid(
-            rel, solv.SOLVABLE_NAME | solv.SOLVABLE_ARCH | solv.SOLVABLE_EVR,
-            solv.SOLVABLE_PROVIDES
+            rel, solv.SOLVABLE_NAME | solv.SOLVABLE_ARCH | solv.SOLVABLE_EVR, solv.SOLVABLE_PROVIDES
         )
 
         for rpm_solvable in selection.solvables():
             # Make the artifact require this module
             rpm_solvable.add_deparray(solv.SOLVABLE_REQUIRES, module_solvable.nsvca_rel)
             # Provide: modular-package()
-            rpm_solvable.add_deparray(solv.SOLVABLE_PROVIDES, pool.Dep('modular-package()'))
+            rpm_solvable.add_deparray(solv.SOLVABLE_PROVIDES, pool.Dep("modular-package()"))
 
     solvable_name = module_solvable_name(unit)
     solvable.name = solvable_name
-    solvable.evr = ''
+    solvable.evr = ""
 
-    arch = unit.get('arch', 'noarch')
+    arch = unit.get("arch", "noarch")
     solvable.arch = arch
 
-    name = unit.get('name')
-    stream = unit.get('stream')
-    version = unit.get('version')
+    name = unit.get("name")
+    stream = unit.get("stream")
+    version = unit.get("version")
 
     module_basic_deps(pool, solvable, solvable_name, name, stream, version, arch)
 
-    for artifact in unit.get('artifacts', []):
+    for artifact in unit.get("artifacts", []):
         nevra_tuple = parse_nevra(artifact)
         artifact_name = nevra_tuple[0]
         artifact_epoch = nevra_tuple[1]
         artifact_version = nevra_tuple[2]
         artifact_release = nevra_tuple[3]
-        artifact_arch = nevra_tuple[4] if nevra_tuple[4] else 'noarch'
+        artifact_arch = nevra_tuple[4] if nevra_tuple[4] else "noarch"
         artifact_evr = libsolv_formatted_evr(artifact_epoch, artifact_version, artifact_release)
 
         module_artifacts_conversion(pool, solvable, artifact_name, artifact_evr, artifact_arch)
 
-    module_dependencies_conversion(pool, solvable, unit.get('dependencies', {}))
+    module_dependencies_conversion(pool, solvable, unit.get("dependencies", {}))
     pool.createwhatprovides()  # TODO: It would be great to do this less often
 
     return solvable
@@ -421,7 +414,7 @@ def module_dependencies_conversion(pool, module_solvable, dependency_list):
     for dep_dict in dependency_list:
         require = None
         for name, streams in dep_dict.items():
-            if name == 'platform':
+            if name == "platform":
                 # no need to fake the platform (streams) later on
                 continue
 
@@ -468,14 +461,14 @@ def module_defaults_unit_to_solvable(solv_repo, unit):
     Returns: (solv.Solvable) The solvable created.
     """
     solvable = solv_repo.add_solvable()
-    solvable.evr = ''
+    solvable.evr = ""
     # a module default has no arch, use 'noarch'
-    solvable.arch = 'noarch'
+    solvable.arch = "noarch"
 
-    name = unit.get('name')
-    stream = unit.get('stream')
+    name = unit.get("name")
+    stream = unit.get("stream")
 
-    solvable.name = 'module-default:{}'.format(name)
+    solvable.name = "module-default:{}".format(name)
 
     pool = solvable.repo.pool
 
@@ -485,7 +478,7 @@ def module_defaults_unit_to_solvable(solv_repo, unit):
         """
         # we are making all modules require the module-default regardless of they are default
         # since the module-default can cary profile information
-        module_depid = pool.Dep('module({})'.format(name), 0)
+        module_depid = pool.Dep("module({})".format(name), 0)
 
         module_default_depid = pool.Dep(solvable.name)
         if not module_depid:
@@ -504,7 +497,7 @@ def module_defaults_unit_to_solvable(solv_repo, unit):
                 # mark the related module so it can be queried as
                 # '(module() with module-default())' i.e such that it's easy visible through
                 # a pool.whatprovides that it has a default
-                module.add_deparray(solv.SOLVABLE_PROVIDES, pool.Dep('module-default()'))
+                module.add_deparray(solv.SOLVABLE_PROVIDES, pool.Dep("module-default()"))
 
         # Note: Since we're copying the module default metadata as-is without modification or
         # regeneration, that means that "profiles" may be copied for streams that do not exist.
@@ -533,8 +526,7 @@ class UnitSolvableMapping:
         self._mapping_repos = {}
 
     def register(self, unit_id, solvable, repo_id):
-        """Store the matching of a unit-repo pair to a solvable inside of the mapping.
-        """
+        """Store the matching of a unit-repo pair to a solvable inside of the mapping."""
         if not self.get_repo(str(repo_id)):
             raise ValueError(
                 "Attempting to register unit {} to unregistered repo {}".format(unit_id, repo_id)
@@ -543,41 +535,38 @@ class UnitSolvableMapping:
         self._mapping_solvable_to_unit.setdefault(solvable.id, (unit_id, repo_id))
         self._mapping_unit_to_solvable.setdefault((unit_id, repo_id), solvable)
 
-        logger.debug('Loaded unit {unit}, {repo} as {solvable}'.format(
-            unit=unit_id, solvable=solvable, repo=repo_id
-        ))
+        logger.debug(
+            "Loaded unit {unit}, {repo} as {solvable}".format(
+                unit=unit_id, solvable=solvable, repo=repo_id
+            )
+        )
 
     def register_repo(self, repo_id, libsolv_repo):
-        """Store the repo (Pulp) - repo (libsolv) pair.
-        """
+        """Store the repo (Pulp) - repo (libsolv) pair."""
         return self._mapping_repos.setdefault(str(repo_id), libsolv_repo)
 
     def get_repo(self, repo_id):
-        """Return the repo from the mapping.
-        """
+        """Return the repo from the mapping."""
         return self._mapping_repos.get(repo_id)
 
     def get_unit_id(self, solvable):
-        """Get the (unit, repo_id) pair for a given solvable.
-        """
+        """Get the (unit, repo_id) pair for a given solvable."""
         return self._mapping_solvable_to_unit.get(solvable.id)
 
     def get_solvable(self, unit_id, repo_id):
-        """Fetch the libsolv solvable associated with a unit-repo pair.
-        """
+        """Fetch the libsolv solvable associated with a unit-repo pair."""
         return self._mapping_unit_to_solvable.get((unit_id, repo_id))
 
     def get_repo_units(self, repo_id):
-        """Get back unit ids of all units that were in a repo based on the mapping.
-        """
+        """Get back unit ids of all units that were in a repo based on the mapping."""
         return set(
-            unit_id for (unit_id, unit_repo_id) in self._mapping_unit_to_solvable.keys()
+            unit_id
+            for (unit_id, unit_repo_id) in self._mapping_unit_to_solvable.keys()
             if unit_repo_id == repo_id
         )
 
     def get_units_from_solvables(self, solvables):
-        """Map a list of solvables into their Pulp units, keyed by the repo they came from.
-        """
+        """Map a list of solvables into their Pulp units, keyed by the repo they came from."""
         repo_unit_map = collections.defaultdict(set)
         for solvable in solvables:
             (unit_id, repo_id) = self.get_unit_id(solvable)
@@ -587,8 +576,7 @@ class UnitSolvableMapping:
 
 
 class Solver:
-    """A Solver object that can speak in terms of Pulp units.
-    """
+    """A Solver object that can speak in terms of Pulp units."""
 
     def __init__(self):
         """Solver Init."""
@@ -615,8 +603,10 @@ class Solver:
         All units in the repo will be available to be "installed", or copied.
         """
         libsolv_repo_name = self._load_from_version(repo_version)
-        logger.debug("Loaded repository '{}' version '{}' as source repo".format(
-            repo_version.repository, repo_version.number)
+        logger.debug(
+            "Loaded repository '{}' version '{}' as source repo".format(
+                repo_version.repository, repo_version.number
+            )
         )
         return libsolv_repo_name
 
@@ -627,8 +617,10 @@ class Solver:
         are considered "installed" by the solver.
         """
         libsolv_repo_name = self._load_from_version(repo_version, as_target=True)
-        logger.debug("Loaded repository '{}' version '{}' into combined target repo".format(
-            repo_version.repository, repo_version.number)
+        logger.debug(
+            "Loaded repository '{}' version '{}' into combined target repo".format(
+                repo_version.repository, repo_version.number
+            )
         )
         return libsolv_repo_name
 
@@ -656,8 +648,7 @@ class Solver:
         repo = self.mapping.get_repo(libsolv_repo_name)
         if not repo:
             repo = self.mapping.register_repo(
-                libsolv_repo_name,
-                self._pool.add_repo(libsolv_repo_name)
+                libsolv_repo_name, self._pool.add_repo(libsolv_repo_name)
             )
             repodata = repo.add_repodata()
         else:
@@ -665,9 +656,9 @@ class Solver:
 
         # Load packages into the solver
 
-        package_ids = repo_version.content.filter(
-            pulp_type=models.Package.get_pulp_type()
-        ).only('pk')
+        package_ids = repo_version.content.filter(pulp_type=models.Package.get_pulp_type()).only(
+            "pk"
+        )
 
         nonmodular_rpms = models.Package.objects.filter(
             pk__in=package_ids, is_modular=False
@@ -676,18 +667,18 @@ class Solver:
         for rpm in nonmodular_rpms.iterator(chunk_size=5000):
             self._add_unit_to_solver(rpm_to_solvable, rpm, repo, libsolv_repo_name)
 
-        modular_rpms = models.Package.objects.filter(
-            pk__in=package_ids, is_modular=True
-        ).values(*RPM_FIELDS)
+        modular_rpms = models.Package.objects.filter(pk__in=package_ids, is_modular=True).values(
+            *RPM_FIELDS
+        )
 
         for rpm in modular_rpms.iterator(chunk_size=5000):
             self._add_unit_to_solver(rpm_to_solvable, rpm, repo, libsolv_repo_name)
 
         # Load modules into the solver
 
-        module_ids = repo_version.content.filter(
-            pulp_type=models.Modulemd.get_pulp_type()
-        ).only('pk')
+        module_ids = repo_version.content.filter(pulp_type=models.Modulemd.get_pulp_type()).only(
+            "pk"
+        )
 
         modules = models.Modulemd.objects.filter(pk__in=module_ids).values(*MODULE_FIELDS)
 
@@ -698,7 +689,7 @@ class Solver:
 
         module_defaults_ids = repo_version.content.filter(
             pulp_type=models.ModulemdDefaults.get_pulp_type()
-        ).only('pk')
+        ).only("pk")
 
         modulemd_defaults = models.ModulemdDefaults.objects.filter(
             pk__in=module_defaults_ids
@@ -717,7 +708,7 @@ class Solver:
 
     def _add_unit_to_solver(self, conversion_func, unit, repo, libsolv_repo_name):
         solvable = conversion_func(repo, unit)
-        self.mapping.register(unit['pk'], solvable, libsolv_repo_name)
+        self.mapping.register(unit["pk"], solvable, libsolv_repo_name)
 
     # def _handle_nothing_provides(self, info):
     #     """Handle a case where nothing provides a given requirement.
@@ -870,8 +861,8 @@ class Solver:
                 # any new solvables/units. This might be reported back to the user one day over
                 # the REST API.
                 logger.warning(
-                    'Encountered problems solving dependencies, '
-                    'copy may be incomplete: {}'.format(', '.join(problems))
+                    "Encountered problems solving dependencies, "
+                    "copy may be incomplete: {}".format(", ".join(problems))
                 )
 
             transaction = solver.transaction()
@@ -890,7 +881,7 @@ class Solver:
                 module_dep = self._pool.rel2id(
                     self._pool.str2id(solvable.name),
                     self._pool.str2id(solvable.arch),
-                    solv.REL_ARCH
+                    solv.REL_ARCH,
                 )
                 module_artifacts = self._pool.whatcontainsdep(solv.SOLVABLE_REQUIRES, module_dep)
 

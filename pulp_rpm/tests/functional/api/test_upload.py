@@ -14,7 +14,7 @@ from pulp_rpm.tests.functional.utils import (
 from pulp_rpm.tests.functional.constants import (
     RPM_UNSIGNED_FIXTURE_URL,
     RPM_PACKAGE_FILENAME,
-    RPM_WITH_NON_ASCII_URL
+    RPM_WITH_NON_ASCII_URL,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
@@ -64,8 +64,8 @@ class ContentUnitTestCase(PulpTestCase):
         except PulpTaskError:
             pass
         task_report = self.tasks_api.read(upload.task)
-        msg = 'There is already a package with'
-        self.assertTrue(msg in task_report.error['description'])
+        msg = "There is already a package with"
+        self.assertTrue(msg in task_report.error["description"])
 
     def test_upload_non_ascii(self):
         """Test whether one can upload an RPM with non-ascii metadata."""
@@ -78,11 +78,6 @@ class ContentUnitTestCase(PulpTestCase):
     def do_test(self, remote_path):
         """Upload a Package and return Task of upload."""
         with NamedTemporaryFile() as file_to_upload:
-            file_to_upload.write(
-                http_get(remote_path)
-            )
-            upload_attrs = {
-                'file': file_to_upload.name,
-                'relative_path': RPM_PACKAGE_FILENAME
-            }
+            file_to_upload.write(http_get(remote_path))
+            upload_attrs = {"file": file_to_upload.name, "relative_path": RPM_PACKAGE_FILENAME}
             return self.content_api.create(**upload_attrs)

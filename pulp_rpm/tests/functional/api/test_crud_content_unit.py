@@ -62,7 +62,7 @@ class ContentUnitTestCase(PulpTestCase):
         attrs = gen_rpm_content_attrs(self.artifact, RPM_PACKAGE_FILENAME)
         response = self.rpm_content_api.create(**attrs)
         # rpm package doesn't keep relative_path but the location href
-        del attrs['relative_path']
+        del attrs["relative_path"]
         created_resources = monitor_task(response.task)
         content_unit = self.rpm_content_api.read(created_resources[0])
         self.content_unit.update(content_unit.to_dict())
@@ -132,7 +132,7 @@ class ContentUnitTestCase(PulpTestCase):
         except PulpTaskError as exc:
             task_result = exc.task.to_dict()
         msg = "There is already a package with"
-        self.assertTrue(msg in task_result['error']['description'])
+        self.assertTrue(msg in task_result["error"]["description"])
 
     def test_06_second_unit_raises_error(self):
         """
@@ -206,16 +206,14 @@ class ContentUnitRemoveTestCase(PulpTestCase):
 
         # Test remove content by types contained in repository.
         repo_content = get_content(repo.to_dict())
-        base_addr = self.cfg.get_host_settings()[0]['url']
+        base_addr = self.cfg.get_host_settings()[0]["url"]
 
         for content_type in repo_content.keys():
             response = requests.delete(
                 urljoin(base_addr, repo_content[content_type][0]["pulp_href"])
             )
             # check that '405' (method not allowed) is returned
-            self.assertEqual(
-                response.status_code, 405
-            )
+            self.assertEqual(response.status_code, 405)
 
     def test_all(self):
         """

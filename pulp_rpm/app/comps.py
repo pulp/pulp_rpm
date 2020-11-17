@@ -16,7 +16,7 @@ def list_to_idlist(lst):
     idlist = libcomps.IdList()
 
     for i in lst:
-        group_id = libcomps.GroupId(i['name'], i['default'])
+        group_id = libcomps.GroupId(i["name"], i["default"])
         if group_id not in idlist:
             idlist.append(group_id)
 
@@ -72,4 +72,4 @@ def dict_digest(dict):
     prep_hash = list(dict.values())
     str_prep_hash = [str(i) for i in prep_hash]
     str_prep_hash.sort()
-    return hashlib.sha256(''.join(str_prep_hash).encode('utf-8')).hexdigest()
+    return hashlib.sha256("".join(str_prep_hash).encode("utf-8")).hexdigest()

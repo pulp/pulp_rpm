@@ -15,24 +15,28 @@ from pulp_rpm.app.models import (
 )
 
 
-class ModulemdSerializer(
-    SingleArtifactContentUploadSerializer, ContentChecksumSerializer
-):
+class ModulemdSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSerializer):
     """
     Modulemd serializer.
     """
 
-    name = serializers.CharField(help_text=_("Modulemd name."),)
-    stream = serializers.CharField(help_text=_("Stream name."),)
-    version = serializers.CharField(help_text=_("Modulemd version."),)
-    context = serializers.CharField(help_text=_("Modulemd context."),)
-    arch = serializers.CharField(help_text=_("Modulemd architecture."),)
-    artifacts = serializers.JSONField(
-        help_text=_("Modulemd artifacts."), allow_null=True
+    name = serializers.CharField(
+        help_text=_("Modulemd name."),
     )
-    dependencies = serializers.JSONField(
-        help_text=_("Modulemd dependencies."), allow_null=True
+    stream = serializers.CharField(
+        help_text=_("Stream name."),
     )
+    version = serializers.CharField(
+        help_text=_("Modulemd version."),
+    )
+    context = serializers.CharField(
+        help_text=_("Modulemd context."),
+    )
+    arch = serializers.CharField(
+        help_text=_("Modulemd architecture."),
+    )
+    artifacts = serializers.JSONField(help_text=_("Modulemd artifacts."), allow_null=True)
+    dependencies = serializers.JSONField(help_text=_("Modulemd dependencies."), allow_null=True)
     # TODO: The performance of this is not great, there's a noticable difference in response
     # time before/after. Since this will only return Package content hrefs, we might benefit
     # from creating a specialized version of this Field that can skip some of the work.
@@ -60,18 +64,14 @@ class ModulemdSerializer(
         model = Modulemd
 
 
-class ModulemdDefaultsSerializer(
-    SingleArtifactContentUploadSerializer, ContentChecksumSerializer
-):
+class ModulemdDefaultsSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSerializer):
     """
     ModulemdDefaults serializer.
     """
 
     module = serializers.CharField(help_text=_("Modulemd name."))
     stream = serializers.CharField(help_text=_("Modulemd default stream."))
-    profiles = serializers.JSONField(
-        help_text=_("Default profiles for modulemd streams.")
-    )
+    profiles = serializers.JSONField(help_text=_("Default profiles for modulemd streams."))
 
     class Meta:
         fields = SingleArtifactContentUploadSerializer.Meta.fields + (

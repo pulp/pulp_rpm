@@ -55,13 +55,9 @@ from pulp_rpm.tests.functional.constants import (
     RPM_UPDATED_UPDATEINFO_FIXTURE_URL,
     SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT,
     SRPM_UNSIGNED_FIXTURE_PACKAGE_COUNT,
-    SRPM_UNSIGNED_FIXTURE_URL
+    SRPM_UNSIGNED_FIXTURE_URL,
 )
-from pulp_rpm.tests.functional.utils import (
-    gen_rpm_client,
-    gen_rpm_remote,
-    progress_reports
-)
+from pulp_rpm.tests.functional.utils import gen_rpm_client, gen_rpm_remote, progress_reports
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 from pulpcore.client.pulp_rpm import (
@@ -147,8 +143,7 @@ class BasicSyncTestCase(PulpTestCase):
             monitor_task(sync_response.task)
         except PulpTaskError as exc:
             self.assertEqual(
-                exc.task.to_dict()['error']['description'],
-                "A no valid remote URL was provided."
+                exc.task.to_dict()["error"]["description"], "A no valid remote URL was provided."
             )
         else:
             self.fail("A task was completed without a failure.")
@@ -202,8 +197,8 @@ class BasicSyncTestCase(PulpTestCase):
 
     def test_sync_epel_repo(self):
         """Sync large EPEL repository."""
-        if 'JENKINS_HOME' not in os.environ:
-            raise unittest.SkipTest('Slow test. It should only run on Jenkins')
+        if "JENKINS_HOME" not in os.environ:
+            raise unittest.SkipTest("Slow test. It should only run on Jenkins")
 
         body = gen_rpm_remote(RPM_EPEL_URL)
         remote = self.remote_api.create(body)
@@ -298,8 +293,7 @@ class BasicSyncTestCase(PulpTestCase):
         # Check that we have the correct content counts.
         self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_KICKSTART_FIXTURE_SUMMARY)
         self.assertDictEqual(
-            get_added_content_summary(repo.to_dict()),
-            RPM_KICKSTART_FIXTURE_SUMMARY
+            get_added_content_summary(repo.to_dict()), RPM_KICKSTART_FIXTURE_SUMMARY
         )
 
         latest_version_href = repo.latest_version_href
@@ -345,11 +339,11 @@ class BasicSyncTestCase(PulpTestCase):
         # Save a copy of the original packages.
         original_packages = {
             (
-                content['name'],
-                content['epoch'],
-                content['version'],
-                content['release'],
-                content['arch'],
+                content["name"],
+                content["epoch"],
+                content["version"],
+                content["release"],
+                content["arch"],
             ): content
             for content in get_content(repo.to_dict())[RPM_PACKAGE_CONTENT_NAME]
         }
@@ -378,11 +372,11 @@ class BasicSyncTestCase(PulpTestCase):
         # Test that the packages have been modified.
         mutated_packages = {
             (
-                content['name'],
-                content['epoch'],
-                content['version'],
-                content['release'],
-                content['arch'],
+                content["name"],
+                content["epoch"],
+                content["version"],
+                content["release"],
+                content["arch"],
             ): content
             for content in get_content(repo.to_dict())[RPM_PACKAGE_CONTENT_NAME]
         }
@@ -390,9 +384,9 @@ class BasicSyncTestCase(PulpTestCase):
         for nevra in original_packages:
             with self.subTest(pkg=nevra):
                 self.assertNotEqual(
-                    original_packages[nevra]['pkgId'],
-                    mutated_packages[nevra]['pkgId'],
-                    original_packages[nevra]['pkgId'],
+                    original_packages[nevra]["pkgId"],
+                    mutated_packages[nevra]["pkgId"],
+                    original_packages[nevra]["pkgId"],
                 )
 
     def test_sync_diff_checksum_packages(self):
@@ -439,8 +433,8 @@ class BasicSyncTestCase(PulpTestCase):
 
         # Verifying whether the packages with first checksum is removed and second
         # is added.
-        self.assertEqual(added_content[0]['checksum_type'], 'sha512')
-        self.assertEqual(removed_content[0]['checksum_type'], 'sha256')
+        self.assertEqual(added_content[0]["checksum_type"], "sha512")
+        self.assertEqual(removed_content[0]["checksum_type"], "sha256")
 
     def test_mutated_advisory_metadata(self):
         """Sync two copies of the same Advisory (only description is updated).
@@ -479,7 +473,7 @@ class BasicSyncTestCase(PulpTestCase):
         self.assertDictEqual(get_added_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
 
         original_updaterecords = {
-            content['id']: content
+            content["id"]: content
             for content in get_content(repo.to_dict())[RPM_ADVISORY_CONTENT_NAME]
         }
 
@@ -493,23 +487,19 @@ class BasicSyncTestCase(PulpTestCase):
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
         self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
-        self.assertEqual(
-            len(get_added_content(repo.to_dict())[RPM_ADVISORY_CONTENT_NAME]), 4
-        )
-        self.assertEqual(
-            len(get_removed_content(repo.to_dict())[RPM_ADVISORY_CONTENT_NAME]), 4
-        )
+        self.assertEqual(len(get_added_content(repo.to_dict())[RPM_ADVISORY_CONTENT_NAME]), 4)
+        self.assertEqual(len(get_removed_content(repo.to_dict())[RPM_ADVISORY_CONTENT_NAME]), 4)
 
         # Test that the updateinfo have been modified.
         mutated_updaterecords = {
-            content['id']: content
+            content["id"]: content
             for content in get_content(repo.to_dict())[RPM_ADVISORY_CONTENT_NAME]
         }
 
         self.assertNotEqual(mutated_updaterecords, original_updaterecords)
         self.assertEqual(
-            mutated_updaterecords[RPM_ADVISORY_TEST_ID_NEW]['description'],
-            'Updated Gorilla_Erratum and the updated date contains timezone',
+            mutated_updaterecords[RPM_ADVISORY_TEST_ID_NEW]["description"],
+            "Updated Gorilla_Erratum and the updated date contains timezone",
             mutated_updaterecords[RPM_ADVISORY_TEST_ID_NEW],
         )
 
@@ -595,7 +585,7 @@ class BasicSyncTestCase(PulpTestCase):
 
         # create new remote
         body = gen_rpm_remote()
-        body['url'] = RPM_RICH_WEAK_FIXTURE_URL
+        body["url"] = RPM_RICH_WEAK_FIXTURE_URL
         new_remote = self.remote_api.create(body)
 
         # add resource to clean up
@@ -681,15 +671,15 @@ class BasicSyncTestCase(PulpTestCase):
         # check if newer version advisory was added and older removed
         added_advisories = get_added_content(repo.to_dict())[PULP_TYPE_ADVISORY]
         added_advisory = [
-            advisory['version']
+            advisory["version"]
             for advisory in added_advisories
-            if advisory['id'] == RPM_ADVISORY_TEST_ID
+            if advisory["id"] == RPM_ADVISORY_TEST_ID
         ]
         removed_advisories = get_removed_content(repo.to_dict())[PULP_TYPE_ADVISORY]
         removed_advisory = [
-            advisory['version']
+            advisory["version"]
             for advisory in removed_advisories
-            if advisory['id'] == RPM_ADVISORY_TEST_ID
+            if advisory["id"] == RPM_ADVISORY_TEST_ID
         ]
         self.assertGreater(int(added_advisory[0]), int(removed_advisory[0]))
 
@@ -709,7 +699,7 @@ class BasicSyncTestCase(PulpTestCase):
 
         # sync
         repo, remote = self.do_test(remote=remote)
-        repository_version = repo.to_dict()['latest_version_href']
+        repository_version = repo.to_dict()["latest_version_href"]
 
         # add remote to clean up
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
@@ -719,7 +709,7 @@ class BasicSyncTestCase(PulpTestCase):
 
         # re-sync
         repo, remote = self.do_test(repo, remote)
-        repository_version_new = repo.to_dict()['latest_version_href']
+        repository_version_new = repo.to_dict()["latest_version_href"]
 
         # add resources to clean up
         self.addCleanup(self.repo_api.delete, repo.pulp_href)
@@ -727,13 +717,13 @@ class BasicSyncTestCase(PulpTestCase):
 
         present_advisories = get_content(repo.to_dict())[PULP_TYPE_ADVISORY]
         advisory_version = [
-            advisory['version']
+            advisory["version"]
             for advisory in present_advisories
-            if advisory['id'] == RPM_ADVISORY_TEST_ID
+            if advisory["id"] == RPM_ADVISORY_TEST_ID
         ]
 
         # check if the newer version is preserved
-        self.assertEqual(advisory_version[0], '2')
+        self.assertEqual(advisory_version[0], "2")
         # no new content is present in RPM_UNSIGNED_FIXTURE_URL against
         # RPM_ADVISORY_UPDATED_VERSION_URL so repository latests version should stay the same.
         self.assertEqual(repository_version, repository_version_new)
@@ -765,22 +755,22 @@ class BasicSyncTestCase(PulpTestCase):
         # check advisories were merged
         added_advisories = get_added_content(repo.to_dict())[PULP_TYPE_ADVISORY]
         added_advisory_pkglist = [
-            advisory['pkglist']
+            advisory["pkglist"]
             for advisory in added_advisories
-            if advisory['id'] == RPM_ADVISORY_TEST_ID
+            if advisory["id"] == RPM_ADVISORY_TEST_ID
         ]
         removed_advisories = get_removed_content(repo.to_dict())[PULP_TYPE_ADVISORY]
         removed_advisory_pkglist = [
-            advisory['pkglist']
+            advisory["pkglist"]
             for advisory in removed_advisories
-            if advisory['id'] == RPM_ADVISORY_TEST_ID
+            if advisory["id"] == RPM_ADVISORY_TEST_ID
         ]
         added_count = 0
         removed_count = 0
         for collection in added_advisory_pkglist[0]:
-            added_count += len(collection['packages'])
+            added_count += len(collection["packages"])
         for collection in removed_advisory_pkglist[0]:
-            removed_count += len(collection['packages'])
+            removed_count += len(collection["packages"])
         self.assertEqual(RPM_ADVISORY_TEST_REMOVE_COUNT, removed_count)
         self.assertEqual(RPM_ADVISORY_TEST_ADDED_COUNT, added_count)
 
@@ -811,17 +801,19 @@ class BasicSyncTestCase(PulpTestCase):
             monitor_task(sync_response.task)
         except PulpTaskError as exc:
             task_result = exc.task.to_dict()
-        error_msg = 'Incoming and existing advisories have the same id but different ' \
-            'timestamps and intersecting package lists. It is likely that they are from ' \
-            'two different incompatible remote repositories. E.g. RHELX-repo and ' \
-            'RHELY-debuginfo repo. Ensure that you are adding content for the compatible ' \
-            'repositories. Advisory id: {}'.format(RPM_ADVISORY_TEST_ID)
+        error_msg = (
+            "Incoming and existing advisories have the same id but different "
+            "timestamps and intersecting package lists. It is likely that they are from "
+            "two different incompatible remote repositories. E.g. RHELX-repo and "
+            "RHELY-debuginfo repo. Ensure that you are adding content for the compatible "
+            "repositories. Advisory id: {}".format(RPM_ADVISORY_TEST_ID)
+        )
 
         # add resources to clean up
         self.addCleanup(self.repo_api.delete, repo.pulp_href)
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
-        self.assertIn(error_msg, task_result['error']['description'])
+        self.assertIn(error_msg, task_result["error"]["description"])
 
     def test_sync_advisory_incomplete_pgk_list(self):
         """Test failure sync advisories.
@@ -850,19 +842,19 @@ class BasicSyncTestCase(PulpTestCase):
             monitor_task(sync_response.task)
         except PulpTaskError as exc:
             task_result = exc.task.to_dict()
-        error_msg = 'Incoming and existing advisories have the same id ' \
-            'and timestamp but different and intersecting package lists. ' \
-            'At least one of them is wrong. Advisory id: {}'.format(RPM_ADVISORY_TEST_ID)
+        error_msg = (
+            "Incoming and existing advisories have the same id "
+            "and timestamp but different and intersecting package lists. "
+            "At least one of them is wrong. Advisory id: {}".format(RPM_ADVISORY_TEST_ID)
+        )
 
         # add resources to clean up
         self.addCleanup(self.repo_api.delete, repo.pulp_href)
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
-        self.assertIn(error_msg, task_result['error']['description'])
+        self.assertIn(error_msg, task_result["error"]["description"])
 
-    @unittest.skip(
-        'FIXME: Enable this test after https://pulp.plan.io/issues/6605 is fixed'
-    )
+    @unittest.skip("FIXME: Enable this test after https://pulp.plan.io/issues/6605 is fixed")
     def test_sync_advisory_no_updated_date(self):
         """Test sync advisory with no update.
 
@@ -890,19 +882,18 @@ class BasicSyncTestCase(PulpTestCase):
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
         added_advisory_date = [
-            advisory['updated_date']
+            advisory["updated_date"]
             for advisory in get_added_content(repo.to_dict())[PULP_TYPE_ADVISORY]
-            if RPM_ADVISORY_TEST_ID in advisory['id']
+            if RPM_ADVISORY_TEST_ID in advisory["id"]
         ]
         removed_advisory_date = [
-            advisory['issued_date']
+            advisory["issued_date"]
             for advisory in get_removed_content(repo.to_dict())[PULP_TYPE_ADVISORY]
-            if RPM_ADVISORY_TEST_ID in advisory['id']
+            if RPM_ADVISORY_TEST_ID in advisory["id"]
         ]
 
         self.assertGreater(
-            parse_datetime(added_advisory_date[0]),
-            parse_datetime(removed_advisory_date[0])
+            parse_datetime(added_advisory_date[0]), parse_datetime(removed_advisory_date[0])
         )
 
     def test_sync_advisory_updated_update_date(self):
@@ -927,19 +918,18 @@ class BasicSyncTestCase(PulpTestCase):
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
         added_advisory_date = [
-            advisory['updated_date']
+            advisory["updated_date"]
             for advisory in get_added_content(repo.to_dict())[PULP_TYPE_ADVISORY]
-            if RPM_ADVISORY_TEST_ID_NEW in advisory['id']
+            if RPM_ADVISORY_TEST_ID_NEW in advisory["id"]
         ]
         removed_advisory_date = [
-            advisory['updated_date']
+            advisory["updated_date"]
             for advisory in get_removed_content(repo.to_dict())[PULP_TYPE_ADVISORY]
-            if RPM_ADVISORY_TEST_ID_NEW in advisory['id']
+            if RPM_ADVISORY_TEST_ID_NEW in advisory["id"]
         ]
 
         self.assertGreater(
-            parse_datetime(added_advisory_date[0]),
-            parse_datetime(removed_advisory_date[0])
+            parse_datetime(added_advisory_date[0]), parse_datetime(removed_advisory_date[0])
         )
 
     def test_sync_advisory_older_update_date(self):
@@ -950,9 +940,9 @@ class BasicSyncTestCase(PulpTestCase):
         # sync
         repo, remote = self.do_test(remote=remote)
         advisory_date = [
-            advisory['updated_date']
+            advisory["updated_date"]
             for advisory in get_content(repo.to_dict())[PULP_TYPE_ADVISORY]
-            if advisory['id'] == RPM_ADVISORY_TEST_ID
+            if advisory["id"] == RPM_ADVISORY_TEST_ID
         ]
 
         # add remote to clean up
@@ -965,13 +955,12 @@ class BasicSyncTestCase(PulpTestCase):
         repo, remote = self.do_test(repo, remote)
 
         advisory_date_new = [
-            advisory['updated_date']
+            advisory["updated_date"]
             for advisory in get_content(repo.to_dict())[PULP_TYPE_ADVISORY]
-            if advisory['id'] == RPM_ADVISORY_TEST_ID
+            if advisory["id"] == RPM_ADVISORY_TEST_ID
         ]
         added_advisories = [
-            advisory['id']
-            for advisory in get_added_content(repo.to_dict())[PULP_TYPE_ADVISORY]
+            advisory["id"] for advisory in get_added_content(repo.to_dict())[PULP_TYPE_ADVISORY]
         ]
 
         # add resources to clean up
@@ -979,14 +968,8 @@ class BasicSyncTestCase(PulpTestCase):
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
         # check if advisory is preserved and no advisory with same id was added
-        self.assertEqual(
-            parse_datetime(advisory_date[0]),
-            parse_datetime(advisory_date_new[0])
-        )
-        self.assertNotIn(
-            RPM_ADVISORY_TEST_ID,
-            added_advisories
-        )
+        self.assertEqual(parse_datetime(advisory_date[0]), parse_datetime(advisory_date_new[0]))
+        self.assertNotIn(RPM_ADVISORY_TEST_ID, added_advisories)
 
     def test_sync_repo_metadata_change(self):
         """Sync RPM modular content.
@@ -1011,7 +994,7 @@ class BasicSyncTestCase(PulpTestCase):
         repo, remote = self.do_test(repository=repo, remote=remote_changed)
 
         # Check if repository was updated with repository metadata
-        self.assertEqual(repo.latest_version_href.rstrip('/')[-1], '2')
+        self.assertEqual(repo.latest_version_href.rstrip("/")[-1], "2")
         self.assertTrue(PULP_TYPE_REPOMETADATA in get_added_content(repo.to_dict()))
 
     def do_test(self, repository=None, remote=None):
@@ -1054,9 +1037,9 @@ class BasicSyncTestCase(PulpTestCase):
         Returns (list):
             list of the ProgressReport objects created from this sync
         """
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href,
-                                                    optimize=optimize,
-                                                    mirror=mirror)
+        repository_sync_data = RpmRepositorySyncURL(
+            remote=remote.pulp_href, optimize=optimize, mirror=mirror
+        )
         sync_response = self.repo_api.sync(repository.pulp_href, repository_sync_data)
         monitor_task(sync_response.task)
         return progress_reports(sync_response.task)
@@ -1156,12 +1139,10 @@ class AdditiveModeTestCase(PulpTestCase):
         present_package_count = len(get_content(repo.to_dict())[PULP_TYPE_PACKAGE])
         present_advisory_count = len(get_content(repo.to_dict())[PULP_TYPE_ADVISORY])
         self.assertEqual(
-            RPM_PACKAGE_COUNT + SRPM_UNSIGNED_FIXTURE_PACKAGE_COUNT,
-            present_package_count
+            RPM_PACKAGE_COUNT + SRPM_UNSIGNED_FIXTURE_PACKAGE_COUNT, present_package_count
         )
         self.assertEqual(
-            RPM_ADVISORY_COUNT + SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT,
-            present_advisory_count
+            RPM_ADVISORY_COUNT + SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT, present_advisory_count
         )
 
 
@@ -1202,7 +1183,4 @@ class MirrorModeTestCase(PulpTestCase):
 
         # 3. Check that only new content is present
         repo = repo_api.read(repo.pulp_href)
-        self.assertDictEqual(
-            RPM_FIXTURE_SUMMARY,
-            get_content_summary(repo.to_dict())
-        )
+        self.assertDictEqual(RPM_FIXTURE_SUMMARY, get_content_summary(repo.to_dict()))

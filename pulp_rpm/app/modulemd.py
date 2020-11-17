@@ -6,7 +6,8 @@ from pulp_rpm.app.models import Modulemd, Package
 from pulp_rpm.app.constants import PULP_MODULE_ATTR, PULP_MODULEDEFAULTS_ATTR
 
 import gi
-gi.require_version('Modulemd', '2.0')
+
+gi.require_version("Modulemd", "2.0")
 from gi.repository import Modulemd as mmdlib  # noqa: E402
 
 
@@ -20,6 +21,7 @@ def resolve_module_packages(version, previous_version):
                                                                     repository to compare to
 
     """
+
     def modules_packages(modules):
         packages = set()
         for module in modules:
@@ -27,13 +29,15 @@ def resolve_module_packages(version, previous_version):
         return packages
 
     modulemd_pulp_type = Modulemd.get_pulp_type()
-    current_modules = Modulemd.objects \
-        .filter(pk__in=version.content.filter(pulp_type=modulemd_pulp_type))
+    current_modules = Modulemd.objects.filter(
+        pk__in=version.content.filter(pulp_type=modulemd_pulp_type)
+    )
     current_module_packages = modules_packages(current_modules)
 
     if previous_version:
-        previous_modules = Modulemd.objects \
-            .filter(pk__in=previous_version.content.filter(pulp_type=modulemd_pulp_type))
+        previous_modules = Modulemd.objects.filter(
+            pk__in=previous_version.content.filter(pulp_type=modulemd_pulp_type)
+        )
         added_modules = current_modules.difference(previous_modules)
         removed_modules = previous_modules.difference(current_modules)
         removed_module_packages = modules_packages(removed_modules)
@@ -60,7 +64,7 @@ def _create_snippet(snippet_string):
 
     """
     tmp_file = tempfile.NamedTemporaryFile(dir=os.getcwd(), delete=False)
-    with open(tmp_file.name, 'w') as snippet:
+    with open(tmp_file.name, "w") as snippet:
         snippet.write(snippet_string)
     return Artifact.init_and_validate(tmp_file.name)
 
@@ -129,11 +133,13 @@ def parse_defaults(module_index):
             temp_index = mmdlib.ModuleIndex.new()
             temp_index.add_defaults(defaults)
             artifact = _create_snippet(temp_index.dump_to_string())
-            ret.append({
-                PULP_MODULEDEFAULTS_ATTR.MODULE: modulemd.get_module_name(),
-                PULP_MODULEDEFAULTS_ATTR.STREAM: default_stream,
-                PULP_MODULEDEFAULTS_ATTR.PROFILES: default_profile,
-                PULP_MODULEDEFAULTS_ATTR.DIGEST: artifact.sha256,
-                'artifact': artifact
-            })
+            ret.append(
+                {
+                    PULP_MODULEDEFAULTS_ATTR.MODULE: modulemd.get_module_name(),
+                    PULP_MODULEDEFAULTS_ATTR.STREAM: default_stream,
+                    PULP_MODULEDEFAULTS_ATTR.PROFILES: default_profile,
+                    PULP_MODULEDEFAULTS_ATTR.DIGEST: artifact.sha256,
+                    "artifact": artifact,
+                }
+            )
     return ret

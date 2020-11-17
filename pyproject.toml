@@ -28,3 +28,19 @@ ignore = [
     ".travis.yml",
     ".pep8speaks.yml",
 ]
+
+[tool.black]
+line-length = 100
+target-version = ["py36", "py37"]
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.venv
+  | _build
+  | build
+  | dist
+  | migrations
+  | docs
+)/
+'''

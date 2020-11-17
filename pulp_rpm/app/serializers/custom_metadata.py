@@ -9,9 +9,7 @@ from pulpcore.plugin.serializers import (
 from pulp_rpm.app.models import RepoMetadataFile
 
 
-class RepoMetadataFileSerializer(
-    SingleArtifactContentUploadSerializer, ContentChecksumSerializer
-):
+class RepoMetadataFileSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSerializer):
     """
     RepoMetadataFile serializer.
     """
@@ -26,6 +24,6 @@ class RepoMetadataFileSerializer(
             "data_type",
             "checksum_type",
             "checksum",
-            "sha256"
+            "sha256",
         )
         model = RepoMetadataFile

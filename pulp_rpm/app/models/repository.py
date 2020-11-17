@@ -48,11 +48,8 @@ class RpmRemote(Remote):
     Remote for "rpm" content.
     """
 
-    TYPE = 'rpm'
-    sles_auth_token = models.CharField(
-        max_length=512,
-        null=True
-    )
+    TYPE = "rpm"
+    sles_auth_token = models.CharField(max_length=512, null=True)
 
     @property
     def download_factory(self):
@@ -70,10 +67,10 @@ class RpmRemote(Remote):
             self._download_factory = DownloaderFactory(
                 self,
                 downloader_overrides={
-                    'http': RpmDownloader,
-                    'https': RpmDownloader,
-                    'file': RpmFileDownloader,
-                }
+                    "http": RpmDownloader,
+                    "https": RpmDownloader,
+                    "file": RpmFileDownloader,
+                },
             )
             return self._download_factory
 
@@ -98,7 +95,7 @@ class RpmRemote(Remote):
 
         """
         if self.sles_auth_token:
-            kwargs['sles_auth_token'] = self.sles_auth_token
+            kwargs["sles_auth_token"] = self.sles_auth_token
         return super().get_downloader(remote_artifact=remote_artifact, url=url, **kwargs)
 
     class Meta:
@@ -127,19 +124,21 @@ class RpmRepository(Repository):
 
     TYPE = "rpm"
     CONTENT_TYPES = [
-        Package, UpdateRecord,
-        PackageCategory, PackageGroup, PackageEnvironment, PackageLangpacks,
-        RepoMetadataFile, DistributionTree,
-        Modulemd, ModulemdDefaults
+        Package,
+        UpdateRecord,
+        PackageCategory,
+        PackageGroup,
+        PackageEnvironment,
+        PackageLangpacks,
+        RepoMetadataFile,
+        DistributionTree,
+        Modulemd,
+        ModulemdDefaults,
     ]
-    REMOTE_TYPES = [
-        RpmRemote
-    ]
+    REMOTE_TYPES = [RpmRemote]
 
     metadata_signing_service = models.ForeignKey(
-        AsciiArmoredDetachedSigningService,
-        on_delete=models.SET_NULL,
-        null=True
+        AsciiArmoredDetachedSigningService, on_delete=models.SET_NULL, null=True
     )
     sub_repo = models.BooleanField(default=False)
     last_sync_revision_number = models.CharField(max_length=20, null=True)
@@ -170,9 +169,8 @@ class RpmRepository(Repository):
                 latest_version.delete()
 
             version = RepositoryVersion(
-                repository=self,
-                number=int(self.next_version),
-                base_version=base_version)
+                repository=self, number=int(self.next_version), base_version=base_version
+            )
             version.save()
 
             if base_version:
@@ -234,11 +232,13 @@ class RpmRepository(Repository):
         self._resolve_distribution_trees(new_version, previous_version)
 
         from pulp_rpm.app.modulemd import resolve_module_packages  # avoid circular import
+
         resolve_module_packages(new_version, previous_version)
 
         self._apply_retention_policy(new_version)
 
         from pulp_rpm.app.advisory import resolve_advisories  # avoid circular import
+
         resolve_advisories(new_version, previous_version)
         validate_repo_version(new_version)
 
@@ -252,8 +252,9 @@ class RpmRepository(Repository):
         Args:
             new_version (models.RepositoryVersion): Repository version to filter
         """
-        assert not new_version.complete, \
-            "Cannot apply retention policy to completed repository versions"
+        assert (
+            not new_version.complete
+        ), "Cannot apply retention policy to completed repository versions"
 
         if self.retain_package_versions > 0:
             # It would be more ideal if, instead of annotating with an age and filtering manually,
@@ -264,10 +265,14 @@ class RpmRepository(Repository):
             # django-managed and would be difficult to share.
             #
             # Instead we have to do the filtering manually.
-            nonmodular_packages = Package.objects.with_age().filter(
-                pk__in=new_version.content.filter(pulp_type=Package.get_pulp_type()),
-                is_modular=False,  # don't want to filter out modular RPMs
-            ).only('pk')
+            nonmodular_packages = (
+                Package.objects.with_age()
+                .filter(
+                    pk__in=new_version.content.filter(pulp_type=Package.get_pulp_type()),
+                    is_modular=False,  # don't want to filter out modular RPMs
+                )
+                .only("pk")
+            )
 
             old_packages = []
             for package in nonmodular_packages:
@@ -297,8 +302,9 @@ class RpmRepository(Repository):
 
         incoming_disttrees = new_version.content.filter(pulp_type=disttree_pulp_type)
         if len(incoming_disttrees) != 1:
-            raise DistributionTreeConflict(_("More than one distribution tree cannot be added to a "
-                                             "repository version."))
+            raise DistributionTreeConflict(
+                _("More than one distribution tree cannot be added to a " "repository version.")
+            )
 
 
 class RpmPublication(Publication):
@@ -308,7 +314,7 @@ class RpmPublication(Publication):
 
     GPGCHECK_CHOICES = [(0, 0), (1, 1)]
 
-    TYPE = 'rpm'
+    TYPE = "rpm"
     metadata_checksum_type = models.CharField(choices=CHECKSUM_CHOICES, max_length=10)
     package_checksum_type = models.CharField(choices=CHECKSUM_CHOICES, max_length=10)
     gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
@@ -323,8 +329,8 @@ class RpmDistribution(PublicationDistribution):
     Distribution for "rpm" content.
     """
 
-    TYPE = 'rpm'
-    repository_config_file_name = 'config.repo'
+    TYPE = "rpm"
+    repository_config_file_name = "config.repo"
 
     def content_handler(self, path):
         """Serve config.repo and public.key."""
@@ -349,7 +355,7 @@ class RpmDistribution(PublicationDistribution):
                     settings.CONTENT_ORIGIN, settings.CONTENT_PATH_PREFIX
                 )
                 gpgkey_path = urllib.parse.urljoin(gpgkey_path, self.base_path, True)
-                gpgkey_path += '/repodata/public.key'
+                gpgkey_path += "/repodata/public.key"
 
                 val += f"gpgkey={gpgkey_path}\n"
 
@@ -358,7 +364,7 @@ class RpmDistribution(PublicationDistribution):
     def content_handler_list_directory(self, rel_path):
         """Return the extra dir entries."""
         retval = set()
-        if rel_path == '':
+        if rel_path == "":
             retval.add(self.repository_config_file_name)
         return retval
 

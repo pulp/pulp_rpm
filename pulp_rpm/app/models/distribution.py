@@ -65,7 +65,7 @@ class DistributionTree(Content):
 
     """
 
-    TYPE = 'distribution_tree'
+    TYPE = "distribution_tree"
 
     header_version = models.CharField(max_length=10)
 
@@ -99,6 +99,7 @@ class DistributionTree(Content):
 
         """
         from pulp_rpm.app.models import RpmRepository
+
         repo_ids = list(self.addons.values_list("repository__pk", flat=True))
         repo_ids += list(self.variants.values_list("repository__pk", flat=True))
         return RpmRepository.objects.filter(pk__in=repo_ids)
@@ -160,7 +161,7 @@ class Checksum(BaseModel):
     path = models.CharField(max_length=128)
     checksum = models.CharField(max_length=128)
     distribution_tree = models.ForeignKey(
-        DistributionTree, on_delete=models.CASCADE, related_name='checksums'
+        DistributionTree, on_delete=models.CASCADE, related_name="checksums"
     )
 
     class Meta:
@@ -195,7 +196,7 @@ class Image(BaseModel):
     path = models.CharField(max_length=128)
     platforms = models.CharField(max_length=20)
     distribution_tree = models.ForeignKey(
-        DistributionTree, on_delete=models.CASCADE, related_name='images'
+        DistributionTree, on_delete=models.CASCADE, related_name="images"
     )
 
     @property
@@ -252,11 +253,9 @@ class Addon(BaseModel):
     type = models.CharField(max_length=20)
     packages = models.CharField(max_length=50)
     distribution_tree = models.ForeignKey(
-        DistributionTree, on_delete=models.CASCADE, related_name='addons'
+        DistributionTree, on_delete=models.CASCADE, related_name="addons"
     )
-    repository = models.ForeignKey(
-        Repository, on_delete=models.PROTECT, related_name='addons'
-    )
+    repository = models.ForeignKey(Repository, on_delete=models.PROTECT, related_name="addons")
 
     class Meta:
         unique_together = (
@@ -315,10 +314,10 @@ class Variant(BaseModel):
     debug_repository = models.CharField(max_length=50, null=True)
     identity = models.CharField(max_length=50, null=True)
     distribution_tree = models.ForeignKey(
-        DistributionTree, on_delete=models.CASCADE, related_name='variants'
+        DistributionTree, on_delete=models.CASCADE, related_name="variants"
     )
     repository = models.ForeignKey(
-        Repository, on_delete=models.PROTECT, related_name='variants', null=True
+        Repository, on_delete=models.PROTECT, related_name="variants", null=True
     )
 
     class Meta:

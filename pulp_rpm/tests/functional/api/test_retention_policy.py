@@ -76,7 +76,7 @@ class RetentionPolicyTestCase(PulpTestCase):
 
         # Set the retention policy to retain only 1 version of each package
         repo_data = repo.to_dict()
-        repo_data.update({'retain_package_versions': 1})
+        repo_data.update({"retain_package_versions": 1})
         self.repo_api.update(repo.pulp_href, repo_data)
         repo = self.repo_api.read(repo.pulp_href)
 
@@ -88,18 +88,15 @@ class RetentionPolicyTestCase(PulpTestCase):
             self.check_retention_policy(get_content(repo.to_dict())[PULP_TYPE_PACKAGE], 1)
         )
         # Test that (only) 4 RPMs were removed (no advisories etc. touched)
-        self.assertDictEqual(
-            get_removed_content_summary(repo.to_dict()),
-            {PULP_TYPE_PACKAGE: 4}
-        )
+        self.assertDictEqual(get_removed_content_summary(repo.to_dict()), {PULP_TYPE_PACKAGE: 4})
         # Test that the versions that were removed are the versions we expect.
         versions_for_packages = self.versions_for_packages(
             get_removed_content(repo.to_dict())[PULP_TYPE_PACKAGE]
         )
         self.assertDictEqual(
             versions_for_packages,
-            {'duck': ['0.6', '0.7'], 'kangaroo': ['0.2'], 'walrus': ['0.71']},
-            versions_for_packages
+            {"duck": ["0.6", "0.7"], "kangaroo": ["0.2"], "walrus": ["0.71"]},
+            versions_for_packages,
         )
         # TODO: Test that modular RPMs unaffected?
 
@@ -113,7 +110,7 @@ class RetentionPolicyTestCase(PulpTestCase):
         3. Assert that the sync fails.
         """
         repo_data = gen_repo()
-        repo_data.update({'retain_package_versions': 1})
+        repo_data.update({"retain_package_versions": 1})
         repo = self.repo_api.create(repo_data)
         self.addCleanup(self.repo_api.delete, repo.pulp_href)
 
@@ -133,7 +130,7 @@ class RetentionPolicyTestCase(PulpTestCase):
         packages_by_version = defaultdict(list)
 
         for package in packages:
-            packages_by_version[package['name']].append(package['version'])
+            packages_by_version[package["name"]].append(package["version"])
 
         for pkg_list in packages_by_version.values():
             pkg_list.sort()
@@ -147,10 +144,12 @@ class RetentionPolicyTestCase(PulpTestCase):
             packages: List of Package info dicts
             retention_policy: Number of package versions permitted.
         """
-        return all([
-            len(versions) <= retain_package_versions
-            for versions in self.versions_for_packages(packages).values()
-        ])
+        return all(
+            [
+                len(versions) <= retain_package_versions
+                for versions in self.versions_for_packages(packages).values()
+            ]
+        )
 
     def sync(self, repository, remote, optimize=True, mirror=False):
         """Sync a repository and return the task.

@@ -22,7 +22,7 @@ class RpmFileDownloader(FileDownloader):
         """
         Initialize the downloader.
         """
-        kwargs.pop('silence_errors_for_response_status_codes', None)
+        kwargs.pop("silence_errors_for_response_status_codes", None)
         super().__init__(*args, **kwargs)
 
 
@@ -40,8 +40,9 @@ class RpmDownloader(HttpDownloader):
 
     """
 
-    def __init__(self, *args, silence_errors_for_response_status_codes=None, sles_auth_token=None,
-                 **kwargs):
+    def __init__(
+        self, *args, silence_errors_for_response_status_codes=None, sles_auth_token=None, **kwargs
+    ):
         """
         Initialize the downloader.
         """
@@ -79,7 +80,7 @@ class RpmDownloader(HttpDownloader):
 
         """
         if self.sles_auth_token:
-            auth_param = f'?{self.sles_auth_token}'
+            auth_param = f"?{self.sles_auth_token}"
             url = urljoin(self.url, auth_param)
         else:
             url = self.url

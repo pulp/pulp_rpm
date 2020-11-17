@@ -19,7 +19,7 @@ from pulpcore.client.pulp_rpm import (
     RpmRepositorySyncURL,
     RemotesRpmApi,
     RpmRpmPublication,
-    PublicationsRpmApi
+    PublicationsRpmApi,
 )
 
 

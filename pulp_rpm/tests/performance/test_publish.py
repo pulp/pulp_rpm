@@ -64,7 +64,7 @@ class PublishTestCase(unittest.TestCase):
 
         delete_orphans(cls.cfg)
 
-    def parse_date_from_string(self, s, parse_format='%Y-%m-%dT%H:%M:%S.%fZ'):
+    def parse_date_from_string(self, s, parse_format="%Y-%m-%dT%H:%M:%S.%fZ"):
         """Parse string to datetime object.
 
         :param s: str like '2018-11-18T21:03:32.493697Z'
@@ -73,7 +73,7 @@ class PublishTestCase(unittest.TestCase):
         """
         return datetime.strptime(s, parse_format)
 
-    def rpm_publish(self, url=RPM_KICKSTART_FIXTURE_URL, policy='on_demand'):
+    def rpm_publish(self, url=RPM_KICKSTART_FIXTURE_URL, policy="on_demand"):
         """Publish repositories with the rpm plugin.
 
         This test targets the following issue:
@@ -94,12 +94,12 @@ class PublishTestCase(unittest.TestCase):
         """
         delete_orphans(self.cfg)
         repo = self.client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo['pulp_href'])
+        self.addCleanup(self.client.delete, repo["pulp_href"])
 
         # Create a remote with the standard test fixture url.
         body = gen_rpm_remote(url=url, policy=policy)
         remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote['pulp_href'])
+        self.addCleanup(self.client.delete, remote["pulp_href"])
 
         # Sync the repository.
         self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
@@ -113,15 +113,16 @@ class PublishTestCase(unittest.TestCase):
         finished_at = self.parse_date_from_string(sync_task["finished_at"])
         task_duration = finished_at - started_at
         waiting_time = started_at - created_at
-        print("\n->     Sync => Waiting time (s): {wait} | Service time (s): {service}".format(
-            wait=waiting_time.total_seconds(),
-            service=task_duration.total_seconds()
-        ))
+        print(
+            "\n->     Sync => Waiting time (s): {wait} | Service time (s): {service}".format(
+                wait=waiting_time.total_seconds(), service=task_duration.total_seconds()
+            )
+        )
 
-        repo = self.client.get(repo['pulp_href'])
+        repo = self.client.get(repo["pulp_href"])
 
         # Check that we have the correct content counts.
-        self.assertIsNotNone(repo['latest_version_href'])
+        self.assertIsNotNone(repo["latest_version_href"])
 
         self.assertIn(
             RPM_PACKAGE_CONTENT_NAME,
@@ -132,7 +133,7 @@ class PublishTestCase(unittest.TestCase):
             get_added_content_summary(repo).keys(),
         )
 
-        repo = self.client.get(repo['pulp_href'])
+        repo = self.client.get(repo["pulp_href"])
 
         # Publishing
         body = {"repository": repo["pulp_href"]}
@@ -143,10 +144,11 @@ class PublishTestCase(unittest.TestCase):
         finished_at = self.parse_date_from_string(publish_task["finished_at"])
         task_duration = finished_at - started_at
         waiting_time = started_at - created_at
-        print("\n->     Publish => Waiting time (s): {wait} | Service time (s): {service}".format(
-            wait=waiting_time.total_seconds(),
-            service=task_duration.total_seconds()
-        ))
+        print(
+            "\n->     Publish => Waiting time (s): {wait} | Service time (s): {service}".format(
+                wait=waiting_time.total_seconds(), service=task_duration.total_seconds()
+            )
+        )
         return publish_task["created_resources"][0]
 
     def test_epel7(self):
@@ -165,9 +167,7 @@ class PublishTestCase(unittest.TestCase):
         """Publish CentOS 8 BaseOS."""
         publication_href = self.rpm_publish(url=CENTOS8_BASEOS_URL)
         # Test that the .treeinfo file is available and AppStream sub-repo is published correctly
-        body = {"publication": publication_href,
-                "name": "centos8",
-                "base_path": "centos8"}
+        body = {"publication": publication_href, "name": "centos8", "base_path": "centos8"}
         response = self.client.using_handler(api.json_handler).post(RPM_DISTRIBUTION_PATH, body)
         distribution_task = self.client.get(response["task"])
         distribution_href = distribution_task["created_resources"][0]
@@ -175,7 +175,7 @@ class PublishTestCase(unittest.TestCase):
         distribution = self.client.get(distribution_href)
         treeinfo_file = utils.http_get(urljoin(distribution["base_url"], ".treeinfo"))
         treeinfo = TreeInfo()
-        with NamedTemporaryFile('wb') as temp_file:
+        with NamedTemporaryFile("wb") as temp_file:
             temp_file.write(treeinfo_file)
             temp_file.flush()
             treeinfo.load(f=temp_file.name)
@@ -188,8 +188,9 @@ class PublishTestCase(unittest.TestCase):
                 self.assertEqual(variant.paths.packages, "AppStream/Packages")
                 # Find the first package in the 'AppStream/Packages/a/' directory and download it
                 parser = PackagesHtmlParser()
-                a_packages_href = urljoin(distribution["base_url"],
-                                          "{}/a/".format(variant.paths.packages))
+                a_packages_href = urljoin(
+                    distribution["base_url"], "{}/a/".format(variant.paths.packages)
+                )
                 a_packages_listing = utils.http_get(a_packages_href)
                 parser.feed(a_packages_listing.__str__())
                 full_package_path = urljoin(a_packages_href, parser.package_href)

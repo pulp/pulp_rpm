@@ -55,16 +55,14 @@ class AdvisoryContentUnitTestCase(PulpTestCase):
         upload = self.do_test_json()
         content = monitor_task(upload.task)[0]
         advisory = self.content_api.read(content)
-        self.assertTrue(advisory.id == 'RHSA-XXXX:XXXX')
+        self.assertTrue(advisory.id == "RHSA-XXXX:XXXX")
 
     def do_test(self, remote_path):
         """Upload wrong type of the file."""
         with NamedTemporaryFile() as file_to_upload:
-            file_to_upload.write(
-                http_get(remote_path)
-            )
+            file_to_upload.write(http_get(remote_path))
             upload_attrs = {
-                'file': file_to_upload.name,
+                "file": file_to_upload.name,
             }
             return self.content_api.create(**upload_attrs)
 
@@ -75,10 +73,10 @@ class AdvisoryContentUnitTestCase(PulpTestCase):
         "issued": "2014-09-24 00:00:00",
         "id": "RHSA-XXXX:XXXX"}"""
 
-        with NamedTemporaryFile('w+') as file_to_upload:
+        with NamedTemporaryFile("w+") as file_to_upload:
             json.dump(json.loads(advisory), file_to_upload)
             upload_attrs = {
-                'file': file_to_upload.name,
+                "file": file_to_upload.name,
             }
             file_to_upload.flush()
             return self.content_api.create(**upload_attrs)

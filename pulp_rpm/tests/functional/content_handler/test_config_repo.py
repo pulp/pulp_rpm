@@ -58,15 +58,15 @@ class ContentHandlerTests(PulpTestCase):
         resp = requests.get(self.dist.base_url)
 
         self.assertEqual(resp.status_code, 200)
-        self.assertIn(b'config.repo', resp.content)
-        self.assertNotIn(b'public.key', resp.content)
+        self.assertIn(b"config.repo", resp.content)
+        self.assertNotIn(b"public.key", resp.content)
 
     def testConfigRepoUnsigned(self):
         """Whether config.repo can be downloaded and has the right content."""
-        resp = requests.get(f'{self.dist.base_url}config.repo')
+        resp = requests.get(f"{self.dist.base_url}config.repo")
 
         self.assertEqual(resp.status_code, 200)
-        self.assertIn(bytes(f'[{self.dist.name}]\n', 'utf-8'), resp.content)
-        self.assertIn(bytes(f'baseurl={self.dist.base_url}\n', 'utf-8'), resp.content)
-        self.assertIn(bytes('gpgcheck=0\n', 'utf-8'), resp.content)
-        self.assertIn(bytes('repo_gpgcheck=0', 'utf-8'), resp.content)
+        self.assertIn(bytes(f"[{self.dist.name}]\n", "utf-8"), resp.content)
+        self.assertIn(bytes(f"baseurl={self.dist.base_url}\n", "utf-8"), resp.content)
+        self.assertIn(bytes("gpgcheck=0\n", "utf-8"), resp.content)
+        self.assertIn(bytes("repo_gpgcheck=0", "utf-8"), resp.content)

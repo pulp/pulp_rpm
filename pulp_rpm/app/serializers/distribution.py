@@ -25,9 +25,7 @@ class AddonSerializer(serializers.ModelSerializer):
     uid = serializers.CharField(help_text=_("Addon uid."))
     name = serializers.CharField(help_text=_("Addon name."))
     type = serializers.CharField(help_text=_("Addon type."))
-    packages = serializers.CharField(
-        help_text=_("Relative path to directory with binary RPMs.")
-    )
+    packages = serializers.CharField(help_text=_("Relative path to directory with binary RPMs."))
 
     class Meta:
         model = Addon
@@ -71,9 +69,7 @@ class VariantSerializer(serializers.ModelSerializer):
     uid = serializers.CharField(help_text=_("Variant uid."))
     name = serializers.CharField(help_text=_("Variant name."))
     type = serializers.CharField(help_text=_("Variant type."))
-    packages = serializers.CharField(
-        help_text=_("Relative path to directory with binary RPMs.")
-    )
+    packages = serializers.CharField(help_text=_("Relative path to directory with binary RPMs."))
     source_packages = serializers.CharField(
         help_text=_("Relative path to directory with source RPMs."), allow_null=True
     )
@@ -119,9 +115,7 @@ class DistributionTreeSerializer(MultipleArtifactContentSerializer):
         help_text=_("Typically False for an operating system, True otherwise.")
     )
 
-    base_product_name = serializers.CharField(
-        help_text=_("Base Product name."), allow_null=True
-    )
+    base_product_name = serializers.CharField(help_text=_("Base Product name."), allow_null=True)
     base_product_short = serializers.CharField(
         help_text=_("Base Product short name."), allow_null=True
     )

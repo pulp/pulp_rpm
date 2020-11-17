@@ -11,12 +11,7 @@ from time import sleep
 from tempfile import NamedTemporaryFile
 
 from pulp_smash import api, cli, config, selectors
-from pulp_smash.pulp3.utils import (
-    gen_remote,
-    get_content,
-    require_pulp_3,
-    require_pulp_plugins
-)
+from pulp_smash.pulp3.utils import gen_remote, get_content, require_pulp_3, require_pulp_plugins
 
 from pulp_rpm.app.constants import PACKAGES_DIRECTORY
 
@@ -26,14 +21,10 @@ from pulp_rpm.tests.functional.constants import (
     RPM_PACKAGE_CONTENT_NAME,
     RPM_SIGNED_URL,
     RPM_UNSIGNED_FIXTURE_URL,
-    RPM_PUBLICATION_PATH
+    RPM_PUBLICATION_PATH,
 )
 
-from pulpcore.client.pulpcore import (
-    ApiClient as CoreApiClient,
-    ArtifactsApi,
-    TasksApi
-)
+from pulpcore.client.pulpcore import ApiClient as CoreApiClient, ArtifactsApi, TasksApi
 from pulpcore.client.pulp_rpm import ApiClient as RpmApiClient
 
 
@@ -78,9 +69,9 @@ def get_rpm_package_paths(repo):
     :returns: A list with the paths of units present in a given repository.
     """
     return [
-        content_unit['location_href']
+        content_unit["location_href"]
         for content_unit in get_content(repo)[RPM_PACKAGE_CONTENT_NAME]
-        if 'location_href' in content_unit
+        if "location_href" in content_unit
     ]
 
 
@@ -90,10 +81,7 @@ def gen_rpm_content_attrs(artifact, rpm_name):
     :param artifact: A dict of info about the artifact.
     :returns: A semi-random dict for use in creating a content unit.
     """
-    return {
-        "artifact": artifact["pulp_href"],
-        "relative_path": rpm_name
-    }
+    return {"artifact": artifact["pulp_href"], "relative_path": rpm_name}
 
 
 def rpm_copy(cfg, config, recursive=False):
@@ -109,7 +97,7 @@ def rpm_copy(cfg, config, recursive=False):
         created sync.
     """
     client = api.Client(cfg)
-    data = {'config': config, 'dependency_solving': recursive}
+    data = {"config": config, "dependency_solving": recursive}
     return client.post(RPM_COPY_PATH, data)
 
 
@@ -158,35 +146,31 @@ def gen_yum_config_file(cfg, repositoryid, baseurl, name, **kwargs):
     :returns: The path to the yum configuration file.
     """
     # required repo options
-    kwargs.setdefault('name', name)
-    kwargs.setdefault('baseurl', baseurl)
+    kwargs.setdefault("name", name)
+    kwargs.setdefault("baseurl", baseurl)
     # assume some common used defaults
-    kwargs.setdefault('enabled', 1)
-    kwargs.setdefault('gpgcheck', 0)
-    kwargs.setdefault('metadata_expire', 0)  # force metadata load every time
+    kwargs.setdefault("enabled", 1)
+    kwargs.setdefault("gpgcheck", 0)
+    kwargs.setdefault("metadata_expire", 0)  # force metadata load every time
 
     # Check if the settings specifies a content host role else assume ``api``
     try:
-        content_host = cfg.get_hosts('content')[0].roles['content']
+        content_host = cfg.get_hosts("content")[0].roles["content"]
     except IndexError:
-        content_host = cfg.get_hosts('api')[0].roles['api']
+        content_host = cfg.get_hosts("api")[0].roles["api"]
 
     # if sslverify is not provided in kwargs it is inferred from cfg
-    kwargs.setdefault(
-        'sslverify', content_host.get('verify') and 'yes' or 'no'
-    )
+    kwargs.setdefault("sslverify", content_host.get("verify") and "yes" or "no")
 
-    path = os.path.join('/etc/yum.repos.d/', repositoryid + '.repo')
+    path = os.path.join("/etc/yum.repos.d/", repositoryid + ".repo")
     with StringIO() as section:
-        section.write('[{}]\n'.format(repositoryid))
+        section.write("[{}]\n".format(repositoryid))
         for key, value in kwargs.items():
-            section.write('{} = {}\n'.format(key, value))
+            section.write("{} = {}\n".format(key, value))
         # machine.session is used here to keep SSH session open
         cli.Client(cfg).machine.session().run(
             'echo "{}" | {}tee {} > /dev/null'.format(
-                section.getvalue(),
-                '' if cli.is_root(cfg) else 'sudo ',
-                path
+                section.getvalue(), "" if cli.is_root(cfg) else "sudo ", path
             )
         )
     return path
@@ -222,12 +206,16 @@ def init_signed_repo_configuration():
 
     # create a new signing service
     utils_dir_path = os.path.dirname(os.path.realpath(__file__))
-    signing_script_path = os.path.join(utils_dir_path, 'sign-metadata.sh')
+    signing_script_path = os.path.join(utils_dir_path, "sign-metadata.sh")
     subprocess.run(
-        ("django-admin", "shell", "-c",
-         "from pulpcore.app.models.content import AsciiArmoredDetachedSigningService;"
-         "AsciiArmoredDetachedSigningService.objects.create(name='sign-metadata',"
-         f"script='{signing_script_path}')")
+        (
+            "django-admin",
+            "shell",
+            "-c",
+            "from pulpcore.app.models.content import AsciiArmoredDetachedSigningService;"
+            "AsciiArmoredDetachedSigningService.objects.create(name='sign-metadata',"
+            f"script='{signing_script_path}')",
+        )
     )
 
 
@@ -263,6 +251,4 @@ def get_package_repo_path(package_filename):
         (str): full path of RPM package in published repository
 
     """
-    return os.path.join(
-        PACKAGES_DIRECTORY, package_filename.lower()[0], package_filename
-    )
+    return os.path.join(PACKAGES_DIRECTORY, package_filename.lower()[0], package_filename)

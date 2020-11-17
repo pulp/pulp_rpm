@@ -16,7 +16,7 @@ from pulp_smash.pulp3.utils import (
     get_content,
     get_content_summary,
     get_versions,
-    modify_repo
+    modify_repo,
 )
 
 from pulp_rpm.tests.functional.constants import (
@@ -31,7 +31,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_SHA512_FIXTURE_URL,
     SRPM_UNSIGNED_FIXTURE_URL,
     RPM_REFERENCES_UPDATEINFO_URL,
-    RPM_FIXTURE_SUMMARY
+    RPM_FIXTURE_SUMMARY,
 )
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
@@ -235,11 +235,7 @@ class SyncPublishReferencesUpdateTestCase(PulpTestCase):
         self.assertIsNotNone(repo.latest_version_href)
 
         content_summary = get_content_summary(repo.to_dict())
-        self.assertDictEqual(
-            content_summary,
-            RPM_FIXTURE_SUMMARY,
-            content_summary
-        )
+        self.assertDictEqual(content_summary, RPM_FIXTURE_SUMMARY, content_summary)
 
         publish_data = RpmRpmPublication(repository=repo.pulp_href)
         publish_response = publications.create(publish_data)
@@ -308,20 +304,16 @@ class ValidateNoChecksumTagTestCase(PulpTestCase):
 
         # 4. check the tag 'sum' is not present in updateinfo.xml
         repomd = ElementTree.fromstring(
-            http_get(
-                os.path.join(distribution.base_url, 'repodata/repomd.xml')
-            )
+            http_get(os.path.join(distribution.base_url, "repodata/repomd.xml"))
         )
 
         update_xml_url = self._get_updateinfo_xml_path(repomd)
-        update_xml_content = http_get(
-            os.path.join(distribution.base_url, update_xml_url)
-        )
+        update_xml_content = http_get(os.path.join(distribution.base_url, update_xml_url))
         update_xml = read_xml_gz(update_xml_content)
         update_info_content = ElementTree.fromstring(update_xml)
 
         tags = {elem.tag for elem in update_info_content.iter()}
-        self.assertNotIn('sum', tags, update_info_content)
+        self.assertNotIn("sum", tags, update_info_content)
 
     @staticmethod
     def _get_updateinfo_xml_path(root_elem):
@@ -337,13 +329,10 @@ class ValidateNoChecksumTagTestCase(PulpTestCase):
         #         …
         #     </ns0:data>
         #     …
-        xpath = '{{{}}}data'.format(RPM_NAMESPACES['metadata/repo'])
-        data_elems = [
-            elem for elem in root_elem.findall(xpath)
-            if elem.get('type') == 'updateinfo'
-        ]
-        xpath = '{{{}}}location'.format(RPM_NAMESPACES['metadata/repo'])
-        return data_elems[0].find(xpath).get('href')
+        xpath = "{{{}}}data".format(RPM_NAMESPACES["metadata/repo"])
+        data_elems = [elem for elem in root_elem.findall(xpath) if elem.get("type") == "updateinfo"]
+        xpath = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
+        return data_elems[0].find(xpath).get("href")
 
 
 class ChecksumTypeTestCase(PulpTestCase):
@@ -406,32 +395,28 @@ class ChecksumTypeTestCase(PulpTestCase):
         self.addCleanup(self.distributions.delete, distribution.pulp_href)
 
         repomd = ElementTree.fromstring(
-            http_get(
-                os.path.join(distribution.base_url, 'repodata/repomd.xml')
-            )
+            http_get(os.path.join(distribution.base_url, "repodata/repomd.xml"))
         )
 
-        data_xpath = '{{{}}}data'.format(RPM_NAMESPACES['metadata/repo'])
+        data_xpath = "{{{}}}data".format(RPM_NAMESPACES["metadata/repo"])
         data_elems = [elem for elem in repomd.findall(data_xpath)]
 
         repomd_checksum_types = {}
         primary_checksum_types = {}
-        checksum_xpath = '{{{}}}checksum'.format(RPM_NAMESPACES['metadata/repo'])
+        checksum_xpath = "{{{}}}checksum".format(RPM_NAMESPACES["metadata/repo"])
         for data_elem in data_elems:
-            checksum_type = data_elem.find(checksum_xpath).get('type')
+            checksum_type = data_elem.find(checksum_xpath).get("type")
             repomd_checksum_types[data_elem.get("type")] = checksum_type
             if data_elem.get("type") == "primary":
-                location_xpath = '{{{}}}location'.format(RPM_NAMESPACES['metadata/repo'])
-                primary_href = data_elem.find(location_xpath).get('href')
+                location_xpath = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
+                primary_href = data_elem.find(location_xpath).get("href")
                 primary = ElementTree.fromstring(
-                    read_xml_gz(http_get(
-                        os.path.join(distribution.base_url, primary_href)
-                    ))
+                    read_xml_gz(http_get(os.path.join(distribution.base_url, primary_href)))
                 )
-                package_checksum_xpath = '{{{}}}checksum'.format(RPM_NAMESPACES['metadata/common'])
-                package_xpath = '{{{}}}package'.format(RPM_NAMESPACES['metadata/common'])
+                package_checksum_xpath = "{{{}}}checksum".format(RPM_NAMESPACES["metadata/common"])
+                package_xpath = "{{{}}}package".format(RPM_NAMESPACES["metadata/common"])
                 package_elems = [elem for elem in primary.findall(package_xpath)]
-                pkg_checksum_type = package_elems[0].find(package_checksum_xpath).get('type')
+                pkg_checksum_type = package_elems[0].find(package_checksum_xpath).get("type")
                 primary_checksum_types[package_elems[0].get("type")] = pkg_checksum_type
 
         return repomd_checksum_types, primary_checksum_types
@@ -499,47 +484,40 @@ class PublishDirectoryLayoutTestCase(PulpTestCase):
     def test_distribute_with_modules(self):
         """Ensure no more files or folders are present when distribute repository with modules."""
         distribution = self.do_test(RPM_MODULAR_FIXTURE_URL)
-        repository = ElementTree.fromstring(
-            http_get(distribution)
-        )
+        repository = ElementTree.fromstring(http_get(distribution))
         # Get links from repository HTML
         # Each link is an item (file or directory) in repository root
         repository_root_items = []
         for elem in repository.iter():
-            if elem.tag == 'a':
-                repository_root_items.append(elem.attrib['href'])
+            if elem.tag == "a":
+                repository_root_items.append(elem.attrib["href"])
 
         # Check if 'Packages' and 'repodata' are present
         # Trailing '/' is present for easier check
-        self.assertIn('Packages/', repository_root_items)
-        self.assertIn('repodata/', repository_root_items)
+        self.assertIn("Packages/", repository_root_items)
+        self.assertIn("repodata/", repository_root_items)
         # Only three items should be present, two mentioned above and 'config.repo'
         self.assertEqual(len(repository_root_items), 3)
 
     def test_distribute_with_treeinfo(self):
         """Ensure no more files or folders are present when distribute repository with treeinfo."""
         distribution = self.do_test(RPM_KICKSTART_FIXTURE_URL)
-        repository = ElementTree.fromstring(
-            http_get(distribution)
-        )
+        repository = ElementTree.fromstring(http_get(distribution))
         # Get links from repository HTML
         # Each link is an item (file or directory) in repository root
         repository_root_items = []
         for elem in repository.iter():
-            if elem.tag == 'a':
-                repository_root_items.append(elem.attrib['href'])
+            if elem.tag == "a":
+                repository_root_items.append(elem.attrib["href"])
         # Check if all treeinfo related directories are present
         # Trailing '/' is present for easier check
         for directory in RPM_KICKSTART_REPOSITORY_ROOT_CONTENT:
             self.assertIn(directory, repository_root_items)
 
-        self.assertIn('repodata/', repository_root_items)
+        self.assertIn("repodata/", repository_root_items)
         # assert how many items are present altogether
         # here is '+2' for 'repodata' and 'config.repo'
-        self.assertEqual(
-            len(repository_root_items),
-            len(RPM_KICKSTART_REPOSITORY_ROOT_CONTENT) + 2
-        )
+        self.assertEqual(len(repository_root_items), len(RPM_KICKSTART_REPOSITORY_ROOT_CONTENT) + 2)
 
     def do_test(self, url=None):
         """Sync and publish an RPM repository.
@@ -585,4 +563,4 @@ class PublishDirectoryLayoutTestCase(PulpTestCase):
         distribution = self.distributions.read(created_resources[0])
         self.addCleanup(self.distributions.delete, distribution.pulp_href)
 
-        return distribution.to_dict()['base_url']
+        return distribution.to_dict()["base_url"]

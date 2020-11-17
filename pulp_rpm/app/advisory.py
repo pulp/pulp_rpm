@@ -54,7 +54,8 @@ def resolve_advisories(version, previous_version):
     # identify conflicting advisories
     advisory_pulp_type = UpdateRecord.get_pulp_type()
     current_advisories = UpdateRecord.objects.filter(
-        pk__in=version.content.filter(pulp_type=advisory_pulp_type))
+        pk__in=version.content.filter(pulp_type=advisory_pulp_type)
+    )
     added_advisories = current_advisories
     advisory_conflicts = []
 
@@ -62,15 +63,20 @@ def resolve_advisories(version, previous_version):
     current_ids = [adv.id for adv in current_advisories]
     if previous_version and len(current_ids) != len(set(current_ids)):
         previous_advisories = UpdateRecord.objects.filter(
-            pk__in=previous_version.content.filter(pulp_type=advisory_pulp_type))
-        previous_advisory_ids = set(previous_advisories.values_list('id', flat=True))
+            pk__in=previous_version.content.filter(pulp_type=advisory_pulp_type)
+        )
+        previous_advisory_ids = set(previous_advisories.values_list("id", flat=True))
 
         # diff for querysets works fine but the result is not fully functional queryset,
         # e.g. filtering doesn't work
         added_advisories = current_advisories.difference(previous_advisories)
         if len(list(added_advisories)) != len(set(added_advisories)):
-            raise AdvisoryConflict(_('It is not possible to add two advisories of the same id to '
-                                     'a repository version.'))
+            raise AdvisoryConflict(
+                _(
+                    "It is not possible to add two advisories of the same id to "
+                    "a repository version."
+                )
+            )
         added_advisory_ids = set(adv.id for adv in added_advisories)
         advisory_conflicts = added_advisory_ids.intersection(previous_advisory_ids)
 
@@ -95,7 +101,7 @@ def resolve_advisories(version, previous_version):
         RepositoryContent.objects.filter(
             repository=version.repository,
             content_id__in=content_pks_to_exclude,
-            version_added=version
+            version_added=version,
         ).delete()
 
 
@@ -139,9 +145,7 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
     previous_updated_date = parse_datetime(
         previous_advisory.updated_date or previous_advisory.issued_date
     )
-    added_updated_date = parse_datetime(
-        added_advisory.updated_date or added_advisory.issued_date
-    )
+    added_updated_date = parse_datetime(added_advisory.updated_date or added_advisory.issued_date)
     previous_updated_version = previous_advisory.version
     added_updated_version = added_advisory.version
     previous_pkglist = set(previous_advisory.get_pkglist())
@@ -154,23 +158,32 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
 
     if same_dates and same_version and pkgs_intersection:
         if previous_pkglist != added_pkglist:
-            raise AdvisoryConflict(_('Incoming and existing advisories have the same id and '
-                                     'timestamp but different and intersecting package lists. '
-                                     'At least one of them is wrong. '
-                                     f'Advisory id: {previous_advisory.id}'))
+            raise AdvisoryConflict(
+                _(
+                    "Incoming and existing advisories have the same id and "
+                    "timestamp but different and intersecting package lists. "
+                    "At least one of them is wrong. "
+                    f"Advisory id: {previous_advisory.id}"
+                )
+            )
         elif previous_pkglist == added_pkglist:
             # it means some advisory metadata changed without bumping the updated_date or version.
             # There is no way to find out which one is newer, and a user can't fix it,
             # so we are choosing the incoming advisory.
             to_remove.append(previous_advisory.pk)
-    elif (not same_dates and not pkgs_intersection) or \
-            (same_dates and not same_version and not pkgs_intersection):
-        raise AdvisoryConflict(_('Incoming and existing advisories have the same id but '
-                                 'different timestamps and intersecting package lists. It is '
-                                 'likely that they are from two different incompatible remote '
-                                 'repositories. E.g. RHELX-repo and RHELY-debuginfo repo. '
-                                 'Ensure that you are adding content for the compatible '
-                                 f'repositories. Advisory id: {previous_advisory.id}'))
+    elif (not same_dates and not pkgs_intersection) or (
+        same_dates and not same_version and not pkgs_intersection
+    ):
+        raise AdvisoryConflict(
+            _(
+                "Incoming and existing advisories have the same id but "
+                "different timestamps and intersecting package lists. It is "
+                "likely that they are from two different incompatible remote "
+                "repositories. E.g. RHELX-repo and RHELY-debuginfo repo. "
+                "Ensure that you are adding content for the compatible "
+                f"repositories. Advisory id: {previous_advisory.id}"
+            )
+        )
     elif not same_dates and pkgs_intersection:
         if previous_updated_date < added_updated_date:
             to_remove.append(previous_advisory.pk)
@@ -251,7 +264,8 @@ def merge_advisories(previous_advisory, added_advisory):
             else:
                 names_seen[collection.name] = 0
         merged_advisory_cr = previous_advisory.to_createrepo_c(
-            collections=chain(previous_collections, added_collections))
+            collections=chain(previous_collections, added_collections)
+        )
         merged_digest = hash_update_record(merged_advisory_cr)
         merged_advisory = previous_advisory
         # Need to null both pk (content_ptr_id) and pulp_id here to insure django doesn't
@@ -267,8 +281,9 @@ def merge_advisories(previous_advisory, added_advisory):
         else:
             # For UpdateCollections, make sure we don't re-use the collections for either of the
             # advisories being merged
-            _copy_update_collections_for(merged_advisory, chain(previous_collections,
-                                                                added_collections))
+            _copy_update_collections_for(
+                merged_advisory, chain(previous_collections, added_collections)
+            )
             for reference in references:
                 # copy reference and add relation for advisory
                 reference.pk = None
@@ -291,4 +306,4 @@ def hash_update_record(update):
     """
     uinfo = cr.UpdateInfo()
     uinfo.append(update)
-    return hashlib.sha256(uinfo.xml_dump().encode('utf-8')).hexdigest()
+    return hashlib.sha256(uinfo.xml_dump().encode("utf-8")).hexdigest()

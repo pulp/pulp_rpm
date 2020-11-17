@@ -7,10 +7,7 @@ from django.utils.timezone import now
 from productmd.common import SortedConfigParser
 from productmd.treeinfo import TreeInfo
 
-from pulp_rpm.app.constants import (
-    DIST_TREE_MAIN_REPO_PATH,
-    PACKAGES_DIRECTORY
-)
+from pulp_rpm.app.constants import DIST_TREE_MAIN_REPO_PATH, PACKAGES_DIRECTORY
 
 
 def get_treeinfo_data(remote, remote_url):
@@ -174,38 +171,46 @@ class TreeinfoData:
         distribution_tree = {}
 
         if self._data.get("general"):
-            distribution_tree.update({
-                "release_name": self._data["general"]["family"],
-                "release_short": self._data["general"]["family"],
-                "release_version": self._data["general"]["version"],
-                "arch": self._data["general"]["arch"],
-                "build_timestamp": self._data["general"]["timestamp"],
-            })
+            distribution_tree.update(
+                {
+                    "release_name": self._data["general"]["family"],
+                    "release_short": self._data["general"]["family"],
+                    "release_version": self._data["general"]["version"],
+                    "arch": self._data["general"]["arch"],
+                    "build_timestamp": self._data["general"]["timestamp"],
+                }
+            )
 
         distribution_tree.update(
             {"header_version": self._data.get("header", {}).get("version", "1.2")}
         )
 
         if self._data.get("release"):
-            distribution_tree.update({
-                "release_name": self._data["release"]["name"],
-                "release_short": self._data["release"]["short"],
-                "release_version": self._data["release"]["version"],
-                "release_is_layered": self._data["release"].get("is_layered", False),
-            })
+            distribution_tree.update(
+                {
+                    "release_name": self._data["release"]["name"],
+                    "release_short": self._data["release"]["short"],
+                    "release_version": self._data["release"]["version"],
+                    "release_is_layered": self._data["release"].get("is_layered", False),
+                }
+            )
 
         if self._data.get("tree"):
-            distribution_tree.update({
-                "arch": self._data["tree"]["arch"],
-                "build_timestamp": self._data["tree"]["build_timestamp"],
-            })
+            distribution_tree.update(
+                {
+                    "arch": self._data["tree"]["arch"],
+                    "build_timestamp": self._data["tree"]["build_timestamp"],
+                }
+            )
 
         if self._data.get("base_product"):
-            distribution_tree.update({
-                "base_product_name": self._data["base_product"]["name"],
-                "base_product_short": self._data["base_product"]["short"],
-                "base_product_version": self._data["base_product"]["version"],
-            })
+            distribution_tree.update(
+                {
+                    "base_product_name": self._data["base_product"]["name"],
+                    "base_product_short": self._data["base_product"]["short"],
+                    "base_product_version": self._data["base_product"]["version"],
+                }
+            )
 
         if self._data.get("stage2"):
             distribution_tree.update(self._data.get("stage2"))
@@ -326,7 +331,7 @@ class TreeinfoData:
                 "source_repository",
                 "debug_packages",
                 "debug_repository",
-                "identity"
+                "identity",
             ]
 
             self._repodata_paths.append(self._data[variant_key]["repository"])

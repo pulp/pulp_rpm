@@ -37,17 +37,13 @@ class UpdateCollectionSerializer(ModelSerializer):
     A Serializer for UpdateCollection.
     """
 
-    name = serializers.CharField(
-        help_text=_("Collection name."), allow_blank=True, allow_null=True
-    )
+    name = serializers.CharField(help_text=_("Collection name."), allow_blank=True, allow_null=True)
 
     shortname = serializers.CharField(
         help_text=_("Collection short name."), allow_blank=True, allow_null=True
     )
 
-    module = serializers.JSONField(
-        help_text=_("Collection modular NSVCA."), allow_null=True
-    )
+    module = serializers.JSONField(help_text=_("Collection modular NSVCA."), allow_null=True)
 
     packages = UpdateCollectionPackagesField(
         source="*", read_only=True, help_text=_("List of packages")
@@ -87,12 +83,8 @@ class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
     status = serializers.CharField(
         help_text=_("Update status ('final', ...)"), allow_blank=True, read_only=True
     )
-    title = serializers.CharField(
-        help_text=_("Update name"), allow_blank=True, read_only=True
-    )
-    summary = serializers.CharField(
-        help_text=_("Short summary"), allow_blank=True, read_only=True
-    )
+    title = serializers.CharField(help_text=_("Update name"), allow_blank=True, read_only=True)
+    summary = serializers.CharField(help_text=_("Short summary"), allow_blank=True, read_only=True)
     version = serializers.CharField(
         help_text=_("Update version (probably always an integer number)"),
         allow_blank=True,
@@ -104,24 +96,12 @@ class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
         allow_blank=True,
         read_only=True,
     )
-    severity = serializers.CharField(
-        help_text=_("Severity"), allow_blank=True, read_only=True
-    )
-    solution = serializers.CharField(
-        help_text=_("Solution"), allow_blank=True, read_only=True
-    )
-    release = serializers.CharField(
-        help_text=_("Update release"), allow_blank=True, read_only=True
-    )
-    rights = serializers.CharField(
-        help_text=_("Copyrights"), allow_blank=True, read_only=True
-    )
-    pushcount = serializers.CharField(
-        help_text=_("Push count"), allow_blank=True, read_only=True
-    )
-    reboot_suggested = serializers.BooleanField(
-        help_text=_("Reboot suggested"), read_only=True
-    )
+    severity = serializers.CharField(help_text=_("Severity"), allow_blank=True, read_only=True)
+    solution = serializers.CharField(help_text=_("Solution"), allow_blank=True, read_only=True)
+    release = serializers.CharField(help_text=_("Update release"), allow_blank=True, read_only=True)
+    rights = serializers.CharField(help_text=_("Copyrights"), allow_blank=True, read_only=True)
+    pushcount = serializers.CharField(help_text=_("Push count"), allow_blank=True, read_only=True)
+    reboot_suggested = serializers.BooleanField(help_text=_("Reboot suggested"), read_only=True)
     pkglist = UpdateCollectionSerializer(
         source="collections", read_only=True, many=True, help_text=_("List of packages")
     )
@@ -180,9 +160,7 @@ class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
             update_references_to_save.append(ref)
 
         if update_collection_packages_to_save:
-            UpdateCollectionPackage.objects.bulk_create(
-                update_collection_packages_to_save
-            )
+            UpdateCollectionPackage.objects.bulk_create(update_collection_packages_to_save)
         if update_references_to_save:
             UpdateReference.objects.bulk_create(update_references_to_save)
 
@@ -204,27 +182,19 @@ class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
             try:
                 update_record_data.update(json.loads(data["file"].read()))
             except UnicodeDecodeError:
-                raise serializers.ValidationError(
-                    "JSON file is expected"
-                )
+                raise serializers.ValidationError("JSON file is expected")
             else:
                 update_record_data.update(data)
         else:
-            raise serializers.ValidationError(
-                "Only creation with file or artifact is allowed."
-            )
+            raise serializers.ValidationError("Only creation with file or artifact is allowed.")
 
         update_record_data[PULP_UPDATE_RECORD_ATTRS.FROMSTR] = update_record_data.pop(
             "from", update_record_data.get(PULP_UPDATE_RECORD_ATTRS.FROMSTR, "")
         )
-        update_record_data[
-            PULP_UPDATE_RECORD_ATTRS.ISSUED_DATE
-        ] = update_record_data.pop(
+        update_record_data[PULP_UPDATE_RECORD_ATTRS.ISSUED_DATE] = update_record_data.pop(
             "issued", update_record_data.get(PULP_UPDATE_RECORD_ATTRS.ISSUED_DATE, "")
         )
-        update_record_data[
-            PULP_UPDATE_RECORD_ATTRS.UPDATED_DATE
-        ] = update_record_data.pop(
+        update_record_data[PULP_UPDATE_RECORD_ATTRS.UPDATED_DATE] = update_record_data.pop(
             "updated", update_record_data.get(PULP_UPDATE_RECORD_ATTRS.UPDATED_DATE, "")
         )
 

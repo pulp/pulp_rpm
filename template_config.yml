@@ -2,7 +2,7 @@
 # were not present before running plugin-template have been added with their default values.
 
 additional_plugins: []
-black: false
+black: true
 check_commit_message: true
 check_manifest: true
 cherry_pick_automation: true

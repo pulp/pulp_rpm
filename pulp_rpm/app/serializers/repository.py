@@ -148,9 +148,7 @@ class RpmRepositorySyncURLSerializer(RepositorySyncURLSerializer):
         help_text=_("List of content types to skip during sync."),
         required=False,
         default=[],
-        child=serializers.ChoiceField(
-            [(skip_type, skip_type) for skip_type in SKIP_TYPES]
-        ),
+        child=serializers.ChoiceField([(skip_type, skip_type) for skip_type in SKIP_TYPES]),
     )
     optimize = serializers.BooleanField(
         help_text=_("Whether or not to optimize sync."), required=False, default=True
@@ -163,9 +161,7 @@ class CopySerializer(serializers.Serializer):
     """
 
     config = serializers.JSONField(
-        help_text=_(
-            "A JSON document describing sources, destinations, and content to be copied"
-        ),
+        help_text=_("A JSON document describing sources, destinations, and content to be copied"),
     )
 
     dependency_solving = serializers.BooleanField(

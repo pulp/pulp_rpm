@@ -56,7 +56,7 @@ class PackageGroup(Content):
             A checksum for the group
     """
 
-    TYPE = 'packagegroup'
+    TYPE = "packagegroup"
 
     # Required metadata
     id = models.CharField(max_length=255)
@@ -66,7 +66,7 @@ class PackageGroup(Content):
 
     display_order = models.IntegerField(null=True)
     name = models.CharField(max_length=255)
-    description = models.TextField(default='')
+    description = models.TextField(default="")
     packages = JSONField(default=list)
 
     biarch_only = models.BooleanField(default=False)
@@ -76,7 +76,7 @@ class PackageGroup(Content):
 
     digest = models.CharField(unique=True, max_length=64)
 
-    repo_key_fields = ('id',)
+    repo_key_fields = ("id",)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
@@ -86,7 +86,7 @@ class PackageGroup(Content):
         """
         Digest is used as a natural key for PackageGroups.
         """
-        return ('digest',)
+        return ("digest",)
 
     @classmethod
     def pkglist_to_list(cls, value):
@@ -103,10 +103,10 @@ class PackageGroup(Content):
         package_list = []
         for i in value:
             as_dict = {
-                'name': i.name,
-                'type': i.type,
-                'basearchonly': i.basearchonly,
-                'requires': i.requires
+                "name": i.name,
+                "type": i.type,
+                "basearchonly": i.basearchonly,
+                "requires": i.requires,
             }
             if as_dict not in package_list:
                 package_list.append(as_dict)
@@ -127,10 +127,10 @@ class PackageGroup(Content):
         pkglist = libcomps.PackageList()
         for pkg in lst:
             lib_pkg = libcomps.Package()
-            lib_pkg.name = pkg['name']
-            lib_pkg.type = pkg['type']
-            lib_pkg.basearchonly = bool(pkg['basearchonly'])
-            lib_pkg.requires = pkg['requires']
+            lib_pkg.name = pkg["name"]
+            lib_pkg.type = pkg["type"]
+            lib_pkg.basearchonly = bool(pkg["basearchonly"])
+            lib_pkg.requires = pkg["requires"]
             pkglist.append(lib_pkg)
 
         return pkglist
@@ -153,9 +153,10 @@ class PackageGroup(Content):
             PULP_GROUP_ATTRS.USER_VISIBLE: getattr(group, LIBCOMPS_GROUP_ATTRS.USER_VISIBLE),
             PULP_GROUP_ATTRS.DISPLAY_ORDER: getattr(group, LIBCOMPS_GROUP_ATTRS.DISPLAY_ORDER),
             PULP_GROUP_ATTRS.NAME: getattr(group, LIBCOMPS_GROUP_ATTRS.NAME),
-            PULP_GROUP_ATTRS.DESCRIPTION: getattr(group, LIBCOMPS_GROUP_ATTRS.DESCRIPTION) or '',
-            PULP_GROUP_ATTRS.PACKAGES: cls.pkglist_to_list(getattr(group,
-                                                                   LIBCOMPS_GROUP_ATTRS.PACKAGES)),
+            PULP_GROUP_ATTRS.DESCRIPTION: getattr(group, LIBCOMPS_GROUP_ATTRS.DESCRIPTION) or "",
+            PULP_GROUP_ATTRS.PACKAGES: cls.pkglist_to_list(
+                getattr(group, LIBCOMPS_GROUP_ATTRS.PACKAGES)
+            ),
             PULP_GROUP_ATTRS.BIARCH_ONLY: getattr(group, LIBCOMPS_GROUP_ATTRS.BIARCH_ONLY),
             PULP_GROUP_ATTRS.DESC_BY_LANG: strdict_to_dict(
                 getattr(group, LIBCOMPS_GROUP_ATTRS.DESC_BY_LANG)
@@ -216,13 +217,13 @@ class PackageCategory(Content):
             A checksum for the category
     """
 
-    TYPE = 'packagecategory'
+    TYPE = "packagecategory"
 
     # Required metadata
     id = models.CharField(max_length=255)
 
     name = models.CharField(max_length=255)
-    description = models.TextField(default='')
+    description = models.TextField(default="")
     display_order = models.IntegerField(null=True)
 
     group_ids = JSONField(default=list)
@@ -232,7 +233,7 @@ class PackageCategory(Content):
 
     digest = models.CharField(unique=True, max_length=64)
 
-    repo_key_fields = ('id',)
+    repo_key_fields = ("id",)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
@@ -242,7 +243,7 @@ class PackageCategory(Content):
         """
         Digest is used as a natural key for PackageCategory.
         """
-        return ('digest',)
+        return ("digest",)
 
     @classmethod
     def grplist_to_lst(cls, value):
@@ -258,8 +259,7 @@ class PackageCategory(Content):
         """
         grp_list = []
         for i in value:
-            grp_list.append({'name': i.name,
-                             'default': i.default})
+            grp_list.append({"name": i.name, "default": i.default})
         return grp_list
 
     @classmethod
@@ -277,10 +277,11 @@ class PackageCategory(Content):
         return {
             PULP_CATEGORY_ATTRS.ID: getattr(category, LIBCOMPS_CATEGORY_ATTRS.ID),
             PULP_CATEGORY_ATTRS.NAME: getattr(category, LIBCOMPS_CATEGORY_ATTRS.NAME),
-            PULP_CATEGORY_ATTRS.DESCRIPTION: getattr(category,
-                                                     LIBCOMPS_CATEGORY_ATTRS.DESCRIPTION) or '',
-            PULP_CATEGORY_ATTRS.DISPLAY_ORDER: getattr(category,
-                                                       LIBCOMPS_CATEGORY_ATTRS.DISPLAY_ORDER),
+            PULP_CATEGORY_ATTRS.DESCRIPTION: getattr(category, LIBCOMPS_CATEGORY_ATTRS.DESCRIPTION)
+            or "",
+            PULP_CATEGORY_ATTRS.DISPLAY_ORDER: getattr(
+                category, LIBCOMPS_CATEGORY_ATTRS.DISPLAY_ORDER
+            ),
             PULP_CATEGORY_ATTRS.GROUP_IDS: cls.grplist_to_lst(
                 getattr(category, LIBCOMPS_CATEGORY_ATTRS.GROUP_IDS)
             ),
@@ -342,13 +343,13 @@ class PackageEnvironment(Content):
             A checksum for the environment
     """
 
-    TYPE = 'packageenvironment'
+    TYPE = "packageenvironment"
 
     # Required metadata
     id = models.CharField(max_length=255)
 
     name = models.CharField(max_length=255)
-    description = models.TextField(default='')
+    description = models.TextField(default="")
     display_order = models.IntegerField(null=True)
 
     group_ids = JSONField(default=list)
@@ -359,7 +360,7 @@ class PackageEnvironment(Content):
 
     digest = models.CharField(unique=True, max_length=64)
 
-    repo_key_fields = ('id',)
+    repo_key_fields = ("id",)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
@@ -369,7 +370,7 @@ class PackageEnvironment(Content):
         """
         Digest is used as a natural key for PackageEnvironment.
         """
-        return ('digest',)
+        return ("digest",)
 
     @classmethod
     def grplist_to_lst(cls, value):
@@ -385,8 +386,7 @@ class PackageEnvironment(Content):
         """
         grp_list = []
         for i in value:
-            grp_list.append({'name': i.name,
-                             'default': i.default})
+            grp_list.append({"name": i.name, "default": i.default})
         return grp_list
 
     @classmethod
@@ -406,9 +406,11 @@ class PackageEnvironment(Content):
             PULP_ENVIRONMENT_ATTRS.NAME: getattr(environment, LIBCOMPS_ENVIRONMENT_ATTRS.NAME),
             PULP_ENVIRONMENT_ATTRS.DESCRIPTION: getattr(
                 environment, LIBCOMPS_ENVIRONMENT_ATTRS.DESCRIPTION
-            ) or '',
-            PULP_ENVIRONMENT_ATTRS.DISPLAY_ORDER: getattr(environment,
-                                                          LIBCOMPS_ENVIRONMENT_ATTRS.DISPLAY_ORDER),
+            )
+            or "",
+            PULP_ENVIRONMENT_ATTRS.DISPLAY_ORDER: getattr(
+                environment, LIBCOMPS_ENVIRONMENT_ATTRS.DISPLAY_ORDER
+            ),
             PULP_ENVIRONMENT_ATTRS.GROUP_IDS: cls.grplist_to_lst(
                 getattr(environment, LIBCOMPS_ENVIRONMENT_ATTRS.GROUP_IDS)
             ),
@@ -458,7 +460,7 @@ class PackageLangpacks(Content):
             The langpacks dictionary
     """
 
-    TYPE = 'packagelangpacks'
+    TYPE = "packagelangpacks"
 
     matches = JSONField(default=dict)
 
@@ -472,7 +474,7 @@ class PackageLangpacks(Content):
         """
         Digest is used as a natural key for PackageLangpacks.
         """
-        return ('digest',)
+        return ("digest",)
 
     @classmethod
     def libcomps_to_dict(cls, langpacks):
@@ -486,6 +488,4 @@ class PackageLangpacks(Content):
             dict: all data for RPM/SRPM langpacks content creation
 
         """
-        return {
-            PULP_LANGPACKS_ATTRS.MATCHES: strdict_to_dict(langpacks)
-        }
+        return {PULP_LANGPACKS_ATTRS.MATCHES: strdict_to_dict(langpacks)}

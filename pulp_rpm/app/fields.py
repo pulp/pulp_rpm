@@ -23,20 +23,22 @@ class UpdateCollectionPackagesField(serializers.ListField):
         """
         ret = []
         for pkg in obj.packages.values():
-            ret.append({
-                'arch': pkg['arch'],
-                'epoch': pkg['epoch'],
-                'filename': pkg['filename'],
-                'name': pkg['name'],
-                'reboot_suggested': pkg['reboot_suggested'],
-                'relogin_suggested': pkg['relogin_suggested'],
-                'restart_suggested': pkg['restart_suggested'],
-                'release': pkg['release'],
-                'src': pkg['src'],
-                'sum': pkg['sum'],
-                'sum_type': ADVISORY_SUM_TYPE_TO_NAME.get(pkg['sum_type'], ""),
-                'version': pkg['version'],
-            })
+            ret.append(
+                {
+                    "arch": pkg["arch"],
+                    "epoch": pkg["epoch"],
+                    "filename": pkg["filename"],
+                    "name": pkg["name"],
+                    "reboot_suggested": pkg["reboot_suggested"],
+                    "relogin_suggested": pkg["relogin_suggested"],
+                    "restart_suggested": pkg["restart_suggested"],
+                    "release": pkg["release"],
+                    "src": pkg["src"],
+                    "sum": pkg["sum"],
+                    "sum_type": ADVISORY_SUM_TYPE_TO_NAME.get(pkg["sum_type"], ""),
+                    "version": pkg["version"],
+                }
+            )
 
         return ret
 
@@ -62,10 +64,12 @@ class UpdateReferenceField(serializers.ListField):
         ret = []
         references = UpdateReference.objects.filter(update_record=value)
         for reference in references:
-            ret.append({
-                'href': reference.href,
-                'id': reference.ref_id,
-                'title': reference.title,
-                'type': reference.ref_type
-            })
+            ret.append(
+                {
+                    "href": reference.href,
+                    "id": reference.ref_id,
+                    "title": reference.title,
+                    "type": reference.ref_type,
+                }
+            )
         return ret
