@@ -3,7 +3,6 @@ import shutil
 
 from iniparse import ConfigParser
 from pulp.common.util import encode_unicode
-from pulp.plugins.util import misc
 
 
 class Repo(dict):
@@ -410,7 +409,7 @@ class RepoKeyFiles(object):
         # If there are any keys to write, create the directory for the repo's keys
         # and write each of them out
         if len(self.keys) > 0:
-            misc.mkdir(self.repo_keys_dir)
+            os.makedirs(self.repo_keys_dir)
 
             for filename in self.keys:
                 f = open(filename, 'w')
@@ -460,7 +459,7 @@ class CertFiles(object):
         if not self.clientcert:
             return None
 
-        misc.mkdir(self.rootdir)
+        self.__mkdir()
         path = os.path.join(self.rootdir, self.CLIENT)
         f = open(path, 'w')
         f.write(self.clientcert)
@@ -469,6 +468,10 @@ class CertFiles(object):
 
     def __nocerts(self):
         return not self.clientcert
+
+    def __mkdir(self):
+        if not os.path.exists(self.rootdir):
+            os.makedirs(self.rootdir)
 
     def __clear(self):
         if os.path.exists(self.rootdir):
