@@ -13,6 +13,20 @@ Changelog
 
 .. towncrier release notes start
 
+3.6.3 (2020-11-19)
+==================
+
+
+Bugfixes
+--------
+
+- Fixed duplicate key error after incomplete sync task.
+  `#7844 <https://pulp.plan.io/issues/7844>`_
+
+
+----
+
+
 3.6.2 (2020-09-04)
 ==================
 
