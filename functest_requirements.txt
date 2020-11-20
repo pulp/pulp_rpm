@@ -1,3 +1,4 @@
 git+https://github.com/pulp/pulp-smash.git#egg=pulp-smash
-django
 productmd>=1.25
+pytest
+git+https://github.com/pulp/pulpcore.git#egg=pulpcore  # re: https://pulp.plan.io/issues/7883
