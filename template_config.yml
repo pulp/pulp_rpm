@@ -41,6 +41,7 @@ test_performance:
 - sync
 - publish
 - pulp_to_pulp
+test_released_plugin_with_next_pulpcore_release: false
 test_s3: true
 travis_addtl_services: []
 travis_notifications: None
