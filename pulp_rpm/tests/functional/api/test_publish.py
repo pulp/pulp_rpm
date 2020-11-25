@@ -6,9 +6,9 @@ from tempfile import NamedTemporaryFile
 from random import choice
 from xml.etree import ElementTree
 
-from pulp_smash import config
-from pulp_smash.utils import http_get
-from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
+from pulp_smash import cli, config
+from pulp_smash.utils import get_pulp_setting, http_get
+from pulp_smash.pulp3.bindings import PulpTaskError, PulpTestCase, monitor_task
 from pulp_smash.pulp3.utils import (
     delete_orphans,
     gen_repo,
@@ -20,23 +20,21 @@ from pulp_smash.pulp3.utils import (
 )
 
 from pulp_rpm.tests.functional.constants import (
-    RPM_NAMESPACES,
-    RPM_PACKAGE_CONTENT_NAME,
+    RPM_ALT_LAYOUT_FIXTURE_URL,
+    RPM_FIXTURE_SUMMARY,
     RPM_KICKSTART_FIXTURE_URL,
     RPM_KICKSTART_REPOSITORY_ROOT_CONTENT,
     RPM_LONG_UPDATEINFO_FIXTURE_URL,
+    RPM_MD5_REPO_FIXTURE_URL,
     RPM_MODULAR_FIXTURE_URL,
+    RPM_NAMESPACES,
+    RPM_PACKAGE_CONTENT_NAME,
+    RPM_REFERENCES_UPDATEINFO_URL,
     RPM_RICH_WEAK_FIXTURE_URL,
-    RPM_ALT_LAYOUT_FIXTURE_URL,
     RPM_SHA512_FIXTURE_URL,
     SRPM_UNSIGNED_FIXTURE_URL,
-    RPM_REFERENCES_UPDATEINFO_URL,
-    RPM_FIXTURE_SUMMARY,
 )
-from pulp_rpm.tests.functional.utils import (
-    gen_rpm_client,
-    gen_rpm_remote,
-)
+from pulp_rpm.tests.functional.utils import gen_rpm_client, gen_rpm_remote, skip_if
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 from pulpcore.client.pulp_rpm import (
@@ -644,3 +642,85 @@ class PublishDirectoryLayoutTestCase(PulpTestCase):
         self.addCleanup(self.distributions.delete, distribution.pulp_href)
 
         return distribution.to_dict()["base_url"]
+
+
+class PublishUnsupportedChecksumTestCase(PulpTestCase):
+    """Test unsupported publish."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.cfg = config.get_config()
+        cls.client = gen_rpm_client()
+        cls.cli_client = cli.Client(cls.cfg)
+        cls.repo_api = RepositoriesRpmApi(cls.client)
+        cls.remote_api = RemotesRpmApi(gen_rpm_client())
+        cls.publications = PublicationsRpmApi(cls.client)
+        cls.distributions = DistributionsRpmApi(cls.client)
+        cls.md5_allowed = "md5" in get_pulp_setting(cls.cli_client, "ALLOWED_CONTENT_CHECKSUMS")
+
+    @skip_if(bool, "md5_allowed", True)
+    def test_publish_with_unsupported_checksum_type(self):
+        """
+        Sync and try publish an RPM repository.
+
+        - Sync repository with on_demand policy
+        - Try to publish with 'md5' checksum type
+        - Publish should fail because 'md5' is not allowed
+
+        This test require disallowed 'MD5' checksum type from ALLOWED_CONTENT_CHECKSUMS settings.
+        """
+        # 1. create repo and remote
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+
+        body = gen_rpm_remote(policy="on_demand")
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # 2. Sync it
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+
+        # 3. Publish and fail
+        publish_data = RpmRpmPublication(repository=repo.pulp_href, package_checksum_type="md5")
+        with self.assertRaises(ApiException) as ctx:
+            self.publications.create(publish_data)
+
+        self.assertIn("Checksum must be one of allowed types", ctx.exception.body)
+
+    @skip_if(bool, "md5_allowed", True)
+    def test_publish_packages_with_unsupported_checksum_type(self):
+        """
+        Sync and try publish an RPM repository.
+
+        - Sync md5 repository with on_demand policy, so pulp will have only 'md5' checksums
+        - Try to publish with 'sha256' checksum type which is allowed but packages doesn't have one
+        - Publish should fail as no package has 'sha256' checksum
+
+        This test require disallowed 'MD5' checksum type from ALLOWED_CONTENT_CHECKSUMS settings.
+        """
+        # 1. create repo and remote
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+
+        body = gen_rpm_remote(policy="on_demand", url=RPM_MD5_REPO_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # 2. Sync it
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+
+        # 3. Publish
+        publish_data = RpmRpmPublication(repository=repo.pulp_href, package_checksum_type="sha256")
+        publish_response = self.publications.create(publish_data)
+        with self.assertRaises(PulpTaskError) as ctx:
+            monitor_task(publish_response.task)
+
+        self.assertIn(
+            "does not contain allowed checksum type, thus can't be published.",
+            ctx.exception.task.error["description"],
+        )

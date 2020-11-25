@@ -356,6 +356,9 @@ RPM_CUSTOM_REPO_METADATA_CHANGED_FIXTURE_URL = urljoin(
     PULP_FIXTURES_BASE_URL, "rpm-repo-metadata-changed/"
 )
 
+RPM_MD5_REPO_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-with-md5/")
+
+CENTOS6_URL = "http://mirror.centos.org/centos-6/6.10/os/x86_64/"
 CENTOS7_URL = "http://mirror.linux.duke.edu/pub/centos/7/os/x86_64/"
 CENTOS8_KICKSTART_APP_URL = "http://mirror.linux.duke.edu/pub/centos/8/AppStream/x86_64/kickstart/"
 CENTOS8_KICKSTART_BASEOS_URL = "http://mirror.linux.duke.edu/pub/centos/8/BaseOS/x86_64/kickstart/"
