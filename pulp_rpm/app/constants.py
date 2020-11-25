@@ -1,5 +1,9 @@
 from types import SimpleNamespace
 
+from pulpcore.plugin.constants import ALL_KNOWN_CONTENT_CHECKSUMS
+
+print(ALL_KNOWN_CONTENT_CHECKSUMS)
+
 CHECKSUM_TYPES = SimpleNamespace(
     UNKNOWN="unknown",
     MD5="md5",
