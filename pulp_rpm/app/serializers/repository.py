@@ -1,5 +1,6 @@
 from gettext import gettext as _
 
+from django.conf import settings
 from jsonschema import Draft7Validator
 from rest_framework import serializers
 
@@ -17,7 +18,12 @@ from pulpcore.plugin.serializers import (
     validate_unknown_fields,
 )
 
-from pulp_rpm.app.constants import CHECKSUM_CHOICES, CHECKSUM_TYPES, SKIP_TYPES
+from pulp_rpm.app.constants import (
+    ALLOWED_CHECKSUM_ERROR_MSG,
+    CHECKSUM_CHOICES,
+    CHECKSUM_TYPES,
+    SKIP_TYPES,
+)
 from pulp_rpm.app.models import (
     RpmDistribution,
     RpmRemote,
@@ -123,6 +129,16 @@ class RpmPublicationSerializer(PublicationSerializer):
         required=False,
         help_text=_("An option specifying whether Pulp should generate SQLite metadata."),
     )
+
+    def validate(self, data):
+        """Validate data."""
+        if (
+            data["metadata_checksum_type"] not in settings.ALLOWED_CONTENT_CHECKSUMS
+            or data["package_checksum_type"] not in settings.ALLOWED_CONTENT_CHECKSUMS
+        ):
+            raise serializers.ValidationError(_(ALLOWED_CHECKSUM_ERROR_MSG))
+        validated_data = super().validate(data)
+        return validated_data
 
     class Meta:
         fields = PublicationSerializer.Meta.fields + (
