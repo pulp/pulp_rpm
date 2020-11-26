@@ -24,6 +24,7 @@ then
   TAG_BUILD=0
 else
   TAG_BUILD=1
+  BRANCH="${GITHUB_REF##refs/tags/}"
 fi
 
 if [[ "$TEST" == "plugin-from-pypi" ]]; then
