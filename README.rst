@@ -1,8 +1,8 @@
 ``pulp_rpm`` Plugin
 ===================
 
-.. image:: https://travis-ci.org/pulp/pulp_rpm.svg?branch=master
-    :target: https://travis-ci.org/pulp/pulp_rpm
+.. figure:: https://github.com/pulp/pulp_rpm/workflows/Pulp%20CI/badge.svg
+   :alt: Pulp CI
 
 This is the ``pulp_rpm`` Plugin for `Pulp Project
 3.0+ <https://pypi.python.org/pypi/pulpcore/>`__. This plugin provides support for RPM family
