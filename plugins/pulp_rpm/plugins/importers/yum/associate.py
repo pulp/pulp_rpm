@@ -59,8 +59,14 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
         # TODO: so we should probably do something about that
         units = repo_controller.find_repo_content_units(source_repo, yield_content_unit=True)
 
+    associated_units = set()
+    failed_units = set()
+
     # make a collection from generator to be able to iterate through it several times
     units = set(units)
+
+    if not units:
+        return associated_units, failed_units
 
     if not recursive:
         # shallow dependency resolution - ensure we copy copy module artifacts
@@ -153,9 +159,6 @@ def associate(source_repo, dest_repo, import_conduit, config, units=None):
 
     # default dict where key=repo_id and value=set of units to copy
     units_by_repo = resolve_dependent_units(units, solver, source_repo.repo_id)
-
-    associated_units = set()
-    failed_units = set()
 
     for src_repo_id, units_to_copy in units_by_repo.items():
         src_repo = platform_models.Repository.objects.get(
