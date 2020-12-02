@@ -25,7 +25,7 @@ ignore = [
     "flake8.cfg",
     "template_config.yml",
     ".travis/**",
-    ".travis.yml",
+    ".old_travis.yml",
     ".pep8speaks.yml",
     ".ci/**",
     ".github/**",
