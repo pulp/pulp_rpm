@@ -6,7 +6,7 @@ will fail if this is not the case.
 """
 from pulp_smash import api, cli, config
 from pulp_smash.utils import uuid4
-from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
+from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task, monitor_task_group
 from pulp_smash.pulp3.utils import (
     delete_orphans,
     gen_repo,
@@ -31,7 +31,6 @@ from pulpcore.client.pulp_rpm import (
     RpmRepositorySyncURL,
     RemotesRpmApi,
 )
-from pulpcore.tests.functional.utils import monitor_task_group
 
 NUM_REPOS = 2
 
