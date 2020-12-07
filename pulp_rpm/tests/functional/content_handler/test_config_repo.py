@@ -43,13 +43,13 @@ class ContentHandlerTests(PulpTestCase):
 
         publish_data = RpmRpmPublication(repository=repo.pulp_href)
         publish_response = self.publications_api.create(publish_data)
-        created_resources = monitor_task(publish_response.task)
+        created_resources = monitor_task(publish_response.task).created_resources
         publication_href = created_resources[0]
         self.addCleanup(self.publications_api.delete, publication_href)
 
         dist_data = gen_distribution(publication=publication_href)
         dist_response = self.distributions_api.create(dist_data)
-        created_resources = monitor_task(dist_response.task)
+        created_resources = monitor_task(dist_response.task).created_resources
         self.dist = self.distributions_api.read(created_resources[0])
         self.addCleanup(self.distributions_api.delete, self.dist.pulp_href)
 

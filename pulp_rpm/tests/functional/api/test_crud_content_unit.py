@@ -63,7 +63,7 @@ class ContentUnitTestCase(PulpTestCase):
         response = self.rpm_content_api.create(**attrs)
         # rpm package doesn't keep relative_path but the location href
         del attrs["relative_path"]
-        created_resources = monitor_task(response.task)
+        created_resources = monitor_task(response.task).created_resources
         content_unit = self.rpm_content_api.read(created_resources[0])
         self.content_unit.update(content_unit.to_dict())
         for key, val in attrs.items():
@@ -127,10 +127,9 @@ class ContentUnitTestCase(PulpTestCase):
         """Attempt to create duplicate package."""
         attrs = gen_rpm_content_attrs(self.artifact, RPM_PACKAGE_FILENAME)
         response = self.rpm_content_api.create(**attrs)
-        try:
-            task_result = monitor_task(response.task)
-        except PulpTaskError as exc:
-            task_result = exc.task.to_dict()
+        with self.assertRaises(PulpTaskError) as cm:
+            monitor_task(response.task)
+        task_result = cm.exception.task.to_dict()
         msg = "There is already a package with"
         self.assertTrue(msg in task_result["error"]["description"])
 
@@ -162,10 +161,9 @@ class ContentUnitTestCase(PulpTestCase):
 
         data = {"add_content_units": [c.pulp_href for c in self.rpm_content_api.list().results]}
         response = repo_api.modify(repo.pulp_href, data)
-        try:
-            task = monitor_task(response.task)
-        except PulpTaskError as exc:
-            task = exc.task.to_dict()
+        with self.assertRaises(PulpTaskError) as cm:
+            monitor_task(response.task)
+        task = cm.exception.task.to_dict()
 
         error_message = "Cannot create repository version. Path is duplicated: {}.".format(
             content_attrs["relative_path"]

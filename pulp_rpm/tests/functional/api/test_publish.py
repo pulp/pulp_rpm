@@ -118,7 +118,7 @@ class PublishAnyRepoVersionTestCase(PulpTestCase):
         # Step 2
         publish_data = RpmRpmPublication(repository=repo.pulp_href)
         publish_response = publications.create(publish_data)
-        created_resources = monitor_task(publish_response.task)
+        created_resources = monitor_task(publish_response.task).created_resources
         publication_href = created_resources[0]
         self.addCleanup(publications.delete, publication_href)
         publication = publications.read(publication_href)
@@ -130,7 +130,7 @@ class PublishAnyRepoVersionTestCase(PulpTestCase):
         publish_data.repository_version = non_latest
         publish_data.repository = None
         publish_response = publications.create(publish_data)
-        created_resources = monitor_task(publish_response.task)
+        created_resources = monitor_task(publish_response.task).created_resources
         publication_href = created_resources[0]
         publication = publications.read(publication_href)
 
@@ -196,7 +196,7 @@ class SyncPublishTestCase(PulpTestCase):
 
         publish_data = RpmRpmPublication(repository=repo.pulp_href)
         publish_response = self.publications.create(publish_data)
-        created_resources = monitor_task(publish_response.task)
+        created_resources = monitor_task(publish_response.task).created_resources
         publication_href = created_resources[0]
         self.addCleanup(self.publications.delete, publication_href)
 
@@ -239,7 +239,7 @@ class SyncPublishReferencesUpdateTestCase(PulpTestCase):
 
         publish_data = RpmRpmPublication(repository=repo.pulp_href)
         publish_response = publications.create(publish_data)
-        created_resources = monitor_task(publish_response.task)
+        created_resources = monitor_task(publish_response.task).created_resources
         publication_href = created_resources[0]
 
         self.assertIsNotNone(publication_href)
@@ -291,14 +291,14 @@ class ValidateNoChecksumTagTestCase(PulpTestCase):
         # 3. Publish and distribute
         publish_data = RpmRpmPublication(repository=repo.pulp_href)
         publish_response = self.publications.create(publish_data)
-        created_resources = monitor_task(publish_response.task)
+        created_resources = monitor_task(publish_response.task).created_resources
         publication_href = created_resources[0]
         self.addCleanup(self.publications.delete, publication_href)
 
         body = gen_distribution()
         body["publication"] = publication_href
         distribution_response = self.distributions.create(body)
-        created_resources = monitor_task(distribution_response.task)
+        created_resources = monitor_task(distribution_response.task).created_resources
         distribution = self.distributions.read(created_resources[0])
         self.addCleanup(self.distributions.delete, distribution.pulp_href)
 
@@ -383,14 +383,14 @@ class ChecksumTypeTestCase(PulpTestCase):
             metadata_checksum_type=metadata_checksum_type,
         )
         publish_response = self.publications.create(publish_data)
-        created_resources = monitor_task(publish_response.task)
+        created_resources = monitor_task(publish_response.task).created_resources
         publication_href = created_resources[0]
         self.addCleanup(self.publications.delete, publication_href)
 
         body = gen_distribution()
         body["publication"] = publication_href
         distribution_response = self.distributions.create(body)
-        created_resources = monitor_task(distribution_response.task)
+        created_resources = monitor_task(distribution_response.task).created_resources
         distribution = self.distributions.read(created_resources[0])
         self.addCleanup(self.distributions.delete, distribution.pulp_href)
 
@@ -552,14 +552,14 @@ class PublishDirectoryLayoutTestCase(PulpTestCase):
 
         publish_data = RpmRpmPublication(repository=repo.pulp_href)
         publish_response = self.publications.create(publish_data)
-        created_resources = monitor_task(publish_response.task)
+        created_resources = monitor_task(publish_response.task).created_resources
         publication_href = created_resources[0]
         self.addCleanup(self.publications.delete, publication_href)
 
         body = gen_distribution()
         body["publication"] = publication_href
         distribution_response = self.distributions.create(body)
-        created_resources = monitor_task(distribution_response.task)
+        created_resources = monitor_task(distribution_response.task).created_resources
         distribution = self.distributions.read(created_resources[0])
         self.addCleanup(self.distributions.delete, distribution.pulp_href)
 

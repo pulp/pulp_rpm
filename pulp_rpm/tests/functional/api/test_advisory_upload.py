@@ -53,7 +53,7 @@ class AdvisoryContentUnitTestCase(PulpTestCase):
     def test_upload_json(self):
         """Test upload advisory from JSON file."""
         upload = self.do_test_json()
-        content = monitor_task(upload.task)[0]
+        content = monitor_task(upload.task).created_resources[0]
         advisory = self.content_api.read(content)
         self.assertTrue(advisory.id == "RHSA-XXXX:XXXX")
 
