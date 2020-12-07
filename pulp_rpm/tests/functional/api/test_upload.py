@@ -53,7 +53,7 @@ class ContentUnitTestCase(PulpTestCase):
         """
         # Single unit upload
         upload = self.do_test(self.file_to_use)
-        content = monitor_task(upload.task)[0]
+        content = monitor_task(upload.task).created_resources[0]
         package = self.content_api.read(content)
         self.assertTrue(package.location_href == RPM_PACKAGE_FILENAME)
 

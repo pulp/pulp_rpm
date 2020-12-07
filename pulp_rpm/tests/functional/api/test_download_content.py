@@ -79,7 +79,7 @@ class DownloadContentTestCase(PulpTestCase):
         # Create a publication.
         publish_data = RpmRpmPublication(repository=repo.pulp_href)
         publish_response = publications.create(publish_data)
-        created_resources = monitor_task(publish_response.task)
+        created_resources = monitor_task(publish_response.task).created_resources
         publication_href = created_resources[0]
         self.addCleanup(publications.delete, publication_href)
 
@@ -87,7 +87,7 @@ class DownloadContentTestCase(PulpTestCase):
         body = gen_distribution()
         body["publication"] = publication_href
         distribution_response = distributions.create(body)
-        created_resources = monitor_task(distribution_response.task)
+        created_resources = monitor_task(distribution_response.task).created_resources
         distribution = distributions.read(created_resources[0])
         self.addCleanup(distributions.delete, distribution.pulp_href)
 
