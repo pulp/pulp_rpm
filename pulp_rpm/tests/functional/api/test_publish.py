@@ -468,6 +468,86 @@ class ChecksumTypeTestCase(PulpTestCase):
             self.assertEqual(package_checksum_type, "sha256")
 
 
+class SqliteMetadataTestCase(PulpTestCase):
+    """Publish repository and validate the updateinfo.
+
+    This Test does the following:
+
+    1. Create a rpm repo and a remote.
+    2. Sync the repo with the remote.
+    3. Publish with and without sqlite metadata and distribute the repo.
+    4. Verify that the sqlite metadata files are/not present when expected.
+
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        delete_orphans()
+        cls.cfg = config.get_config()
+        cls.client = gen_rpm_client()
+        cls.repo_api = RepositoriesRpmApi(cls.client)
+        cls.remote_api = RemotesRpmApi(cls.client)
+        cls.publications = PublicationsRpmApi(cls.client)
+        cls.distributions = DistributionsRpmApi(cls.client)
+
+    def do_test(self, with_sqlite):
+        """Sync and publish an RPM repository."""
+        # 1. create repo and remote
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+
+        body = gen_rpm_remote(policy="on_demand")
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # 2. Sync it
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+
+        # 3. Publish and distribute
+        publish_data = RpmRpmPublication(repository=repo.pulp_href, sqlite_metadata=with_sqlite)
+        publish_response = self.publications.create(publish_data)
+        created_resources = monitor_task(publish_response.task).created_resources
+        publication_href = created_resources[0]
+        self.addCleanup(self.publications.delete, publication_href)
+
+        body = gen_distribution()
+        body["publication"] = publication_href
+        distribution_response = self.distributions.create(body)
+        created_resources = monitor_task(distribution_response.task).created_resources
+        distribution = self.distributions.read(created_resources[0])
+        self.addCleanup(self.distributions.delete, distribution.pulp_href)
+
+        repomd = ElementTree.fromstring(
+            http_get(os.path.join(distribution.base_url, "repodata/repomd.xml"))
+        )
+
+        data_xpath = "{{{}}}data".format(RPM_NAMESPACES["metadata/repo"])
+        data_elems = [elem for elem in repomd.findall(data_xpath)]
+
+        sqlite_files = [elem for elem in data_elems if elem.get("type").endswith("_db")]
+
+        if with_sqlite:
+            self.assertEquals(3, len(sqlite_files))
+
+            for db_elem in sqlite_files:
+                location_xpath = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
+                db_href = db_elem.find(location_xpath).get("href")
+                http_get(os.path.join(distribution.base_url, db_href))
+        else:
+            self.assertEquals(0, len(sqlite_files))
+
+    def test_sqlite_metadata(self):
+        """Sync and publish an RPM repository and verify that the sqlite metadata exists."""
+        self.do_test(True)
+
+    def test_no_sqlite_metadata(self):
+        """Sync and publish an RPM repository and verify that no sqlite metadata was generated."""
+        self.do_test(False)
+
+
 class PublishDirectoryLayoutTestCase(PulpTestCase):
     """Test published directory layout."""
 

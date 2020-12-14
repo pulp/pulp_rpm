@@ -118,6 +118,11 @@ class RpmPublicationSerializer(PublicationSerializer):
             "a GPG signature check on the repodata."
         ),
     )
+    sqlite_metadata = serializers.BooleanField(
+        default=False,
+        required=False,
+        help_text=_("An option specifying whether Pulp should generate SQLite metadata."),
+    )
 
     class Meta:
         fields = PublicationSerializer.Meta.fields + (
@@ -125,6 +130,7 @@ class RpmPublicationSerializer(PublicationSerializer):
             "package_checksum_type",
             "gpgcheck",
             "repo_gpgcheck",
+            "sqlite_metadata",
         )
         model = RpmPublication
 

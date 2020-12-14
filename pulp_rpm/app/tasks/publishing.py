@@ -257,7 +257,11 @@ def get_checksum_type(name, checksum_types):
 
 
 def publish(
-    repository_version_pk, gpgcheck_options=None, metadata_signing_service=None, checksum_types=None
+    repository_version_pk,
+    gpgcheck_options=None,
+    metadata_signing_service=None,
+    checksum_types=None,
+    sqlite_metadata=False,
 ):
     """
     Create a Publication based on a RepositoryVersion.
@@ -268,6 +272,7 @@ def publish(
         metadata_signing_service (pulpcore.app.models.AsciiArmoredDetachedSigningService):
             A reference to an associated signing service.
         checksum_types (dict): Checksum types for metadata and packages.
+        sqlite_metadata (bool): Whether to generate metadata files in sqlite format.
 
     """
     repository_version = RepositoryVersion.objects.get(pk=repository_version_pk)
@@ -295,6 +300,9 @@ def publish(
             if gpgcheck_options is not None:
                 publication.gpgcheck = gpgcheck_options.get("gpgcheck")
                 publication.repo_gpgcheck = gpgcheck_options.get("repo_gpgcheck")
+
+            if sqlite_metadata:
+                publication.sqlite_metadata = True
 
             publication_data = PublicationData(publication)
             publication_data.populate()
@@ -360,9 +368,6 @@ def create_repomd_xml(
     pri_xml_path = os.path.join(cwd, "primary.xml.gz")
     fil_xml_path = os.path.join(cwd, "filelists.xml.gz")
     oth_xml_path = os.path.join(cwd, "other.xml.gz")
-    pri_db_path = os.path.join(cwd, "primary.sqlite")
-    fil_db_path = os.path.join(cwd, "filelists.sqlite")
-    oth_db_path = os.path.join(cwd, "other.sqlite")
     upd_xml_path = os.path.join(cwd, "updateinfo.xml.gz")
     mod_yml_path = os.path.join(cwd, "modules.yaml")
     comps_xml_path = os.path.join(cwd, "comps.xml")
@@ -370,10 +375,15 @@ def create_repomd_xml(
     pri_xml = cr.PrimaryXmlFile(pri_xml_path)
     fil_xml = cr.FilelistsXmlFile(fil_xml_path)
     oth_xml = cr.OtherXmlFile(oth_xml_path)
-    pri_db = cr.PrimarySqlite(pri_db_path)
-    fil_db = cr.FilelistsSqlite(fil_db_path)
-    oth_db = cr.OtherSqlite(oth_db_path)
     upd_xml = cr.UpdateInfoXmlFile(upd_xml_path)
+
+    if publication.sqlite_metadata:
+        pri_db_path = os.path.join(cwd, "primary.sqlite")
+        fil_db_path = os.path.join(cwd, "filelists.sqlite")
+        oth_db_path = os.path.join(cwd, "other.sqlite")
+        pri_db = cr.PrimarySqlite(pri_db_path)
+        fil_db = cr.FilelistsSqlite(fil_db_path)
+        oth_db = cr.OtherSqlite(oth_db_path)
 
     packages = Package.objects.filter(pk__in=content)
     total_packages = packages.count()
@@ -435,9 +445,10 @@ def create_repomd_xml(
         pri_xml.add_pkg(pkg)
         fil_xml.add_pkg(pkg)
         oth_xml.add_pkg(pkg)
-        pri_db.add_pkg(pkg)
-        fil_db.add_pkg(pkg)
-        oth_db.add_pkg(pkg)
+        if publication.sqlite_metadata:
+            pri_db.add_pkg(pkg)
+            fil_db.add_pkg(pkg)
+            oth_db.add_pkg(pkg)
 
     # Process update records
     for update_record in UpdateRecord.objects.filter(pk__in=content).iterator():
@@ -482,15 +493,23 @@ def create_repomd_xml(
 
     repomd = cr.Repomd()
 
-    repomdrecords = [
-        ("primary", pri_xml_path, pri_db),
-        ("filelists", fil_xml_path, fil_db),
-        ("other", oth_xml_path, oth_db),
-        ("primary_db", pri_db_path, None),
-        ("filelists_db", fil_db_path, None),
-        ("other_db", oth_db_path, None),
-        ("updateinfo", upd_xml_path, None),
-    ]
+    if publication.sqlite_metadata:
+        repomdrecords = [
+            ("primary", pri_xml_path, pri_db),
+            ("filelists", fil_xml_path, fil_db),
+            ("other", oth_xml_path, oth_db),
+            ("primary_db", pri_db_path, None),
+            ("filelists_db", fil_db_path, None),
+            ("other_db", oth_db_path, None),
+            ("updateinfo", upd_xml_path, None),
+        ]
+    else:
+        repomdrecords = [
+            ("primary", pri_xml_path, None),
+            ("filelists", fil_xml_path, None),
+            ("other", oth_xml_path, None),
+            ("updateinfo", upd_xml_path, None),
+        ]
 
     if has_modules:
         repomdrecords.append(("modules", mod_yml_path, None))

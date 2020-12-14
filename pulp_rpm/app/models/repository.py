@@ -319,6 +319,7 @@ class RpmPublication(Publication):
     package_checksum_type = models.CharField(choices=CHECKSUM_CHOICES, max_length=10)
     gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
     repo_gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
+    sqlite_metadata = models.BooleanField(default=False)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"

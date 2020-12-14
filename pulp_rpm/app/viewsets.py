@@ -229,6 +229,7 @@ class RpmPublicationViewSet(PublicationViewSet):
             gpgcheck=serializer.validated_data.get("gpgcheck"),
             repo_gpgcheck=serializer.validated_data.get("repo_gpgcheck"),
         )
+        sqlite_metadata = serializer.validated_data.get("sqlite_metadata", "")
 
         result = enqueue_with_reservation(
             tasks.publish,
@@ -238,6 +239,7 @@ class RpmPublicationViewSet(PublicationViewSet):
                 "metadata_signing_service": repository.metadata_signing_service,
                 "checksum_types": checksum_types,
                 "gpgcheck_options": gpgcheck_options,
+                "sqlite_metadata": sqlite_metadata,
             },
         )
         return OperationPostponedResponse(result, request)
