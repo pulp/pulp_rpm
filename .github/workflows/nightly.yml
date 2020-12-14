@@ -206,21 +206,25 @@ jobs:
         run: python3 .github/workflows/scripts/secrets.py "$SECRETS_CONTEXT"
         env:
           SECRETS_CONTEXT: ${{ toJson(secrets) }}
-        - name: "sync performance test"
-          env:
-            TEST: performance
-            PERFORMANCE_TEST: sync
-          run: .github/workflows/scripts/script.sh
-        - name: "publish performance test"
-          env:
-            TEST: performance
-            PERFORMANCE_TEST: publish
-          run: .github/workflows/scripts/script.sh
-        - name: "pulp_to_pulp performance test"
-          env:
-            TEST: performance
-            PERFORMANCE_TEST: pulp_to_pulp
-          run: .github/workflows/scripts/script.sh
+        
+      - name: "sync performance test"
+        env:
+          TEST: performance
+          PERFORMANCE_TEST: sync
+        run: .github/workflows/scripts/script.sh
+        
+      - name: "publish performance test"
+        env:
+          TEST: performance
+          PERFORMANCE_TEST: publish
+        run: .github/workflows/scripts/script.sh
+        
+      - name: "pulp_to_pulp performance test"
+        env:
+          TEST: performance
+          PERFORMANCE_TEST: pulp_to_pulp
+        run: .github/workflows/scripts/script.sh
+        
 
       - name: After failure
         if: failure()
