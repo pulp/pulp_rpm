@@ -8,12 +8,14 @@ if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
   return 0
 fi
 
-COMMIT_BEFORE=$(cat $GITHUB_EVENT_PATH | jq -r '.before')
-COMMIT_AFTER=$(cat $GITHUB_EVENT_PATH | jq -r '.after')
+COMMIT_BEFORE=$(jq --raw-output .base.sha "$GITHUB_EVENT_PATH")
+COMMIT_AFTER=$(jq --raw-output .after "$GITHUB_EVENT_PATH")
 
 
-RANGE=`echo ${COMMIT_BEFORE}..${COMMIT_AFTER}`
-COMMIT_RANGE=`echo ${COMMIT_BEFORE}...${COMMIT_AFTER}`
+RANGE=`echo ${COMMIT_BEFORE:0:7}..${COMMIT_AFTER:0:7}`
+COMMIT_RANGE=`echo ${COMMIT_BEFORE:0:7}...${COMMIT_AFTER:0:7}`
+echo $RANGE
+echo $COMMIT_RANGE
 
 # check for code changes
 if [[ ! `git log --no-merges --pretty='format:' --name-only "$RANGE" | grep -v "pulp_rpm/__init__.py" | grep "pulp_rpm/.*.py" || true` ]]
