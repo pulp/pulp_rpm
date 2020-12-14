@@ -225,6 +225,11 @@ done via the following options:
 
 - repo_gpgcheck: perform a GPG signature check on the repodata.
 
+Additionally, an option is provided to let the user decide whether or not to generate sqlite metadata
+(defaults to 'false'). Sqlite metadata not commonly used.
+
+- sqlite_metadata: generate sqlite metadata in addition to standard XML metadata
+
 We encourage users to take a look at the `pulp_rpm API documentation <../restapi.html#operation/publications_rpm_rpm_create>`_
 to see the default values for these options.
 
