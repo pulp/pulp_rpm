@@ -8,8 +8,8 @@ if [ "$GITHUB_EVENT_NAME" != "pull_request" ]; then
   return 0
 fi
 
-COMMIT_BEFORE=$(cat $GITHUB_EVENT_PATH | jq -r '.before')
-COMMIT_AFTER=$(cat $GITHUB_EVENT_PATH | jq -r '.after')
+COMMIT_BEFORE=$(jq --raw-output .before "$GITHUB_EVENT_PATH")
+COMMIT_AFTER=$(jq --raw-output .after "$GITHUB_EVENT_PATH")
 
 
 RANGE=`echo ${COMMIT_BEFORE}..${COMMIT_AFTER}`
