@@ -23,7 +23,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_PUBLICATION_PATH,
     RPM_REMOTE_PATH,
     RPM_REPO_PATH,
-    CENTOS6_URL,
     CENTOS7_URL,
     CENTOS8_APPSTREAM_URL,
     CENTOS8_BASEOS_URL,
@@ -154,10 +153,6 @@ class PublishTestCase(unittest.TestCase):
     def test_epel7(self):
         """Publish EPEL 7."""
         self.rpm_publish(url=EPEL7_URL)
-
-    def test_centos6(self):
-        """Publish CentOS 6."""
-        self.rpm_publish(url=CENTOS6_URL)
 
     def test_centos7(self):
         """Publish CentOS 7."""
