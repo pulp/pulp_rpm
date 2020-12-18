@@ -20,10 +20,13 @@ class RepoMetadataFileSerializer(SingleArtifactContentUploadSerializer, ContentC
     relative_path = serializers.CharField(help_text=_("Relative path of the file."))
 
     class Meta:
-        fields = SingleArtifactContentUploadSerializer.Meta.fields + (
-            "data_type",
-            "checksum_type",
-            "checksum",
-            "sha256",
+        fields = (
+            ContentChecksumSerializer.Meta.fields
+            + SingleArtifactContentUploadSerializer.Meta.fields
+            + (
+                "data_type",
+                "checksum_type",
+                "checksum",
+            )
         )
         model = RepoMetadataFile

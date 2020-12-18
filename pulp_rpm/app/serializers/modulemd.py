@@ -50,16 +50,19 @@ class ModulemdSerializer(SingleArtifactContentUploadSerializer, ContentChecksumS
     )
 
     class Meta:
-        fields = SingleArtifactContentUploadSerializer.Meta.fields + (
-            "name",
-            "stream",
-            "version",
-            "context",
-            "arch",
-            "artifacts",
-            "dependencies",
-            "packages",
-            "sha256",
+        fields = (
+            ContentChecksumSerializer.Meta.fields
+            + SingleArtifactContentUploadSerializer.Meta.fields
+            + (
+                "name",
+                "stream",
+                "version",
+                "context",
+                "arch",
+                "artifacts",
+                "dependencies",
+                "packages",
+            )
         )
         model = Modulemd
 
@@ -74,10 +77,13 @@ class ModulemdDefaultsSerializer(SingleArtifactContentUploadSerializer, ContentC
     profiles = serializers.JSONField(help_text=_("Default profiles for modulemd streams."))
 
     class Meta:
-        fields = SingleArtifactContentUploadSerializer.Meta.fields + (
-            "module",
-            "stream",
-            "profiles",
-            "sha256",
+        fields = (
+            ContentChecksumSerializer.Meta.fields
+            + SingleArtifactContentUploadSerializer.Meta.fields
+            + (
+                "module",
+                "stream",
+                "profiles",
+            )
         )
         model = ModulemdDefaults
