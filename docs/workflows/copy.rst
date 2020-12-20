@@ -173,7 +173,6 @@ the version numbered "dest_base_version" in "dest_repo". These semantics are sim
     config:=[
         {"source_repo_version": "$SRC_REPO_VERS_HREF", "dest_repo": "$DEST_REPO_HREF", "dest_base_version": "$DEST_BASE_VERSION", "content": [$RPM_HREF1, $ADVISORY_HREF1]}
     ]
-    dependency_solving=False
 
 Create a new repository version in "dest_repo" containing the two "content" units specified by href,
 as well as all of their RPM and Module dependencies, which are present in the "source_repo_version".
@@ -205,4 +204,4 @@ specified to be copied between those repositories.
         {"source_repo_version": "$SRC_REPO_VERS_HREF", "dest_repo": "$DEST_REPO_HREF", "content": [$RPM_HREF1, $ADVISORY_HREF1]},
         {"source_repo_version": "$SRC_REPO_VERS_HREF2", "dest_repo": "$DEST_REPO_HREF2", "content": []},
     ]
-    dependency_solving=False
+    dependency_solving=True
