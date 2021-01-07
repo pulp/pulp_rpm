@@ -53,7 +53,7 @@ class ImageSerializer(serializers.ModelSerializer):
     name = serializers.CharField(help_text=_("File name."))
     path = serializers.CharField(help_text=_("File path."))
     platforms = serializers.CharField(help_text=_("Compatible platforms."))
-    artifact = ArtifactSerializer()
+    artifact = ArtifactSerializer(allow_null=True)
 
     class Meta:
         model = Image
