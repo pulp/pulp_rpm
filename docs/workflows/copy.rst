@@ -98,11 +98,11 @@ in the destination repository. In Pulp 2, this feature was documented as "advanc
 the Pulp3 behavior matches the "recursive-conservative" option from Pulp2 (copies **latest missing**
 dependencies)
 
-Unfortunately, solving these complex dependency relationships can be quite expensive. For this
-reason, the functionality to perform these checks is **not enabled by default**, and is instead
-provided by setting the "dependency_solving" parameter to a value of True when making calls against
-the API. Note that if you do not choose dependency-solving (or configure it incorrectly), it
-is possible to create incomplete repositories.
+Solving these complex dependency relationships can be quite expensive, but is often necessary for
+correctness. It is **enabled by default**, but can be disabled by setting the "dependency_solving"
+parameter to a value of False when making calls against the API. Note that if you do choose not to
+use dependency-solving, (or if you configure it incorrectly), it is possible to create incomplete
+repositories.
 
 .. note::
 
