@@ -1,0 +1,1 @@
+Fixed a mistake in the copy API documentation - dependency solving was described as defaulting to OFF when in fact it defaults to ON.
