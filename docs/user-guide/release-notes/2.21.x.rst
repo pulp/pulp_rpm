@@ -2,6 +2,17 @@
 Pulp 2.21 Release Notes
 =======================
 
+Pulp 2.21.5
+===========
+
+Bug Fixes
+---------
+
+* Greatly improved performance of no-op copy operations.
+* Fixed a problem with dependency-solving on copy.
+
+See the full list of :fixedbugs_pulp_rpm:`2.21.5`
+
 Pulp 2.21.4
 ===========
 
