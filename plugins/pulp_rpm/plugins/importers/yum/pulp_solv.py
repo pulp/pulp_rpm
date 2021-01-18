@@ -224,7 +224,7 @@ def rpm_unit_to_solvable(solv_repo, unit):
     name = unit.get('name').encode('utf-8')
     solvable.name = name
 
-    evr = libsolv_formatted_evr(unit.get('epoch'), unit.get('version'), unit.get('arch'))
+    evr = libsolv_formatted_evr(unit.get('epoch'), unit.get('version'), unit.get('release'))
     solvable.evr = evr
 
     arch = unit.get('arch', 'noarch').encode('utf-8')
@@ -770,7 +770,7 @@ class Solver(object):
         """
         units = fetch_units_from_repo(repo_id)
         self.add_repo_units(units, repo_id)
-        _LOGGER.debug('Loaded repository %s', repo_id)
+        _LOGGER.debug('Loaded repository %s' % repo_id)
 
     def load_target_repo(self, repo_id):
         """Load the provided Pulp repo into the combined target repo.
@@ -837,7 +837,7 @@ class Solver(object):
         dummy.evr = ''
         dummy.add_deparray(solv.SOLVABLE_PROVIDES, info.dep)
         self._pool.createwhatprovides()
-        _LOGGER.debug('Created dummy provides: {name}', name=info.dep.str())
+        _LOGGER.debug('Created dummy provides: %s' % info.dep.str())
 
     def _handle_same_name(self, info, jobs):
         """Handle a case where multiple versions of a package are "installed".
@@ -849,7 +849,7 @@ class Solver(object):
         def locate_solvable_job(solvable, flags, jobs):
             for idx, job in enumerate(jobs):
                 if job.what == solvable.id and job.how == flags:
-                    _LOGGER.debug('Found job: %s', str(job))
+                    _LOGGER.debug('Found job: %s' % str(job))
                     return idx
 
         def enforce_solvable_job(solvable, flags, jobs):
@@ -859,7 +859,7 @@ class Solver(object):
 
             enforce_job = self._pool.Job(flags, solvable.id)
             jobs.append(enforce_job)
-            _LOGGER.debug('Added job %s', enforce_job)
+            _LOGGER.debug('Added job %s' % enforce_job)
 
         install_flags = solv.Job.SOLVER_INSTALL | solv.Job.SOLVER_SOLVABLE
         enforce_flags = install_flags | solv.Job.SOLVER_MULTIVERSION
@@ -899,7 +899,7 @@ class Solver(object):
                             'You may refer to the libsolv Solver class documentation '
                             'for more details. See https://github.com/openSUSE/'
                             'libsolv/blob/master/doc/libsolv-bindings.txt'
-                            '#the-solver-class.', problem_rule.info().problemstr()
+                            '#the-solver-class.' % problem_rule.info().problemstr()
                         )
         self._pool.createwhatprovides()
 
@@ -952,9 +952,12 @@ class Solver(object):
                 _LOGGER.debug('Encountered problems solving: {}'.format(', '.join(problems)))
 
             transaction = solver.transaction()
+            _LOGGER.debug('Transaction is empty: %s' % transaction.isempty())
             return set(transaction.newsolvables())
 
         solvables_to_copy = set(solvables)
+        _LOGGER.debug('Number of salvables to copy: %d' % len(solvables_to_copy))
+
         install_jobs = []
         while solvables_to_copy:
             # Take one solvable
@@ -983,6 +986,7 @@ class Solver(object):
 
         # Depsolv using the list of unit install jobs, add them to the results
         solvables_copied = run_solver_jobs(install_jobs)
+        _LOGGER.debug('Number of copied salvables: %d' % len(solvables_copied))
         result_solvables.update(solvables_copied)
 
         return result_solvables
