@@ -158,7 +158,7 @@ def rpm_to_solvable(solv_repo, unit):
     name = unit.get('name')
     solvable.name = name
 
-    evr = libsolv_formatted_evr(unit.get('epoch'), unit.get('version'), unit.get('arch'))
+    evr = libsolv_formatted_evr(unit.get('epoch'), unit.get('version'), unit.get('release'))
     solvable.evr = evr
 
     arch = unit.get('arch', 'noarch')
