@@ -1,0 +1,1 @@
+Fixed a mistake in dependency calculation code which could result in incorrect copy results and errors.
