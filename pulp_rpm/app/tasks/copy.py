@@ -48,7 +48,7 @@ def find_children_of_content(content, src_repo_version):
     for advisory in advisories:
         # Find rpms referenced by Advisories/Errata
         package_nevras = advisory.get_pkglist()
-        advisory_package_q = Q()
+        advisory_package_q = Q(pk__in=[])
         for nevra in package_nevras:
             (name, epoch, version, release, arch) = nevra
             advisory_package_q |= Q(
@@ -57,7 +57,7 @@ def find_children_of_content(content, src_repo_version):
         children.update(packages.filter(advisory_package_q).values_list("pk", flat=True))
 
         module_nsvcas = advisory.get_module_list()
-        advisory_module_q = Q()
+        advisory_module_q = Q(pk__in=[])
         for nsvca in module_nsvcas:
             (name, stream, version, context, arch) = nsvca
             advisory_module_q |= Q(
