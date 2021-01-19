@@ -16,6 +16,7 @@ from pulp_smash.pulp3.utils import (
 
 from pulp_rpm.tests.functional.constants import (
     KICKSTART_CONTENT_PATH,
+    PULP_TYPE_ADVISORY,
     PULP_TYPE_PACKAGE,
     PULP_TYPE_PACKAGE_CATEGORY,
     PULP_TYPE_PACKAGE_GROUP,
@@ -24,6 +25,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_KICKSTART_FIXTURE_SUMMARY,
     RPM_REMOTE_PATH,
     RPM_REPO_PATH,
+    RPM_MODULAR_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
     UPDATERECORD_CONTENT_PATH,
     RPM_CONTENT_PATH,
@@ -33,6 +35,7 @@ from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa
 
 from pulpcore.client.pulp_rpm import (
     ContentPackagesApi,
+    ContentAdvisoriesApi,
     RepositoriesRpmApi,
     RpmRepositorySyncURL,
     RemotesRpmApi,
@@ -504,3 +507,96 @@ class StrictPackageCopyTestCase(PulpTestCase):
         # check only two packages was copied, original package to copy and only one
         # of its dependency as one is already present
         self.assertEqual(copy_response["content_summary"]["added"][PULP_TYPE_PACKAGE]["count"], 2)
+
+
+def get_all_content_hrefs(api, **kwargs):
+    """Fetch all of the content using the provided content API and query params.
+
+    De-paginates the results.
+    """
+    content_list = []
+
+    while True:
+        content = api.list(**kwargs, offset=len(content_list))
+        page = content.results
+        content_list.extend([content.pulp_href for content in page])
+        if not content.next:
+            break
+
+    return content_list
+
+
+class AdvisoryCopyTestCase(PulpTestCase):
+    """Test strict copy of package and its dependencies."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.cfg = config.get_config()
+        cls.client = gen_rpm_client()
+        cls.repo_api = RepositoriesRpmApi(cls.client)
+        cls.remote_api = RemotesRpmApi(cls.client)
+        cls.rpm_package_content_api = ContentPackagesApi(cls.client)
+        cls.rpm_advisory_content_api = ContentAdvisoriesApi(cls.client)
+
+        cls.test_advisory = "RHEA-2012:0055"
+        cls.test_advisory_dependencies = ["walrus", "penguin", "shark"]
+        delete_orphans(cls.cfg)
+
+    def test_child_detection(self):
+        """Test copy advisory and its direct package & module dependencies to empty repository.
+
+        No recursive dependencies.
+
+        - Create repository and populate it
+        - Create empty repository
+        - Use 'copy' to copy an advisory
+        - assert advisory and its dependencies were copied
+        """
+        empty_repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, empty_repo.pulp_href)
+
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+
+        body = gen_rpm_remote(url=RPM_MODULAR_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+
+        repo = self.repo_api.read(repo.pulp_href)
+        test_advisory_href = get_all_content_hrefs(
+            self.rpm_advisory_content_api,
+            repository_version=repo.latest_version_href,
+            id=self.test_advisory,
+        )[0]
+
+        content_to_copy = []
+        content_to_copy.append(test_advisory_href)
+
+        config = [
+            {
+                "source_repo_version": repo.latest_version_href,
+                "dest_repo": empty_repo.pulp_href,
+                "content": content_to_copy,
+            }
+        ]
+
+        rpm_copy(self.cfg, config, recursive=False)
+        empty_repo = self.repo_api.read(empty_repo.pulp_href)
+        empty_repo_packages = [
+            pkg["name"] for pkg in get_content(empty_repo.to_dict())[PULP_TYPE_PACKAGE]
+        ]
+        empty_repo_advisories = [
+            advisory["id"] for advisory in get_content(empty_repo.to_dict())[PULP_TYPE_ADVISORY]
+        ]
+
+        self.assertEqual(len(empty_repo_advisories), 1)
+        # assert that 3 packages were copied, the direct children of the advisory
+        self.assertEqual(len(empty_repo_packages), 3)
+        # assert dependencies package names
+        for dependency in self.test_advisory_dependencies:
+            self.assertIn(dependency, empty_repo_packages)

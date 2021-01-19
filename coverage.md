@@ -41,7 +41,7 @@ This file contains list of features and their test coverage.
 | As a user, I can copy any content by adding it to a repository with modify/ endpoint (but nothing is copied automatically, and invalid repositories will fail to validate for some definition of “invalid”) | NO |  |
 | As a user, I can copy any content by href using Copy API | PART |  |
 | As a user, I can copy RPM package and its dependencies (if depsolving=True) | YES | to empty and non-empty repository |
-| As a user, I can copy Advisory and packages it refers to (and their dependencies if depsolving=True) by copying the Advisory | PART |  |
+| As a user, I can copy Advisory and packages it refers to (and their dependencies if depsolving=True) by copying the Advisory | YES |  |
 | As a user, I can copy PackageCategories, PackageEnvironments and PackageGroups (and their dependencies) | PART | no packageenvironment test |
 | As a user, I can copy Modulemd and its artifacts by copying the Modulemd | NO |  |
 | As a user, I can copy Modulemd with its artifacts and its module dependencies and artifacts’ dependencies (if depsolving=True). | NO |  |
