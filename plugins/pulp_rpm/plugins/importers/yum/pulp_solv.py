@@ -956,7 +956,7 @@ class Solver(object):
             return set(transaction.newsolvables())
 
         solvables_to_copy = set(solvables)
-        _LOGGER.debug('Number of salvables to copy: %d' % len(solvables_to_copy))
+        _LOGGER.debug('Number of solvables to copy: %d' % len(solvables_to_copy))
 
         install_jobs = []
         while solvables_to_copy:
@@ -986,7 +986,7 @@ class Solver(object):
 
         # Depsolv using the list of unit install jobs, add them to the results
         solvables_copied = run_solver_jobs(install_jobs)
-        _LOGGER.debug('Number of copied salvables: %d' % len(solvables_copied))
+        _LOGGER.debug('Number of copied solvables: %d' % len(solvables_copied))
         result_solvables.update(solvables_copied)
 
         return result_solvables
