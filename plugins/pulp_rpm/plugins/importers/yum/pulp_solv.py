@@ -302,7 +302,7 @@ def rpm_dependency_conversion(solvable, unit, attr_name, dependency_key=None):
         unit_name = unit_name.encode('utf-8')
 
     unit_flags = unit.get('flags')
-    unit_evr = libsolv_formatted_evr(unit.get('epoch'), unit.get('version'), unit.get('arch'))
+    unit_evr = libsolv_formatted_evr(unit.get('epoch'), unit.get('version'), unit.get('release'))
 
     # e.g SOLVABLE_PROVIDES, SOLVABLE_REQUIRES...
     keyname = dependency_key or getattr(solv, 'SOLVABLE_{}'.format(attr_name.upper()))
