@@ -1,8 +1,8 @@
-createrepo_c>=0.16.2,<1.0
+createrepo_c~=0.17.0
 django_readonly_field
 jsonschema>=3.0
 libcomps~=0.1.15
 productmd>=1.25
 pulpcore>=3.7
 PyGObject~=3.22
-solv
+solv~=0.7.17
