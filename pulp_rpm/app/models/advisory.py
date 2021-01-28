@@ -76,7 +76,7 @@ class UpdateRecord(Content):
 
     # Required metadata
     id = models.CharField(max_length=255, db_index=True)
-    updated_date = models.TextField()
+    updated_date = models.TextField(null=True)
 
     # Optional metadata
     description = models.TextField()
@@ -121,19 +121,17 @@ class UpdateRecord(Content):
             dict: data for UpdateRecord content creation
 
         """
+        issued_date = getattr(update, CR_UPDATE_RECORD_ATTRS.ISSUED_DATE)
+        updated_date = getattr(update, CR_UPDATE_RECORD_ATTRS.UPDATED_DATE)
+
         return {
             PULP_UPDATE_RECORD_ATTRS.ID: getattr(update, CR_UPDATE_RECORD_ATTRS.ID),
-            PULP_UPDATE_RECORD_ATTRS.UPDATED_DATE: str(
-                getattr(update, CR_UPDATE_RECORD_ATTRS.UPDATED_DATE)
-            ),
+            PULP_UPDATE_RECORD_ATTRS.UPDATED_DATE: str(updated_date) if updated_date else None,
             PULP_UPDATE_RECORD_ATTRS.DESCRIPTION: getattr(
                 update, CR_UPDATE_RECORD_ATTRS.DESCRIPTION
             )
             or "",
-            PULP_UPDATE_RECORD_ATTRS.ISSUED_DATE: str(
-                getattr(update, CR_UPDATE_RECORD_ATTRS.ISSUED_DATE)
-            )
-            or "",
+            PULP_UPDATE_RECORD_ATTRS.ISSUED_DATE: str(issued_date) if issued_date else None,
             PULP_UPDATE_RECORD_ATTRS.FROMSTR: getattr(update, CR_UPDATE_RECORD_ATTRS.FROMSTR) or "",
             PULP_UPDATE_RECORD_ATTRS.STATUS: getattr(update, CR_UPDATE_RECORD_ATTRS.STATUS) or "",
             PULP_UPDATE_RECORD_ATTRS.TITLE: getattr(update, CR_UPDATE_RECORD_ATTRS.TITLE) or "",
@@ -167,8 +165,7 @@ class UpdateRecord(Content):
         """
         rec = cr.UpdateRecord()
         rec.id = self.id
-        rec.updated_date = parse_datetime(self.updated_date)
-
+        rec.updated_date = parse_datetime(self.updated_date) if self.updated_date else None
         rec.description = self.description
         rec.issued_date = parse_datetime(self.issued_date)
         rec.fromstr = self.fromstr

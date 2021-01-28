@@ -1,0 +1,1 @@
+Fixed a bug that occurs when publishing advisories without an "updated" date set, which includes SUSE advisories.
