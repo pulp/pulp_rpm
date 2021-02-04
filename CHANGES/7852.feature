@@ -1,1 +1,0 @@
-Make creation of sqlite metadata at Publication time an option, and default to false.
