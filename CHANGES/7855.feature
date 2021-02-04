@@ -1,1 +1,0 @@
-Check allowed checksum types when publish repository.

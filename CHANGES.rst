@@ -13,6 +13,52 @@ Changelog
 
 .. towncrier release notes start
 
+3.9.0 (2021-02-04)
+==================
+
+
+Features
+--------
+
+- Make creation of sqlite metadata at Publication time an option, and default to false.
+  `#7852 <https://pulp.plan.io/issues/7852>`_
+- Check allowed checksum types when publish repository.
+  `#7855 <https://pulp.plan.io/issues/7855>`_
+
+
+Bugfixes
+--------
+
+- Fixed content serialization so it displays content checksums.
+  `#8002 <https://pulp.plan.io/issues/8002>`_
+- Fixing OpenAPI schema for on demand Distribution Trees
+  `#8050 <https://pulp.plan.io/issues/8050>`_
+- Fix a mistake in RPM copy that could lead to modules being copied when they should not be.
+  `#8091 <https://pulp.plan.io/issues/8091>`_
+- Fixed a mistake in dependency calculation code which could result in incorrect copy results and errors.
+  `#8114 <https://pulp.plan.io/issues/8114>`_
+- Fixed a bug that occurs when publishing advisories without an "updated" date set, which includes SUSE advisories.
+  `#8162 <https://pulp.plan.io/issues/8162>`_
+
+
+Improved Documentation
+----------------------
+
+- Fixed a mistake in the RPM copy workflow documentation.
+  `#7978 <https://pulp.plan.io/issues/7978>`_
+- Fixed a mistake in the copy API documentation - dependency solving was described as defaulting to OFF when in fact it defaults to ON.
+  `#8009 <https://pulp.plan.io/issues/8009>`_
+
+
+Misc
+----
+
+- `#7843 <https://pulp.plan.io/issues/7843>`_
+
+
+----
+
+
 3.8.0 (2020-11-12)
 ==================
 
