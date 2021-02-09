@@ -1,1 +1,0 @@
-Fix a mistake in RPM copy that could lead to modules being copied when they should not be.

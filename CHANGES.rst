@@ -13,6 +13,22 @@ Changelog
 
 .. towncrier release notes start
 
+3.7.1 (2021-02-08)
+==================
+
+
+Bugfixes
+--------
+
+- Fix a mistake in RPM copy that could lead to modules being copied when they should not be.
+  `#8091 <https://pulp.plan.io/issues/8091>`_
+- Fixed a mistake in dependency calculation code which could result in incorrect copy results and errors.
+  `#8114 <https://pulp.plan.io/issues/8114>`_
+
+
+----
+
+
 3.7.0 (2020-09-23)
 ==================
 
