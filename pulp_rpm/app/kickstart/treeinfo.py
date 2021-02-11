@@ -1,3 +1,5 @@
+import json
+
 from gettext import gettext as _
 from configparser import MissingSectionHeaderError
 from urllib.parse import urljoin
@@ -139,6 +141,11 @@ class PulpTreeInfo(TreeInfo):
 
         if build_timestamp and parser._sections.get("tree", {}).get("build_timestamp"):
             parser._sections["tree"]["build_timestamp"] = build_timestamp
+
+        release = self.original_parser._sections.get("release", {})
+
+        if "is_layered" in release:
+            parser._sections["release"]["is_layered"] = json.loads(release["is_layered"])
 
         return parser._sections
 
