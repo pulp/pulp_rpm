@@ -1,4 +1,3 @@
-# coding=utf-8
 """Tests that CRUD rpm remotes."""
 from random import choice
 

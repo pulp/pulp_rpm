@@ -1,4 +1,3 @@
-# coding=utf-8
 """Tests distribution trees."""
 
 from pulp_smash import config

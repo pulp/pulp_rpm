@@ -1,4 +1,3 @@
-# coding=utf-8
 """Tests that verify download of content served by Pulp."""
 from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
 from pulp_smash.pulp3.constants import ON_DEMAND_DOWNLOAD_POLICIES

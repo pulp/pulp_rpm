@@ -1,4 +1,3 @@
-# coding=utf-8
 """Tests that publish rpm plugin repositories."""
 import unittest
 from datetime import datetime
