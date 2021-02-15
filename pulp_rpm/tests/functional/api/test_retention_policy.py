@@ -1,4 +1,3 @@
-# coding=utf-8
 """Tests for the retention policy feature of repositories."""
 
 from collections import defaultdict

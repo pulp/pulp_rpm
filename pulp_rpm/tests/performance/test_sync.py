@@ -1,4 +1,3 @@
-# coding=utf-8
 """Tests that sync rpm plugin repositories."""
 import os
 import unittest

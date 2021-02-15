@@ -1,4 +1,3 @@
-# coding=utf-8
 """Verify whether package manager, yum/dnf, can consume content from Pulp."""
 import unittest
 import itertools

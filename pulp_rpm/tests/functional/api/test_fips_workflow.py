@@ -1,4 +1,3 @@
-# coding=utf-8
 """Tests that create/sync/distribute/publish MANY rpm plugin repositories."""
 import os
 import re

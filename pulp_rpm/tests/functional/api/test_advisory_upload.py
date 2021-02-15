@@ -1,4 +1,3 @@
-# coding=utf-8
 """Tests that perform actions over advisory content unit upload."""
 import os
 import json

@@ -1,4 +1,3 @@
-# coding=utf-8
 """Tests for Pulp`s download policies."""
 from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
 from pulp_smash.pulp3.utils import gen_repo, get_added_content_summary, get_content_summary

@@ -1,4 +1,3 @@
-# coding=utf-8
 """Tests that perform actions over content unit."""
 import requests
 

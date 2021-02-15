@@ -1,4 +1,3 @@
-# coding=utf-8
 """Utilities for tests for the rpm plugin."""
 import os
 import requests

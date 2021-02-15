@@ -1,4 +1,3 @@
-# coding=utf-8
 """Constants for Pulp RPM plugin tests."""
 from urllib.parse import urljoin
 

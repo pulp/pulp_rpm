@@ -1,4 +1,3 @@
-# coding=utf-8
 """Tests for Pulp's characters encoding."""
 from urllib.parse import urljoin
 
