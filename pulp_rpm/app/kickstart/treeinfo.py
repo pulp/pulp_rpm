@@ -1,5 +1,4 @@
 import json
-
 from gettext import gettext as _
 from configparser import MissingSectionHeaderError
 from urllib.parse import urljoin
@@ -193,12 +192,18 @@ class TreeinfoData:
         )
 
         if self._data.get("release"):
+            is_layered = self._data["release"].get("is_layered", False)
+
+            # If we get is_layered, but it's a string - let json turn it into a boolean
+            if is_layered and isinstance(is_layered, str):
+                is_layered = json.loads(is_layered)
+
             distribution_tree.update(
                 {
                     "release_name": self._data["release"]["name"],
                     "release_short": self._data["release"]["short"],
                     "release_version": self._data["release"]["version"],
-                    "release_is_layered": self._data["release"].get("is_layered", False),
+                    "release_is_layered": is_layered,
                 }
             )
 
