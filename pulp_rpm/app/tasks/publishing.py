@@ -254,7 +254,7 @@ def get_checksum_type(name, checksum_types):
     if metadata:
         checksum_type = metadata
 
-    return getattr(cr, checksum_type.upper(), cr.SHA256)
+    return getattr(cr, getattr(CHECKSUM_TYPES, checksum_type.upper()), cr.SHA256)
 
 
 def publish(
@@ -279,6 +279,7 @@ def publish(
     repository_version = RepositoryVersion.objects.get(pk=repository_version_pk)
     repository = repository_version.repository.cast()
     checksum_types = checksum_types or {}
+
     checksum_types["original"] = repository.original_checksum_types
     original_metadata_checksum_type = repository.original_checksum_types.get(
         "primary", CHECKSUM_TYPES.SHA256

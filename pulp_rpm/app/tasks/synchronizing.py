@@ -489,7 +489,6 @@ class RpmFirstStage(Stage):
         if repository_metadata_parser.repomd_dcs:
             for dc in repository_metadata_parser.repomd_dcs:
                 await self.put(dc)
-
         self.repository.original_checksum_types = repository_metadata_parser.checksum_types
 
     async def parse_modules_metadata(self):
@@ -708,7 +707,8 @@ class RepositoryMetadataParser:
         record_types_op.update(dict.fromkeys(SKIP_REPODATA, lambda _: None))
 
         for record in self.data.repomd.records:
-            self.checksum_types[record.type] = record.checksum_type.upper()
+            self.checksum_types[record.type] = getattr(CHECKSUM_TYPES, record.checksum_type.upper())
+            record.checksum_type = getattr(CHECKSUM_TYPES, record.checksum_type.upper())
             record_types_op[record.type](record)
 
         missing_types = set(PACKAGE_REPODATA) - self.main_types
