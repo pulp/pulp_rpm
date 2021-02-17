@@ -636,7 +636,6 @@ class FipsRemotesTestCase(PulpTestCase):
         url = "https://cdn.redhat.com/content/dist/rhel/server/6/6.8/x86_64/os"
         self._do_test(url)
 
-    @unittest.skip("fails due to https://pulp.plan.io/issues/8052 unexpected keyword 'sha'")
     @skip_if(bool, "cdn_client_cert", False)
     def test_077_cdn_redhat_com_content_dist_rhel_server_6_6_6_x86_64_os(self):  # noqa D102
         url = "https://cdn.redhat.com/content/dist/rhel/server/6/6.6/x86_64/os"

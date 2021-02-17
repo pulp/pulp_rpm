@@ -11,6 +11,7 @@ from pulpcore.plugin.models import Content
 
 from pulp_rpm.app.constants import (
     CHECKSUM_CHOICES,
+    CHECKSUM_TYPES,
     CR_PACKAGE_ATTRS,
     PULP_PACKAGE_ATTRS,
 )
@@ -277,7 +278,9 @@ class Package(Content):
         return {
             PULP_PACKAGE_ATTRS.ARCH: getattr(package, CR_PACKAGE_ATTRS.ARCH),
             PULP_PACKAGE_ATTRS.CHANGELOGS: getattr(package, CR_PACKAGE_ATTRS.CHANGELOGS, []),
-            PULP_PACKAGE_ATTRS.CHECKSUM_TYPE: getattr(package, CR_PACKAGE_ATTRS.CHECKSUM_TYPE),
+            PULP_PACKAGE_ATTRS.CHECKSUM_TYPE: getattr(
+                CHECKSUM_TYPES, getattr(package, CR_PACKAGE_ATTRS.CHECKSUM_TYPE).upper()
+            ),
             PULP_PACKAGE_ATTRS.CONFLICTS: getattr(package, CR_PACKAGE_ATTRS.CONFLICTS, []),
             PULP_PACKAGE_ATTRS.DESCRIPTION: getattr(package, CR_PACKAGE_ATTRS.DESCRIPTION) or "",
             PULP_PACKAGE_ATTRS.ENHANCES: getattr(package, CR_PACKAGE_ATTRS.ENHANCES, []),
@@ -356,7 +359,9 @@ class Package(Content):
         package = cr.Package()
         package.arch = getattr(self, PULP_PACKAGE_ATTRS.ARCH)
         package.changelogs = list_to_createrepo_c(getattr(self, PULP_PACKAGE_ATTRS.CHANGELOGS))
-        package.checksum_type = getattr(self, PULP_PACKAGE_ATTRS.CHECKSUM_TYPE)
+        package.checksum_type = getattr(
+            CHECKSUM_TYPES, getattr(self, PULP_PACKAGE_ATTRS.CHECKSUM_TYPE).upper()
+        )
         package.conflicts = list_to_createrepo_c(getattr(self, PULP_PACKAGE_ATTRS.CONFLICTS))
         package.description = getattr(self, PULP_PACKAGE_ATTRS.DESCRIPTION)
         package.enhances = list_to_createrepo_c(getattr(self, PULP_PACKAGE_ATTRS.ENHANCES))
