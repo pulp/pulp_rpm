@@ -25,6 +25,12 @@ plugin_name: pulp_rpm
 plugin_snake: pulp_rpm
 publish_docs_to_pulpprojectdotorg: true
 pulp_settings:
+  allowed_content_checksums:
+  - "sha1"
+  - "sha224"
+  - "sha256"
+  - "sha384"
+  - "sha512"
   allowed_export_paths:
   - /tmp
   allowed_import_paths:
@@ -37,6 +43,7 @@ pypi_username: pulp
 redmine_project: pulp_rpm
 stable_branch: '3.8'
 test_bindings: false
+test_cli: false
 test_performance:
 - sync
 - publish
