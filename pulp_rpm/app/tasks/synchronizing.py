@@ -5,7 +5,6 @@ import os
 import re
 
 from collections import defaultdict
-from functools import partial
 from gettext import gettext as _  # noqa:F401
 
 from django.db import transaction
@@ -336,11 +335,11 @@ class RpmFirstStage(Stage):
         self.remote = remote
         self.repository = repository
         self.deferred_download = deferred_download
-        self.new_url = new_url
         self.treeinfo = treeinfo
         self.skip_types = [] if skip_types is None else skip_types
 
         self.data = FirstStageData()
+        self.data.remote_url = new_url or self.remote.url
 
     @staticmethod
     async def parse_updateinfo(updateinfo_xml_path):
@@ -419,8 +418,6 @@ class RpmFirstStage(Stage):
 
     async def run(self):
         """Build `DeclarativeContent` from the repodata."""
-        self.data.remote_url = self.new_url or self.remote.url
-
         progress_data = dict(message="Downloading Metadata Files", code="downloading.metadata")
         with ProgressReport(**progress_data) as metadata_pb:
             self.data.metadata_pb = metadata_pb
@@ -483,8 +480,6 @@ class RpmFirstStage(Stage):
         repository_metadata_parser = RepositoryMetadataParser(self.data, self.remote)
         repository_metadata_parser.parse()
 
-        if repository_metadata_parser.modulemd_downloader:
-            self.data.modulemd_results = await repository_metadata_parser.modulemd_downloader.run()
         if repository_metadata_parser.repomd_dcs:
             for dc in repository_metadata_parser.repomd_dcs:
                 await self.put(dc)
@@ -492,17 +487,22 @@ class RpmFirstStage(Stage):
 
     async def parse_modules_metadata(self):
         """Parse modules' metadata which define what packages are built for specific releases."""
-        modules_metadata_parser = ModulesMetadataParser(self.data)
-        modules_metadata_parser.parse()
+        if self.data.modules_url:
+            downloader = self.remote.get_downloader(url=self.data.modules_url)
+            modulemd_result = await downloader.run()
 
-        if modules_metadata_parser.default_content_dcs:
-            for default_content_dc in modules_metadata_parser.default_content_dcs:
-                await self.put(default_content_dc)
+            modules_metadata_parser = ModulesMetadataParser(self.data, modulemd_result)
+            modules_metadata_parser.parse()
+
+            if modules_metadata_parser.default_content_dcs:
+                for default_content_dc in modules_metadata_parser.default_content_dcs:
+                    await self.put(default_content_dc)
 
     async def parse_packages_components(self):
         """Parse packages' components that define how are the packages bundled."""
-        if self.data.comps_downloader:
-            comps_result = await self.data.comps_downloader.run()
+        if self.data.comps_url:
+            downloader = self.remote.get_downloader(url=self.data.comps_url)
+            comps_result = await downloader.run()
             packages_components_parser = PackagesComponentsParser(self.data, comps_result)
             packages_components_parser.parse()
 
@@ -521,6 +521,11 @@ class RpmFirstStage(Stage):
 
     async def parse_content(self):
         """Download and parse packages' content from the remote repository."""
+        if self.data.updateinfo_url:
+            updateinfo_downloader = self.remote.get_downloader(url=self.data.updateinfo_url)
+        else:
+            updateinfo_downloader = None
+
         # to preserve order, downloaders are created after all repodata urls are identified
         package_repodata_downloaders = []
         for repodata_type in PACKAGE_REPODATA:
@@ -529,30 +534,12 @@ class RpmFirstStage(Stage):
             )
             package_repodata_downloaders.append(downloader.run())
 
-        self.data.downloaders.append(package_repodata_downloaders)
-
-        # asyncio.gather is used to preserve the order of results for package repodata
-        pending = [
-            asyncio.gather(*downloaders_group) for downloaders_group in self.data.downloaders
-        ]
-        data_type_handlers = defaultdict(
-            lambda: partial(asyncio.sleep, 0),
-            {
-                self.data.package_repodata_urls["primary"]: self.parse_packages,
-                self.data.updateinfo_url: self.parse_advisories,
-            },
-        )
-
-        while pending:
-            done, pending = await asyncio.wait(pending, return_when=asyncio.FIRST_COMPLETED)
-            for downloader in done:
-                try:
-                    results = downloader.result()
-                except ClientResponseError as exc:
-                    raise HTTPNotFound(reason=_("File not found: {}".format(exc.request_info.url)))
-                else:
-                    data_url = results[0].url
-                    await data_type_handlers[data_url](results)
+        try:
+            if updateinfo_downloader:
+                await self.parse_advisories(await updateinfo_downloader.run())
+            await self.parse_packages(await asyncio.gather(*package_repodata_downloaders))
+        except ClientResponseError as exc:
+            raise HTTPNotFound(reason=_("File not found: {}".format(exc.request_info.url)))
 
     async def parse_packages(self, results):
         """Parse packages from the remote repository."""
@@ -573,9 +560,9 @@ class RpmFirstStage(Stage):
 
         await self._parse_packages(packages)
 
-    async def parse_advisories(self, results):
+    async def parse_advisories(self, result):
         """Parse advisories from the remote repository."""
-        updateinfo_xml_path = results[0].path
+        updateinfo_xml_path = result.path
 
         self.data.metadata_pb.increment()
 
@@ -663,21 +650,17 @@ class FirstStageData:
 
     def __init__(self):
         """Store shared data which are going to be used by parsers."""
-        self.repomd = None
-        self.remote_url = None
         self.metadata_pb = None
-
-        self.package_repodata_urls = {}
-        self.downloaders = []
 
         self.nevra_to_module = defaultdict(dict)
         self.pkgname_to_groups = defaultdict(list)
-        self.modulemd_results = None
-        self.comps_downloader = None
 
+        self.package_repodata_urls = {}
+        self.repomd = None
+        self.remote_url = None
+        self.comps_url = None
         self.modules_url = None
         self.updateinfo_url = None
-
         self.modulemd_list = []
         self.dc_groups = []
 
@@ -690,49 +673,40 @@ class RepositoryMetadataParser:
         self.data = data
         self.remote = remote
 
-        self.main_types = set()
         self.checksum_types = {}
-        self.modulemd_downloader = None
         self.repomd_dcs = []
 
     def parse(self):
         """Parse repository metadata."""
-        record_types_op = defaultdict(lambda: self._set_repomd_file)
-
-        record_types_op.update(dict.fromkeys(PACKAGE_REPODATA, self._update_repodata_urls))
-        record_types_op.update(dict.fromkeys(UPDATE_REPODATA, self._append_downloader))
-        record_types_op.update(dict.fromkeys(COMPS_REPODATA, self._set_comps_downloader))
-        record_types_op.update(dict.fromkeys(MODULAR_REPODATA, self._get_modulemd_results))
-        record_types_op.update(dict.fromkeys(SKIP_REPODATA, lambda _: None))
+        required_metadata_found = set()
 
         for record in self.data.repomd.records:
             self.checksum_types[record.type] = getattr(CHECKSUM_TYPES, record.checksum_type.upper())
             record.checksum_type = getattr(CHECKSUM_TYPES, record.checksum_type.upper())
-            record_types_op[record.type](record)
 
-        missing_types = set(PACKAGE_REPODATA) - self.main_types
+            if record.type in PACKAGE_REPODATA:
+                required_metadata_found.add(record.type)
+                self.data.package_repodata_urls[record.type] = urlpath_sanitize(
+                    self.data.remote_url, record.location_href
+                )
+            elif record.type in UPDATE_REPODATA:
+                self.data.updateinfo_url = urlpath_sanitize(
+                    self.data.remote_url, record.location_href
+                )
+            elif record.type in COMPS_REPODATA:
+                self.data.comps_url = urlpath_sanitize(self.data.remote_url, record.location_href)
+            elif record.type in MODULAR_REPODATA:
+                self.data.modules_url = urlpath_sanitize(self.data.remote_url, record.location_href)
+            elif record.type in SKIP_REPODATA:
+                pass
+            else:
+                self._set_repomd_file(record)
+
+        missing_types = set(PACKAGE_REPODATA) - required_metadata_found
         if missing_types:
             raise FileNotFoundError(
                 _("XML file(s): {filenames} not found").format(filenames=", ".join(missing_types))
             )
-
-    def _update_repodata_urls(self, record):
-        self.main_types.update([record.type])
-        repodata_url = urlpath_sanitize(self.data.remote_url, record.location_href)
-        self.data.package_repodata_urls[record.type] = repodata_url
-
-    def _append_downloader(self, record):
-        self.data.updateinfo_url = urlpath_sanitize(self.data.remote_url, record.location_href)
-        downloader = self.remote.get_downloader(url=self.data.updateinfo_url)
-        self.data.downloaders.append([downloader.run()])
-
-    def _set_comps_downloader(self, record):
-        comps_url = urlpath_sanitize(self.data.remote_url, record.location_href)
-        self.data.comps_downloader = self.remote.get_downloader(url=comps_url)
-
-    def _get_modulemd_results(self, record):
-        self.data.modules_url = urlpath_sanitize(self.data.remote_url, record.location_href)
-        self.modulemd_downloader = self.remote.get_downloader(url=self.data.modules_url)
 
     def _set_repomd_file(self, record):
         if "_zck" not in record.type and record.type not in PACKAGE_DB_REPODATA:
@@ -757,18 +731,19 @@ class RepositoryMetadataParser:
 class ModulesMetadataParser:
     """A class used for parsing modules' metadata (modulemd)."""
 
-    def __init__(self, data):
+    def __init__(self, data, modulemd_result):
         """Store the data class and initialize a list of default contents' declarative contents."""
         self.data = data
+        self.modulemd_result = modulemd_result
 
         self.default_content_dcs = []
 
     def parse(self):
         """Parse module.yaml, if exists, to create relations between packages."""
-        if self.data.modulemd_results:
+        if self.modulemd_result:
             modulemd_index = mmdlib.ModuleIndex.new()
-            open_func = gzip.open if self.data.modulemd_results.url.endswith(".gz") else open
-            with open_func(self.data.modulemd_results.path, "r") as moduleyaml:
+            open_func = gzip.open if self.modulemd_result.url.endswith(".gz") else open
+            with open_func(self.modulemd_result.path, "r") as moduleyaml:
                 content = moduleyaml.read()
                 module_content = content if isinstance(content, str) else content.decode()
                 modulemd_index.update_from_string(module_content, True)
