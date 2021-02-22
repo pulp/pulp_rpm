@@ -3,6 +3,7 @@ import logging
 import operator
 from gettext import gettext as _
 from itertools import repeat
+from collections import defaultdict
 
 from mongoengine import Q
 from pulp.plugins.loader import api as plugin_api
@@ -102,7 +103,7 @@ def remove_missing_rpms(metadata_files, conduit, catalog):
     file_function = functools.partial(metadata_files.get_metadata_file_handle,
                                       primary.METADATA_FILE_NAME)
     remote_named_tuples = get_remote_units(file_function, primary.PACKAGE_TAG,
-                                           primary.process_package_element)
+                                           primary.process_package_element_nevra_only)
     remove_missing_units(conduit, models.RPM, remote_named_tuples, catalog)
     remove_missing_units(conduit, models.SRPM, remote_named_tuples, catalog)
 
@@ -145,7 +146,7 @@ def remove_missing_errata(metadata_files, conduit):
     file_function = functools.partial(metadata_files.get_metadata_file_handle,
                                       updateinfo.METADATA_FILE_NAME)
     remote_named_tuples = get_remote_units(file_function, updateinfo.PACKAGE_TAG,
-                                           updateinfo.process_package_element)
+                                           updateinfo.process_package_element_errata_id_only)
     remove_missing_units(conduit, models.Errata, remote_named_tuples)
 
 
@@ -161,7 +162,7 @@ def remove_missing_groups(metadata_files, conduit):
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
     """
     file_function = metadata_files.get_group_file_handle
-    process_func = functools.partial(group.process_group_element, conduit.repo_id)
+    process_func = functools.partial(group.process_group_element_id_only, conduit.repo_id)
     remote_named_tuples = get_remote_units(file_function, group.GROUP_TAG, process_func)
     remove_missing_units(conduit, models.PackageGroup, remote_named_tuples)
 
@@ -178,7 +179,7 @@ def remove_missing_categories(metadata_files, conduit):
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
     """
     file_function = metadata_files.get_group_file_handle
-    process_func = functools.partial(group.process_category_element, conduit.repo_id)
+    process_func = functools.partial(group.process_category_element_id_only, conduit.repo_id)
     remote_named_tuples = get_remote_units(file_function, group.CATEGORY_TAG, process_func)
     remove_missing_units(conduit, models.PackageCategory, remote_named_tuples)
 
@@ -195,7 +196,7 @@ def remove_missing_environments(metadata_files, conduit):
     :type  conduit:         pulp.plugins.conduits.repo_sync.RepoSyncConduit
     """
     file_function = metadata_files.get_group_file_handle
-    process_func = functools.partial(group.process_environment_element, conduit.repo_id)
+    process_func = functools.partial(group.process_environment_element_id_only, conduit.repo_id)
     remote_named_tuples = get_remote_units(file_function, group.ENVIRONMENT_TAG, process_func)
     remove_missing_units(conduit, models.PackageEnvironment, remote_named_tuples)
 
@@ -316,7 +317,7 @@ def remove_repo_duplicate_nevra(repo_id):
     :type repo_id: str
     """
     for unit_type in (models.RPM, models.SRPM, models.DRPM):
-        for unit_ids in _duplicate_key_id_generator(unit_type):
+        for unit_ids in _duplicate_key_id_generator(unit_type, repo_id):
             # q objects don't deal with order_by, so they can't be used with repo_controller funcs
             # disassociate_units only uses the unit_id, so limit the resultset to only that field
             rcus = model.RepositoryContentUnit.objects.filter(
@@ -348,7 +349,7 @@ def _duplicate_key_nevra_fields(unit):
     return fields
 
 
-def _duplicate_key_id_generator(unit):
+def _duplicate_key_id_generator(unit, repo_id):
     """duplicate NEVRA unit ID generator
 
     :param unit: The unit whose NEVRA should be removed
@@ -369,7 +370,7 @@ def _duplicate_key_id_generator(unit):
         # switch to the mapreduce generator. this also ensures that if OperationFailure is raised
         # at this point, it's specifically because an unsupported aggregation feature was requested
         unit.objects.aggregate({'$limit': 1})
-        return _duplicate_key_id_generator_aggregation(unit, fields)
+        return _duplicate_key_id_generator_aggregation(unit, fields, repo_id)
     except OperationFailure:
         # mongodb doesn't support aggregation cursors, use the slower mapreduce method
         _logger.info('Purging duplicate NEVRA can take significantly longer in versions of '
@@ -378,7 +379,7 @@ def _duplicate_key_id_generator(unit):
         return _duplicate_key_id_generator_mapreduce(unit, fields)
 
 
-def _duplicate_key_id_generator_aggregation(unit, fields):
+def _duplicate_key_id_generator_aggregation(unit, fields, repo_id):
     """Superior Aggregation version of duplicate nevra unit ID generator for mongo 2.6+
 
     In order to find potential duplicate nevras, a mongo aggregation pipeline is employed
@@ -396,59 +397,51 @@ def _duplicate_key_id_generator_aggregation(unit, fields):
     :type fields: list
     """
 
+    foreign_col = 'units'
+    foreign_fields = ['.'.join([foreign_col, '_id'])]
+    for field in fields:
+        foreign_fields.append('.'.join([foreign_col, field]))
+
     # create the aggregation params by zipping the fields with 1
     # It is a happy coincidence that the two dicts are the same values
-    pipeline_opts = dict(zip(fields, repeat(1)))
+    pipeline_opts = dict(zip(foreign_fields, repeat(1)))
 
-    # for $sort, this indicates ascending sort for nevra fields
-    sort = {'$sort': pipeline_opts}
+    lookup = {'$lookup': {'from': unit._meta['collection'],
+                          'localField': 'unit_id', 'foreignField': '_id', 'as': foreign_col}}
+
+    match = {'$match': {'repo_id': repo_id, 'unit_type_id': unit._content_type_id.default}}
+
+    unwind = {'$unwind': '$' + foreign_col}
 
     # for $project, this indicates what fields to include in the result
     project = {'$project': pipeline_opts}
 
     # When aggregating over hundreds of thousands of packages, mongo can overflow
     # To prevent this, mongo needs to be allowed to temporarily use the disk for this transaction
-    # Set the batch size to 5 to prevent a cursor timeout
-    aggregation = unit.objects.aggregate(sort, project, allowDiskUse=True,
-                                         batchSize=5)
+    # It should be ok to set the batch size to 100 as it is not doing sorting. The results should
+    # be returned within 100ms to a few seconds (if the IO is really slow).
+    # Simply reduce the batchSize if you are getting the cursor timeout. According to my tests,
+    # the getMore query is performed slower when setting low batchSize like 5.
+    aggregation = model.RepositoryContentUnit.objects.aggregate(lookup, match, unwind, project,
+                                                                allowDiskUse=True,
+                                                                batchSize=100)
 
-    # loop state tracking vars
-    previous_nevra = None
-    previous_pkg_id = None
-    yielding_ids = None
+    package_group = defaultdict(list)
+    duplicates = set()
+    for data in aggregation:
+        pkg = data[foreign_col]
+        # Just in case pkg is empty but I think it is unlikly to happen
+        if not pkg:
+            continue
 
-    for pkg in aggregation:
         # strip the checksums and mongo metadata so they don't get used in equality checks
-        current_nevra = tuple(pkg[field] for field in fields)
-        # current nevra matches previous: this is a duplicate nevra
-        if current_nevra == previous_nevra:
-            if yielding_ids is None:
-                # The current nevra is a duplicate but yielding_ids is None, which means
-                # this iteration is the first to detect a duplicate for this nevra.
-                # Initialize the list of ids to yield with the *previous* id,
-                # since it was the first unit seen with the current nevra
-                yielding_ids = [previous_pkg_id]
+        nevra = tuple(pkg[field] for field in fields)
+        package_group[nevra].append(pkg['_id'])
+        if len(package_group[nevra]) > 1:
+            duplicates.add(nevra)
 
-            # After yielding_ids is initialized with the first unit,
-            # append the current package id for each duplicate nevra seen
-            yielding_ids.append(pkg['_id'])
-
-        # current nevra doesn't match previous: this is a new nevra
-        else:
-            # if the duplicate detection populated yielding_ids, yield it now
-            # and reset yielding ids for the next potential duplicate
-            if yielding_ids:
-                yield yielding_ids
-                yielding_ids = None
-
-        # stash the current state for comparison in the next iteration
-        previous_nevra = current_nevra
-        previous_pkg_id = pkg['_id']
-
-    # after the pkg loop, if the last pkg was a duplicate, the yielding else clause won't run
-    # in that case, do one final yield to make sure all potential duplicates are yielded
-    if yielding_ids:
-        yield yielding_ids
+    for nevra in duplicates:
+        yield package_group[nevra]
 
 
 def _duplicate_key_id_generator_mapreduce(unit, fields):

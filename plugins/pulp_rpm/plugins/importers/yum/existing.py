@@ -125,10 +125,11 @@ def check_all_and_associate(wanted, conduit, config, download_deferred, catalog)
     sorted_units = _sort_by_type(wanted.iterkeys())
     for unit_type, values in sorted_units.iteritems():
         model = plugin_api.get_unit_model_by_id(unit_type)
-        # FIXME "fields" does not get used, but it should
-        # fields = model.unit_key_fields + ('_storage_path',)
+        extra_fields = ('_storage_path', 'filename', '_content_type_id', 'id', 'downloaded',
+                        '_last_updated',)
+        fields = model.unit_key_fields + extra_fields
         unit_generator = (model(**unit_tuple._asdict()) for unit_tuple in values.copy())
-        for unit in units_controller.find_units(unit_generator):
+        for unit in units_controller.find_units(unit_generator, fields=fields):
             is_rpm_drpm_srpm = unit_type in rpm_drpm_srpm
             file_exists = unit._storage_path is not None and os.path.isfile(unit._storage_path)
             if is_rpm_drpm_srpm:

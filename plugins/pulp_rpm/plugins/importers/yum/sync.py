@@ -20,7 +20,7 @@ from pulp.common.plugins import importer_constants
 from pulp.plugins.util import nectar_config as nectar_utils
 from pulp.server import util
 from pulp.server.controllers import repository as repo_controller
-from pulp.server.db.model import LazyCatalogEntry
+from pulp.server.db.model import LazyCatalogEntry, RepositoryContentUnit
 from pulp.server.exceptions import PulpCodedException
 from pulp.server.managers.repo import _common as common_utils
 
@@ -567,6 +567,7 @@ class RepoSync(object):
 
         for metadata_type, file_info in metadata_files.metadata.iteritems():
             if metadata_type not in metadata_files.KNOWN_TYPES and is_needed(metadata_type):
+                has_changed = False
                 file_path = file_info['local_path']
                 checksum_type = file_info['checksum']['algorithm']
                 checksum_type = util.sanitize_checksum_type(checksum_type)
@@ -577,6 +578,9 @@ class RepoSync(object):
                     repo_id=self.repo.repo_id).first()
                 # If an existing model, use that
                 if model:
+                    if model.checksum != checksum or model.checksum_type != checksum_type or \
+                            os.path.basename(model._storage_path) != os.path.basename(file_path):
+                        has_changed = True
                     model.checksum = checksum
                     model.checksum_type = checksum_type
                 else:
@@ -586,12 +590,14 @@ class RepoSync(object):
                         repo_id=self.repo.repo_id,
                         checksum=checksum,
                         checksum_type=checksum_type)
+                    has_changed = True
 
                 model.set_storage_path(os.path.basename(file_path))
                 model.save_and_import_content(file_path)
 
-                # associate/re-associate model to the repo
-                repo_controller.associate_single_unit(self.repo, model)
+                if has_changed or not self.unit_associated(self.repo, model):
+                    # associate/re-associate model to the repo
+                    repo_controller.associate_single_unit(self.repo, model)
 
     def update_content(self, metadata_files, url):
         """
@@ -677,7 +683,7 @@ class RepoSync(object):
         try:
             # scan through all the metadata to decide which packages to download
             package_info_generator = packages.package_list_generator(
-                primary_file_handle, primary.PACKAGE_TAG, primary.process_package_element)
+                primary_file_handle, primary.PACKAGE_TAG, primary.process_package_element_nevra_only)
 
             wanted, primary_rpm_count = self._identify_wanted_versions(package_info_generator)
             if primary_rpm_count != metadata_files.rpm_count:
@@ -815,6 +821,9 @@ class RepoSync(object):
         :param url: current URL we should sync
         :type: str
         """
+        if rpms_to_download is not None and len(rpms_to_download) <= 0:
+            return
+
         event_listener = RPMListener(self, metadata_files)
         primary_file_handle = metadata_files.get_metadata_file_handle(primary.METADATA_FILE_NAME)
 
@@ -869,6 +878,9 @@ class RepoSync(object):
         :param url: current URL we should sync
         :type: str
         """
+        if drpms_to_download is not None and len(drpms_to_download) <= 0:
+            return
+
         event_listener = RPMListener(self, metadata_files)
 
         for presto_file_name in presto.METADATA_FILE_NAMES:
@@ -1004,16 +1016,18 @@ class RepoSync(object):
 
         errata_could_not_be_merged_count = 0
         for model in package_info_generator:
+            has_changed = False
             if isinstance(model, models.Errata):
-                errata_controller.create_or_update_pkglist(model, self.repo.repo_id)
+                has_changed = errata_controller.create_or_update_pkglist(model, self.repo.repo_id)
 
             try:
                 model.save()
+                has_changed = True
             except NotUniqueError:
                 existing_unit = model.__class__.objects.filter(**model.unit_key).first()
                 if additive_type:
                     try:
-                        model = self._concatenate_units(existing_unit, model)
+                        model, has_changed = self._concatenate_units(existing_unit, model)
                     except ValueError:
                         # Sometimes Errata units cannot be merged and a ValueError is raised
                         # Count the errors and log them further down
@@ -1026,16 +1040,32 @@ class RepoSync(object):
                             continue
                         else:
                             raise
-                    model.save()
+                    if has_changed:
+                        model.save()
                 else:
                     # make sure the associate_unit call gets the existing unit
                     model = existing_unit
+                    # FIXME: Should update the mutable unit
 
-            repo_controller.associate_single_unit(self.repo, model)
+            # Only update the assosciation if the unit has changed to prevent unnecessary
+            # repository publish. Publishing updateinfo and comps files are time consuming
+            # because they can't be fast forward write.
+            if has_changed or not self.unit_associated(self.repo, model):
+                repo_controller.associate_single_unit(self.repo, model)
         if errata_could_not_be_merged_count != 0:
             msg = _('There were %(count)d Errata units which could not be merged. This is likely '
                     'due to Errata in this repo not containing valid `updated` fields.')
             _logger.warn(msg % {'count': errata_could_not_be_merged_count})
+
+    def unit_associated(self, repo, unit):
+        unit_type = unit._content_type_id
+        count = RepositoryContentUnit.objects(repo_id=repo.repo_id,
+                                              unit_id=unit.id,
+                                              unit_type_id=unit_type).count()
+        if count > 0:
+            return True
+        else:
+            return False
 
     def _concatenate_units(self, existing_unit, new_unit):
         """
@@ -1072,7 +1102,7 @@ class RepoSync(object):
                                                             existing_unit._content_type_id)
 
         # return the unit now that we've possibly modified it.
-        return existing_unit
+        return existing_unit, is_updated_unit
 
     def _identify_wanted_versions(self, package_info_generator):
         """
@@ -1163,7 +1193,9 @@ class RepoSync(object):
                 # We don't need to download packages twice
                 to_download.remove(unit.unit_key_as_named_tuple)
                 yield unit
-
+            elif len(to_download) <= 0:
+                # Exit the loop as soon as there is nothing to download anymore
+                break
 
 class PackageCatalog(object):
     """

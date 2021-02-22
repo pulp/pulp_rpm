@@ -93,7 +93,47 @@ def process_package_element(package_element):
     :rtype: pulp_rpm.plugins.db.models.RPM
     """
     package_info = dict()
+    _process_common_package_info(package_info, package_element)
 
+    summary_element = package_element.find(SUMMARY_TAG)
+    if summary_element is not None:
+        package_info['summary'] = summary_element.text
+
+    description_element = package_element.find(DESCRIPTION_TAG)
+    if description_element is not None:
+        package_info['description'] = description_element.text
+
+    time_element = package_element.find(TIME_TAG)
+    if time_element is not None:
+        package_info['time'] = int(float(time_element.attrib['file']))
+        package_info['build_time'] = int(float(time_element.attrib['build']))
+
+    format_element = package_element.find(FORMAT_TAG)
+    package_info.update(_process_format_element(format_element))
+
+    model = _set_model(package_info)
+    # add the raw XML so it can be saved in the database later
+    rpm_namespace = utils.Namespace('rpm', RPM_SPEC_URL)
+    model.raw_xml = utils.element_to_raw_xml(package_element, [rpm_namespace], COMMON_SPEC_URL)
+    return model
+
+
+def process_package_element_nevra_only(package_element):
+    """
+    Process a parsed primary.xml package element into a model instance.
+
+    This method only parses the common data, such as nevra to save resources
+
+    :param package_element: parsed primary.xml package element
+    :return: package information dictionary
+    :rtype: pulp_rpm.plugins.db.models.RPM
+    """
+    package_info = dict()
+    _process_common_package_info(package_info, package_element)
+    return _set_model(package_info)
+
+
+def _process_common_package_info(package_info, package_element):
     name_element = package_element.find(NAME_TAG)
     if name_element is not None:
         package_info['name'] = name_element.text
@@ -118,22 +158,9 @@ def process_package_element(package_element):
         checksum_element.text = models.RpmBase.CHECKSUM_TEMPLATE
         checksum_element.attrib['type'] = models.RpmBase.CHECKSUMTYPE_TEMPLATE
 
-    summary_element = package_element.find(SUMMARY_TAG)
-    if summary_element is not None:
-        package_info['summary'] = summary_element.text
-
-    description_element = package_element.find(DESCRIPTION_TAG)
-    if description_element is not None:
-        package_info['description'] = description_element.text
-
     url_element = package_element.find(URL_TAG)
     if url_element is not None:
         package_info['url'] = url_element.text
-
-    time_element = package_element.find(TIME_TAG)
-    if time_element is not None:
-        package_info['time'] = int(float(time_element.attrib['file']))
-        package_info['build_time'] = int(float(time_element.attrib['build']))
 
     size_element = package_element.find(SIZE_TAG)
     if size_element is not None:
@@ -155,17 +182,14 @@ def process_package_element(package_element):
         # the DB on the unit object, so this  is our chance to modify it.
         location_element.attrib['href'] = file_utils.make_packages_relative_path(filename)
 
-    format_element = package_element.find(FORMAT_TAG)
-    package_info.update(_process_format_element(format_element))
+    return package_info
 
+
+def _set_model(package_info):
     if package_info['arch'].lower() == 'src':
-        model = models.SRPM(**package_info)
+        return models.SRPM(**package_info)
     else:
-        model = models.RPM(**package_info)
-    # add the raw XML so it can be saved in the database later
-    rpm_namespace = utils.Namespace('rpm', RPM_SPEC_URL)
-    model.raw_xml = utils.element_to_raw_xml(package_element, [rpm_namespace], COMMON_SPEC_URL)
-    return model
+        return models.RPM(**package_info)
 
 
 def _process_format_element(format_element):

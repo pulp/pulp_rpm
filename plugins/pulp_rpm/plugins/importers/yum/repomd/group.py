@@ -61,6 +61,13 @@ def process_group_element(repo_id, element):
     return unit
 
 
+def process_group_element_id_only(repo_id, element):
+    unit = models.PackageGroup()
+    unit.package_group_id = element.find('id').text
+    unit.repo_id = repo_id
+    return unit
+
+
 def process_category_element(repo_id, element):
     """
     Process one XML block from comps.xml and return a models.PackageCategory instance
@@ -88,6 +95,13 @@ def process_category_element(repo_id, element):
     unit.repo_id = repo_id
     unit.translated_description = translated_description
     unit.translated_name = translated_name
+    return unit
+
+
+def process_category_element_id_only(repo_id, element):
+    unit = models.PackageCategory()
+    unit.package_category_id = element.find('id').text
+    unit.repo_id = repo_id
     return unit
 
 
@@ -127,6 +141,13 @@ def process_environment_element(repo_id, element):
     unit.translated_description = translated_description
     unit.translated_name = translated_name
     unit.options = options
+    return unit
+
+
+def process_environment_element_id_only(repo_id, element):
+    unit = models.PackageEnvironment()
+    unit.package_environment_id = element.find('id').text
+    unit.repo_id = repo_id
     return unit
 
 

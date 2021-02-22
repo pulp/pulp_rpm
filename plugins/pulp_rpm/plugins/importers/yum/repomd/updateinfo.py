@@ -87,6 +87,13 @@ def process_package_element(element):
     return models.Errata(**package_info)
 
 
+def process_package_element_errata_id_only(element):
+    package_info = {
+        'errata_id': element.find('id').text,
+    }
+    return models.Errata(**package_info)
+
+
 def _parse_reference(element):
     return {
         # evidence shows that the "id" attribute is sometimes missing, such as

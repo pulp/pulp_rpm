@@ -16,8 +16,11 @@ def create_or_update_pkglist(erratum, repo_id):
     new_pkglist = ErratumPkglist(errata_id=erratum.errata_id,
                                  repo_id=repo_id,
                                  collections=erratum.pkglist)
+
+    has_changed = False
     try:
         new_pkglist.save()
+        has_changed = True
     except mongoengine.NotUniqueError:
         # check if erratum unit exists or should be updated, if so - update its pkglist
         existing_erratum = Errata.objects.filter(**erratum.unit_key).first()
@@ -26,5 +29,7 @@ def create_or_update_pkglist(erratum, repo_id):
             existing_pkglist = ErratumPkglist.objects.filter(**new_pkglist.model_key).first()
             existing_pkglist.collections = new_pkglist.collections
             existing_pkglist.save()
+            has_changed = True
     # pkglist is saved to a separate collection, we no longer need it in the erratum unit itself
     erratum.pkglist = []
+    return has_changed
