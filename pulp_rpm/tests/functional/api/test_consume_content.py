@@ -39,6 +39,9 @@ class PackageManagerConsumeTestCase(PulpTestCase):
         cls.pkg_mgr = cli.PackageManager(cls.cfg)
         cls.pkg_mgr.raise_if_unsupported(unittest.SkipTest, "This test requires dnf or yum.")
 
+    def _has_dnf(self):
+        return self.pkg_mgr.name == "dnf"
+
     def test_on_demand_policies(self):
         """Verify whether content on demand synced can be consumed.
 
@@ -61,6 +64,9 @@ class PackageManagerConsumeTestCase(PulpTestCase):
 
     def do_test(self, policy):
         """Verify whether package manager can consume content from Pulp."""
+        if not self._has_dnf():
+            self.skipTest("This test requires dnf")
+
         client = api.Client(self.cfg, api.json_handler)
         body = gen_rpm_remote(policy=policy)
         remote = client.post(RPM_REMOTE_PATH, body)
@@ -123,6 +129,9 @@ class ConsumeSignedRepomdTestCase(PulpTestCase):
             )
 
         cls.metadata_signing_service = signing_services[0]
+
+    def _has_dnf(self):
+        return self.pkg_mgr.name == "dnf"
 
     def test_publish_signed_repo_metadata(self):
         """Test if a package manager is able to install packages from a signed repository."""
@@ -203,6 +212,9 @@ class ConsumeSignedRepomdTestCase(PulpTestCase):
 
         This configuration is going to be used by the package manager (dnf) afterwards.
         """
+        if not self._has_dnf():
+            self.skipTest("This test requires dnf")
+
         self.cli_client.run(
             ("sudo", "dnf", "config-manager", "--add-repo", distribution["base_url"])
         )
