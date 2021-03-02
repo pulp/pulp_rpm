@@ -218,7 +218,7 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
     with WorkingDirectory():
         remote_url = fetch_remote_url(remote)
     if not remote_url:
-        raise ValueError(_("A no valid remote URL was provided."))
+        raise ValueError(_("An invalid remote URL was provided."))
     else:
         remote_url = remote_url.rstrip("/") + "/"
 

@@ -158,30 +158,38 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
 
     if same_dates and same_version and pkgs_intersection:
         if previous_pkglist != added_pkglist:
-            raise AdvisoryConflict(
-                _(
-                    "Incoming and existing advisories have the same id and "
-                    "timestamp but different and intersecting package lists. "
-                    "At least one of them is wrong. "
-                    f"Advisory id: {previous_advisory.id}"
+            # prev and new have different pkg-lists. See if one is a proper-subset of the other;
+            # if so, choose the one with the *larger* pkglist. Otherwise, error.
+            if previous_pkglist < added_pkglist:
+                # new has more pkgs - remove previous
+                to_remove.append(previous_advisory.pk)
+            elif added_pkglist < previous_pkglist:
+                # prev has more pkgs - exclude new
+                to_exclude.append(added_advisory.pk)
+            else:
+                raise AdvisoryConflict(
+                    _(
+                        "Incoming and existing advisories have the same id and timestamp "
+                        "but different and intersecting package lists, "
+                        "and neither package list is a proper subset of the other. "
+                        "At least one of the advisories is wrong. "
+                        f"Advisory id: {previous_advisory.id}"
+                    )
                 )
-            )
         elif previous_pkglist == added_pkglist:
             # it means some advisory metadata changed without bumping the updated_date or version.
             # There is no way to find out which one is newer, and a user can't fix it,
             # so we are choosing the incoming advisory.
             to_remove.append(previous_advisory.pk)
-    elif (not same_dates and not pkgs_intersection) or (
-        same_dates and not same_version and not pkgs_intersection
-    ):
+    elif (not same_dates or (same_dates and not same_version)) and not pkgs_intersection:
         raise AdvisoryConflict(
             _(
                 "Incoming and existing advisories have the same id but "
-                "different timestamps and intersecting package lists. It is "
-                "likely that they are from two different incompatible remote "
-                "repositories. E.g. RHELX-repo and RHELY-debuginfo repo. "
-                "Ensure that you are adding content for the compatible "
-                f"repositories. Advisory id: {previous_advisory.id}"
+                "different timestamps and non-intersecting package lists. "
+                "It is likely that they are from two different incompatible remote repositories. "
+                "E.g. RHELX-repo and RHELY-debuginfo repo. "
+                "Ensure that you are adding content for the compatible repositories. "
+                f"Advisory id: {previous_advisory.id}"
             )
         )
     elif not same_dates and pkgs_intersection:

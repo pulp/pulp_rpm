@@ -142,7 +142,7 @@ class BasicSyncTestCase(PulpTestCase):
             monitor_task(sync_response.task)
         except PulpTaskError as exc:
             self.assertEqual(
-                exc.task.to_dict()["error"]["description"], "A no valid remote URL was provided."
+                exc.task.to_dict()["error"]["description"], "An invalid remote URL was provided."
             )
         else:
             self.fail("A task was completed without a failure.")
@@ -802,7 +802,7 @@ class BasicSyncTestCase(PulpTestCase):
             task_result = exc.task.to_dict()
         error_msg = (
             "Incoming and existing advisories have the same id but different "
-            "timestamps and intersecting package lists. It is likely that they are from "
+            "timestamps and non-intersecting package lists. It is likely that they are from "
             "two different incompatible remote repositories. E.g. RHELX-repo and "
             "RHELY-debuginfo repo. Ensure that you are adding content for the compatible "
             "repositories. Advisory id: {}".format(RPM_ADVISORY_TEST_ID)
@@ -814,6 +814,36 @@ class BasicSyncTestCase(PulpTestCase):
 
         self.assertIn(error_msg, task_result["error"]["description"])
 
+    def test_sync_advisory_proper_subset_pgk_list(self):
+        """Test success: sync advisories where pkglist is proper-subset of another.
+
+        If update_dates and update_version are the same, pkglist intersection is non-empty
+        and a proper-subset of the 'other' pkglist, sync should succeed.
+        """
+        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+
+        # sync
+        repo, remote = self.do_test(remote=remote)
+
+        # add remote to clean up
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # create remote with colliding advisory
+        body = gen_rpm_remote(RPM_ADVISORY_INCOMPLETE_PKG_LIST_URL)
+        remote = self.remote_api.create(body)
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        try:
+            monitor_task(sync_response.task)
+        except Exception as e:
+            self.fail("Unexpected exception {}".format(e.message))
+
+    @unittest.skip("skip until issue #8335 addressed")
     def test_sync_advisory_incomplete_pgk_list(self):
         """Test failure sync advisories.
 
@@ -837,14 +867,15 @@ class BasicSyncTestCase(PulpTestCase):
 
         repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
         sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
-        try:
+        with self.assertRaises(PulpTaskError) as cm:
             monitor_task(sync_response.task)
-        except PulpTaskError as exc:
-            task_result = exc.task.to_dict()
+        task_result = cm.exception.task.to_dict()
         error_msg = (
-            "Incoming and existing advisories have the same id "
-            "and timestamp but different and intersecting package lists. "
-            "At least one of them is wrong. Advisory id: {}".format(RPM_ADVISORY_TEST_ID)
+            "Incoming and existing advisories have the same id and timestamp "
+            "but different and intersecting package lists, "
+            "and neither package list is a proper subset of the other. "
+            "At least one of the advisories is wrong. "
+            "Advisory id: {}".format(RPM_ADVISORY_TEST_ID)
         )
 
         # add resources to clean up
