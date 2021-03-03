@@ -711,15 +711,10 @@ class PublishUnsupportedChecksumTestCase(PulpTestCase):
         # 2. Sync it
         repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
         sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
-        monitor_task(sync_response.task)
-
-        # 3. Publish
-        publish_data = RpmRpmPublication(repository=repo.pulp_href, package_checksum_type="sha256")
-        publish_response = self.publications.create(publish_data)
         with self.assertRaises(PulpTaskError) as ctx:
-            monitor_task(publish_response.task)
+            monitor_task(sync_response.task)
 
         self.assertIn(
-            "does not contain allowed checksum type, thus can't be published.",
+            "Artifact contains forbidden checksum type md5.",
             ctx.exception.task.error["description"],
         )
