@@ -14,7 +14,7 @@ cd "$(dirname "$(realpath -e "$0")")"/../..
 
 pip install twine
 
-export REPORTED_VERSION=$(http pulp/pulp/api/v3/status/ | jq --arg plugin pulp_rpm -r '.versions[] | select(.component == $plugin) | .version')
+export REPORTED_VERSION=$(http pulp/pulp/api/v3/status/ | jq --arg plugin rpm -r '.versions[] | select(.component == $plugin) | .version')
 export DESCRIPTION="$(git describe --all --exact-match `git rev-parse HEAD`)"
 if [[ $DESCRIPTION == 'tags/'$REPORTED_VERSION ]]; then
   export VERSION=${REPORTED_VERSION}
