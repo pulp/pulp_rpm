@@ -88,7 +88,7 @@ class SynctoSyncTestCase(PulpTestCase):
         # Create a publication.
         publish_data = RpmRpmPublication(
             repository=repo.pulp_href,
-            metadata_checksum_type="sha1",
+            metadata_checksum_type="sha384",
             package_checksum_type="sha224",
         )
         publish_response = publications.create(publish_data)
