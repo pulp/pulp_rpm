@@ -5,7 +5,7 @@ from random import choice
 
 from django.utils.dateparse import parse_datetime
 
-from pulp_smash import config
+from pulp_smash import cli, config
 from pulp_smash.pulp3.bindings import PulpTaskError, PulpTestCase, monitor_task
 from pulp_smash.pulp3.utils import (
     gen_repo,
@@ -17,6 +17,7 @@ from pulp_smash.pulp3.utils import (
     delete_orphans,
     modify_repo,
 )
+from pulp_smash.utils import get_pulp_setting
 
 from pulp_rpm.tests.functional.constants import (
     PULP_TYPE_ADVISORY,
@@ -40,6 +41,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_INVALID_FIXTURE_URL,
     RPM_KICKSTART_FIXTURE_SUMMARY,
     RPM_KICKSTART_FIXTURE_URL,
+    RPM_MD5_REPO_FIXTURE_URL,
     RPM_MIRROR_LIST_BAD_FIXTURE_URL,
     RPM_MIRROR_LIST_GOOD_FIXTURE_URL,
     RPM_MODULAR_FIXTURE_SUMMARY,
@@ -56,7 +58,12 @@ from pulp_rpm.tests.functional.constants import (
     SRPM_UNSIGNED_FIXTURE_PACKAGE_COUNT,
     SRPM_UNSIGNED_FIXTURE_URL,
 )
-from pulp_rpm.tests.functional.utils import gen_rpm_client, gen_rpm_remote, progress_reports
+from pulp_rpm.tests.functional.utils import (
+    gen_rpm_client,
+    gen_rpm_remote,
+    progress_reports,
+    skip_if,
+)
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 from pulpcore.client.pulp_rpm import (
@@ -75,9 +82,11 @@ class BasicSyncTestCase(PulpTestCase):
         """Create class-wide variables."""
         cls.cfg = config.get_config()
         cls.client = gen_rpm_client()
+        cls.cli_client = cli.Client(cls.cfg)
         cls.repo_api = RepositoriesRpmApi(cls.client)
         cls.remote_api = RemotesRpmApi(cls.client)
         delete_orphans(cls.cfg)
+        cls.md5_allowed = "md5" in get_pulp_setting(cls.cli_client, "ALLOWED_CONTENT_CHECKSUMS")
 
     def test_sync(self):
         """Sync repositories with the rpm plugin.
@@ -1080,6 +1089,32 @@ class BasicSyncTestCase(PulpTestCase):
             if report.message == "Optimizing Sync":
                 return True
         return False
+
+    @skip_if(bool, "md5_allowed", True)
+    def test_sync_packages_with_unsupported_checksum_type(self):
+        """
+        Sync an RPM repository with an unsupported checksum (md5).
+
+        This test require disallowed 'MD5' checksum type from ALLOWED_CONTENT_CHECKSUMS settings.
+        """
+        # 1. create repo and remote
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+
+        body = gen_rpm_remote(policy="on_demand", url=RPM_MD5_REPO_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # 2. Sync it
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        with self.assertRaises(PulpTaskError) as ctx:
+            monitor_task(sync_response.task)
+
+        self.assertIn(
+            "Artifact contains forbidden checksum type md5.",
+            ctx.exception.task.error["description"],
+        )
 
 
 class SyncInvalidTestCase(PulpTestCase):
