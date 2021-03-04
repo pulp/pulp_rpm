@@ -7,7 +7,7 @@ from xml.etree import ElementTree
 
 from pulp_smash import cli, config
 from pulp_smash.utils import get_pulp_setting, http_get
-from pulp_smash.pulp3.bindings import PulpTaskError, PulpTestCase, monitor_task
+from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
 from pulp_smash.pulp3.utils import (
     delete_orphans,
     gen_repo,
@@ -24,7 +24,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_KICKSTART_FIXTURE_URL,
     RPM_KICKSTART_REPOSITORY_ROOT_CONTENT,
     RPM_LONG_UPDATEINFO_FIXTURE_URL,
-    RPM_MD5_REPO_FIXTURE_URL,
     RPM_MODULAR_FIXTURE_URL,
     RPM_NAMESPACES,
     RPM_PACKAGE_CONTENT_NAME,
@@ -687,33 +686,3 @@ class PublishUnsupportedChecksumTestCase(PulpTestCase):
         with self.assertRaises(ApiException) as ctx:
             self.publications.create(publish_data)
         self.assertIn("Checksum must be one of the allowed checksum types.", ctx.exception.body)
-
-    @skip_if(bool, "md5_allowed", True)
-    def test_publish_packages_with_unsupported_checksum_type(self):
-        """
-        Sync and try publish an RPM repository.
-
-        - Sync md5 repository with on_demand policy, so pulp will have only 'md5' checksums
-        - Try to publish with 'sha256' checksum type which is allowed but packages doesn't have one
-        - Publish should fail as no package has 'sha256' checksum
-
-        This test require disallowed 'MD5' checksum type from ALLOWED_CONTENT_CHECKSUMS settings.
-        """
-        # 1. create repo and remote
-        repo = self.repo_api.create(gen_repo())
-        self.addCleanup(self.repo_api.delete, repo.pulp_href)
-
-        body = gen_rpm_remote(policy="on_demand", url=RPM_MD5_REPO_FIXTURE_URL)
-        remote = self.remote_api.create(body)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
-
-        # 2. Sync it
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
-        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
-        with self.assertRaises(PulpTaskError) as ctx:
-            monitor_task(sync_response.task)
-
-        self.assertIn(
-            "Artifact contains forbidden checksum type md5.",
-            ctx.exception.task.error["description"],
-        )
