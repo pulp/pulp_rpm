@@ -1,0 +1,1 @@
+More detailed error message when user tries publish package or repository with forbidden checksum type.

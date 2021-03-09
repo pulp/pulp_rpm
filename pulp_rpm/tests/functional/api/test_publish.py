@@ -686,8 +686,7 @@ class PublishUnsupportedChecksumTestCase(PulpTestCase):
         publish_data = RpmRpmPublication(repository=repo.pulp_href, package_checksum_type="md5")
         with self.assertRaises(ApiException) as ctx:
             self.publications.create(publish_data)
-
-        self.assertIn("Checksum must be one of allowed types", ctx.exception.body)
+        self.assertIn("Checksum must be one of the allowed checksum types.", ctx.exception.body)
 
     @skip_if(bool, "md5_allowed", True)
     def test_publish_packages_with_unsupported_checksum_type(self):
