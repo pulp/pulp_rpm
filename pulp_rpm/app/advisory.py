@@ -5,6 +5,7 @@ import hashlib
 
 import createrepo_c as cr
 
+from django.conf import settings
 from django.db import (
     IntegrityError,
     transaction,
@@ -140,6 +141,16 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
                                                      content for a repo version
 
     """
+
+    def _do_merge():
+        # previous_advisory is used to copy the object and thus the variable refers to a
+        # different object after `merge_advisories` call
+        previous_advisory_pk = previous_advisory.pk
+        merged_advisory = merge_advisories(previous_advisory, added_advisory)
+        to_add.append(merged_advisory.pk)
+        to_remove.append(previous_advisory_pk)
+        to_exclude.append(added_advisory.pk)
+
     to_add, to_remove, to_exclude = [], [], []
 
     previous_updated_date = parse_datetime(
@@ -167,31 +178,37 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
                 # prev has more pkgs - exclude new
                 to_exclude.append(added_advisory.pk)
             else:
-                raise AdvisoryConflict(
-                    _(
-                        "Incoming and existing advisories have the same id and timestamp "
-                        "but different and intersecting package lists, "
-                        "and neither package list is a proper subset of the other. "
-                        "At least one of the advisories is wrong. "
-                        f"Advisory id: {previous_advisory.id}"
+                if settings.ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION:
+                    _do_merge()
+                else:
+                    raise AdvisoryConflict(
+                        _(
+                            "Incoming and existing advisories have the same id and timestamp "
+                            "but different and intersecting package lists, "
+                            "and neither package list is a proper subset of the other. "
+                            "At least one of the advisories is wrong. "
+                            "Advisory id: {}"
+                        ).format(previous_advisory.id)
                     )
-                )
         elif previous_pkglist == added_pkglist:
             # it means some advisory metadata changed without bumping the updated_date or version.
             # There is no way to find out which one is newer, and a user can't fix it,
             # so we are choosing the incoming advisory.
             to_remove.append(previous_advisory.pk)
     elif (not same_dates or (same_dates and not same_version)) and not pkgs_intersection:
-        raise AdvisoryConflict(
-            _(
-                "Incoming and existing advisories have the same id but "
-                "different timestamps and non-intersecting package lists. "
-                "It is likely that they are from two different incompatible remote repositories. "
-                "E.g. RHELX-repo and RHELY-debuginfo repo. "
-                "Ensure that you are adding content for the compatible repositories. "
-                f"Advisory id: {previous_advisory.id}"
+        if settings.ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION:
+            to_remove.append(previous_advisory.pk)
+        else:
+            raise AdvisoryConflict(
+                _(
+                    "Incoming and existing advisories have the same id but "
+                    "different timestamps and non-intersecting package lists. "
+                    "It is likely that they are from two different incompatible remote "
+                    "repositories. E.g. RHELX-repo and RHELY-debuginfo repo. "
+                    "Ensure that you are adding content for the compatible repositories. "
+                    "Advisory id: {}"
+                ).format(previous_advisory.id)
             )
-        )
     elif not same_dates and pkgs_intersection:
         if previous_updated_date < added_updated_date:
             to_remove.append(previous_advisory.pk)
@@ -203,13 +220,7 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
         else:
             to_exclude.append(added_advisory.pk)
     elif same_dates and same_version and not pkgs_intersection:
-        # previous_advisory is used to copy the object and thus the variable refers to a
-        # different object after `merge_advisories` call
-        previous_advisory_pk = previous_advisory.pk
-        merged_advisory = merge_advisories(previous_advisory, added_advisory)
-        to_add.append(merged_advisory.pk)
-        to_remove.append(previous_advisory_pk)
-        to_exclude.append(added_advisory.pk)
+        _do_merge()
 
     return to_add, to_remove, to_exclude
 
