@@ -789,6 +789,9 @@ class BasicSyncTestCase(PulpTestCase):
         no packages intersection sync should fail.
 
         Tested error_msg must be same as we use in pulp_rpm.app.advisory.
+
+        NOTE: If ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION is True, this test
+        will fail since the errata-merge will be allowed.
         """
         body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
         remote = self.remote_api.create(body)
@@ -802,13 +805,16 @@ class BasicSyncTestCase(PulpTestCase):
         # create remote with colliding advisory
         body = gen_rpm_remote(RPM_ADVISORY_DIFFERENT_REPO_URL)
         remote = self.remote_api.create(body)
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
         repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
         sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
-        try:
+        with self.assertRaises(PulpTaskError) as exc:
             monitor_task(sync_response.task)
-        except PulpTaskError as exc:
-            task_result = exc.task.to_dict()
+
+        task_result = exc.exception.task.to_dict()
         error_msg = (
             "Incoming and existing advisories have the same id but different "
             "timestamps and non-intersecting package lists. It is likely that they are from "
@@ -816,11 +822,6 @@ class BasicSyncTestCase(PulpTestCase):
             "RHELY-debuginfo repo. Ensure that you are adding content for the compatible "
             "repositories. Advisory id: {}".format(RPM_ADVISORY_TEST_ID)
         )
-
-        # add resources to clean up
-        self.addCleanup(self.repo_api.delete, repo.pulp_href)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
-
         self.assertIn(error_msg, task_result["error"]["description"])
 
     def test_sync_advisory_proper_subset_pgk_list(self):

@@ -57,6 +57,7 @@ Table of Contents
    :maxdepth: 1
 
    installation
+   settings
    quickstart
    workflows/index
    bindings
