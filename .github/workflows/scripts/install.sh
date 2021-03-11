@@ -13,6 +13,8 @@ REPO_ROOT="$PWD"
 
 set -euv
 
+source .github/workflows/scripts/utils.sh
+
 if [ "${GITHUB_REF##refs/tags/}" = "${GITHUB_REF}" ]
 then
   TAG_BUILD=0
@@ -44,7 +46,7 @@ image:
   tag: "${TAG}"
 plugins:
   - name: pulpcore
-    source: pulpcore
+    source: pulpcore~=3.10.0
   - name: pulp_rpm
     source:  "${PLUGIN_NAME}"
 services:
@@ -99,3 +101,7 @@ fi
 
 ansible-playbook build_container.yaml
 ansible-playbook start_container.yaml
+
+echo ::group::PIP_LIST
+cmd_prefix bash -c "pip3 list && pip3 install pipdeptree && pipdeptree"
+echo ::endgroup::
