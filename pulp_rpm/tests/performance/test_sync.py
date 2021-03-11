@@ -146,6 +146,7 @@ class SyncTestCase(unittest.TestCase):
         """Sync CentOS 7."""
         self.rpm_sync(url=CENTOS7_URL)
 
+    @unittest.skip("Skip to avoid failing due to running out of disk space")
     def test_centos7_immediate(self):
         """Sync CentOS 7 with the immediate policy."""
         self.rpm_sync(url=CENTOS7_URL, policy="immediate")
