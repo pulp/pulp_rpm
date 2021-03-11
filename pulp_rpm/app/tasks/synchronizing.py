@@ -551,7 +551,7 @@ class RpmFirstStage(Stage):
                 try:
                     results = downloader.result()
                 except ClientResponseError as exc:
-                    raise HTTPNotFound(reason=_(f"File not found: {exc.request_info.url}"))
+                    raise HTTPNotFound(reason=_("File not found: {}".format(exc.request_info.url)))
                 else:
                     data_url = results[0].url
                     await data_type_handlers[data_url](results)
