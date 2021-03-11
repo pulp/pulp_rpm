@@ -70,7 +70,32 @@ class AdvisoryContentUnitTestCase(PulpTestCase):
         advisory = """{
         "updated": "2014-09-28 00:00:00",
         "issued": "2014-09-24 00:00:00",
-        "id": "RHSA-XXXX:XXXX"}"""
+        "id": "RHSA-XXXX:XXXX",
+         "pkglist": [
+           {
+            "packages": [
+             {
+              "arch": "noarch",
+              "epoch": "0",
+              "filename": "bear-4.1-1.noarch.rpm",
+              "name": "bear",
+              "reboot_suggested": false,
+              "relogin_suggested": false,
+              "restart_suggested": false,
+              "release": "1",
+              "src": "http://www.fedoraproject.org",
+              "sum": "",
+              "sum_type": "",
+              "version": "4.1"
+             }
+            ]
+           }
+         ],
+         "severity":  "",
+         "description":  "Not available",
+         "reboot_suggested":  false,
+         "solution":  "Not available",
+         "fromstr":  "centos-announce@centos.org"}"""
 
         with NamedTemporaryFile("w+") as file_to_upload:
             json.dump(json.loads(advisory), file_to_upload)

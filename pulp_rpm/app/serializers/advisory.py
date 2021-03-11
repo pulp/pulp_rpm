@@ -131,8 +131,8 @@ class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
             packages = new_coll.pop("packages", [])
             new_coll[PULP_UPDATE_COLLECTION_ATTRS.SHORTNAME] = new_coll.pop("short", "")
             coll = UpdateCollection(**new_coll)
+            coll.update_record = update_record
             coll.save()
-            coll.update_record.add(update_record)
             for package in packages:
                 pkg = UpdateCollectionPackage(**package)
                 try:
