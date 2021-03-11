@@ -13,6 +13,20 @@ Changelog
 
 .. towncrier release notes start
 
+3.9.1 (2021-03-11)
+==================
+
+
+Bugfixes
+--------
+
+- Fixed DistributionTree parsing for boolean fields which could cause a failure at sync or migration time.
+  `#8374 <https://pulp.plan.io/issues/8374>`_
+
+
+----
+
+
 3.9.0 (2021-02-04)
 ==================
 
