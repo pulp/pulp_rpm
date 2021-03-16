@@ -34,6 +34,20 @@ def _prepare_package(artifact, filename):
     return package
 
 
+def urlpath_sanitize(*args):
+    """
+    Join an arbitrary number of strings into a /-separated path.
+
+    Replaces uses of urljoin() that don't want/need urljoin's subtle semantics.
+
+    Returns: single string provided arguments separated by single-slashes
+
+    Args:
+        Arbitrary list of arguments to be join()ed
+    """
+    return "/".join(a.strip("/") for a in args + ("",) if a)
+
+
 def get_sha256(file_path):
     """
     Get sha256 of file.
@@ -56,7 +70,7 @@ def is_previous_version(version, target_version):
     """
     Compare version with a target version.
 
-    Able to compare versions with integers only.
+    Able to compare versions with integers only. Returns False for non-integer/non-1.2.3 versions.
 
     Args:
         version(str): version to compare
@@ -66,25 +80,40 @@ def is_previous_version(version, target_version):
         bool: True if versions are the same or if the version is older than the target version.
 
     """
+    # if any of the versions are empty, they can't be compared and
+    # a target_version need to be picked
     if version is None or target_version is None:
-        # if any of the versions are empty, they can't be compared and
-        # a target_version need to be picked
         return True
 
+    # Handle equals
+    if version == target_version:
+        return True
+
+    # Handle integers
     if version.isdigit() and target_version.isdigit():
         return int(version) <= int(target_version)
 
-    if "." in version and len(version.split(".")) == len(target_version.split(".")):
-        ver = version.split(".")
-        for index, target in enumerate(target_version.split(".")):
-            is_digit = ver[index].isdigit() and target.isdigit()
-            if is_digit and int(ver[index]) < int(target):
-                return True
+    # Handle 1.2.3
+    version_components = version.split(".")
+    target_version_components = target_version.split(".")
 
-        if is_digit:
-            return int(ver[index]) <= int(target)
-
-    if version:
-        return version == target_version
-
+    if len(version_components) == len(target_version_components):
+        for (comp_a, comp_b) in zip(version_components, target_version_components):
+            if comp_a.isdigit() and comp_b.isdigit():
+                # if both strings contain numeric information, convert them to ints and compare
+                a = int(comp_a)
+                b = int(comp_b)
+                if a == b:
+                    # this 'place' is equal, move to next
+                    continue
+                else:
+                    # not equal, return comparison
+                    return a < b
+            else:
+                # if one of the versions contains non-numeric information we cannot compare
+                return False
+        else:
+            # All places compared, is_prev=>T if last place is equal
+            return int(comp_a) == int(comp_b)
+    # len wasn't equal
     return False

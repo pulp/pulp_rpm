@@ -1,7 +1,6 @@
 import json
 from gettext import gettext as _
 from configparser import MissingSectionHeaderError
-from urllib.parse import urljoin
 
 from django.utils.timezone import now
 
@@ -9,6 +8,7 @@ from productmd.common import SortedConfigParser
 from productmd.treeinfo import TreeInfo
 
 from pulp_rpm.app.constants import DIST_TREE_MAIN_REPO_PATH, PACKAGES_DIRECTORY
+from pulp_rpm.app.shared_utils import urlpath_sanitize
 
 
 def get_treeinfo_data(remote, remote_url):
@@ -20,7 +20,8 @@ def get_treeinfo_data(remote, remote_url):
     namespaces = [".treeinfo", "treeinfo"]
     for namespace in namespaces:
         downloader = remote.get_downloader(
-            url=urljoin(remote_url, namespace), silence_errors_for_response_status_codes={403, 404}
+            url=urlpath_sanitize(remote_url, namespace),
+            silence_errors_for_response_status_codes={403, 404},
         )
 
         try:
