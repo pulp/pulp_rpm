@@ -1,7 +1,7 @@
 from logging import getLogger
-from urllib.parse import urljoin
 
 from pulpcore.plugin.download import FileDownloader, HttpDownloader
+from pulp_rpm.app.shared_utils import urlpath_sanitize
 
 
 log = getLogger(__name__)
@@ -81,7 +81,7 @@ class RpmDownloader(HttpDownloader):
         """
         if self.sles_auth_token:
             auth_param = f"?{self.sles_auth_token}"
-            url = urljoin(self.url, auth_param)
+            url = urlpath_sanitize(self.url, auth_param)
         else:
             url = self.url
 

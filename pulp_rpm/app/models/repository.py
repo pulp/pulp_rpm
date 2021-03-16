@@ -39,6 +39,7 @@ from pulp_rpm.app.models import (
 
 from pulp_rpm.app.downloaders import RpmDownloader, RpmFileDownloader
 from pulp_rpm.app.exceptions import DistributionTreeConflict
+from pulp_rpm.app.shared_utils import urlpath_sanitize
 
 log = getLogger(__name__)
 
@@ -352,7 +353,7 @@ class RpmDistribution(PublicationDistribution):
             repository = RpmRepository.objects.get(pk=repository_pk)
             signing_service = repository.metadata_signing_service
             if signing_service:
-                gpgkey_path = urllib.parse.urljoin(
+                gpgkey_path = urlpath_sanitize(
                     settings.CONTENT_ORIGIN, settings.CONTENT_PATH_PREFIX
                 )
                 gpgkey_path = urllib.parse.urljoin(gpgkey_path, self.base_path, True)

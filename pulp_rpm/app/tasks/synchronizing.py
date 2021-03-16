@@ -7,7 +7,6 @@ import re
 from collections import defaultdict
 from functools import partial
 from gettext import gettext as _  # noqa:F401
-from urllib.parse import urljoin
 
 from django.db import transaction
 
@@ -76,7 +75,7 @@ from pulp_rpm.app.modulemd import (
 from pulp_rpm.app.kickstart.treeinfo import get_treeinfo_data
 
 from pulp_rpm.app.comps import strdict_to_dict, dict_digest
-from pulp_rpm.app.shared_utils import is_previous_version, get_sha256
+from pulp_rpm.app.shared_utils import is_previous_version, get_sha256, urlpath_sanitize
 
 import gi
 
@@ -98,7 +97,7 @@ def get_repomd_file(remote, url):
         pulpcore.plugin.download.DownloadResult: downloaded repomd.xml
 
     """
-    downloader = remote.get_downloader(url=urljoin(url, "repodata/repomd.xml"))
+    downloader = remote.get_downloader(url=urlpath_sanitize(url, "repodata/repomd.xml"))
 
     try:
         result = downloader.fetch()
@@ -135,7 +134,7 @@ def fetch_mirror(remote):
 def fetch_remote_url(remote):
     """Fetch a single remote from which can be content synced."""
     remote_url = remote.url.rstrip("/") + "/"
-    downloader = remote.get_downloader(url=urljoin(remote_url, "repodata/repomd.xml"))
+    downloader = remote.get_downloader(url=urlpath_sanitize(remote_url, "repodata/repomd.xml"))
     try:
         downloader.fetch()
     except (ClientResponseError, FileNotFoundError):
@@ -240,7 +239,7 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
             directory = treeinfo["repo_map"][repodata]
             treeinfo["repositories"].update({directory: str(sub_repo.pk)})
             path = f"{repodata}/"
-            new_url = urljoin(remote_url, path)
+            new_url = urlpath_sanitize(remote_url, path)
             with WorkingDirectory():
                 repodata_exists = get_repomd_file(remote, new_url)
             if repodata_exists:
@@ -427,7 +426,7 @@ class RpmFirstStage(Stage):
             self.data.metadata_pb = metadata_pb
 
             downloader = self.remote.get_downloader(
-                url=urljoin(self.data.remote_url, "repodata/repomd.xml")
+                url=urlpath_sanitize(self.data.remote_url, "repodata/repomd.xml")
             )
             result = await downloader.run()
             metadata_pb.increment()
@@ -457,7 +456,7 @@ class RpmFirstStage(Stage):
             d_artifacts = [
                 DeclarativeArtifact(
                     artifact=Artifact(),
-                    url=urljoin(self.data.remote_url, self.treeinfo["filename"]),
+                    url=urlpath_sanitize(self.data.remote_url, self.treeinfo["filename"]),
                     relative_path=".treeinfo",
                     remote=self.remote,
                     deferred_download=False,
@@ -467,7 +466,7 @@ class RpmFirstStage(Stage):
                 artifact = Artifact(**checksum)
                 da = DeclarativeArtifact(
                     artifact=artifact,
-                    url=urljoin(self.data.remote_url, path),
+                    url=urlpath_sanitize(self.data.remote_url, path),
                     relative_path=path,
                     remote=self.remote,
                     deferred_download=self.deferred_download,
@@ -596,7 +595,7 @@ class RpmFirstStage(Stage):
                 artifact = Artifact(size=package.size_package)
                 checksum_type = getattr(CHECKSUM_TYPES, package.checksum_type.upper())
                 setattr(artifact, checksum_type, package.pkgId)
-                url = urljoin(self.data.remote_url, package.location_href)
+                url = urlpath_sanitize(self.data.remote_url, package.location_href)
                 filename = os.path.basename(package.location_href)
                 da = DeclarativeArtifact(
                     artifact=artifact,
@@ -719,20 +718,20 @@ class RepositoryMetadataParser:
 
     def _update_repodata_urls(self, record):
         self.main_types.update([record.type])
-        repodata_url = urljoin(self.data.remote_url, record.location_href)
+        repodata_url = urlpath_sanitize(self.data.remote_url, record.location_href)
         self.data.package_repodata_urls[record.type] = repodata_url
 
     def _append_downloader(self, record):
-        self.data.updateinfo_url = urljoin(self.data.remote_url, record.location_href)
+        self.data.updateinfo_url = urlpath_sanitize(self.data.remote_url, record.location_href)
         downloader = self.remote.get_downloader(url=self.data.updateinfo_url)
         self.data.downloaders.append([downloader.run()])
 
     def _set_comps_downloader(self, record):
-        comps_url = urljoin(self.data.remote_url, record.location_href)
+        comps_url = urlpath_sanitize(self.data.remote_url, record.location_href)
         self.data.comps_downloader = self.remote.get_downloader(url=comps_url)
 
     def _get_modulemd_results(self, record):
-        self.data.modules_url = urljoin(self.data.remote_url, record.location_href)
+        self.data.modules_url = urlpath_sanitize(self.data.remote_url, record.location_href)
         self.modulemd_downloader = self.remote.get_downloader(url=self.data.modules_url)
 
     def _set_repomd_file(self, record):
@@ -740,7 +739,7 @@ class RepositoryMetadataParser:
             file_data = {record.checksum_type: record.checksum, "size": record.size}
             da = DeclarativeArtifact(
                 artifact=Artifact(**file_data),
-                url=urljoin(self.data.remote_url, record.location_href),
+                url=urlpath_sanitize(self.data.remote_url, record.location_href),
                 relative_path=record.location_href,
                 remote=self.remote,
                 deferred_download=False,
