@@ -1,0 +1,1 @@
+Fixed the case when no package checksum type cofiguration is provided for publications created outside, not by RPM plugin endpoints. E.g. in pulp-2to3-migration plugin.

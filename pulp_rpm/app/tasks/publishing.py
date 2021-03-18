@@ -365,7 +365,7 @@ def create_repomd_xml(
         cwd = os.path.join(cwd, sub_folder)
         repodata_path = os.path.join(sub_folder, repodata_path)
 
-    if package_checksum_type not in settings.ALLOWED_CONTENT_CHECKSUMS:
+    if package_checksum_type and package_checksum_type not in settings.ALLOWED_CONTENT_CHECKSUMS:
         raise ValueError(
             "Repository contains disallowed package checksum type '{}', "
             "thus can't be published. {}".format(package_checksum_type, ALLOWED_CHECKSUM_ERROR_MSG)
