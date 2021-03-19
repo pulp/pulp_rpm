@@ -157,23 +157,23 @@ class FipsRemotesTestCase(PulpTestCase):
         self.addCleanup(self.distributions.delete, distribution.pulp_href)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_000_cdn_redhat_com_content_dist_rhel_server_6_6Server_x86_64_extras_os(
+    def test_000_cdn_redhat_com_content_dist_rhel_server_6_6Server_x86_64_extras_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/6/6Server/x86_64/extras/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_001_cdn_redhat_com_content_dist_rhel_server_6_6Server_x86_64_optional_os(
+    def test_001_cdn_redhat_com_content_dist_rhel_server_6_6Server_x86_64_optional_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/6/6Server/x86_64/optional/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_002_cdn_redhat_com_content_dist_rhel_server_6_6Server_x86_64_supplementary_os(
+    def test_002_cdn_redhat_com_content_dist_rhel_server_6_6Server_x86_64_supplementary_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/6/6Server/x86_64/supplementary/os"
         self._do_test(url)
 
@@ -184,23 +184,23 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_004_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_extras_os(
+    def test_004_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_extras_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/extras/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_005_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_optional_os(
+    def test_005_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_optional_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/optional/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_006_cdn_redhat_com_content_dist_rhel_server_6_6Server_x86_64_rhscl_1_os(
+    def test_006_cdn_redhat_com_content_dist_rhel_server_6_6Server_x86_64_rhscl_1_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/6/6Server/x86_64/rhscl/1/os"
         self._do_test(url)
 
@@ -252,9 +252,9 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_017_cdn_redhat_com_content_dist_rhel8_8_0_x86_64_appstream_kickstart(
+    def test_017_cdn_redhat_com_content_dist_rhel8_8_0_x86_64_appstream_kickstart(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel8/8.0/x86_64/appstream/kickstart"
         self._do_test(url)
 
@@ -264,9 +264,9 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_019_cdn_redhat_com_content_eus_rhel_server_7_7_3_x86_64_supplementary_os(
+    def test_019_cdn_redhat_com_content_eus_rhel_server_7_7_3_x86_64_supplementary_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/eus/rhel/server/7/7.3/x86_64/supplementary/os"
         self._do_test(url)
 
@@ -286,16 +286,16 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_023_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_ansible_2_5_os(
+    def test_023_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_ansible_2_5_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/ansible/2.5/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_024_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rhgs_server_nfs_3_1_os(
+    def test_024_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rhgs_server_nfs_3_1_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/rhgs-server-nfs/3.1/os"  # noqa E501
         self._do_test(url)
 
@@ -305,9 +305,9 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_026_cdn_redhat_com_content_dist_rhel_workstation_7_7_5_x86_64_kickstart(
+    def test_026_cdn_redhat_com_content_dist_rhel_workstation_7_7_5_x86_64_kickstart(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/workstation/7/7.5/x86_64/kickstart"
         self._do_test(url)
 
@@ -316,53 +316,53 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_028_cdn_redhat_com_content_dist_rhel_workstation_7_7Workstation_x86_64_insights_3_os(
+    def test_028_cdn_redhat_com_content_dist_rhel_workstation_7_7Workstation_x86_64_insights_3_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/workstation/7/7Workstation/x86_64/insights/3/os"  # noqa E501
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_029_cdn_redhat_com_content_dist_rhel_workstation_7_7Workstation_x86_64_optional_os(
+    def test_029_cdn_redhat_com_content_dist_rhel_workstation_7_7Workstation_x86_64_optional_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = (
             "https://cdn.redhat.com/content/dist/rhel/workstation/7/7Workstation/x86_64/optional/os"
         )
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_030_cdn_redhat_com_content_dist_rhel_workstation_7_7Workstation_x86_64_rh_common_os(
+    def test_030_cdn_redhat_com_content_dist_rhel_workstation_7_7Workstation_x86_64_rh_common_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/workstation/7/7Workstation/x86_64/rh-common/os"  # noqa E501
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_031_cdn_redhat_com_content_dist_rhel_workstation_7_7Workstation_x86_64_os(
+    def test_031_cdn_redhat_com_content_dist_rhel_workstation_7_7Workstation_x86_64_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/workstation/7/7Workstation/x86_64/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_032_cdn_redhat_com_content_dist_rhel_workstation_7_7Workstation_x86_64_extras_os(
+    def test_032_cdn_redhat_com_content_dist_rhel_workstation_7_7Workstation_x86_64_extras_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/workstation/7/7Workstation/x86_64/extras/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_033_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rh_gluster_samba_3_1_os(
+    def test_033_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rh_gluster_samba_3_1_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/rh-gluster-samba/3.1/os"  # noqa E501
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_034_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rhgs_server_3_1_os(
+    def test_034_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rhgs_server_3_1_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/rhgs-server/3.1/os"
         self._do_test(url)
 
@@ -372,32 +372,32 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_036_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rhgs_nagios_3_1_os(
+    def test_036_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rhgs_nagios_3_1_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/rhgs-nagios/3.1/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_037_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rhscon_agent_2_os(
+    def test_037_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rhscon_agent_2_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/rhscon-agent/2/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_038_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rhscon_installer_2_os(
+    def test_038_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rhscon_installer_2_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = (
             "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/rhscon-installer/2/os"
         )
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_039_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rhscon_main_2_os(
+    def test_039_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rhscon_main_2_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/rhscon-main/2/os"
         self._do_test(url)
 
@@ -407,16 +407,16 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_041_cdn_redhat_com_content_dist_rhel_server_6_6Server_x86_64_rhs_client_os(
+    def test_041_cdn_redhat_com_content_dist_rhel_server_6_6Server_x86_64_rhs_client_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/6/6Server/x86_64/rhs-client/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_042_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rhs_client_os(
+    def test_042_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rhs_client_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/rhs-client/os"
         self._do_test(url)
 
@@ -426,25 +426,25 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_044_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_supplementary_os(
+    def test_044_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_supplementary_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/supplementary/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_045_cdn_redhat_com_content_dist_rhel_workstation_7_7Workstation_x86_64_rhscl_1_os(
+    def test_045_cdn_redhat_com_content_dist_rhel_workstation_7_7Workstation_x86_64_rhscl_1_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = (
             "https://cdn.redhat.com/content/dist/rhel/workstation/7/7Workstation/x86_64/rhscl/1/os"
         )
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_046_cdn_redhat_com_content_dist_rhel_workstation_7_7_6_x86_64_kickstart(
+    def test_046_cdn_redhat_com_content_dist_rhel_workstation_7_7_6_x86_64_kickstart(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/workstation/7/7.6/x86_64/kickstart"
         self._do_test(url)
 
@@ -454,30 +454,30 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_048_cdn_redhat_com_content_dist_rhel_server_6_6_8_x86_64_kickstart(
+    def test_048_cdn_redhat_com_content_dist_rhel_server_6_6_8_x86_64_kickstart(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/6/6.8/x86_64/kickstart"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_049_cdn_redhat_com_content_dist_rhel_server_6_6_9_x86_64_kickstart(
+    def test_049_cdn_redhat_com_content_dist_rhel_server_6_6_9_x86_64_kickstart(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/6/6.9/x86_64/kickstart"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_050_cdn_redhat_com_content_eus_rhel_server_6_6_6_x86_64_sat_tools_6_2_os(
+    def test_050_cdn_redhat_com_content_eus_rhel_server_6_6_6_x86_64_sat_tools_6_2_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/eus/rhel/server/6/6.6/x86_64/sat-tools/6.2/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_051_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rhscl_1_os(
+    def test_051_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rhscl_1_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/rhscl/1/os"
         self._do_test(url)
 
@@ -487,9 +487,9 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_053_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_ansible_2_7_os(
+    def test_053_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_ansible_2_7_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/ansible/2.7/os"
         self._do_test(url)
 
@@ -509,9 +509,9 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_057_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_sat_maintenance_6_os(
+    def test_057_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_sat_maintenance_6_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = (
             "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/sat-maintenance/6/os"
         )
@@ -530,72 +530,72 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_060_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rhgs_server_splunk_3_1_os(
+    def test_060_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_rhgs_server_splunk_3_1_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/rhgs-server-splunk/3.1/os"  # noqa E501
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
     def test_061_cdn_redhat_com_content_dist_rhel_workstation_7_7Workstation_x86_64_supplementary_os(  # noqa E501
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/workstation/7/7Workstation/x86_64/supplementary/os"  # noqa E501
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_062_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_ansible_2_6_os(
+    def test_062_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_ansible_2_6_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/ansible/2.6/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_063_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_dotnet_1_os(
+    def test_063_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_dotnet_1_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/dotnet/1/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_064_cdn_redhat_com_content_dist_rhel_server_6_6_10_x86_64_optional_os(
+    def test_064_cdn_redhat_com_content_dist_rhel_server_6_6_10_x86_64_optional_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/6/6.10/x86_64/optional/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_065_cdn_redhat_com_content_eus_rhel_server_7_7Server_x86_64_sat_tools_6_5_os(
+    def test_065_cdn_redhat_com_content_eus_rhel_server_7_7Server_x86_64_sat_tools_6_5_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/eus/rhel/server/7/7Server/x86_64/sat-tools/6.5/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_066_cdn_redhat_com_content_eus_rhel_server_7_7_5_x86_64_sat_tools_6_5_os(
+    def test_066_cdn_redhat_com_content_eus_rhel_server_7_7_5_x86_64_sat_tools_6_5_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/eus/rhel/server/7/7.5/x86_64/sat-tools/6.5/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_067_cdn_redhat_com_content_dist_rhel_server_7_7_7_x86_64_optional_os(
+    def test_067_cdn_redhat_com_content_dist_rhel_server_7_7_7_x86_64_optional_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7.7/x86_64/optional/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_068_cdn_redhat_com_content_dist_rhel_server_7_7_4_x86_64_optional_os(
+    def test_068_cdn_redhat_com_content_dist_rhel_server_7_7_4_x86_64_optional_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7.4/x86_64/optional/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_069_cdn_redhat_com_content_eus_rhel_server_6_6_7_x86_64_supplementary_os(
+    def test_069_cdn_redhat_com_content_eus_rhel_server_6_6_7_x86_64_supplementary_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/eus/rhel/server/6/6.7/x86_64/supplementary/os"
         self._do_test(url)
 
@@ -620,9 +620,9 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_074_cdn_redhat_com_content_dist_rhel_server_6_6_7_x86_64_optional_os(
+    def test_074_cdn_redhat_com_content_dist_rhel_server_6_6_7_x86_64_optional_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/6/6.7/x86_64/optional/os"
         self._do_test(url)
 
@@ -647,16 +647,16 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_079_cdn_redhat_com_content_eus_rhel_server_7_7_5_x86_64_supplementary_os(
+    def test_079_cdn_redhat_com_content_eus_rhel_server_7_7_5_x86_64_supplementary_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/eus/rhel/server/7/7.5/x86_64/supplementary/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_080_cdn_redhat_com_content_eus_rhel_server_7_7_5_x86_64_sat_tools_6_4_os(
+    def test_080_cdn_redhat_com_content_eus_rhel_server_7_7_5_x86_64_sat_tools_6_4_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/eus/rhel/server/7/7.5/x86_64/sat-tools/6.4/os"
         self._do_test(url)
 
@@ -666,9 +666,9 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_082_cdn_redhat_com_content_eus_rhel_server_7_7_3_x86_64_sat_tools_6_4_os(
+    def test_082_cdn_redhat_com_content_eus_rhel_server_7_7_3_x86_64_sat_tools_6_4_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/eus/rhel/server/7/7.3/x86_64/sat-tools/6.4/os"
         self._do_test(url)
 
@@ -703,16 +703,16 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_089_cdn_redhat_com_content_dist_rhel_server_7_7_6_x86_64_optional_os(
+    def test_089_cdn_redhat_com_content_dist_rhel_server_7_7_6_x86_64_optional_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7.6/x86_64/optional/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_090_cdn_redhat_com_content_dist_rhel_server_7_7_3_x86_64_optional_os(
+    def test_090_cdn_redhat_com_content_dist_rhel_server_7_7_3_x86_64_optional_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7.3/x86_64/optional/os"
         self._do_test(url)
 
@@ -722,9 +722,9 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_092_cdn_redhat_com_content_dist_rhel_server_6_6_8_x86_64_optional_os(
+    def test_092_cdn_redhat_com_content_dist_rhel_server_6_6_8_x86_64_optional_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/6/6.8/x86_64/optional/os"
         self._do_test(url)
 
@@ -734,23 +734,23 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_094_cdn_redhat_com_content_dist_rhel_server_6_6_9_x86_64_optional_os(
+    def test_094_cdn_redhat_com_content_dist_rhel_server_6_6_9_x86_64_optional_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/6/6.9/x86_64/optional/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_095_cdn_redhat_com_content_dist_rhel_server_7_7_5_x86_64_optional_os(
+    def test_095_cdn_redhat_com_content_dist_rhel_server_7_7_5_x86_64_optional_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7.5/x86_64/optional/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_096_cdn_redhat_com_content_dist_rhel_server_7_7_2_x86_64_optional_os(
+    def test_096_cdn_redhat_com_content_dist_rhel_server_7_7_2_x86_64_optional_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7.2/x86_64/optional/os"
         self._do_test(url)
 
@@ -770,9 +770,9 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_100_cdn_redhat_com_content_eus_rhel_server_7_7_6_x86_64_sat_tools_6_5_os(
+    def test_100_cdn_redhat_com_content_eus_rhel_server_7_7_6_x86_64_sat_tools_6_5_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/eus/rhel/server/7/7.6/x86_64/sat-tools/6.5/os"
         self._do_test(url)
 
@@ -782,37 +782,37 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_102_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_sat_capsule_6_6_os(
+    def test_102_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_sat_capsule_6_6_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/sat-capsule/6.6/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_103_cdn_redhat_com_content_dist_rhel_server_6_6Server_x86_64_sat_tools_6_6_os(
+    def test_103_cdn_redhat_com_content_dist_rhel_server_6_6Server_x86_64_sat_tools_6_6_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/6/6Server/x86_64/sat-tools/6.6/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_104_cdn_redhat_com_content_dist_layered_rhel8_x86_64_sat_tools_6_6_os(
+    def test_104_cdn_redhat_com_content_dist_layered_rhel8_x86_64_sat_tools_6_6_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/layered/rhel8/x86_64/sat-tools/6.6/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_105_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_ansible_2_8_os(
+    def test_105_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_ansible_2_8_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/ansible/2.8/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_106_cdn_redhat_com_content_eus_rhel_server_7_7_6_x86_64_sat_tools_6_6_os(
+    def test_106_cdn_redhat_com_content_eus_rhel_server_7_7_6_x86_64_sat_tools_6_6_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/eus/rhel/server/7/7.6/x86_64/sat-tools/6.6/os"
         self._do_test(url)
 
@@ -822,9 +822,9 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_108_cdn_redhat_com_content_dist_rhel8_8_1_x86_64_appstream_kickstart(
+    def test_108_cdn_redhat_com_content_dist_rhel8_8_1_x86_64_appstream_kickstart(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel8/8.1/x86_64/appstream/kickstart"
         self._do_test(url)
 
@@ -839,9 +839,9 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_111_cdn_redhat_com_content_eus_rhel_server_7_7_6_x86_64_supplementary_os(
+    def test_111_cdn_redhat_com_content_eus_rhel_server_7_7_6_x86_64_supplementary_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/eus/rhel/server/7/7.6/x86_64/supplementary/os"
         self._do_test(url)
 
@@ -851,16 +851,16 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_113_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_sat_tools_6_6_os(
+    def test_113_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_sat_tools_6_6_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/sat-tools/6.6/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_114_cdn_redhat_com_content_eus_rhel_server_7_7_5_x86_64_sat_tools_6_6_os(
+    def test_114_cdn_redhat_com_content_eus_rhel_server_7_7_5_x86_64_sat_tools_6_6_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/eus/rhel/server/7/7.5/x86_64/sat-tools/6.6/os"
         self._do_test(url)
 
@@ -870,9 +870,9 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_116_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_highavailability_os(
+    def test_116_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_highavailability_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/highavailability/os"
         self._do_test(url)
 
@@ -891,9 +891,9 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_120_cdn_redhat_com_content_eus_rhel_server_7_7_7_x86_64_supplementary_os(
+    def test_120_cdn_redhat_com_content_eus_rhel_server_7_7_7_x86_64_supplementary_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/eus/rhel/server/7/7.7/x86_64/supplementary/os"
         self._do_test(url)
 
@@ -908,44 +908,44 @@ class FipsRemotesTestCase(PulpTestCase):
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_123_cdn_redhat_com_content_eus_rhel_server_7_7_7_x86_64_sat_tools_6_6_os(
+    def test_123_cdn_redhat_com_content_eus_rhel_server_7_7_7_x86_64_sat_tools_6_6_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/eus/rhel/server/7/7.7/x86_64/sat-tools/6.6/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_124_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_sat_capsule_6_7_os(
+    def test_124_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_sat_capsule_6_7_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/sat-capsule/6.7/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_125_cdn_redhat_com_content_dist_rhel_server_6_6Server_x86_64_sat_tools_6_7_os(
+    def test_125_cdn_redhat_com_content_dist_rhel_server_6_6Server_x86_64_sat_tools_6_7_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/6/6Server/x86_64/sat-tools/6.7/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_126_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_sat_tools_6_7_os(
+    def test_126_cdn_redhat_com_content_dist_rhel_server_7_7Server_x86_64_sat_tools_6_7_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel/server/7/7Server/x86_64/sat-tools/6.7/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_127_cdn_redhat_com_content_dist_layered_rhel8_x86_64_sat_tools_6_7_os(
+    def test_127_cdn_redhat_com_content_dist_layered_rhel8_x86_64_sat_tools_6_7_os(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/layered/rhel8/x86_64/sat-tools/6.7/os"
         self._do_test(url)
 
     @skip_if(bool, "cdn_client_cert", False)
-    def test_128_cdn_redhat_com_content_dist_rhel8_8_2_x86_64_appstream_kickstart(
+    def test_128_cdn_redhat_com_content_dist_rhel8_8_2_x86_64_appstream_kickstart(  # noqa D102
         self,
-    ):  # noqa D102
+    ):
         url = "https://cdn.redhat.com/content/dist/rhel8/8.2/x86_64/appstream/kickstart"
         self._do_test(url)
 
