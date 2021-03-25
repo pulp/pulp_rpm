@@ -22,6 +22,7 @@ plugin_caps: PULP_RPM
 plugin_caps_short: RPM
 plugin_dash: pulp-rpm
 plugin_dash_short: rpm
+plugin_default_branch: master
 plugin_name: pulp_rpm
 plugin_snake: pulp_rpm
 publish_docs_to_pulpprojectdotorg: true
