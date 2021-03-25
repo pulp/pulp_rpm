@@ -1,5 +1,0 @@
-Caught remaining places that needed to know that 'sha' is an alias for 'sha1'.
-
-Very old versions of createrepo used 'sha' as a checksum-type for 'sha-1'.
-The recent ALLOWED_CHECKSUMS work prevented repositories created this way
-from being synchronized or published.
