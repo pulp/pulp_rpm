@@ -22,6 +22,7 @@ plugin_caps: PULP_RPM
 plugin_caps_short: RPM
 plugin_dash: pulp-rpm
 plugin_dash_short: rpm
+plugin_default_branch: master
 plugin_name: pulp_rpm
 plugin_snake: pulp_rpm
 publish_docs_to_pulpprojectdotorg: true
@@ -36,13 +37,12 @@ pulp_settings:
   - /tmp
   allowed_import_paths:
   - /tmp
-pulpcore_branch: master
-pulpcore_pip_version_specifier: null
+pulpcore_branch: '3.11'
+pulpcore_pip_version_specifier: '~=3.11.0'
 pulpprojectdotorg_key_id: aa499d7938ed
 pydocstyle: true
 pypi_username: pulp
 redmine_project: pulp_rpm
-stable_branch: '3.8'
 test_bindings: false
 test_cli: false
 test_fips_nightly: false
