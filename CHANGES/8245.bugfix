@@ -1,1 +1,0 @@
-Fixed DistributionTree parsing for boolean fields which could cause a failure at sync or migration time.

@@ -1,3 +1,0 @@
-Taught pulp_rpm how to handle remotes whose URLs do not end in '/'.
-
-Specifically, some mirrors (e.g. Amazon2) return remotes like this.

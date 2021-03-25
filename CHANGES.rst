@@ -13,6 +13,52 @@ Changelog
 
 .. towncrier release notes start
 
+3.10.0 (2021-03-25)
+===================
+
+
+Features
+--------
+
+- Added the ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION configuration option.
+
+  When set to True, overrides Pulp's advisory-merge logic regarding 'suspect'
+  advisory collisions at sync and upload time and simply processes the advisory.
+  `#8250 <https://pulp.plan.io/issues/8250>`_
+
+
+Bugfixes
+--------
+
+- Taught pulp_rpm how to handle remotes whose URLs do not end in '/'.
+
+  Specifically, some mirrors (e.g. Amazon2) return remotes like this.
+  `#7995 <https://pulp.plan.io/issues/7995>`_
+- Caught remaining places that needed to know that 'sha' is an alias for 'sha1'.
+
+  Very old versions of createrepo used 'sha' as a checksum-type for 'sha-1'.
+  The recent ALLOWED_CHECKSUMS work prevented repositories created this way
+  from being synchronized or published.
+  `#8052 <https://pulp.plan.io/issues/8052>`_
+- Fixed DistributionTree parsing for boolean fields which could cause a failure at sync or migration time.
+  `#8245 <https://pulp.plan.io/issues/8245>`_
+- Taught advisory-conflict-resolution how to deal with another edge-case.
+  `#8249 <https://pulp.plan.io/issues/8249>`_
+- Fixed regression in advisory-upload when pkglist included in advisory JSON.
+  `#8380 <https://pulp.plan.io/issues/8380>`_
+- Fixed the case when no package checksum type cofiguration is provided for publications created outside, not by RPM plugin endpoints. E.g. in pulp-2to3-migration plugin.
+  `#8422 <https://pulp.plan.io/issues/8422>`_
+
+
+Misc
+----
+
+- `#7537 <https://pulp.plan.io/issues/7537>`_, `#8223 <https://pulp.plan.io/issues/8223>`_, `#8278 <https://pulp.plan.io/issues/8278>`_, `#8301 <https://pulp.plan.io/issues/8301>`_, `#8392 <https://pulp.plan.io/issues/8392>`_
+
+
+----
+
+
 3.9.1 (2021-03-11)
 ==================
 
