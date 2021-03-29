@@ -1113,7 +1113,7 @@ class BasicSyncTestCase(PulpTestCase):
             monitor_task(sync_response.task)
 
         self.assertIn(
-            "Artifact contains forbidden checksum type md5.",
+            "rpm-with-md5/bear-4.1-1.noarch.rpm contains forbidden checksum type",
             ctx.exception.task.error["description"],
         )
 
