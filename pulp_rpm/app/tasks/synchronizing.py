@@ -3,6 +3,7 @@ import gzip
 import logging
 import os
 import re
+import tempfile
 
 from collections import defaultdict
 from gettext import gettext as _  # noqa:F401
@@ -32,7 +33,6 @@ from pulpcore.plugin.stages import (
     QueryExistingArtifacts,
     QueryExistingContents,
 )
-from pulpcore.plugin.tasking import WorkingDirectory
 
 from pulp_rpm.app.advisory import hash_update_record
 from pulp_rpm.app.constants import (
@@ -162,7 +162,7 @@ def is_optimized_sync(repository, remote, url):
         bool: True, if sync is optimized; False, otherwise.
 
     """
-    with WorkingDirectory():
+    with tempfile.TemporaryDirectory("."):
         result = get_repomd_file(remote, url)
         if not result:
             return False
@@ -218,7 +218,7 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
 
     deferred_download = remote.policy != Remote.IMMEDIATE  # Interpret download policy
 
-    with WorkingDirectory():
+    with tempfile.TemporaryDirectory("."):
         remote_url = fetch_remote_url(remote)
     if not remote_url:
         raise ValueError(_("An invalid remote URL was provided."))
@@ -228,7 +228,7 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
     if optimize and is_optimized_sync(repository, remote, remote_url):
         return
 
-    with WorkingDirectory():
+    with tempfile.TemporaryDirectory("."):
         treeinfo = get_treeinfo_data(remote, remote_url)
     if treeinfo:
         treeinfo["repositories"] = {}
@@ -244,7 +244,7 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
             treeinfo["repositories"].update({directory: str(sub_repo.pk)})
             path = f"{repodata}/"
             new_url = urlpath_sanitize(remote_url, path)
-            with WorkingDirectory():
+            with tempfile.TemporaryDirectory("."):
                 repodata_exists = get_repomd_file(remote, new_url)
             if repodata_exists:
                 if optimize and is_optimized_sync(sub_repo, remote, new_url):
