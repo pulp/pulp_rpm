@@ -332,6 +332,10 @@ def publish(
                     metadata_signing_service=metadata_signing_service,
                 )
 
+        log.info(_("Publication: {publication} created").format(publication=publication.pk))
+
+        return publication
+
 
 def create_repomd_xml(
     content,

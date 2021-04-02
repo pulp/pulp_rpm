@@ -7,10 +7,12 @@ from rest_framework import serializers
 from pulpcore.plugin.models import (
     AsciiArmoredDetachedSigningService,
     Remote,
+    Publication,
 )
 from pulpcore.plugin.serializers import (
     RelatedField,
-    PublicationDistributionSerializer,
+    DetailRelatedField,
+    DistributionSerializer,
     PublicationSerializer,
     RemoteSerializer,
     RepositorySerializer,
@@ -39,6 +41,14 @@ class RpmRepositorySerializer(RepositorySerializer):
     Serializer for Rpm Repositories.
     """
 
+    autopublish = serializers.BooleanField(
+        help_text=_(
+            "Whether to automatically create publications for new repository versions, "
+            "and update any distributions pointing to this repository."
+        ),
+        default=False,
+        required=False,
+    )
     metadata_signing_service = RelatedField(
         help_text="A reference to an associated signing service.",
         view_name="signing-services-detail",
@@ -56,11 +66,62 @@ class RpmRepositorySerializer(RepositorySerializer):
         min_value=0,
         required=False,
     )
+    metadata_checksum_type = serializers.ChoiceField(
+        help_text=_("The checksum type for metadata."),
+        choices=CHECKSUM_CHOICES,
+        default=CHECKSUM_TYPES.SHA256,
+    )
+    package_checksum_type = serializers.ChoiceField(
+        help_text=_("The checksum type for packages."),
+        choices=CHECKSUM_CHOICES,
+        default=CHECKSUM_TYPES.SHA256,
+    )
+    gpgcheck = serializers.IntegerField(
+        max_value=1,
+        min_value=0,
+        default=0,
+        required=False,
+        help_text=_(
+            "An option specifying whether a client should perform "
+            "a GPG signature check on packages."
+        ),
+    )
+    repo_gpgcheck = serializers.IntegerField(
+        max_value=1,
+        min_value=0,
+        default=0,
+        required=False,
+        help_text=_(
+            "An option specifying whether a client should perform "
+            "a GPG signature check on the repodata."
+        ),
+    )
+    sqlite_metadata = serializers.BooleanField(
+        default=False,
+        required=False,
+        help_text=_("An option specifying whether Pulp should generate SQLite metadata."),
+    )
+
+    def validate(self, data):
+        """Validate data."""
+        if (
+            data["metadata_checksum_type"] not in settings.ALLOWED_CONTENT_CHECKSUMS
+            or data["package_checksum_type"] not in settings.ALLOWED_CONTENT_CHECKSUMS
+        ):
+            raise serializers.ValidationError(_(ALLOWED_CHECKSUM_ERROR_MSG))
+        validated_data = super().validate(data)
+        return validated_data
 
     class Meta:
         fields = RepositorySerializer.Meta.fields + (
+            "autopublish",
             "metadata_signing_service",
             "retain_package_versions",
+            "metadata_checksum_type",
+            "package_checksum_type",
+            "gpgcheck",
+            "repo_gpgcheck",
+            "sqlite_metadata",
         )
         model = RpmRepository
 
@@ -195,13 +256,21 @@ class RpmPublicationSerializer(PublicationSerializer):
         model = RpmPublication
 
 
-class RpmDistributionSerializer(PublicationDistributionSerializer):
+class RpmDistributionSerializer(DistributionSerializer):
     """
     Serializer for RPM Distributions.
     """
 
+    publication = DetailRelatedField(
+        required=False,
+        help_text=_("Publication to be served"),
+        view_name_pattern=r"publications(-.*/.*)?-detail",
+        queryset=Publication.objects.exclude(complete=False),
+        allow_null=True,
+    )
+
     class Meta:
-        fields = PublicationDistributionSerializer.Meta.fields
+        fields = DistributionSerializer.Meta.fields + ("publication",)
         model = RpmDistribution
 
 

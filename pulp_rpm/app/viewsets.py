@@ -11,7 +11,7 @@ from pulpcore.plugin.models import RepositoryVersion
 from pulpcore.plugin.tasking import enqueue_with_reservation
 from pulpcore.plugin.serializers import AsyncOperationResponseSerializer
 from pulpcore.plugin.viewsets import (
-    BaseDistributionViewSet,
+    DistributionViewSet,
     ContentFilter,
     NoArtifactContentUploadViewSet,
     NamedModelViewSet,
@@ -231,17 +231,23 @@ class RpmPublicationViewSet(PublicationViewSet):
         serializer.is_valid(raise_exception=True)
         repository_version = serializer.validated_data.get("repository_version")
         repository = RpmRepository.objects.get(pk=repository_version.repository.pk)
-        metadata_checksum_type = serializer.validated_data.get("metadata_checksum_type", "")
-        package_checksum_type = serializer.validated_data.get("package_checksum_type", "")
+        metadata_checksum_type = serializer.validated_data.get(
+            "metadata_checksum_type", repository.metadata_checksum_type
+        )
+        package_checksum_type = serializer.validated_data.get(
+            "package_checksum_type", repository.package_checksum_type
+        )
         checksum_types = dict(
             metadata=metadata_checksum_type,
             package=package_checksum_type,
         )
         gpgcheck_options = dict(
-            gpgcheck=serializer.validated_data.get("gpgcheck"),
-            repo_gpgcheck=serializer.validated_data.get("repo_gpgcheck"),
+            gpgcheck=serializer.validated_data.get("gpgcheck", repository.gpgcheck),
+            repo_gpgcheck=serializer.validated_data.get("repo_gpgcheck", repository.repo_gpgcheck),
         )
-        sqlite_metadata = serializer.validated_data.get("sqlite_metadata", "")
+        sqlite_metadata = serializer.validated_data.get(
+            "sqlite_metadata", repository.sqlite_metadata
+        )
 
         result = enqueue_with_reservation(
             tasks.publish,
@@ -257,7 +263,7 @@ class RpmPublicationViewSet(PublicationViewSet):
         return OperationPostponedResponse(result, request)
 
 
-class RpmDistributionViewSet(BaseDistributionViewSet):
+class RpmDistributionViewSet(DistributionViewSet):
     """
     ViewSet for RPM Distributions.
     """
