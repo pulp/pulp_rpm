@@ -18,12 +18,12 @@ from pulpcore.plugin.models import (
     Repository,
     RepositoryVersion,
     Publication,
-    PublicationDistribution,
+    Distribution,
     Task,
 )
 from pulpcore.plugin.repo_version_utils import remove_duplicates, validate_repo_version
 
-from pulp_rpm.app.constants import CHECKSUM_CHOICES
+from pulp_rpm.app.constants import CHECKSUM_CHOICES, CHECKSUM_TYPES
 from pulp_rpm.app.models import (
     DistributionTree,
     Package,
@@ -205,6 +205,7 @@ class RpmRepository(Repository):
         ModulemdDefaults,
     ]
     REMOTE_TYPES = [RpmRemote]
+    GPGCHECK_CHOICES = [(0, 0), (1, 1)]
 
     metadata_signing_service = models.ForeignKey(
         AsciiArmoredDetachedSigningService, on_delete=models.SET_NULL, null=True
@@ -216,6 +217,17 @@ class RpmRepository(Repository):
     last_sync_repomd_checksum = models.CharField(max_length=64, null=True)
     original_checksum_types = JSONField(default=dict)
     retain_package_versions = models.PositiveIntegerField(default=0)
+
+    autopublish = models.BooleanField(default=False)
+    metadata_checksum_type = models.CharField(
+        default=CHECKSUM_TYPES.SHA256, choices=CHECKSUM_CHOICES, max_length=10
+    )
+    package_checksum_type = models.CharField(
+        default=CHECKSUM_TYPES.SHA256, choices=CHECKSUM_CHOICES, max_length=10
+    )
+    gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
+    repo_gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
+    sqlite_metadata = models.BooleanField(default=False)
 
     def new_version(self, base_version=None):
         """
@@ -252,6 +264,36 @@ class RpmRepository(Repository):
                 resource = CreatedResource(content_object=version)
                 resource.save()
             return version
+
+    def on_new_version(self, version):
+        """
+        Called when new repository versions are created.
+
+        Args:
+            version: The new repository version.
+        """
+        super().on_new_version(version)
+
+        # avoid circular import issues
+        from pulp_rpm.app import tasks
+
+        if self.autopublish:
+            publication = tasks.publish(
+                repository_version_pk=version.pk,
+                gpgcheck_options={"gpgcheck": self.gpgcheck, "repo_gpgcheck": self.repo_gpgcheck},
+                metadata_signing_service=self.metadata_signing_service,
+                checksum_types={
+                    "metadata": self.metadata_checksum_type,
+                    "package": self.package_checksum_type,
+                },
+                sqlite_metadata=self.sqlite_metadata,
+            )
+            distributions = self.distributions.all()
+
+            if publication and distributions:
+                for distribution in distributions:
+                    distribution.publication = publication
+                    distribution.save()
 
     @staticmethod
     def artifacts_for_version(version):
@@ -394,7 +436,7 @@ class RpmPublication(Publication):
         default_related_name = "%(app_label)s_%(model_name)s"
 
 
-class RpmDistribution(PublicationDistribution):
+class RpmDistribution(Distribution):
     """
     Distribution for "rpm" content.
     """

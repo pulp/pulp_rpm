@@ -180,7 +180,7 @@ def is_optimized_sync(repository, remote, url):
         and repository.last_sync_repomd_checksum == repomd_checksum
     )
     if is_optimized:
-        optimize_data = dict(message="Optimizing Sync", code="optimizing.sync")
+        optimize_data = dict(message="Optimizing Sync", code="sync.optimizing")
         with ProgressReport(**optimize_data) as optimize_pb:
             optimize_pb.done = 1
             optimize_pb.save()
@@ -271,10 +271,12 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
         new_url=remote_url,
     )
     dv = RpmDeclarativeVersion(first_stage=first_stage, repository=repository, mirror=mirror)
-    dv.create()
-    repository.last_sync_remote = remote
-    repository.last_sync_repo_version = repository.latest_version().number
-    repository.save()
+    version = dv.create()
+    if version:
+        repository.last_sync_remote = remote
+        repository.last_sync_repo_version = version.number
+        repository.save()
+    return version
 
 
 class RpmDeclarativeVersion(DeclarativeVersion):
@@ -423,7 +425,7 @@ class RpmFirstStage(Stage):
 
     async def run(self):
         """Build `DeclarativeContent` from the repodata."""
-        progress_data = dict(message="Downloading Metadata Files", code="downloading.metadata")
+        progress_data = dict(message="Downloading Metadata Files", code="sync.downloading.metadata")
         with ProgressReport(**progress_data) as metadata_pb:
             self.data.metadata_pb = metadata_pb
 
@@ -577,7 +579,7 @@ class RpmFirstStage(Stage):
     async def _parse_packages(self, packages):
         progress_data = {
             "message": "Parsed Packages",
-            "code": "parsing.packages",
+            "code": "sync.parsing.packages",
             "total": len(packages),
         }
 
@@ -617,7 +619,7 @@ class RpmFirstStage(Stage):
     async def _parse_advisories(self, updates):
         progress_data = {
             "message": "Parsed Advisories",
-            "code": "parsing.advisories",
+            "code": "sync.parsing.advisories",
             "total": len(updates),
         }
         with ProgressReport(**progress_data) as advisories_pb:
@@ -762,7 +764,7 @@ class ModulesMetadataParser:
 
         # Parsing modules happens all at one time, and from here on no useful work happens.
         # So just report that it finished this stage.
-        modulemd_pb_data = {"message": "Parsed Modulemd", "code": "parsing.modulemds"}
+        modulemd_pb_data = {"message": "Parsed Modulemd", "code": "sync.parsing.modulemds"}
         with ProgressReport(**modulemd_pb_data) as modulemd_pb:
             modulemd_total = len(modulemd_all)
             modulemd_pb.total = modulemd_total
@@ -799,7 +801,7 @@ class ModulesMetadataParser:
         # work happens. So just report that it finished this stage.
         modulemd_defaults_pb_data = {
             "message": "Parsed Modulemd-defaults",
-            "code": "parsing.modulemd_defaults",
+            "code": "sync.parsing.modulemd_defaults",
         }
         with ProgressReport(**modulemd_defaults_pb_data) as modulemd_defaults_pb:
             modulemd_defaults_total = len(modulemd_default_names)
@@ -845,7 +847,7 @@ class PackagesComponentsParser:
         comps = libcomps.Comps()
         comps.fromxml_f(self.comps_result.path)
 
-        with ProgressReport(message="Parsed Comps", code="parsing.comps") as comps_pb:
+        with ProgressReport(message="Parsed Comps", code="sync.parsing.comps") as comps_pb:
             comps_total = len(comps.groups) + len(comps.categories) + len(comps.environments)
             comps_pb.total = comps_total
             comps_pb.done = comps_total
