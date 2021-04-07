@@ -204,7 +204,7 @@ class RpmRepository(Repository):
         Modulemd,
         ModulemdDefaults,
     ]
-    REMOTE_TYPES = [RpmRemote]
+    REMOTE_TYPES = [RpmRemote, UlnRemote]
     GPGCHECK_CHOICES = [(0, 0), (1, 1)]
 
     metadata_signing_service = models.ForeignKey(
