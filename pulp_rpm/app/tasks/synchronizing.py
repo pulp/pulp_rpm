@@ -1,4 +1,5 @@
 import asyncio
+import collections
 import gzip
 import logging
 import os
@@ -415,7 +416,7 @@ class RpmFirstStage(Stage):
             """
             return packages.get(pkgId, None)
 
-        packages = {}
+        packages = collections.OrderedDict()
 
         # TODO: handle parsing errors/warnings, warningcb callback can be used below
         cr.xml_parse_primary(primary_xml_path, pkgcb=pkgcb, do_files=False)
@@ -584,8 +585,13 @@ class RpmFirstStage(Stage):
         }
 
         with ProgressReport(**progress_data) as packages_pb:
-            for pkg in packages.values():
+            while True:
+                try:
+                    (_, pkg) = packages.popitem(last=False)
+                except KeyError:
+                    break
                 package = Package(**Package.createrepo_to_dict(pkg))
+                del pkg
                 artifact = Artifact(size=package.size_package)
                 checksum_type = getattr(CHECKSUM_TYPES, package.checksum_type.upper())
                 setattr(artifact, checksum_type, package.pkgId)
