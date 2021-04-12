@@ -104,11 +104,10 @@ class RpmRepositorySerializer(RepositorySerializer):
 
     def validate(self, data):
         """Validate data."""
-        if (
-            data["metadata_checksum_type"] not in settings.ALLOWED_CONTENT_CHECKSUMS
-            or data["package_checksum_type"] not in settings.ALLOWED_CONTENT_CHECKSUMS
-        ):
-            raise serializers.ValidationError(_(ALLOWED_CHECKSUM_ERROR_MSG))
+        for field in ("metadata_checksum_type", "package_checksum_type"):
+            if field in data and data[field] not in settings.ALLOWED_CONTENT_CHECKSUMS:
+                raise serializers.ValidationError({field: _(ALLOWED_CHECKSUM_ERROR_MSG)})
+
         validated_data = super().validate(data)
         return validated_data
 
