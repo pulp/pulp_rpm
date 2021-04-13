@@ -135,14 +135,20 @@ def fetch_mirror(remote):
 
 def fetch_remote_url(remote):
     """Fetch a single remote from which can be content synced."""
-    remote_url = remote.url.rstrip("/") + "/"
-    downloader = remote.get_downloader(url=urlpath_sanitize(remote_url, "repodata/repomd.xml"))
-    try:
-        downloader.fetch()
-    except (ClientResponseError, FileNotFoundError):
-        return fetch_mirror(remote)
-    else:
+
+    def normalize_url(url):
+        return url.rstrip("/") + "/"
+
+    remote_url = normalize_url(remote.url)
+    if get_repomd_file(remote, remote_url):
         return remote_url
+
+    remote_url = fetch_mirror(remote)
+    if remote_url:
+        log.info(_("Using url '{}' from mirrorlist").format(remote_url))
+        return normalize_url(remote_url)
+
+    raise ValueError(_("An invalid remote URL was provided: {}").format(remote.url))
 
 
 def is_optimized_sync(repository, remote, url):
@@ -221,16 +227,13 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
 
     with tempfile.TemporaryDirectory("."):
         remote_url = fetch_remote_url(remote)
-    if not remote_url:
-        raise ValueError(_("An invalid remote URL was provided."))
-    else:
-        remote_url = remote_url.rstrip("/") + "/"
 
     if optimize and is_optimized_sync(repository, remote, remote_url):
         return
 
     with tempfile.TemporaryDirectory("."):
         treeinfo = get_treeinfo_data(remote, remote_url)
+
     if treeinfo:
         treeinfo["repositories"] = {}
         for repodata in set(treeinfo["download"]["repodatas"]):
