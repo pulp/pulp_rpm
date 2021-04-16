@@ -84,6 +84,19 @@ sed -i -e 's/:24817/pulp/g' generate.sh
 cd ..
 
 
+git clone --depth=1 https://github.com/pulp/pulp-cli.git
+if [ -n "$PULP_CLI_PR_NUMBER" ]; then
+  cd pulp-cli
+  git fetch origin pull/$PULP_CLI_PR_NUMBER/head:$PULP_CLI_PR_NUMBER
+  git checkout $PULP_CLI_PR_NUMBER
+  cd ..
+fi
+
+cd pulp-cli
+pip install -e .
+pulp config create --base-url http://pulp --location tests/settings.toml
+cd ..
+
 
 git clone --depth=1 https://github.com/pulp/pulpcore.git --branch master
 
@@ -111,7 +124,15 @@ pip install --upgrade --force-reinstall ./pulp-smash
 # Intall requirements for ansible playbooks
 pip install docker netaddr boto3 ansible
 
-ansible-galaxy collection install amazon.aws
+for i in {1..3}
+do
+  ansible-galaxy collection install amazon.aws && s=0 && break || s=$? && sleep 3
+done
+if [[ $s -gt 0 ]]
+then
+  echo "Failed to install amazon.aws"
+  exit $s
+fi
 
 cd pulp_rpm
 
