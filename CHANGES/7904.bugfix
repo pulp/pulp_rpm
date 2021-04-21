@@ -1,0 +1,1 @@
+Taught pulp_rpm to order resources on export to avoid deadlocking on import.
