@@ -55,7 +55,9 @@ class RpmContentResource(BaseContentResource):
             django.db.models.QuerySet: The Content to export for a RepositoryVersion
 
         """
-        content = self.Meta.model.objects.filter(pk__in=self.repo_version.content)
+        content = self.Meta.model.objects.filter(pk__in=self.repo_version.content).order_by(
+            "content_ptr_id"
+        )
         self._add_to_mapping(
             self.repo_version.repository, content.values_list("pulp_id", flat=True)
         )
@@ -64,7 +66,9 @@ class RpmContentResource(BaseContentResource):
         if tree:
             for repo in tree.repositories():
                 version = repo.latest_version()
-                content |= self.Meta.model.objects.filter(pk__in=version.content)
+                content |= self.Meta.model.objects.filter(pk__in=version.content).order_by(
+                    "content_ptr_id"
+                )
                 self._add_to_mapping(repo, version.content.values_list("pulp_id", flat=True))
 
         return content
@@ -204,7 +208,7 @@ class ChecksumResource(QueryModelResource):
         """
         tree = DistributionTree.objects.filter(pk__in=self.repo_version.content).first()
         if tree:
-            return Checksum.objects.filter(distribution_tree=tree)
+            return Checksum.objects.filter(distribution_tree=tree).order_by("pulp_id")
         else:
             return Checksum.objects.none()
 
@@ -240,7 +244,7 @@ class ImageResource(QueryModelResource):
         """
         tree = DistributionTree.objects.filter(pk__in=self.repo_version.content).first()
         if tree:
-            return Image.objects.filter(distribution_tree=tree)
+            return Image.objects.filter(distribution_tree=tree).order_by("pulp_id")
         else:
             return Image.objects.none()
 
@@ -282,7 +286,7 @@ class AddonResource(QueryModelResource):
         """
         tree = DistributionTree.objects.filter(pk__in=self.repo_version.content).first()
         if tree:
-            return Addon.objects.filter(distribution_tree=tree)
+            return Addon.objects.filter(distribution_tree=tree).order_by("pulp_id")
         else:
             return Addon.objects.none()
 
@@ -324,7 +328,7 @@ class VariantResource(QueryModelResource):
         """
         tree = DistributionTree.objects.filter(pk__in=self.repo_version.content).first()
         if tree:
-            return Variant.objects.filter(distribution_tree=tree)
+            return Variant.objects.filter(distribution_tree=tree).order_by("pulp_id")
         else:
             return Variant.objects.none()
 
@@ -380,7 +384,7 @@ class UpdateCollectionResource(QueryModelResource):
         """
         return UpdateCollection.objects.filter(
             update_record__in=UpdateRecord.objects.filter(pk__in=self.repo_version.content)
-        )
+        ).order_by("pulp_id")
 
     class Meta:
         model = UpdateCollection
@@ -409,7 +413,7 @@ class UpdateReferenceResource(QueryModelResource):
         """
         return UpdateReference.objects.filter(
             update_record__in=UpdateRecord.objects.filter(pk__in=self.repo_version.content)
-        )
+        ).order_by("pulp_id")
 
     class Meta:
         model = UpdateReference
@@ -471,7 +475,7 @@ class UpdateCollectionPackageResource(QueryModelResource):
             update_collection__in=UpdateCollection.objects.filter(
                 update_record__in=UpdateRecord.objects.filter(pk__in=self.repo_version.content)
             )
-        )
+        ).order_by("pulp_id")
 
     class Meta:
         model = UpdateCollectionPackage

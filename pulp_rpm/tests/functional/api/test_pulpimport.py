@@ -12,7 +12,7 @@ from pulp_smash.pulp3.utils import (
     gen_repo,
 )
 
-from pulp_rpm.tests.functional.constants import RPM_KICKSTART_FIXTURE_URL
+from pulp_rpm.tests.functional.constants import RPM_KICKSTART_FIXTURE_URL, RPM_UNSIGNED_FIXTURE_URL
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
     gen_rpm_remote,
@@ -97,15 +97,16 @@ class PulpImportTestBase(PulpTestCase):
         return export
 
     @classmethod
-    def _delete_exporter(cls):
+    def _delete_exporter(cls, delete_file=True):
         """
         Utility routine to delete an exporter.
 
         Also removes the export-directory and all its contents.
         """
-        cli_client = cli.Client(cls.cfg)
-        cmd = ("rm", "-rf", cls.exporter.path)
-        cli_client.run(cmd, sudo=True)
+        if delete_file:
+            cli_client = cli.Client(cls.cfg)
+            cmd = ("rm", "-rf", cls.exporter.path)
+            cli_client.run(cmd, sudo=True)
         cls.exporter_api.delete(cls.exporter.pulp_href)
 
     @classmethod
@@ -113,12 +114,15 @@ class PulpImportTestBase(PulpTestCase):
         """Clean up."""
         for remote in cls.remotes:
             cls.remote_api.delete(remote.pulp_href)
+
         for repo in cls.export_repos:
             cls.repo_api.delete(repo.pulp_href)
+
         for repo in cls.import_repos:
             cls.repo_api.delete(repo.pulp_href)
 
         cls._delete_exporter()
+
         delete_orphans(cls.cfg)
 
     def _create_importer(self, name=None, cleanup=True):
@@ -249,3 +253,74 @@ class DistributionTreePulpImportTestCase(PulpImportTestBase):
             self.assertEqual(f"{repo.pulp_href}versions/1/", repo.latest_version_href)
             trees = self.dist_tree_api.list(repository_version=repo.latest_version_href)
             self.assertEqual(trees.count, 1)
+
+
+class ParallelImportTestCase(PulpImportTestBase):
+    """
+    Tests for PulpImporter and PulpImport for repos with DistributionTrees.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.cfg = config.get_config()
+        cls.client = api.Client(cls.cfg, api.json_handler)
+        cls.core_client = CoreApiClient(configuration=cls.cfg.get_bindings_config())
+        cls.rpm_client = gen_rpm_client()
+
+        cls.repo_api = RepositoriesRpmApi(cls.rpm_client)
+        cls.remote_api = RemotesRpmApi(cls.rpm_client)
+        cls.exporter_api = ExportersPulpApi(cls.core_client)
+        cls.exports_api = ExportersCoreExportsApi(cls.core_client)
+        cls.importer_api = ImportersPulpApi(cls.core_client)
+        cls.imports_api = ImportersCoreImportsApi(cls.core_client)
+        cls.dist_tree_api = ContentDistributionTreesApi(cls.rpm_client)
+
+        cls.import_repos, cls.export_repos, cls.remotes = cls._setup_repositories(
+            RPM_UNSIGNED_FIXTURE_URL
+        )
+        cls.exporter = cls._create_exporter()
+        cls.export = cls._create_export()
+
+    @classmethod
+    def tearDownClass(cls):
+        """No need for class to clean up, we've already done it."""
+        pass
+
+    def tearDown(self):
+        """Remaining clean up repos/export already gone by now."""
+        for repo in self.import_repos:
+            self.repo_api.delete(repo.pulp_href)
+        delete_orphans(self.cfg)
+
+    def _post_export_cleanup(self):
+        """
+        Remove the exported repos and their content, so we're importing into a 'clean' db.
+        """
+        self._delete_exporter(delete_file=False)
+        for remote in self.remotes:
+            self.remote_api.delete(remote.pulp_href)
+        for repo in self.export_repos:
+            self.repo_api.delete(repo.pulp_href)
+        delete_orphans(self.cfg)
+
+    def test_clean_import(self):
+        """Test an import into an empty instance."""
+        # By the time we get here, setUpClass() has created repos and an export for us
+        # Find the export file, create the importer, delete repos/export, and then let
+        # the import happen
+        filenames = [f for f in list(self.export.output_file_info.keys()) if f.endswith("tar.gz")]
+        importer = self._create_importer()
+        self._post_export_cleanup()
+
+        # At this point we should be importing into a content-free-zone
+        import_response = self.imports_api.create(importer.pulp_href, {"path": filenames[0]})
+        monitor_task(import_response.task)
+        task = self.client.get(import_response.task)
+        resources = task["created_resources"]
+        task_group_href = resources[1]
+        task_group = monitor_task_group(task_group_href)
+        self.assertEqual(len(self.import_repos) + 1, task_group.completed)
+        for repo in self.import_repos:
+            repo = self.repo_api.read(repo.pulp_href)
+            self.assertEqual(f"{repo.pulp_href}versions/1/", repo.latest_version_href)
