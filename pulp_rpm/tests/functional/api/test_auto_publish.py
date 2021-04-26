@@ -46,9 +46,9 @@ class AutoPublishDistributeTestCase(unittest.TestCase):
 
     def tearDown(self):
         """Clean up."""
-        self.repo_api.delete(self.repo.pulp_href)
-        self.remote_api.delete(self.remote.pulp_href)
-        self.distributions_api.delete(self.distribution.pulp_href)
+        monitor_task(self.repo_api.delete(self.repo.pulp_href).task)
+        monitor_task(self.remote_api.delete(self.remote.pulp_href).task)
+        monitor_task(self.distributions_api.delete(self.distribution.pulp_href).task)
 
     def test_01_sync(self):
         """Assert that syncing the repository triggers auto-publish and auto-distribution."""
