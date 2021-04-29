@@ -247,12 +247,11 @@ def get_checksum_type(name, checksum_types):
     """
     original = checksum_types.get("original")
     metadata = checksum_types.get("metadata")
-    checksum_type = original.get(name, CHECKSUM_TYPES.SHA256)
-
-    if metadata:
-        checksum_type = metadata
-
-    return getattr(cr, getattr(CHECKSUM_TYPES, checksum_type.upper()), cr.SHA256)
+    checksum_type = metadata if metadata else original.get(name, CHECKSUM_TYPES.SHA256)
+    # "sha" -> "SHA" -> "CHECKSUM_TYPES.SHA" -> "sha1"
+    normalized_checksum_type = getattr(CHECKSUM_TYPES, checksum_type.upper())
+    # "sha1" -> "SHA1" -> "cr.SHA1"
+    return getattr(cr, normalized_checksum_type.upper())
 
 
 def publish(
