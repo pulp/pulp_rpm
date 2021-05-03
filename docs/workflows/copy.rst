@@ -100,13 +100,13 @@ dependencies)
 
 Solving these complex dependency relationships can be quite expensive, but is often necessary for
 correctness. It is **enabled by default**, but can be disabled by setting the "dependency_solving"
-parameter to a value of False when making calls against the API. Note that if you do choose not to
-use dependency-solving, (or if you configure it incorrectly), it is possible to create incomplete
+parameter to a value of ``False`` when making calls against the API. Note that if you do choose not
+to use dependency-solving, (or if you configure it incorrectly), it is possible to create incomplete
 repositories.
 
 .. note::
 
-    While the default value for this "dependency_solving" parameter is currently "false", this
+    While the default value for the "dependency_solving" parameter is currently ``True``, this
     default is potentially subject to change in the future - until such a time as this API is
     stabilized.
 
