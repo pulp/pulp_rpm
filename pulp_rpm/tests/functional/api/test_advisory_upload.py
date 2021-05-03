@@ -236,6 +236,209 @@ class AdvisoryContentUnitTestCase(PulpTestCase):
         "fromstr":  "centos-announce@centos.org"
     }"""
 
+    CESA_2020_5002 = """{
+        "title": "Moderate CentOS curl Security Update",
+        "type": "security",
+        "description": "",
+        "release": "el7",
+        "version": "1",
+        "severity": "Moderate",
+        "status": "final",
+        "updated": "2020-11-18 17:30:30",
+        "issued": "2020-11-18 17:30:30",
+        "pkglist": [
+            {
+              "packages": [
+                {
+                  "arch": "x86_64",
+                  "epoch": "0",
+                  "filename": "curl-7.29.0-59.el7_9.1.x86_64.rpm",
+                  "release": "59.el7_9.1",
+                  "name": "curl",
+                  "sum": "dfc95bdd8057839d4b45153318acb4e09f4da257afee1c57c07781870a68ecef",
+                  "sum_type": "sha256"
+                },
+                {
+                  "arch": "i686",
+                  "epoch": "0",
+                  "filename": "libcurl-7.29.0-59.el7_9.1.i686.rpm",
+                  "release": "59.el7_9.1",
+                  "name": "libcurl",
+                  "sum": "3054ca1c0cc8eef5f08ce1d3be56c7a39e97d92361e8bd265bea14d06f590219",
+                  "sum_type": "sha256"
+                },
+                {
+                  "arch": "x86_64",
+                  "epoch": "0",
+                  "filename": "libcurl-7.29.0-59.el7_9.1.x86_64.rpm",
+                  "release": "59.el7_9.1",
+                  "name": "libcurl",
+                  "sum": "4ad0b71e3a6468fba1b43ab82fad024415b5296c7b77d1348fb9afa3f828f98e",
+                  "sum_type": "sha256"
+                },
+                {
+                  "arch": "i686",
+                  "epoch": "0",
+                  "filename": "libcurl-devel-7.29.0-59.el7_9.1.i686.rpm",
+                  "release": "59.el7_9.1",
+                  "name": "libcurl-devel",
+                  "sum": "7ab4f1b0aa285d3773fdbd8bfc529969ca101a627d3ea88bea1f99a42093e132",
+                  "sum_type": "sha256"
+                },
+                {
+                  "arch": "x86_64",
+                  "epoch": "0",
+                  "filename": "libcurl-devel-7.29.0-59.el7_9.1.x86_64.rpm",
+                  "release": "59.el7_9.1",
+                  "name": "libcurl-devel",
+                  "sum": "f92fde3f97c0034135796baa7cd55f87c0550a88ac79adbdcc9c7f64c595614b",
+                  "sum_type": "sha256"
+                }
+              ]
+            }
+            ],
+            "id": "TEST-CESA-2020:5002",
+            "from": "centos-announce@centos.org",
+            "references": [
+            {
+              "href": "https://access.redhat.com/errata/RHSA-2020:5002",
+              "ref_id": "CESA-2020:5002",
+              "title": "Moderate CentOS curl Security Update",
+              "ref_type": "security"
+            },
+            {
+              "href": "https://lists.centos.org/pipermail/centos-announce/2020-November/035840.html",
+              "ref_id": "CESA-2020:5002",
+              "title": "Moderate CentOS curl Security Update",
+              "ref_type": "security"
+            }
+        ]
+    }"""  # noqa
+
+    CESA_2020_4910 = """{
+        "title": "Important CentOS xorg-x11-server Security Update",
+        "type": "security",
+        "description": "",
+        "release": "el7",
+        "version": "1",
+        "severity": "Important",
+        "status": "final",
+        "updated": "2020-11-06 22:19:48",
+        "issued": "2020-11-06 22:19:48",
+        "pkglist": [
+            {
+                "packages": [
+                    {
+                      "arch": "x86_64",
+                      "epoch": "0",
+                      "filename": "xorg-x11-server-Xdmx-1.20.4-12.el7_9.x86_64.rpm",
+                      "release": "12.el7_9",
+                      "name": "xorg-x11-server-Xdmx",
+                      "sum": "0435f345b2b188c76dbb4a538bf0f878834a41e723491df1926231020fd88efd",
+                      "sum_type": "sha256"
+                    },
+                    {
+                      "arch": "x86_64",
+                      "epoch": "0",
+                      "filename": "xorg-x11-server-Xephyr-1.20.4-12.el7_9.x86_64.rpm",
+                      "release": "12.el7_9",
+                      "name": "xorg-x11-server-Xephyr",
+                      "sum": "2d21d53b305e30b058ca88d8778bda67000a5d52ab320f04b35e63f6a78f2163",
+                      "sum_type": "sha256"
+                    },
+                    {
+                      "arch": "x86_64",
+                      "epoch": "0",
+                      "filename": "xorg-x11-server-Xnest-1.20.4-12.el7_9.x86_64.rpm",
+                      "release": "12.el7_9",
+                      "name": "xorg-x11-server-Xnest",
+                      "sum": "51fbacc2e26050a7772549f1fe16c46bd8063ea187825ad89b237c34fa9b4250",
+                      "sum_type": "sha256"
+                    },
+                    {
+                      "arch": "x86_64",
+                      "epoch": "0",
+                      "filename": "xorg-x11-server-Xorg-1.20.4-12.el7_9.x86_64.rpm",
+                      "release": "12.el7_9",
+                      "name": "xorg-x11-server-Xorg",
+                      "sum": "eb89964d5fd40ec94ee8db97a5a14cc8dd6329b83d82ab29ee1a595653ce5223",
+                      "sum_type": "sha256"
+                    },
+                    {
+                      "arch": "x86_64",
+                      "epoch": "0",
+                      "filename": "xorg-x11-server-Xvfb-1.20.4-12.el7_9.x86_64.rpm",
+                      "release": "12.el7_9",
+                      "name": "xorg-x11-server-Xvfb",
+                      "sum": "ea32b047fba7fd327bf943da2a18413a1ed3e245cc1b077f34d1c8f6048d9813",
+                      "sum_type": "sha256"
+                    },
+                    {
+                      "arch": "x86_64",
+                      "epoch": "0",
+                      "filename": "xorg-x11-server-Xwayland-1.20.4-12.el7_9.x86_64.rpm",
+                      "release": "12.el7_9",
+                      "name": "xorg-x11-server-Xwayland",
+                      "sum": "4a6ffb39008edd469d4365bb3bf858f5f5f466129eb9e330d978b28866906891",
+                      "sum_type": "sha256"
+                    },
+                    {
+                      "arch": "x86_64",
+                      "epoch": "0",
+                      "filename": "xorg-x11-server-common-1.20.4-12.el7_9.x86_64.rpm",
+                      "release": "12.el7_9",
+                      "name": "xorg-x11-server-common",
+                      "sum": "339bcf68cb37a454eddff7218aff4153a36bafc0d36e2b5b6bde8311c6f3eed8",
+                      "sum_type": "sha256"
+                    },
+                    {
+                      "arch": "i686",
+                      "epoch": "0",
+                      "filename": "xorg-x11-server-devel-1.20.4-12.el7_9.i686.rpm",
+                      "release": "12.el7_9",
+                      "name": "xorg-x11-server-devel",
+                      "sum": "55e13fc8624f8a63b785b5194281c38a4670f03113b0ff2b8fc1df1ca473e1e8",
+                      "sum_type": "sha256"
+                    },
+                    {
+                      "arch": "x86_64",
+                      "epoch": "0",
+                      "filename": "xorg-x11-server-devel-1.20.4-12.el7_9.x86_64.rpm",
+                      "release": "12.el7_9",
+                      "name": "xorg-x11-server-devel",
+                      "sum": "e2dd0c67f3d88a9506f72fcc21ec0af786a377befabac8e1670d3e012d844b06",
+                      "sum_type": "sha256"
+                    },
+                    {
+                      "arch": "noarch",
+                      "epoch": "0",
+                      "filename": "xorg-x11-server-source-1.20.4-12.el7_9.noarch.rpm",
+                      "release": "12.el7_9",
+                      "name": "xorg-x11-server-source",
+                      "sum": "1baa9cb2d4f8d4300ac333fbc7bc130dce9145c67aea3bd6efa4a0354fc92b6d",
+                      "sum_type": "sha256"
+                    }
+                ]
+            }
+        ],
+        "id": "TEST-CESA-2020:4910",
+        "from": "centos-announce@centos.org",
+        "references": [
+            {
+              "href": "https://access.redhat.com/errata/RHSA-2020:4910",
+              "ref_id": "CESA-2020:4910",
+              "title": "Important CentOS xorg-x11-server Security Update",
+              "ref_type": "security"
+            },
+            {
+              "href": "https://lists.centos.org/pipermail/centos-cr-announce/2020-November/012889.html",
+              "ref_id": "CESA-2020:4910",
+              "title": "Important CentOS xorg-x11-server Security Update",
+              "ref_type": "security"
+            }
+        ]
+    }"""  # noqa
+
     @classmethod
     def setUpClass(cls):
         """Create class-wide variable."""
@@ -323,6 +526,32 @@ class AdvisoryContentUnitTestCase(PulpTestCase):
         self.assertTrue("camel" in names)
         self.assertTrue("bear" in names)
         self.assertTrue("dog" in names)
+
+    def test_8683_error_path(self):
+        """
+        Test that upload-fail doesn't break all future uploads.
+
+        See https://pulp.plan.io/issues/8683 for details.
+        """
+        # Upload an advisory
+        advisory_str = self.CESA_2020_5002
+        upload = self.do_test_json(advisory=advisory_str, repository=self.repo)
+        task_response = monitor_task(upload.task)
+        self._from_results(task_response, "TEST-CESA-2020:5002")
+
+        # Try to upload it 'again' and watch it fail
+        with self.assertRaises(PulpTaskError):
+            upload = self.do_test_json(advisory=self.CESA_2020_5002, repository=self.repo)
+            monitor_task(upload.task)
+
+        # Upload a different advisory and Don't Fail
+        advisory_str = self.CESA_2020_4910
+        upload = self.do_test_json(advisory=advisory_str, repository=self.repo)
+        task_response = monitor_task(upload.task)
+        advisory_href, vers_href = self._from_results(task_response, "TEST-CESA-2020:4910")
+        advisory = self.content_api.read(advisory_href)
+        # Make sure the second advisory was persisted
+        self.assertEqual("TEST-CESA-2020:4910", advisory.id)
 
     def _from_results(self, response, advisory_id):
         self.assertEqual(2, len(response.created_resources))
