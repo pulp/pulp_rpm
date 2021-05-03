@@ -3,7 +3,7 @@ from gettext import gettext as _
 import json
 
 import createrepo_c
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from rest_framework import serializers
 
 from pulpcore.plugin.serializers import (
@@ -125,52 +125,58 @@ class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
 
         update_collection_packages_to_save = list()
         update_references_to_save = list()
-        try:
-            update_record = super().create(validated_data)
-        except IntegrityError:
-            raise serializers.ValidationError("Advisory already exists in Pulp.")
+        with transaction.atomic():
+            try:
+                # This persists an advisory with an empty digest
+                update_record = super().create(validated_data)
+            except IntegrityError:
+                # At this point, the advisory has an empty digest. If we hit this,
+                # it means a previous advisory-create failed to clean up after itself.
+                raise serializers.ValidationError("Advisory already exists in Pulp.")
 
-        for collection in pkglist:
-            new_coll = copy.deepcopy(collection)
-            packages = new_coll.pop("packages", [])
-            new_coll[PULP_UPDATE_COLLECTION_ATTRS.SHORTNAME] = new_coll.pop("short", "")
-            coll = UpdateCollection(**new_coll)
-            coll.update_record = update_record
-            coll.save()
-            for package in packages:
-                pkg = UpdateCollectionPackage(**package)
-                try:
-                    pkg.sum_type = createrepo_c.checksum_type(pkg.sum_type)
-                except TypeError:
-                    raise TypeError(f'"{pkg.sum_type}" is not supported.')
-                pkg.update_collection = coll
-                update_collection_packages_to_save.append(pkg)
-        for reference in references:
-            new_ref = dict()
-            new_ref[PULP_UPDATE_REFERENCE_ATTRS.HREF] = reference.get(
-                CR_UPDATE_REFERENCE_ATTRS.HREF, ""
-            )
-            new_ref[PULP_UPDATE_REFERENCE_ATTRS.ID] = reference.get(
-                CR_UPDATE_REFERENCE_ATTRS.ID, ""
-            )
-            new_ref[PULP_UPDATE_REFERENCE_ATTRS.TITLE] = reference.get(
-                CR_UPDATE_REFERENCE_ATTRS.TITLE, ""
-            )
-            new_ref[PULP_UPDATE_REFERENCE_ATTRS.TYPE] = reference.get(
-                CR_UPDATE_REFERENCE_ATTRS.TYPE, ""
-            )
-            ref = UpdateReference(**new_ref)
-            ref.update_record = update_record
-            update_references_to_save.append(ref)
+            for collection in pkglist:
+                new_coll = copy.deepcopy(collection)
+                packages = new_coll.pop("packages", [])
+                new_coll[PULP_UPDATE_COLLECTION_ATTRS.SHORTNAME] = new_coll.pop("short", "")
+                coll = UpdateCollection(**new_coll)
+                coll.update_record = update_record
+                coll.save()
+                for package in packages:
+                    pkg = UpdateCollectionPackage(**package)
+                    try:
+                        pkg.sum_type = createrepo_c.checksum_type(pkg.sum_type)
+                    except TypeError:
+                        raise TypeError(f'"{pkg.sum_type}" is not supported.')
+                    pkg.update_collection = coll
+                    update_collection_packages_to_save.append(pkg)
+            for reference in references:
+                new_ref = dict()
+                new_ref[PULP_UPDATE_REFERENCE_ATTRS.HREF] = reference.get(
+                    CR_UPDATE_REFERENCE_ATTRS.HREF, ""
+                )
+                new_ref[PULP_UPDATE_REFERENCE_ATTRS.ID] = reference.get(
+                    CR_UPDATE_REFERENCE_ATTRS.ID, ""
+                )
+                new_ref[PULP_UPDATE_REFERENCE_ATTRS.TITLE] = reference.get(
+                    CR_UPDATE_REFERENCE_ATTRS.TITLE, ""
+                )
+                new_ref[PULP_UPDATE_REFERENCE_ATTRS.TYPE] = reference.get(
+                    CR_UPDATE_REFERENCE_ATTRS.TYPE, ""
+                )
+                ref = UpdateReference(**new_ref)
+                ref.update_record = update_record
+                update_references_to_save.append(ref)
 
-        if update_collection_packages_to_save:
-            UpdateCollectionPackage.objects.bulk_create(update_collection_packages_to_save)
-        if update_references_to_save:
-            UpdateReference.objects.bulk_create(update_references_to_save)
+            if update_collection_packages_to_save:
+                UpdateCollectionPackage.objects.bulk_create(update_collection_packages_to_save)
+            if update_references_to_save:
+                UpdateReference.objects.bulk_create(update_references_to_save)
 
-        cr_update_record = update_record.to_createrepo_c()
-        update_record.digest = hash_update_record(cr_update_record)
-        update_record.save()
+            cr_update_record = update_record.to_createrepo_c()
+            update_record.digest = hash_update_record(cr_update_record)
+
+            # The advisory now has a digest - *if* this works
+            update_record.save()
 
         # create new repo version with uploaded advisory
         if repository:
