@@ -8,35 +8,6 @@ from productmd.common import SortedConfigParser
 from productmd.treeinfo import TreeInfo
 
 from pulp_rpm.app.constants import DIST_TREE_MAIN_REPO_PATH, PACKAGES_DIRECTORY
-from pulp_rpm.app.shared_utils import urlpath_sanitize
-
-
-def get_treeinfo_data(remote, remote_url):
-    """
-    Get Treeinfo data from remote.
-
-    """
-    treeinfo_serialized = {}
-    namespaces = [".treeinfo", "treeinfo"]
-    for namespace in namespaces:
-        downloader = remote.get_downloader(
-            url=urlpath_sanitize(remote_url, namespace),
-            silence_errors_for_response_status_codes={403, 404},
-        )
-
-        try:
-            result = downloader.fetch()
-        except FileNotFoundError:
-            continue
-
-        treeinfo = PulpTreeInfo()
-        treeinfo.load(f=result.path)
-        treeinfo_parsed = treeinfo.parsed_sections()
-        sha256 = result.artifact_attributes["sha256"]
-        treeinfo_serialized = TreeinfoData(treeinfo_parsed).to_dict(hash=sha256, filename=namespace)
-        break
-
-    return treeinfo_serialized
 
 
 class PulpTreeInfo(TreeInfo):

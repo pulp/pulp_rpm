@@ -1,5 +1,6 @@
 import asyncio
 import collections
+import json
 import logging
 import os
 import re
@@ -8,18 +9,23 @@ import tempfile
 from collections import defaultdict
 from gettext import gettext as _  # noqa:F401
 
-from django.db import transaction
 from django.core.exceptions import ObjectDoesNotExist
+from django.core.files import File
+from django.db import transaction
 
 from aiohttp.client_exceptions import ClientResponseError
 from aiohttp.web_exceptions import HTTPNotFound
+
 import createrepo_c as cr
 import libcomps
 
 from pulpcore.plugin.models import (
     Artifact,
+    ContentArtifact,
     ProgressReport,
     Remote,
+    PublishedArtifact,
+    PublishedMetadata,
 )
 from pulpcore.plugin.stages import (
     ArtifactDownloader,
@@ -60,6 +66,7 @@ from pulp_rpm.app.models import (
     PackageCategory,
     PackageEnvironment,
     PackageLangpacks,
+    RpmPublication,
     RpmRemote,
     RpmRepository,
     UlnRemote,
@@ -72,7 +79,7 @@ from pulp_rpm.app.modulemd import (
     parse_defaults,
     parse_modulemd,
 )
-from pulp_rpm.app.kickstart.treeinfo import get_treeinfo_data
+from pulp_rpm.app.kickstart.treeinfo import PulpTreeInfo, TreeinfoData
 
 from pulp_rpm.app.comps import strdict_to_dict, dict_digest
 from pulp_rpm.app.shared_utils import is_previous_version, get_sha256, urlpath_sanitize
@@ -83,6 +90,76 @@ gi.require_version("Modulemd", "2.0")
 from gi.repository import Modulemd as mmdlib  # noqa: E402
 
 log = logging.getLogger(__name__)
+
+
+# TODO: https://pulp.plan.io/issues/8687
+# A global dictionary for storing data about the remote's metadata files, used for mirroring
+# Indexed by repository.pk due to sub-repos.
+metadata_files_for_mirroring = collections.defaultdict(list)
+# A global dictionary for storing data mapping pkgid to location_href for all packages, used
+# for mirroring. Indexed by repository.pk due to sub-repos.
+pkgid_to_location_href = collections.defaultdict(dict)
+
+
+def store_metadata_for_mirroring(repo, dl_result, relative_path):
+    """Used to store data about the downloaded metadata for mirror-publishing after the sync.
+
+    Args:
+        repo: Which repository the metadata is associated with
+        dl_result: The DownloadResult from downloading the metadata
+        relative_path: The relative path to the metadata file within the repository
+    """
+    global metadata_files_for_mirroring
+    metadata_files_for_mirroring[str(repo.pk)].append((dl_result, relative_path))
+
+
+def store_package_for_mirroring(repo, pkgid, location_href):
+    """Used to store data about the packages for mirror-publishing after the sync.
+
+    Args:
+        repo: Which repository the metadata is associated with
+        pkgid: The checksum of the package
+        location_href: The relative path to the package within the repository
+    """
+    global pkgid_to_location_href
+    pkgid_to_location_href[str(repo.pk)][pkgid] = location_href
+
+
+def mirrored_publish(version):
+    """Create a mirrored publication for the given repository version.
+
+    Uses the `metadata_files` global data.
+
+    Args:
+        version: The repository version to mirror-publish
+    """
+    with RpmPublication.create(version, pass_through=False) as publication:
+        for (result, relative_path) in metadata_files_for_mirroring[str(version.repository.pk)]:
+            PublishedMetadata.create_from_file(
+                file=File(open(result.path, "rb")),
+                relative_path=relative_path,
+                publication=publication,
+            )
+
+        published_artifacts = []
+        pkg_data = (
+            ContentArtifact.objects.filter(
+                content__in=version.content, content__pulp_type=Package.get_pulp_type()
+            )
+            .select_related("content__rpm_package")
+            .only("pk", "artifact", "content", "content__rpm_package__pkgId")
+        )
+        for ca in pkg_data.iterator():
+            pa = PublishedArtifact(
+                content_artifact=ca,
+                relative_path=pkgid_to_location_href[str(version.repository.pk)][
+                    ca.content.rpm_package.pkgId
+                ],
+                publication=publication,
+            )
+            published_artifacts.append(pa)
+
+        PublishedArtifact.objects.bulk_create(published_artifacts)
 
 
 def get_repomd_file(remote, url):
@@ -223,13 +300,39 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
 
     deferred_download = remote.policy != Remote.IMMEDIATE  # Interpret download policy
 
+    def get_treeinfo_data(remote, remote_url):
+        """Get Treeinfo data from remote."""
+        treeinfo_serialized = {}
+        namespaces = [".treeinfo", "treeinfo"]
+        for namespace in namespaces:
+            downloader = remote.get_downloader(
+                url=urlpath_sanitize(remote_url, namespace),
+                silence_errors_for_response_status_codes={403, 404},
+            )
+
+            try:
+                result = downloader.fetch()
+                store_metadata_for_mirroring(repository, result, namespace)
+            except FileNotFoundError:
+                continue
+
+            treeinfo = PulpTreeInfo()
+            treeinfo.load(f=result.path)
+            treeinfo_parsed = treeinfo.parsed_sections()
+            sha256 = result.artifact_attributes["sha256"]
+            treeinfo_serialized = TreeinfoData(treeinfo_parsed).to_dict(
+                hash=sha256, filename=namespace
+            )
+            break
+
+        return treeinfo_serialized
+
     with tempfile.TemporaryDirectory("."):
         remote_url = fetch_remote_url(remote)
 
-    if optimize and is_optimized_sync(repository, remote, remote_url):
-        return
+        if optimize and is_optimized_sync(repository, remote, remote_url):
+            return
 
-    with tempfile.TemporaryDirectory("."):
         treeinfo = get_treeinfo_data(remote, remote_url)
 
     if treeinfo:
@@ -255,19 +358,24 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
                     remote,
                     sub_repo,
                     deferred_download,
+                    mirror,
                     skip_types=skip_types,
                     new_url=new_url,
                 )
                 dv = RpmDeclarativeVersion(first_stage=stage, repository=sub_repo)
-                dv.create()
-                sub_repo.last_sync_remote = remote
-                sub_repo.last_sync_repo_version = sub_repo.latest_version().number
-                sub_repo.save()
+                subrepo_version = dv.create()
+                if subrepo_version:
+                    sub_repo.last_sync_remote = remote
+                    sub_repo.last_sync_repo_version = sub_repo.latest_version().number
+                    sub_repo.save()
+                    if mirror:
+                        mirrored_publish(subrepo_version)
 
     first_stage = RpmFirstStage(
         remote,
         repository,
         deferred_download,
+        mirror,
         skip_types=skip_types,
         treeinfo=treeinfo,
         new_url=remote_url,
@@ -278,6 +386,8 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
         repository.last_sync_remote = remote
         repository.last_sync_repo_version = version.number
         repository.save()
+        if mirror:
+            mirrored_publish(version)
     return version
 
 
@@ -326,6 +436,7 @@ class RpmFirstStage(Stage):
         remote,
         repository,
         deferred_download,
+        mirror,
         skip_types=None,
         new_url=None,
         treeinfo=None,
@@ -350,6 +461,7 @@ class RpmFirstStage(Stage):
         self.remote = remote
         self.repository = repository
         self.deferred_download = deferred_download
+        self.mirror = mirror
 
         self.treeinfo = treeinfo
         self.skip_types = [] if skip_types is None else skip_types
@@ -441,10 +553,12 @@ class RpmFirstStage(Stage):
                 message="Downloading Metadata Files", code="sync.downloading.metadata"
             )
             with ProgressReport(**progress_data) as metadata_pb:
+                # download repomd.xml
                 downloader = self.remote.get_downloader(
                     url=urlpath_sanitize(self.remote_url, "repodata/repomd.xml")
                 )
                 result = await downloader.run()
+                store_metadata_for_mirroring(self.repository, result, "repodata/repomd.xml")
                 metadata_pb.increment()
 
                 repomd_path = result.path
@@ -454,7 +568,9 @@ class RpmFirstStage(Stage):
                 self.repository.last_sync_repomd_checksum = get_sha256(repomd_path)
 
                 checksum_types = {}
-                metadata_downloaders = {}
+                repomd_downloaders = {}
+                repomd_files = {}
+
                 types_to_download = (
                     set(PACKAGE_REPODATA)
                     | set(UPDATE_REPODATA)
@@ -462,30 +578,82 @@ class RpmFirstStage(Stage):
                     | set(MODULAR_REPODATA)
                 )
 
-                # TODO: do we actually need to download all metadata for mirror case,
-                # or use RepoMetadataFile?
-                for record in repomd.records:
-                    checksum_types[record.type] = getattr(
-                        CHECKSUM_TYPES, record.checksum_type.upper()
-                    )
-                    record.checksum_type = getattr(CHECKSUM_TYPES, record.checksum_type.upper())
+                async def run_repomdrecord_download(name, location_href, downloader):
+                    result = await downloader.run()
+                    return name, location_href, result
 
-                    if record.type in types_to_download:
-                        sanitized = urlpath_sanitize(self.remote_url, record.location_href)
-                        downloader = self.remote.get_downloader(url=sanitized)
-                        metadata_downloaders[record.type] = asyncio.ensure_future(downloader.run())
+                for record in repomd.records:
+                    record_checksum_type = getattr(CHECKSUM_TYPES, record.checksum_type.upper())
+                    checksum_types[record.type] = record_checksum_type
+                    record.checksum_type = record_checksum_type
+
+                    if not self.mirror and record.type not in types_to_download:
+                        continue
+
+                    downloader = self.remote.get_downloader(
+                        url=urlpath_sanitize(self.remote_url, record.location_href),
+                        expected_size=record.size,
+                        expected_digests={record_checksum_type: record.checksum},
+                    )
+                    repomd_downloaders[record.type] = asyncio.ensure_future(
+                        run_repomdrecord_download(record.type, record.location_href, downloader)
+                    )
 
                 self.repository.original_checksum_types = checksum_types
 
                 try:
-                    for future in asyncio.as_completed(list(metadata_downloaders.values())):
-                        await future
+                    for future in asyncio.as_completed(list(repomd_downloaders.values())):
+                        name, location_href, result = await future
+                        store_metadata_for_mirroring(self.repository, result, location_href)
+                        repomd_files[name] = result
                         metadata_pb.increment()
                 except ClientResponseError as exc:
                     raise HTTPNotFound(reason=_("File not found: {}".format(exc.request_info.url)))
 
-                metadata_files = {key: val.result() for key, val in metadata_downloaders.items()}
-                await self.parse_repository_metadata(repomd, metadata_files)
+                if self.mirror:
+                    # optional signature and key files for repomd metadata
+                    for file_href in ["repodata/repomd.xml.asc", "repodata/repomd.xml.key"]:
+                        try:
+                            downloader = self.remote.get_downloader(
+                                url=urlpath_sanitize(self.remote_url, file_href)
+                            )
+                            result = await downloader.run()
+                            store_metadata_for_mirroring(self.repository, result, file_href)
+                            metadata_pb.increment()
+                        except ClientResponseError:
+                            pass
+
+                    # extra files to copy, e.g. EULA, LICENSE
+                    try:
+                        downloader = self.remote.get_downloader(
+                            url=urlpath_sanitize(self.remote_url, "extra_files.json")
+                        )
+                        result = await downloader.run()
+                        store_metadata_for_mirroring(self.repository, result, "extra_files.json")
+                        metadata_pb.increment()
+                    except ClientResponseError:
+                        pass
+                    else:
+                        try:
+                            with open(result.path, "r") as f:
+                                extra_files = json.loads(f.read())
+                                for data in extra_files["data"]:
+                                    downloader = self.remote.get_downloader(
+                                        url=urlpath_sanitize(self.remote_url, data["file"]),
+                                        expected_size=data["size"],
+                                        expected_digests=data["checksums"],
+                                    )
+                                    result = await downloader.run()
+                                    store_metadata_for_mirroring(
+                                        self.repository, result, data["file"]
+                                    )
+                                    metadata_pb.increment()
+                        except ClientResponseError as exc:
+                            raise HTTPNotFound(
+                                reason=_("File not found: {}".format(exc.request_info.url))
+                            )
+
+            await self.parse_repository_metadata(repomd, repomd_files)
 
     async def parse_distribution_tree(self):
         """Parse content from the file treeinfo if present."""
@@ -564,7 +732,6 @@ class RpmFirstStage(Stage):
         for record in repomd.records:
             should_skip = False
             if record.type not in record_types:
-                # TODO: mirror case needs to get copies of these, also.
                 for suffix in ["_zck", "_gz", "_xz"]:
                     if suffix in record.type:
                         should_skip = True
@@ -772,7 +939,7 @@ class RpmFirstStage(Stage):
         )
 
         # skip SRPM if defined
-        if "srpm" in self.skip_types:
+        if "srpm" in self.skip_types and not self.mirror:
             packages = collections.OrderedDict(
                 (pkgId, pkg) for pkgId, pkg in packages.items() if pkg.arch != "src"
             )
@@ -790,6 +957,8 @@ class RpmFirstStage(Stage):
                     break
                 package = Package(**Package.createrepo_to_dict(pkg))
                 del pkg
+
+                store_package_for_mirroring(self.repository, package.pkgId, package.location_href)
                 artifact = Artifact(size=package.size_package)
                 checksum_type = getattr(CHECKSUM_TYPES, package.checksum_type.upper())
                 setattr(artifact, checksum_type, package.pkgId)

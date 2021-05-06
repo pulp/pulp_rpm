@@ -15,6 +15,7 @@ This file contains list of features and their test coverage.
  | only types contained in rpm-unsigned |
   As a user, I can sync all yum content types ( NO drpm) with optimization in mirror mode| PART
    | only types contained in rpm-unsigned |
+| As a user, my mirror-mode syncs are exactly identical to the upstream repo (checksums, metadata files, repomd signature, package locations, extra_files.json) | NO | Needs fixture https://pulp.plan.io/issues/8809 |
 | As a user, I can sync and skip specific type (srpm) | YES |  |
 | As a user, I can sync opensuse repository | NO |  |
 | As a user, I can sync Oracle repository using ULN | NO | |

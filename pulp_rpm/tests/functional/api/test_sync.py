@@ -74,6 +74,7 @@ from pulpcore.client.pulp_rpm import (
     RepositoriesRpmApi,
     RpmRepositorySyncURL,
     RemotesRpmApi,
+    PublicationsRpmApi,
 )
 
 
@@ -1140,8 +1141,37 @@ class BasicSyncTestCase(PulpTestCase):
                 return True
         return False
 
+    @unittest.skip(
+        "Needs a repo where an unacceptable checksum is used for packages, but not for metadata"
+    )
     @skip_if(bool, "md5_allowed", True)
     def test_sync_packages_with_unsupported_checksum_type(self):
+        """
+        Sync an RPM repository with an unsupported checksum (md5) used for packages.
+
+        This test require disallowed 'MD5' checksum type from ALLOWED_CONTENT_CHECKSUMS settings.
+        """
+        # 1. create repo and remote
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+
+        body = gen_rpm_remote(policy="on_demand", url=RPM_MD5_REPO_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # 2. Sync it
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        with self.assertRaises(PulpTaskError) as ctx:
+            monitor_task(sync_response.task)
+
+        self.assertIn(
+            "rpm-with-md5/bear-4.1-1.noarch.rpm contains forbidden checksum type",
+            ctx.exception.task.error["description"],
+        )
+
+    @skip_if(bool, "md5_allowed", True)
+    def test_sync_metadata_with_unsupported_checksum_type(self):
         """
         Sync an RPM repository with an unsupported checksum (md5).
 
@@ -1162,7 +1192,8 @@ class BasicSyncTestCase(PulpTestCase):
             monitor_task(sync_response.task)
 
         self.assertIn(
-            "rpm-with-md5/bear-4.1-1.noarch.rpm contains forbidden checksum type",
+            "does not contain at least one trusted hasher which is specified in "
+            "'ALLOWED_CONTENT_CHECKSUMS'",
             ctx.exception.task.error["description"],
         )
 
@@ -1262,22 +1293,19 @@ class AdditiveModeTestCase(PulpTestCase):
 
 
 class MirrorModeTestCase(PulpTestCase):
-    """Test of sync with mirror mode.
-
-    1. Create repository, remote and sync it
-    2. Create another remote
-    3. Re-sync and check if only new content is present in repository
-    """
+    """Test of sync with mirror mode."""
 
     def test_all(self):
         """Test of mirror mode."""
         client = gen_rpm_client()
         repo_api = RepositoriesRpmApi(client)
         remote_api = RemotesRpmApi(client)
+        publications_api = PublicationsRpmApi(client)
 
         # 1. create repo, remote and sync them
         repo = repo_api.create(gen_repo())
         self.addCleanup(repo_api.delete, repo.pulp_href)
+        self.assertEqual(publications_api.list().count, 0)
 
         body = gen_rpm_remote(url=SRPM_UNSIGNED_FIXTURE_URL)
         remote = remote_api.create(body)
@@ -1285,17 +1313,24 @@ class MirrorModeTestCase(PulpTestCase):
 
         repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
         sync_response = repo_api.sync(repo.pulp_href, repository_sync_data)
-        monitor_task(sync_response.task)
+        task = monitor_task(sync_response.task)
 
-        # 2. create another remote and re-sync
+        # 2. check that one repository version was created w/ no publications
+        self.assertEqual(len(task.created_resources), 1)
+        self.assertEqual(publications_api.list().count, 0)
+
+        # 3. create another remote and re-sync
         body = gen_rpm_remote(url=RPM_SIGNED_FIXTURE_URL)
         remote = remote_api.create(body)
         self.addCleanup(remote_api.delete, remote.pulp_href)
 
         repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, mirror=True)
         sync_response = repo_api.sync(repo.pulp_href, repository_sync_data)
-        monitor_task(sync_response.task)
+        task = monitor_task(sync_response.task)
 
-        # 3. Check that only new content is present
+        # 4. check that one publication was created w/ no repository versions, and only
+        # the new content is present
         repo = repo_api.read(repo.pulp_href)
         self.assertDictEqual(RPM_FIXTURE_SUMMARY, get_content_summary(repo.to_dict()))
+        self.assertEqual(len(task.created_resources), 2)
+        self.assertEqual(publications_api.list().count, 1)
