@@ -1,0 +1,1 @@
+Fixed a workflow where two identical advisories could 'look different' to Pulp.

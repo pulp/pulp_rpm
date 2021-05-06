@@ -185,12 +185,12 @@ class UpdateRecord(Content):
         rec.pushcount = self.pushcount
 
         if not collections:
-            collections = self.collections.all()
+            collections = self.collections.all().order_by("name", "pulp_id")
 
         for collection in collections:
             rec.append_collection(collection.to_createrepo_c())
 
-        for reference in self.references.all():
+        for reference in self.references.all().order_by("href"):
             rec.append_reference(reference.to_createrepo_c())
 
         return rec
@@ -205,7 +205,7 @@ class UpdateRecord(Content):
         """
         pkglist = []
         for collection in self.collections.all():
-            for pkg in collection.packages.all():
+            for pkg in collection.packages.all().order_by("sum"):
                 nevra = (pkg.name, pkg.epoch, pkg.version, pkg.release, pkg.arch)
                 pkglist.append(nevra)
         return pkglist
@@ -219,7 +219,7 @@ class UpdateRecord(Content):
 
         """
         modlist = []
-        for collection in self.collections.all():
+        for collection in self.collections.all().order_by("name", "pulp_id"):
             mod = collection.module
             if mod:
                 nsvca = (mod["name"], mod["stream"], mod["version"], mod["context"], mod["arch"])
@@ -321,7 +321,7 @@ class UpdateCollection(BaseModel):
             module.arch = self.module["arch"]
             col.module = module
 
-        for package in self.packages.all():
+        for package in self.packages.all().order_by("sum"):
             col.append(package.to_createrepo_c())
 
         return col
