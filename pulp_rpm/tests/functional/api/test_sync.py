@@ -21,6 +21,7 @@ from pulp_smash.utils import get_pulp_setting
 
 from pulp_rpm.tests.functional.constants import (
     PULP_TYPE_ADVISORY,
+    PULP_TYPE_MODULEMD,
     PULP_TYPE_PACKAGE,
     PULP_TYPE_REPOMETADATA,
     RPM_ADVISORY_CONTENT_NAME,
@@ -44,8 +45,10 @@ from pulp_rpm.tests.functional.constants import (
     RPM_MD5_REPO_FIXTURE_URL,
     RPM_MIRROR_LIST_BAD_FIXTURE_URL,
     RPM_MIRROR_LIST_GOOD_FIXTURE_URL,
+    RPM_MODULES_STATIC_CONTEXT_FIXTURE_URL,
     RPM_MODULAR_FIXTURE_SUMMARY,
     RPM_MODULAR_FIXTURE_URL,
+    RPM_MODULAR_STATIC_FIXTURE_SUMMARY,
     RPM_PACKAGE_CONTENT_NAME,
     RPM_PACKAGE_COUNT,
     RPM_REFERENCES_UPDATEINFO_URL,
@@ -1036,6 +1039,31 @@ class BasicSyncTestCase(PulpTestCase):
         # Check if repository was updated with repository metadata
         self.assertEqual(repo.latest_version_href.rstrip("/")[-1], "2")
         self.assertTrue(PULP_TYPE_REPOMETADATA in get_added_content(repo.to_dict()))
+
+    @unittest.skip("Skip until we can get libmodulemd-2.12 on CentOS-8")
+    def test_sync_modular_static_context(self):
+        """Sync RPM modular content that includes the new static_context_field.
+
+        See `#8638 <https://pulp.plan.io/issues/8638>`_ for details.
+        """
+        body = gen_rpm_remote(RPM_MODULES_STATIC_CONTEXT_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+
+        repo, remote = self.do_test(remote=remote)
+
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        summary = get_content_summary(repo.to_dict())
+        added = get_added_content_summary(repo.to_dict())
+
+        modules = get_content(repo.to_dict())[PULP_TYPE_MODULEMD]
+        module_static_contexts = [
+            (module["name"], module["version"]) for module in modules if module["static_context"]
+        ]
+        self.assertTrue(len(module_static_contexts) == 2)
+        self.assertDictEqual(summary, RPM_MODULAR_STATIC_FIXTURE_SUMMARY)
+        self.assertDictEqual(added, RPM_MODULAR_STATIC_FIXTURE_SUMMARY)
 
     def do_test(self, repository=None, remote=None):
         """Sync a repository.

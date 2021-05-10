@@ -29,6 +29,9 @@ class ModulemdSerializer(SingleArtifactContentUploadSerializer, ContentChecksumS
     version = serializers.CharField(
         help_text=_("Modulemd version."),
     )
+    static_context = serializers.BooleanField(
+        help_text=_("Modulemd static-context flag."),
+    )
     context = serializers.CharField(
         help_text=_("Modulemd context."),
     )
@@ -57,6 +60,7 @@ class ModulemdSerializer(SingleArtifactContentUploadSerializer, ContentChecksumS
                 "name",
                 "stream",
                 "version",
+                "static_context",
                 "context",
                 "arch",
                 "artifacts",

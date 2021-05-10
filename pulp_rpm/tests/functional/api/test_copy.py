@@ -1,4 +1,6 @@
 """Tests that sync rpm plugin repositories."""
+import unittest
+
 from random import choice
 from requests.exceptions import HTTPError
 
@@ -16,6 +18,7 @@ from pulp_smash.pulp3.utils import (
 from pulp_rpm.tests.functional.constants import (
     KICKSTART_CONTENT_PATH,
     PULP_TYPE_ADVISORY,
+    PULP_TYPE_MODULEMD,
     PULP_TYPE_PACKAGE,
     PULP_TYPE_PACKAGE_CATEGORY,
     PULP_TYPE_PACKAGE_GROUP,
@@ -25,6 +28,8 @@ from pulp_rpm.tests.functional.constants import (
     RPM_REMOTE_PATH,
     RPM_REPO_PATH,
     RPM_MODULAR_FIXTURE_URL,
+    RPM_MODULAR_STATIC_FIXTURE_SUMMARY,
+    RPM_MODULES_STATIC_CONTEXT_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
     UPDATERECORD_CONTENT_PATH,
     RPM_CONTENT_PATH,
@@ -77,6 +82,47 @@ class BaseCopy(PulpTestCase):
         self.assertDictEqual(get_added_content_summary(source_repo), summary)
 
         return source_repo, dest_repo
+
+
+@unittest.skip("Skip until we can get libmodulemd-2.12 on CentOS-8")
+class StaticContextModuleTestCase(BaseCopy):
+    """Copy one repo with static-context-modular content to another."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.cfg = config.get_config()
+        cls.client = api.Client(cls.cfg, api.json_handler)
+
+        delete_orphans(cls.cfg)
+
+    def test_copy(self):
+        """Test copying a static_context-using repo to an empty destination."""
+        src, dest = self._setup_repos(
+            RPM_MODULES_STATIC_CONTEXT_FIXTURE_URL, RPM_MODULAR_STATIC_FIXTURE_SUMMARY
+        )
+        results = RPM_MODULAR_STATIC_FIXTURE_SUMMARY
+        cfg = [
+            {
+                "source_repo_version": src["latest_version_href"],
+                "dest_repo": dest["pulp_href"],
+            }
+        ]
+
+        rpm_copy(self.cfg, cfg)
+        dest_repo = self.client.get(dest["pulp_href"])
+
+        # Check that we have the correct content counts.
+        self.assertDictEqual(get_content_summary(dest_repo), results)
+        self.assertDictEqual(
+            get_added_content_summary(dest_repo),
+            results,
+        )
+        modules = get_content(dest_repo)[PULP_TYPE_MODULEMD]
+        module_static_contexts = [
+            (module["name"], module["version"]) for module in modules if module["static_context"]
+        ]
+        self.assertTrue(len(module_static_contexts) == 2)
 
 
 class BasicCopyTestCase(BaseCopy):
