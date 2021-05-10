@@ -48,7 +48,7 @@ pypi_username: pulp
 redmine_project: pulp_rpm
 stable_branch: '3.8'
 test_bindings: false
-test_cli: true
+test_cli: false
 test_fips_nightly: false
 test_performance:
 - sync

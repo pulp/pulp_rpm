@@ -128,6 +128,7 @@ PULP_UPDATE_COLLECTION_ATTRS_MODULE = CR_UPDATE_COLLECTION_ATTRS_MODULE
 MODULEMD_MODULE_ATTR = SimpleNamespace(
     ARCH="arch",
     ARTIFACTS="artifacts",
+    STATIC_CONTEXT="static_context",
     CONTEXT="context",
     NAME="name",
     STREAM="stream",
