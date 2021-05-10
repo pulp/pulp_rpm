@@ -679,7 +679,6 @@ class RepositoryMetadataParser:
     def parse(self):
         """Parse repository metadata."""
         required_metadata_found = set()
-
         for record in self.data.repomd.records:
             self.checksum_types[record.type] = getattr(CHECKSUM_TYPES, record.checksum_type.upper())
             record.checksum_type = getattr(CHECKSUM_TYPES, record.checksum_type.upper())

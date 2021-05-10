@@ -21,6 +21,11 @@ class Modulemd(Content):
             The modulemd's stream
         version (Text):
             The version of the modulemd.
+        static_context (Boolean):
+            If True, then the context flag is a string of up to thirteen [a-zA-Z0-9_] characters
+            representing a build and runtime configuration for this stream. If False or unset, then
+            the context flag is filled in by the buildsystem with a short hash of the module's
+            NSV and expanded dependencies.
         context (Text):
             The context flag serves to distinguish module builds with the
             same name, stream and version and plays an important role in
@@ -44,6 +49,7 @@ class Modulemd(Content):
     context = models.CharField(max_length=255)
     arch = models.CharField(max_length=255)
 
+    static_context = models.BooleanField(null=True)
     dependencies = JSONField(default=list)
     artifacts = JSONField(default=list)
     packages = models.ManyToManyField(Package)
