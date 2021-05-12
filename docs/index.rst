@@ -9,7 +9,6 @@ Features
 --------
 
 * :ref:`sync-publish-workflow` with "RPM Content" including RPMs, Advisories, Modularity, and Comps
-* :ref:`sync-publish-workflow` using :ref:`ULN remotes <create-uln-remote>` to sync from ULN servers.
 * :ref:`Versioned Repositories <versioned-repo-created>` so every operation is a restorable snapshot
 * :ref:`Download content on-demand <create-remote>` when requested by clients to reduce disk space.
 * Upload local RPM content in `chunks <https://docs.pulpproject.org/workflows/upload-publish.html#uploading-content>`__

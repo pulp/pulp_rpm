@@ -268,24 +268,12 @@ def merge_advisories(previous_advisory, added_advisory):
         # First thing to do is ensure collection-name-uniqueness
         # in the newly-merged advisory.
 
-        # If we've seen a collection-name already, create a new name
-        # by appending "_<suffix>" and rename the collection before
-        # merging.
-        # NOTE: keeping the collections separate is DELIBERATE:
-        # 1) after the fact, it's clear that an advisory merge happened, and that one set of
-        #    packages comes from one place, one from a different one
-        # 2) package-grouping can be *relevant* (e.g. base-rpms vs debuginfo-rpms)
-        # 3) package-grouping can be *required* (e.g., module-collections must be kept separate)
-
         # dictionary of collection-name:first-unused-suffix pairs
-        # if a collection has no name, we assign it the name "collection" and uniquify-it from there
-        names_seen = {"collection": 0}
+        names_seen = {}
         for collection in chain(previous_collections, added_collections):
-
-            # no-name? When merging, ILLEGAL! Give it a name
-            if not collection.name:
-                collection.name = "collection"
-
+            # If we've seen a collection-name already, create a new name
+            # by appending "_<suffix>" and rename the collection before
+            # merging
             if collection.name in names_seen.keys():
                 orig_name = collection.name
                 new_name = f"{orig_name}_{names_seen[orig_name]}"

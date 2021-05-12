@@ -43,25 +43,3 @@ class DistributionTreeConflict(PulpException):
         Return a message for the exception.
         """
         return self.msg
-
-
-class UlnCredentialsError(PulpException):
-    """
-    Raised when no valid ULN Credentials were given.
-    """
-
-    def __init__(self, msg):
-        """
-        Set the exception identifier.
-
-        Args:
-            msg(str): Detailed message about the reasons for Distribution Tree conflict
-        """
-        super().__init__("RPM0003")
-        self.msg = msg
-
-    def __str__(self):
-        """
-        Return a message for the exception.
-        """
-        return self.msg

@@ -24,7 +24,6 @@ from .repository import (  # noqa
     RpmDistributionSerializer,
     RpmPublicationSerializer,
     RpmRemoteSerializer,
-    UlnRemoteSerializer,
     RpmRepositorySerializer,
     RpmRepositorySyncURLSerializer,
 )

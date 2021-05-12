@@ -2,7 +2,7 @@ import os
 from gettext import gettext as _
 import logging
 import shutil
-import tempfile
+from tempfile import NamedTemporaryFile
 
 import createrepo_c as cr
 import libcomps
@@ -19,6 +19,8 @@ from pulpcore.plugin.models import (
     PublishedArtifact,
     PublishedMetadata,
 )
+
+from pulpcore.plugin.tasking import WorkingDirectory
 
 from pulp_rpm.app.comps import dict_to_strdict
 from pulp_rpm.app.constants import ALLOWED_CHECKSUM_ERROR_MSG, CHECKSUM_TYPES, PACKAGES_DIRECTORY
@@ -168,7 +170,7 @@ class PublicationData:
             relative_path__in=[".treeinfo", "treeinfo"]
         )
         artifact_file = storage.open(original_treeinfo_content_artifact.artifact.file.name)
-        with tempfile.NamedTemporaryFile("wb") as temp_file:
+        with NamedTemporaryFile("wb") as temp_file:
             shutil.copyfileobj(artifact_file, temp_file)
             temp_file.flush()
             treeinfo = PulpTreeInfo()
@@ -178,7 +180,7 @@ class PublicationData:
             for variant in treeinfo.variants.get_variants():
                 variant.paths.repository = treeinfodata.variants[variant.id]["repository"]
                 variant.paths.packages = treeinfodata.variants[variant.id]["packages"]
-            treeinfo_file = tempfile.NamedTemporaryFile()
+            treeinfo_file = NamedTemporaryFile()
             treeinfo.dump(treeinfo_file.name)
             PublishedMetadata.create_from_file(
                 relative_path=original_treeinfo_content_artifact.relative_path,
@@ -247,11 +249,12 @@ def get_checksum_type(name, checksum_types):
     """
     original = checksum_types.get("original")
     metadata = checksum_types.get("metadata")
-    checksum_type = metadata if metadata else original.get(name, CHECKSUM_TYPES.SHA256)
-    # "sha" -> "SHA" -> "CHECKSUM_TYPES.SHA" -> "sha1"
-    normalized_checksum_type = getattr(CHECKSUM_TYPES, checksum_type.upper())
-    # "sha1" -> "SHA1" -> "cr.SHA1"
-    return getattr(cr, normalized_checksum_type.upper())
+    checksum_type = original.get(name, CHECKSUM_TYPES.SHA256)
+
+    if metadata:
+        checksum_type = metadata
+
+    return getattr(cr, getattr(CHECKSUM_TYPES, checksum_type.upper()), cr.SHA256)
 
 
 def publish(
@@ -289,7 +292,7 @@ def publish(
         )
     )
 
-    with tempfile.TemporaryDirectory("."):
+    with WorkingDirectory():
         with RpmPublication.create(repository_version) as publication:
             publication.package_checksum_type = checksum_types.get("package", CHECKSUM_TYPES.SHA256)
             publication.metadata_checksum_type = checksum_types.get(
@@ -330,10 +333,6 @@ def publish(
                     name,
                     metadata_signing_service=metadata_signing_service,
                 )
-
-        log.info(_("Publication: {publication} created").format(publication=publication.pk))
-
-        return publication
 
 
 def create_repomd_xml(

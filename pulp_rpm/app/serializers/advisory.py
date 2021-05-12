@@ -119,10 +119,6 @@ class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
         """
         references = validated_data.pop("references", [])
         pkglist = validated_data.pop("pkglist", [])
-
-        # detach any specified repository; attach once the advisory exists
-        repository = validated_data.pop("repository", None)
-
         update_collection_packages_to_save = list()
         update_references_to_save = list()
         try:
@@ -171,13 +167,6 @@ class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
         cr_update_record = update_record.to_createrepo_c()
         update_record.digest = hash_update_record(cr_update_record)
         update_record.save()
-
-        # create new repo version with uploaded advisory
-        if repository:
-            repository.cast()
-            content_to_add = self.Meta.model.objects.filter(pk=update_record.pk)
-            with repository.new_version() as new_version:
-                new_version.add_content(content_to_add)
 
         return update_record
 

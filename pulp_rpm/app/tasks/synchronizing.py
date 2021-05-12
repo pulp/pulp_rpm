@@ -1,15 +1,13 @@
 import asyncio
-import collections
+import gzip
 import logging
 import os
 import re
-import tempfile
 
 from collections import defaultdict
 from gettext import gettext as _  # noqa:F401
 
 from django.db import transaction
-from django.core.exceptions import ObjectDoesNotExist
 
 from aiohttp.client_exceptions import ClientResponseError
 from aiohttp.web_exceptions import HTTPNotFound
@@ -33,6 +31,7 @@ from pulpcore.plugin.stages import (
     QueryExistingArtifacts,
     QueryExistingContents,
 )
+from pulpcore.plugin.tasking import WorkingDirectory
 
 from pulp_rpm.app.advisory import hash_update_record
 from pulp_rpm.app.constants import (
@@ -63,7 +62,6 @@ from pulp_rpm.app.models import (
     PackageLangpacks,
     RpmRemote,
     RpmRepository,
-    UlnRemote,
     UpdateCollection,
     UpdateCollectionPackage,
     UpdateRecord,
@@ -91,7 +89,7 @@ def get_repomd_file(remote, url):
     Check if repodata exists.
 
     Args:
-        remote(RpmRemote or UlnRemote): An RpmRemote or UlnRemote to download with.
+        remote(RpmRemote): An RpmRemote to download with.
         url(str): A remote repository URL
 
     Returns:
@@ -134,20 +132,14 @@ def fetch_mirror(remote):
 
 def fetch_remote_url(remote):
     """Fetch a single remote from which can be content synced."""
-
-    def normalize_url(url):
-        return url.rstrip("/") + "/"
-
-    remote_url = normalize_url(remote.url)
-    if get_repomd_file(remote, remote_url):
+    remote_url = remote.url.rstrip("/") + "/"
+    downloader = remote.get_downloader(url=urlpath_sanitize(remote_url, "repodata/repomd.xml"))
+    try:
+        downloader.fetch()
+    except (ClientResponseError, FileNotFoundError):
+        return fetch_mirror(remote)
+    else:
         return remote_url
-
-    remote_url = fetch_mirror(remote)
-    if remote_url:
-        log.info(_("Using url '{}' from mirrorlist").format(remote_url))
-        return normalize_url(remote_url)
-
-    raise ValueError(_("An invalid remote URL was provided: {}").format(remote.url))
 
 
 def is_optimized_sync(repository, remote, url):
@@ -161,14 +153,14 @@ def is_optimized_sync(repository, remote, url):
 
     Args:
         repository(RpmRepository): An RpmRepository to check optimization for.
-        remote(RpmRemote or UlnRemote): An RPMRemote or UlnRemote to check optimization for.
+        remote(RpmRemote): An RPMRemote to check optimization for.
         url(str): A remote repository URL.
 
     Returns:
         bool: True, if sync is optimized; False, otherwise.
 
     """
-    with tempfile.TemporaryDirectory("."):
+    with WorkingDirectory():
         result = get_repomd_file(remote, url)
         if not result:
             return False
@@ -186,7 +178,7 @@ def is_optimized_sync(repository, remote, url):
         and repository.last_sync_repomd_checksum == repomd_checksum
     )
     if is_optimized:
-        optimize_data = dict(message="Optimizing Sync", code="sync.optimizing")
+        optimize_data = dict(message="Optimizing Sync", code="optimizing.sync")
         with ProgressReport(**optimize_data) as optimize_pb:
             optimize_pb.done = 1
             optimize_pb.save()
@@ -211,10 +203,7 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
         ValueError: If the remote does not specify a url to sync.
 
     """
-    try:
-        remote = RpmRemote.objects.get(pk=remote_pk)
-    except ObjectDoesNotExist:
-        remote = UlnRemote.objects.get(pk=remote_pk)
+    remote = RpmRemote.objects.get(pk=remote_pk)
     repository = RpmRepository.objects.get(pk=repository_pk)
 
     if not remote.url:
@@ -224,15 +213,18 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
 
     deferred_download = remote.policy != Remote.IMMEDIATE  # Interpret download policy
 
-    with tempfile.TemporaryDirectory("."):
+    with WorkingDirectory():
         remote_url = fetch_remote_url(remote)
+    if not remote_url:
+        raise ValueError(_("An invalid remote URL was provided."))
+    else:
+        remote_url = remote_url.rstrip("/") + "/"
 
     if optimize and is_optimized_sync(repository, remote, remote_url):
         return
 
-    with tempfile.TemporaryDirectory("."):
+    with WorkingDirectory():
         treeinfo = get_treeinfo_data(remote, remote_url)
-
     if treeinfo:
         treeinfo["repositories"] = {}
         for repodata in set(treeinfo["download"]["repodatas"]):
@@ -247,7 +239,7 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
             treeinfo["repositories"].update({directory: str(sub_repo.pk)})
             path = f"{repodata}/"
             new_url = urlpath_sanitize(remote_url, path)
-            with tempfile.TemporaryDirectory("."):
+            with WorkingDirectory():
                 repodata_exists = get_repomd_file(remote, new_url)
             if repodata_exists:
                 if optimize and is_optimized_sync(sub_repo, remote, new_url):
@@ -274,12 +266,10 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
         new_url=remote_url,
     )
     dv = RpmDeclarativeVersion(first_stage=first_stage, repository=repository, mirror=mirror)
-    version = dv.create()
-    if version:
-        repository.last_sync_remote = remote
-        repository.last_sync_repo_version = version.number
-        repository.save()
-    return version
+    dv.create()
+    repository.last_sync_remote = remote
+    repository.last_sync_repo_version = repository.latest_version().number
+    repository.save()
 
 
 class RpmDeclarativeVersion(DeclarativeVersion):
@@ -329,7 +319,7 @@ class RpmFirstStage(Stage):
         The first stage of a pulp_rpm sync pipeline.
 
         Args:
-            remote (RpmRemote or UlnRemote): The remote data to be used when syncing
+            remote (RpmRemote): The remote data to be used when syncing
             repository (RpmRepository): The repository to be compared when optimizing sync
             deferred_download (bool): if True the downloading will not happen now. If False, it will
                 happen immediately.
@@ -418,7 +408,7 @@ class RpmFirstStage(Stage):
             """
             return packages.get(pkgId, None)
 
-        packages = collections.OrderedDict()
+        packages = {}
 
         # TODO: handle parsing errors/warnings, warningcb callback can be used below
         cr.xml_parse_primary(primary_xml_path, pkgcb=pkgcb, do_files=False)
@@ -428,7 +418,7 @@ class RpmFirstStage(Stage):
 
     async def run(self):
         """Build `DeclarativeContent` from the repodata."""
-        progress_data = dict(message="Downloading Metadata Files", code="sync.downloading.metadata")
+        progress_data = dict(message="Downloading Metadata Files", code="downloading.metadata")
         with ProgressReport(**progress_data) as metadata_pb:
             self.data.metadata_pb = metadata_pb
 
@@ -582,18 +572,13 @@ class RpmFirstStage(Stage):
     async def _parse_packages(self, packages):
         progress_data = {
             "message": "Parsed Packages",
-            "code": "sync.parsing.packages",
+            "code": "parsing.packages",
             "total": len(packages),
         }
 
         with ProgressReport(**progress_data) as packages_pb:
-            while True:
-                try:
-                    (_, pkg) = packages.popitem(last=False)
-                except KeyError:
-                    break
+            for pkg in packages.values():
                 package = Package(**Package.createrepo_to_dict(pkg))
-                del pkg
                 artifact = Artifact(size=package.size_package)
                 checksum_type = getattr(CHECKSUM_TYPES, package.checksum_type.upper())
                 setattr(artifact, checksum_type, package.pkgId)
@@ -627,7 +612,7 @@ class RpmFirstStage(Stage):
     async def _parse_advisories(self, updates):
         progress_data = {
             "message": "Parsed Advisories",
-            "code": "sync.parsing.advisories",
+            "code": "parsing.advisories",
             "total": len(updates),
         }
         with ProgressReport(**progress_data) as advisories_pb:
@@ -757,7 +742,11 @@ class ModulesMetadataParser:
         """Parse module.yaml, if exists, to create relations between packages."""
         if self.modulemd_result:
             modulemd_index = mmdlib.ModuleIndex.new()
-            modulemd_index.update_from_file(self.modulemd_result.path, True)
+            open_func = gzip.open if self.modulemd_result.url.endswith(".gz") else open
+            with open_func(self.modulemd_result.path, "r") as moduleyaml:
+                content = moduleyaml.read()
+                module_content = content if isinstance(content, str) else content.decode()
+                modulemd_index.update_from_string(module_content, True)
 
             self._parse_modulemd_list(modulemd_index)
             self._parse_modulemd_default_names(modulemd_index)
@@ -768,7 +757,7 @@ class ModulesMetadataParser:
 
         # Parsing modules happens all at one time, and from here on no useful work happens.
         # So just report that it finished this stage.
-        modulemd_pb_data = {"message": "Parsed Modulemd", "code": "sync.parsing.modulemds"}
+        modulemd_pb_data = {"message": "Parsed Modulemd", "code": "parsing.modulemds"}
         with ProgressReport(**modulemd_pb_data) as modulemd_pb:
             modulemd_total = len(modulemd_all)
             modulemd_pb.total = modulemd_total
@@ -805,7 +794,7 @@ class ModulesMetadataParser:
         # work happens. So just report that it finished this stage.
         modulemd_defaults_pb_data = {
             "message": "Parsed Modulemd-defaults",
-            "code": "sync.parsing.modulemd_defaults",
+            "code": "parsing.modulemd_defaults",
         }
         with ProgressReport(**modulemd_defaults_pb_data) as modulemd_defaults_pb:
             modulemd_defaults_total = len(modulemd_default_names)
@@ -851,7 +840,7 @@ class PackagesComponentsParser:
         comps = libcomps.Comps()
         comps.fromxml_f(self.comps_result.path)
 
-        with ProgressReport(message="Parsed Comps", code="sync.parsing.comps") as comps_pb:
+        with ProgressReport(message="Parsed Comps", code="parsing.comps") as comps_pb:
             comps_total = len(comps.groups) + len(comps.categories) + len(comps.environments)
             comps_pb.total = comps_total
             comps_pb.done = comps_total
