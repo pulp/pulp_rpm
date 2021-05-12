@@ -2,12 +2,10 @@
 # were not present before running plugin-template have been added with their default values.
 
 additional_plugins: []
-additional_repos: []
 black: true
 check_commit_message: true
 check_gettext: true
 check_manifest: true
-check_openapi_schema: true
 check_stray_pulpcore_imports: true
 coverage: false
 deploy_client_to_pypi: true
@@ -17,7 +15,6 @@ deploy_daily_client_to_rubygems: true
 deploy_to_pypi: true
 docker_fixtures: true
 docs_test: true
-issue_tracker: redmine
 plugin_app_label: rpm
 plugin_camel: PulpRpm
 plugin_camel_short: Rpm
@@ -25,7 +22,6 @@ plugin_caps: PULP_RPM
 plugin_caps_short: RPM
 plugin_dash: pulp-rpm
 plugin_dash_short: rpm
-plugin_default_branch: master
 plugin_name: pulp_rpm
 plugin_snake: pulp_rpm
 publish_docs_to_pulpprojectdotorg: true
@@ -48,7 +44,7 @@ pypi_username: pulp
 redmine_project: pulp_rpm
 stable_branch: '3.8'
 test_bindings: false
-test_cli: true
+test_cli: false
 test_fips_nightly: false
 test_performance:
 - sync

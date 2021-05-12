@@ -61,9 +61,7 @@ class SyncTestCase(unittest.TestCase):
         """
         return datetime.strptime(s, parse_format)
 
-    def rpm_sync(
-        self, url=RPM_KICKSTART_FIXTURE_URL, policy="on_demand", check_dist_tree=True, resync=True
-    ):
+    def rpm_sync(self, url=RPM_KICKSTART_FIXTURE_URL, policy="on_demand", check_dist_tree=True):
         """Sync repositories with the rpm plugin.
 
         This test targets the following issue:
@@ -123,27 +121,26 @@ class SyncTestCase(unittest.TestCase):
                 get_added_content_summary(repo).items(),
             )
 
-        if resync:
-            # Sync the repository again.
-            latest_version_href = repo["latest_version_href"]
-            response = self.client.using_handler(api.json_handler).post(
-                urljoin(repo["pulp_href"], "sync/"), data
+        # Sync the repository again.
+        latest_version_href = repo["latest_version_href"]
+        response = self.client.using_handler(api.json_handler).post(
+            urljoin(repo["pulp_href"], "sync/"), data
+        )
+        sync_task = self.client.get(response["task"])
+        created_at = self.parse_date_from_string(sync_task["pulp_created"])
+        started_at = self.parse_date_from_string(sync_task["started_at"])
+        finished_at = self.parse_date_from_string(sync_task["finished_at"])
+        task_duration = finished_at - started_at
+        waiting_time = started_at - created_at
+        print(
+            "\n->  Re-sync => Waiting time (s): {wait} | Service time (s): {service}".format(
+                wait=waiting_time.total_seconds(), service=task_duration.total_seconds()
             )
-            sync_task = self.client.get(response["task"])
-            created_at = self.parse_date_from_string(sync_task["pulp_created"])
-            started_at = self.parse_date_from_string(sync_task["started_at"])
-            finished_at = self.parse_date_from_string(sync_task["finished_at"])
-            task_duration = finished_at - started_at
-            waiting_time = started_at - created_at
-            print(
-                "\n->  Re-sync => Waiting time (s): {wait} | Service time (s): {service}".format(
-                    wait=waiting_time.total_seconds(), service=task_duration.total_seconds()
-                )
-            )
-            repo = self.client.get(repo["pulp_href"])
+        )
+        repo = self.client.get(repo["pulp_href"])
 
-            # Check that nothing has changed since the last sync.
-            self.assertEqual(latest_version_href, repo["latest_version_href"])
+        # Check that nothing has changed since the last sync.
+        self.assertEqual(latest_version_href, repo["latest_version_href"])
 
     def test_centos7_on_demand(self):
         """Sync CentOS 7."""
@@ -173,10 +170,7 @@ class SyncTestCase(unittest.TestCase):
     def test_epel8_mirrorlist_with_comment(self):
         """Kickstart Sync EPEL 8 (which includes a comment line)."""
         # EPEL8 doesn't contain distribution tree
-        # Different mirrors may have different content, which
-        # will cause the resync in rpm_sync to result in a new repo-version.
-        # Don't fail a test due to outside data concerns...
-        self.rpm_sync(url=EPEL8_MIRRORLIST_URL, check_dist_tree=False, resync=False)
+        self.rpm_sync(url=EPEL8_MIRRORLIST_URL, check_dist_tree=False)
 
     def test_epel8_playground_kickstart_on_demand(self):
         """Kickstart Sync Epel 8 playground."""

@@ -134,7 +134,7 @@ class PulpTreeInfo(TreeInfo):
         tree = self.original_parser._sections.get("tree", {})
 
         if "." in str(tree.get("build_timestamp")):
-            build_timestamp = float(tree.get("build_timestamp"))
+            build_timestamp = float(tree.get["build_timestamp"])
 
         if build_timestamp and parser._sections.get("general", {}).get("timestamp"):
             parser._sections["general"]["timestamp"] = build_timestamp
