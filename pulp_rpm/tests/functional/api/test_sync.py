@@ -153,8 +153,8 @@ class BasicSyncTestCase(PulpTestCase):
         try:
             monitor_task(sync_response.task)
         except PulpTaskError as exc:
-            self.assertEqual(
-                exc.task.to_dict()["error"]["description"], "An invalid remote URL was provided."
+            self.assertIn(
+                "An invalid remote URL was provided", exc.task.to_dict()["error"]["description"]
             )
         else:
             self.fail("A task was completed without a failure.")

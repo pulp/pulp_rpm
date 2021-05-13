@@ -112,6 +112,34 @@ Assuming your token is ``YourRepositoryToken``, create the remote with the ``sle
     policy='on_demand' \
     sles_auth_token='YourRepositoryToken'
 
+.. _create-uln-remote:
+
+Creating a ULN remote
+**********************
+
+ULN stands for "Unbreakable Linux Network" and refers to the way Oracle in particular, `delivers Oracle Linux repositories <https://linux.oracle.com/>`_ to their enterprise customers.
+You can use a ULN remote to synchronize repositories from a ULN server to Pulp.
+For ULN remotes you must provide your ULN login credentials via the ``username``, and ``password`` parameters, and the ``url`` is the ULN channel, e.g. ``uln://ovm2_2.1.1_i386_patch``:
+
+.. code:: shell
+
+    http --form POST $BASE_ADDR/pulp/api/v3/remotes/rpm/uln/ \
+        name='foo' \
+        url='uln://ovm2_2.1.1_i386_patch' \
+        username='example@example.com' \
+        password='changeme'
+
+Note how we are using the ``pulp/api/v3/remotes/rpm/uln/`` API endpoint, rather than ``pulp/api/v3/remotes/rpm/rpm/``.
+
+You can also sepcify the ULN Server base URL for a remote using the ``uln_server_base_url`` parameter.
+If you do not provide this parameter, a sync with the remote will default to the contents of the ``DEFAULT_ULN_SERVER_BASE_URL`` setting, which is ``https://linux-update.oracle.com/`` by default.
+The `pulpcore configuration documentation <https://docs.pulpproject.org/pulpcore/installation/configuration.html>`_ has more on how to change Pulp settings.
+
+Once you have created a ULN remote, you can synchronize it into a RPM repository, just like you would with a RPM remote.
+
+You may also want to consult the `Oracle ULN documentation <https://docs.oracle.com/en/operating-systems/oracle-linux/uln-user/ol_about_uln.html>`_ for more information.
+
+
 Sync repository ``foo`` using remote ``bar``
 --------------------------------------------
 
