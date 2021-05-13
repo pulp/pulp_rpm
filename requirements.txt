@@ -1,5 +1,4 @@
 createrepo_c~=0.17.0
-django>=2.2.14,<=2.2.20
 django_readonly_field
 jsonschema>=3.0
 libcomps~=0.1.15
