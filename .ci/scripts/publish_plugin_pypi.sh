@@ -12,16 +12,6 @@ cd "$(dirname "$(realpath -e "$0")")"/../..
 
 set -euv
 
-export PULP_URL="${PULP_URL:-http://pulp}"
-
-export VERSION=$(http pulp/pulp/api/v3/status/ | jq --arg plugin rpm --arg legacy_plugin pulp_rpm -r '.versions[] | select(.component == $plugin or .component == $legacy_plugin) | .version')
-export response=$(curl --write-out %{http_code} --silent --output /dev/null https://pypi.org/project/pulp-rpm/$VERSION/)
-if [ "$response" == "200" ];
-then
-  echo "pulp_rpm $VERSION has already been released. Skipping."
-  exit
-fi
-
 pip install twine
 
 python3 setup.py sdist bdist_wheel --python-tag py3

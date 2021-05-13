@@ -78,6 +78,11 @@ if [ -n "$PULP_OPENAPI_GENERATOR_PR_NUMBER" ]; then
   cd ..
 fi
 
+cd pulp-openapi-generator
+sed -i -e 's/localhost:24817/pulp/g' generate.sh
+sed -i -e 's/:24817/pulp/g' generate.sh
+cd ..
+
 
 git clone --depth=1 https://github.com/pulp/pulpcore.git --branch 3.12
 
@@ -105,15 +110,7 @@ pip install --upgrade --force-reinstall ./pulp-smash
 # Intall requirements for ansible playbooks
 pip install docker netaddr boto3 ansible
 
-for i in {1..3}
-do
-  ansible-galaxy collection install amazon.aws && s=0 && break || s=$? && sleep 3
-done
-if [[ $s -gt 0 ]]
-then
-  echo "Failed to install amazon.aws"
-  exit $s
-fi
+ansible-galaxy collection install amazon.aws
 
 cd pulp_rpm
 
