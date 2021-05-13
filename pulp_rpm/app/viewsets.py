@@ -8,7 +8,7 @@ from rest_framework.serializers import ValidationError as DRFValidationError
 
 from pulpcore.plugin.actions import ModifyRepositoryActionMixin
 from pulpcore.plugin.models import RepositoryVersion
-from pulpcore.plugin.tasking import enqueue_with_reservation
+from pulpcore.plugin.tasking import dispatch
 from pulpcore.plugin.serializers import AsyncOperationResponseSerializer
 from pulpcore.plugin.viewsets import (
     DistributionViewSet,
@@ -135,13 +135,13 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin):
         if repository.retain_package_versions > 0 and mirror:
             raise DRFValidationError("Cannot use 'retain_package_versions' with mirror-mode sync")
 
-        result = enqueue_with_reservation(
+        result = dispatch(
             tasks.synchronize,
             [repository, remote],
             kwargs={
                 "mirror": mirror,
-                "remote_pk": remote.pk,
-                "repository_pk": repository.pk,
+                "remote_pk": str(remote.pk),
+                "repository_pk": str(repository.pk),
                 "skip_types": skip_types,
                 "optimize": optimize,
             },
@@ -249,11 +249,11 @@ class RpmPublicationViewSet(PublicationViewSet):
             "sqlite_metadata", repository.sqlite_metadata
         )
 
-        result = enqueue_with_reservation(
+        result = dispatch(
             tasks.publish,
             [repository_version.repository],
             kwargs={
-                "repository_version_pk": repository_version.pk,
+                "repository_version_pk": str(repository_version.pk),
                 "metadata_signing_service": repository.metadata_signing_service,
                 "checksum_types": checksum_types,
                 "gpgcheck_options": gpgcheck_options,
@@ -299,7 +299,7 @@ class CopyViewSet(viewsets.ViewSet):
 
         config, repos = self._process_config(config)
 
-        async_result = enqueue_with_reservation(
+        async_result = dispatch(
             tasks.copy_content, repos, args=[config, dependency_solving], kwargs={}
         )
         return OperationPostponedResponse(async_result, request)
