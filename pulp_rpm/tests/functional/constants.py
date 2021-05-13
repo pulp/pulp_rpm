@@ -375,11 +375,11 @@ RPM_CUSTOM_REPO_METADATA_CHANGED_FIXTURE_URL = urljoin(
 RPM_MD5_REPO_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-with-md5/")
 
 CENTOS6_URL = "http://mirror.centos.org/centos-6/6.10/os/x86_64/"
-CENTOS7_URL = "http://mirror.linux.duke.edu/pub/centos/7/os/x86_64/"
-CENTOS8_KICKSTART_APP_URL = "http://mirror.linux.duke.edu/pub/centos/8/AppStream/x86_64/kickstart/"
-CENTOS8_KICKSTART_BASEOS_URL = "http://mirror.linux.duke.edu/pub/centos/8/BaseOS/x86_64/kickstart/"
-CENTOS8_APPSTREAM_URL = "http://mirror.linux.duke.edu/pub/centos/8/AppStream/x86_64/os/"
-CENTOS8_BASEOS_URL = "http://mirror.linux.duke.edu/pub/centos/8/BaseOS/x86_64/os/"
+CENTOS7_URL = "http://mirror.centos.org/centos-7/7/os/x86_64/"
+CENTOS8_KICKSTART_APP_URL = "http://mirror.centos.org/centos-8/8/AppStream/x86_64/kickstart/"
+CENTOS8_KICKSTART_BASEOS_URL = "http://mirror.centos.org/centos-8/8/BaseOS/x86_64/kickstart/"
+CENTOS8_APPSTREAM_URL = "http://mirror.centos.org/centos-8/8/AppStream/x86_64/os/"
+CENTOS8_BASEOS_URL = "http://mirror.centos.org/centos-8/8/BaseOS/x86_64/os/"
 EPEL7_URL = "https://dl.fedoraproject.org/pub/epel/7/x86_64/"
 RPM_CDN_APPSTREAM_URL = "https://cdn.redhat.com/content/dist/rhel8/8.2/x86_64/appstream/os/"
 RPM_CDN_BASEOS_URL = "https://cdn.redhat.com/content/dist/rhel8/8.2/x86_64/baseos/os/"

@@ -7,10 +7,12 @@ from rest_framework import serializers
 from pulpcore.plugin.models import (
     AsciiArmoredDetachedSigningService,
     Remote,
+    Publication,
 )
 from pulpcore.plugin.serializers import (
     RelatedField,
-    PublicationDistributionSerializer,
+    DetailRelatedField,
+    DistributionSerializer,
     PublicationSerializer,
     RemoteSerializer,
     RepositorySerializer,
@@ -29,6 +31,7 @@ from pulp_rpm.app.models import (
     RpmRemote,
     RpmRepository,
     RpmPublication,
+    UlnRemote,
 )
 from pulp_rpm.app.schema import COPY_CONFIG_SCHEMA
 
@@ -38,6 +41,14 @@ class RpmRepositorySerializer(RepositorySerializer):
     Serializer for Rpm Repositories.
     """
 
+    autopublish = serializers.BooleanField(
+        help_text=_(
+            "Whether to automatically create publications for new repository versions, "
+            "and update any distributions pointing to this repository."
+        ),
+        default=False,
+        required=False,
+    )
     metadata_signing_service = RelatedField(
         help_text="A reference to an associated signing service.",
         view_name="signing-services-detail",
@@ -55,25 +66,69 @@ class RpmRepositorySerializer(RepositorySerializer):
         min_value=0,
         required=False,
     )
+    metadata_checksum_type = serializers.ChoiceField(
+        help_text=_("The checksum type for metadata."),
+        choices=CHECKSUM_CHOICES,
+        default=CHECKSUM_TYPES.SHA256,
+    )
+    package_checksum_type = serializers.ChoiceField(
+        help_text=_("The checksum type for packages."),
+        choices=CHECKSUM_CHOICES,
+        default=CHECKSUM_TYPES.SHA256,
+    )
+    gpgcheck = serializers.IntegerField(
+        max_value=1,
+        min_value=0,
+        default=0,
+        required=False,
+        help_text=_(
+            "An option specifying whether a client should perform "
+            "a GPG signature check on packages."
+        ),
+    )
+    repo_gpgcheck = serializers.IntegerField(
+        max_value=1,
+        min_value=0,
+        default=0,
+        required=False,
+        help_text=_(
+            "An option specifying whether a client should perform "
+            "a GPG signature check on the repodata."
+        ),
+    )
+    sqlite_metadata = serializers.BooleanField(
+        default=False,
+        required=False,
+        help_text=_("An option specifying whether Pulp should generate SQLite metadata."),
+    )
+
+    def validate(self, data):
+        """Validate data."""
+        for field in ("metadata_checksum_type", "package_checksum_type"):
+            if field in data and data[field] not in settings.ALLOWED_CONTENT_CHECKSUMS:
+                raise serializers.ValidationError({field: _(ALLOWED_CHECKSUM_ERROR_MSG)})
+
+        validated_data = super().validate(data)
+        return validated_data
 
     class Meta:
         fields = RepositorySerializer.Meta.fields + (
+            "autopublish",
             "metadata_signing_service",
             "retain_package_versions",
+            "metadata_checksum_type",
+            "package_checksum_type",
+            "gpgcheck",
+            "repo_gpgcheck",
+            "sqlite_metadata",
         )
         model = RpmRepository
 
 
-class RpmRemoteSerializer(RemoteSerializer):
+class RpmBaseRemoteSerializer(RemoteSerializer):
     """
-    A Serializer for RpmRemote.
+    A common base serializer for multiple RPM based remotes.
     """
-
-    sles_auth_token = serializers.CharField(
-        help_text=_("Authentication token for SLES repositories."),
-        required=False,
-        allow_null=True,
-    )
 
     policy = serializers.ChoiceField(
         help_text=_(
@@ -84,9 +139,58 @@ class RpmRemoteSerializer(RemoteSerializer):
         default=Remote.IMMEDIATE,
     )
 
+
+class RpmRemoteSerializer(RpmBaseRemoteSerializer):
+    """
+    A Serializer for RpmRemote.
+    """
+
+    sles_auth_token = serializers.CharField(
+        help_text=_("Authentication token for SLES repositories."),
+        required=False,
+        allow_null=True,
+    )
+
     class Meta:
         fields = RemoteSerializer.Meta.fields + ("sles_auth_token",)
         model = RpmRemote
+
+
+class UlnRemoteSerializer(RpmBaseRemoteSerializer):
+    """
+    A Serializer for UlnRemote.
+    """
+
+    username = serializers.CharField(
+        help_text=_("Your ULN account username."),
+        required=True,
+    )
+
+    password = serializers.CharField(
+        help_text=_("Your ULN account password."),
+        required=True,
+    )
+
+    url = serializers.CharField(
+        help_text=_(
+            "The ULN repo URL of the remote content source."
+            '"This is "uln://" followed by the channel name. E.g.: "uln://ol7_x86_64_oracle"'
+        ),
+        required=True,
+    )
+
+    uln_server_base_url = serializers.CharField(
+        help_text=_(
+            "Base URL of the ULN server. If the uln_server_base_url is not provided pulp_rpm will"
+            "use the contents of the DEFAULT_ULN_SERVER_BASE_URL setting instead."
+        ),
+        required=False,
+        allow_null=True,
+    )
+
+    class Meta:
+        fields = RemoteSerializer.Meta.fields + ("uln_server_base_url",)
+        model = UlnRemote
 
 
 class RpmPublicationSerializer(PublicationSerializer):
@@ -151,13 +255,21 @@ class RpmPublicationSerializer(PublicationSerializer):
         model = RpmPublication
 
 
-class RpmDistributionSerializer(PublicationDistributionSerializer):
+class RpmDistributionSerializer(DistributionSerializer):
     """
     Serializer for RPM Distributions.
     """
 
+    publication = DetailRelatedField(
+        required=False,
+        help_text=_("Publication to be served"),
+        view_name_pattern=r"publications(-.*/.*)?-detail",
+        queryset=Publication.objects.exclude(complete=False),
+        allow_null=True,
+    )
+
     class Meta:
-        fields = PublicationDistributionSerializer.Meta.fields
+        fields = DistributionSerializer.Meta.fields + ("publication",)
         model = RpmDistribution
 
 

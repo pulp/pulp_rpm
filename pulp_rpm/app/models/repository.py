@@ -18,12 +18,12 @@ from pulpcore.plugin.models import (
     Repository,
     RepositoryVersion,
     Publication,
-    PublicationDistribution,
+    Distribution,
     Task,
 )
 from pulpcore.plugin.repo_version_utils import remove_duplicates, validate_repo_version
 
-from pulp_rpm.app.constants import CHECKSUM_CHOICES
+from pulp_rpm.app.constants import CHECKSUM_CHOICES, CHECKSUM_TYPES
 from pulp_rpm.app.models import (
     DistributionTree,
     Package,
@@ -37,7 +37,7 @@ from pulp_rpm.app.models import (
     UpdateRecord,
 )
 
-from pulp_rpm.app.downloaders import RpmDownloader, RpmFileDownloader
+from pulp_rpm.app.downloaders import RpmDownloader, RpmFileDownloader, UlnDownloader
 from pulp_rpm.app.exceptions import DistributionTreeConflict
 from pulp_rpm.app.shared_utils import urlpath_sanitize
 
@@ -103,6 +103,74 @@ class RpmRemote(Remote):
         default_related_name = "%(app_label)s_%(model_name)s"
 
 
+class UlnRemote(Remote):
+    """
+    Remote for "uln" content.
+    """
+
+    TYPE = "uln"
+    uln_server_base_url = models.CharField(max_length=512, null=True)
+
+    @property
+    def download_factory(self):
+        """
+        Return the DownloaderFactory which can be used to generate asyncio capable downloaders.
+
+        Returns:
+            DownloadFactory: The instantiated DownloaderFactory to be used by
+                get_downloader()
+
+        """
+        try:
+            return self._download_factory
+        except AttributeError:
+            self._download_factory = DownloaderFactory(
+                self,
+                downloader_overrides={
+                    "uln": UlnDownloader,
+                },
+            )
+            self._download_factory._handler_map["uln"] = self._download_factory._http_or_https
+            return self._download_factory
+
+    def get_downloader(self, remote_artifact=None, url=None, **kwargs):
+        """
+        Get a downloader from either a RemoteArtifact or URL that is configured with this Remote.
+
+        This method accepts either `remote_artifact` or `url` but not both. At least one is
+        required. If neither or both are passed a ValueError is raised.
+
+        Args:
+            remote_artifact (:class:`~pulpcore.app.models.RemoteArtifact`): The RemoteArtifact to
+                download.
+            url (str): The URL to download. Can be a ULN url.
+            kwargs (dict): This accepts the parameters of
+                :class:`~pulpcore.plugin.download.BaseDownloader`.
+        Raises:
+            ValueError: If neither remote_artifact and url are passed, or if both are passed.
+        Returns:
+            subclass of :class:`~pulpcore.plugin.download.BaseDownloader`: A downloader that
+            is configured with the remote settings.
+
+        """
+        if self.uln_server_base_url:
+            uln_server_base_url = self.uln_server_base_url
+        else:
+            uln_server_base_url = settings.DEFAULT_ULN_SERVER_BASE_URL
+
+        return super().get_downloader(
+            remote_artifact=remote_artifact,
+            url=url,
+            username=self.username,
+            password=self.password,
+            uln_server_base_url=uln_server_base_url,
+            **kwargs,
+        )
+
+    class Meta:
+        default_related_name = "%(app_label)s_%(model_name)s"
+
+
 class RpmRepository(Repository):
     """
     Repository for "rpm" content.
@@ -136,7 +204,8 @@ class RpmRepository(Repository):
         Modulemd,
         ModulemdDefaults,
     ]
-    REMOTE_TYPES = [RpmRemote]
+    REMOTE_TYPES = [RpmRemote, UlnRemote]
+    GPGCHECK_CHOICES = [(0, 0), (1, 1)]
 
     metadata_signing_service = models.ForeignKey(
         AsciiArmoredDetachedSigningService, on_delete=models.SET_NULL, null=True
@@ -148,6 +217,17 @@ class RpmRepository(Repository):
     last_sync_repomd_checksum = models.CharField(max_length=64, null=True)
     original_checksum_types = JSONField(default=dict)
     retain_package_versions = models.PositiveIntegerField(default=0)
+
+    autopublish = models.BooleanField(default=False)
+    metadata_checksum_type = models.CharField(
+        default=CHECKSUM_TYPES.SHA256, choices=CHECKSUM_CHOICES, max_length=10
+    )
+    package_checksum_type = models.CharField(
+        default=CHECKSUM_TYPES.SHA256, choices=CHECKSUM_CHOICES, max_length=10
+    )
+    gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
+    repo_gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
+    sqlite_metadata = models.BooleanField(default=False)
 
     def new_version(self, base_version=None):
         """
@@ -184,6 +264,36 @@ class RpmRepository(Repository):
                 resource = CreatedResource(content_object=version)
                 resource.save()
             return version
+
+    def on_new_version(self, version):
+        """
+        Called when new repository versions are created.
+
+        Args:
+            version: The new repository version.
+        """
+        super().on_new_version(version)
+
+        # avoid circular import issues
+        from pulp_rpm.app import tasks
+
+        if self.autopublish:
+            publication = tasks.publish(
+                repository_version_pk=version.pk,
+                gpgcheck_options={"gpgcheck": self.gpgcheck, "repo_gpgcheck": self.repo_gpgcheck},
+                metadata_signing_service=self.metadata_signing_service,
+                checksum_types={
+                    "metadata": self.metadata_checksum_type,
+                    "package": self.package_checksum_type,
+                },
+                sqlite_metadata=self.sqlite_metadata,
+            )
+            distributions = self.distributions.all()
+
+            if publication and distributions:
+                for distribution in distributions:
+                    distribution.publication = publication
+                    distribution.save()
 
     @staticmethod
     def artifacts_for_version(version):
@@ -326,7 +436,7 @@ class RpmPublication(Publication):
         default_related_name = "%(app_label)s_%(model_name)s"
 
 
-class RpmDistribution(PublicationDistribution):
+class RpmDistribution(Distribution):
     """
     Distribution for "rpm" content.
     """
