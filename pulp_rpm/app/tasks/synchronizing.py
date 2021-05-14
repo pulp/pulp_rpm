@@ -1,8 +1,6 @@
 import asyncio
 import collections
-import gzip
 import logging
-import lzma
 import os
 import re
 
@@ -748,16 +746,7 @@ class ModulesMetadataParser:
         """Parse module.yaml, if exists, to create relations between packages."""
         if self.modulemd_result:
             modulemd_index = mmdlib.ModuleIndex.new()
-            if self.modulemd_result.url.endswith(".gz"):
-                open_func = gzip.open
-            elif self.modulemd_result.url.endswith(".xz"):
-                open_func = lzma.open
-            else:
-                open_func = open
-            with open_func(self.modulemd_result.path, "r") as moduleyaml:
-                content = moduleyaml.read()
-                module_content = content if isinstance(content, str) else content.decode()
-                modulemd_index.update_from_string(module_content, True)
+            modulemd_index.update_from_file(self.modulemd_result.path, True)
 
             self._parse_modulemd_list(modulemd_index)
             self._parse_modulemd_default_names(modulemd_index)
