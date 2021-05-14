@@ -1,0 +1,2 @@
+Fixed syncing XZ-compressed modulemd metadata, e.g. CentOS Stream "AppStream"
+(backported from #8700)
