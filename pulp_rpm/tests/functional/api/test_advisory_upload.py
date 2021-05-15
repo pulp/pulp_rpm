@@ -511,6 +511,7 @@ class AdvisoryContentUnitTestCase(PulpTestCase):
         self.assertTrue(
             "neither package list is a proper subset of the other" in str(ctx.exception)
         )
+        self.assertTrue("ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION" in str(ctx.exception))
 
         # Fourth upload, intersecting pkglists, expecting three pkgs
         upload = self.do_test_json(advisory=self.CAMEL_BEAR_DOG_JSON, repository=self.repo)

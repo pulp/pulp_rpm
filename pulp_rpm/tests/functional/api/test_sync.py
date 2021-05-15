@@ -819,11 +819,14 @@ class BasicSyncTestCase(PulpTestCase):
 
         task_result = exc.exception.task.to_dict()
         error_msg = (
-            "Incoming and existing advisories have the same id but different "
-            "timestamps and non-intersecting package lists. It is likely that they are from "
-            "two different incompatible remote repositories. E.g. RHELX-repo and "
-            "RHELY-debuginfo repo. Ensure that you are adding content for the compatible "
-            "repositories. Advisory id: {}".format(RPM_ADVISORY_TEST_ID)
+            "Incoming and existing advisories have the same id but "
+            "different timestamps and non-intersecting package lists. "
+            "It is likely that they are from two different incompatible remote "
+            "repositories. E.g. RHELX-repo and RHELY-debuginfo repo. "
+            "Ensure that you are adding content for the compatible repositories. "
+            "To allow this behavior, set "
+            "ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION = True (q.v.) "
+            "in your configuration. Advisory id: {}".format(RPM_ADVISORY_TEST_ID)
         )
         self.assertIn(error_msg, task_result["error"]["description"])
 
