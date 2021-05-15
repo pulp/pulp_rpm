@@ -187,7 +187,9 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
                             "but different and intersecting package lists, "
                             "and neither package list is a proper subset of the other. "
                             "At least one of the advisories is wrong. "
-                            "Advisory id: {}"
+                            "To allow this behavior, set "
+                            "ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION = True (q.v.) "
+                            "in your configuration. Advisory id: {}"
                         ).format(previous_advisory.id)
                     )
         elif previous_pkglist == added_pkglist:
@@ -206,7 +208,9 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
                     "It is likely that they are from two different incompatible remote "
                     "repositories. E.g. RHELX-repo and RHELY-debuginfo repo. "
                     "Ensure that you are adding content for the compatible repositories. "
-                    "Advisory id: {}"
+                    "To allow this behavior, set "
+                    "ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION = True (q.v.) "
+                    "in your configuration. Advisory id: {}"
                 ).format(previous_advisory.id)
             )
     elif not same_dates and pkgs_intersection:
