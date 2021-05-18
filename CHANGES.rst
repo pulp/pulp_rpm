@@ -13,6 +13,34 @@ Changelog
 
 .. towncrier release notes start
 
+3.11.0 (2021-05-18)
+===================
+
+
+Features
+--------
+
+- Taught sync/copy/publish to recognize the new static_context attribute of modules.
+  `#8638 <https://pulp.plan.io/issues/8638>`_
+
+
+Bugfixes
+--------
+
+- Fixed syncing XZ-compressed modulemd metadata, e.g. CentOS Stream "AppStream"
+  (backported from #8700)
+  `#8751 <https://pulp.plan.io/issues/8751>`_
+- Fixed a bug where publication used the default metadata checksum type of SHA-256 rather than the one requested by the user.
+  (backported from #8644)
+  `#8752 <https://pulp.plan.io/issues/8752>`_
+- Reduce memory consumption when syncing extremely large repositories.
+  (backported from #8467)
+  `#8753 <https://pulp.plan.io/issues/8753>`_
+
+
+----
+
+
 3.10.0 (2021-03-25)
 ===================
 
