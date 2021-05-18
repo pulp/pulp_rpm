@@ -1,2 +1,0 @@
-Fixed a bug where publication used the default metadata checksum type of SHA-256 rather than the one requested by the user.
-(backported from #8644)
