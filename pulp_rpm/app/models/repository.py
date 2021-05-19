@@ -278,7 +278,7 @@ class RpmRepository(Repository):
         from pulp_rpm.app import tasks
 
         if self.autopublish:
-            publication = tasks.publish(
+            tasks.publish(
                 repository_version_pk=version.pk,
                 gpgcheck_options={"gpgcheck": self.gpgcheck, "repo_gpgcheck": self.repo_gpgcheck},
                 metadata_signing_service=self.metadata_signing_service,
@@ -288,12 +288,6 @@ class RpmRepository(Repository):
                 },
                 sqlite_metadata=self.sqlite_metadata,
             )
-            distributions = self.distributions.all()
-
-            if publication and distributions:
-                for distribution in distributions:
-                    distribution.publication = publication
-                    distribution.save()
 
     @staticmethod
     def artifacts_for_version(version):
