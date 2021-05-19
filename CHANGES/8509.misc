@@ -1,1 +1,0 @@
-Added logging for the exact url used during sync, to aide debugging when a mirrorlist is used.

@@ -1,1 +1,0 @@
-Fixed advisory-upload so that a failure no longer breaks uploads forever.
