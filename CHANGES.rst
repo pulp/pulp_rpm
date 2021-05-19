@@ -13,6 +13,59 @@ Changelog
 
 .. towncrier release notes start
 
+3.12.0 (2021-05-19)
+===================
+
+
+Features
+--------
+
+- Add support for automatic publishing and distributing.
+  `#7622 <https://pulp.plan.io/issues/7622>`_
+- Added the ability to synchronize Oracle ULN repositories using ULN remotes.
+  You can set an instance wide ULN server base URL using the DEFAULT_ULN_SERVER_BASE_URL setting.
+  `#7905 <https://pulp.plan.io/issues/7905>`_
+
+
+Bugfixes
+--------
+
+- Fixed advisory upload-and-merge of already-existing advisories.
+  `#7282 <https://pulp.plan.io/issues/7282>`_
+- Taught pulp_rpm to order resources on export to avoid deadlocking on import.
+  `#7904 <https://pulp.plan.io/issues/7904>`_
+- Reduce memory consumption when syncing extremely large repositories.
+  `#8467 <https://pulp.plan.io/issues/8467>`_
+- Fix error when updating a repository.
+  `#8546 <https://pulp.plan.io/issues/8546>`_
+- Fixed sync/migration of the kickstart repositories with floating point build_timestamp.
+  `#8623 <https://pulp.plan.io/issues/8623>`_
+- Fixed a bug where publication used the default metadata checksum type of SHA-256 rather than the one requested by the user.
+  `#8644 <https://pulp.plan.io/issues/8644>`_
+- Fixed advisory-upload so that a failure no longer breaks uploads forever.
+  `#8683 <https://pulp.plan.io/issues/8683>`_
+- Fixed syncing XZ-compressed modulemd metadata, e.g. CentOS Stream "AppStream"
+  `#8700 <https://pulp.plan.io/issues/8700>`_
+- Fixed a workflow where two identical advisories could 'look different' to Pulp.
+  `#8716 <https://pulp.plan.io/issues/8716>`_
+
+
+Improved Documentation
+----------------------
+
+- Added workflow documentation for the new ULN remotes.
+  `#8426 <https://pulp.plan.io/issues/8426>`_
+
+
+Misc
+----
+
+- `#8509 <https://pulp.plan.io/issues/8509>`_, `#8616 <https://pulp.plan.io/issues/8616>`_, `#8764 <https://pulp.plan.io/issues/8764>`_
+
+
+----
+
+
 3.11.0 (2021-05-18)
 ===================
 
