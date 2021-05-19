@@ -59,16 +59,14 @@ class AutoPublishDistributeTestCase(unittest.TestCase):
         repository_sync_data = RpmRepositorySyncURL(remote=self.remote.pulp_href)
         sync_response = self.repo_api.sync(self.repo.pulp_href, repository_sync_data)
         task = monitor_task(sync_response.task)
-        self.distribution = self.distributions_api.read(self.distribution.pulp_href)
 
         # Check that all the appropriate resources were created
         self.assertGreater(len(task.created_resources), 1)
-        self.assertEqual(self.publications_api.list().count, 1)
-        self.assertTrue(self.distribution.publication is not None)
-        self.assertTrue(self.distribution.publication in task.created_resources)
+        publications = self.publications_api.list()
+        self.assertEqual(publications.count, 1)
 
         # Check that the publish settings were used
-        publication = self.publications_api.read(self.distribution.publication)
+        publication = publications.results[0]
         self.assertEqual(publication.sqlite_metadata, True)
 
         # Sync the repository again. Since there should be no new repository version, there
@@ -91,14 +89,12 @@ class AutoPublishDistributeTestCase(unittest.TestCase):
             self.repo.pulp_href, {"add_content_units": [content]}
         )
         task = monitor_task(modify_response.task)
-        self.distribution = self.distributions_api.read(self.distribution.pulp_href)
 
         # Check that all the appropriate resources were created
         self.assertGreater(len(task.created_resources), 1)
-        self.assertEqual(self.publications_api.list().count, 1)
-        self.assertTrue(self.distribution.publication is not None)
-        self.assertTrue(self.distribution.publication in task.created_resources)
+        publications = self.publications_api.list()
+        self.assertEqual(publications.count, 1)
 
         # Check that the publish settings were used
-        publication = self.publications_api.read(self.distribution.publication)
+        publication = publications.results[0]
         self.assertEqual(publication.sqlite_metadata, True)
