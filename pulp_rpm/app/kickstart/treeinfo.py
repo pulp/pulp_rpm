@@ -89,13 +89,13 @@ class PulpTreeInfo(TreeInfo):
 
         self.original_parser = parser
 
-    def serialize(self, parser):
+    def serialize(self, parser, main_variant=None):
         """
         Handle errors on serialize TreeInfo.
 
         """
         try:
-            super().serialize(parser)
+            super().serialize(parser, main_variant=main_variant)
         except Exception:
             sections = set(self.original_parser._sections.keys()) - set(parser._sections.keys())
             self.validate()
