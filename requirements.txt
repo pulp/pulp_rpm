@@ -2,7 +2,7 @@ createrepo_c~=0.17.0
 django_readonly_field
 jsonschema>=3.0
 libcomps~=0.1.15
-productmd>=1.25
+productmd>=1.25,<1.33
 pulpcore>=3.7,<3.13
 PyGObject~=3.22
 solv~=0.7.17
