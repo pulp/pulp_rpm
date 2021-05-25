@@ -31,6 +31,7 @@ class ModulemdSerializer(SingleArtifactContentUploadSerializer, ContentChecksumS
     )
     static_context = serializers.BooleanField(
         help_text=_("Modulemd static-context flag."),
+        required=False,
     )
     context = serializers.CharField(
         help_text=_("Modulemd context."),
