@@ -773,7 +773,9 @@ class RpmFirstStage(Stage):
 
         # skip SRPM if defined
         if "srpm" in self.skip_types:
-            packages = {pkgId: pkg for pkgId, pkg in packages.items() if pkg.arch != "src"}
+            packages = collections.OrderedDict(
+                (pkgId, pkg) for pkgId, pkg in packages.items() if pkg.arch != "src"
+            )
 
         progress_data = {
             "message": "Parsed Packages",
