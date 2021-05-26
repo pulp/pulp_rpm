@@ -1,0 +1,2 @@
+Fixed sync for the case when SRPMs are asked to be skipped.
+(backported from #8812)
