@@ -1068,6 +1068,22 @@ class BasicSyncTestCase(PulpTestCase):
         self.assertDictEqual(summary, RPM_MODULAR_STATIC_FIXTURE_SUMMARY)
         self.assertDictEqual(added, RPM_MODULAR_STATIC_FIXTURE_SUMMARY)
 
+    def test_sync_skip_srpm(self):
+        """Sync everything but not SRPMs."""
+        body = gen_rpm_remote(SRPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+        repo = self.repo_api.create(gen_repo())
+        self.sync(repository=repo, remote=remote, skip_types=["srpm"])
+
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        repo = self.repo_api.read(repo.pulp_href)
+        present_package_count = len(get_content(repo.to_dict())[PULP_TYPE_PACKAGE])
+        present_advisory_count = len(get_content(repo.to_dict())[PULP_TYPE_ADVISORY])
+        self.assertEqual(present_package_count, 0)
+        self.assertEqual(present_advisory_count, SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT)
+
     def do_test(self, repository=None, remote=None):
         """Sync a repository.
 
@@ -1097,7 +1113,7 @@ class BasicSyncTestCase(PulpTestCase):
         monitor_task(sync_response.task)
         return self.repo_api.read(repo.pulp_href), self.remote_api.read(remote.pulp_href)
 
-    def sync(self, repository=None, remote=None, optimize=True, mirror=False):
+    def sync(self, repository=None, remote=None, optimize=True, mirror=False, skip_types=None):
         """Sync a repository and return the task.
 
         Args:
@@ -1108,8 +1124,10 @@ class BasicSyncTestCase(PulpTestCase):
         Returns (list):
             list of the ProgressReport objects created from this sync
         """
+        if skip_types is None:
+            skip_types = []
         repository_sync_data = RpmRepositorySyncURL(
-            remote=remote.pulp_href, optimize=optimize, mirror=mirror
+            remote=remote.pulp_href, optimize=optimize, mirror=mirror, skip_types=skip_types
         )
         sync_response = self.repo_api.sync(repository.pulp_href, repository_sync_data)
         monitor_task(sync_response.task)
