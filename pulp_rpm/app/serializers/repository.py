@@ -23,7 +23,6 @@ from pulpcore.plugin.serializers import (
 from pulp_rpm.app.constants import (
     ALLOWED_CHECKSUM_ERROR_MSG,
     CHECKSUM_CHOICES,
-    CHECKSUM_TYPES,
     SKIP_TYPES,
 )
 from pulp_rpm.app.models import (
@@ -69,12 +68,14 @@ class RpmRepositorySerializer(RepositorySerializer):
     metadata_checksum_type = serializers.ChoiceField(
         help_text=_("The checksum type for metadata."),
         choices=CHECKSUM_CHOICES,
-        default=CHECKSUM_TYPES.SHA256,
+        required=False,
+        allow_null=True,
     )
     package_checksum_type = serializers.ChoiceField(
         help_text=_("The checksum type for packages."),
         choices=CHECKSUM_CHOICES,
-        default=CHECKSUM_TYPES.SHA256,
+        required=False,
+        allow_null=True,
     )
     gpgcheck = serializers.IntegerField(
         max_value=1,
@@ -105,7 +106,11 @@ class RpmRepositorySerializer(RepositorySerializer):
     def validate(self, data):
         """Validate data."""
         for field in ("metadata_checksum_type", "package_checksum_type"):
-            if field in data and data[field] not in settings.ALLOWED_CONTENT_CHECKSUMS:
+            if (
+                field in data
+                and data[field]
+                and data[field] not in settings.ALLOWED_CONTENT_CHECKSUMS
+            ):
                 raise serializers.ValidationError({field: _(ALLOWED_CHECKSUM_ERROR_MSG)})
 
         validated_data = super().validate(data)
@@ -201,12 +206,12 @@ class RpmPublicationSerializer(PublicationSerializer):
     metadata_checksum_type = serializers.ChoiceField(
         help_text=_("The checksum type for metadata."),
         choices=CHECKSUM_CHOICES,
-        default=CHECKSUM_TYPES.SHA256,
+        required=False,
     )
     package_checksum_type = serializers.ChoiceField(
         help_text=_("The checksum type for packages."),
         choices=CHECKSUM_CHOICES,
-        default=CHECKSUM_TYPES.SHA256,
+        required=False,
     )
     gpgcheck = serializers.IntegerField(
         max_value=1,
@@ -237,8 +242,11 @@ class RpmPublicationSerializer(PublicationSerializer):
     def validate(self, data):
         """Validate data."""
         if (
-            data["metadata_checksum_type"] not in settings.ALLOWED_CONTENT_CHECKSUMS
-            or data["package_checksum_type"] not in settings.ALLOWED_CONTENT_CHECKSUMS
+            data.get("metadata_checksum_type")
+            and data["metadata_checksum_type"] not in settings.ALLOWED_CONTENT_CHECKSUMS
+        ) or (
+            data.get("package_checksum_type")
+            and data["package_checksum_type"] not in settings.ALLOWED_CONTENT_CHECKSUMS
         ):
             raise serializers.ValidationError(_(ALLOWED_CHECKSUM_ERROR_MSG))
         validated_data = super().validate(data)

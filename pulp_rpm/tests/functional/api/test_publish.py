@@ -30,6 +30,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_REFERENCES_UPDATEINFO_URL,
     RPM_RICH_WEAK_FIXTURE_URL,
     RPM_SHA512_FIXTURE_URL,
+    RPM_UNSIGNED_FIXTURE_URL,
     SRPM_UNSIGNED_FIXTURE_URL,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_client, gen_rpm_remote, skip_if
@@ -354,21 +355,27 @@ class ChecksumTypeTestCase(PulpTestCase):
         cls.publications = PublicationsRpmApi(cls.client)
         cls.distributions = DistributionsRpmApi(cls.client)
 
+    def setUp(self):
+        """Clean up any orphans since it interferes with download policy specific behavior."""
+        delete_orphans()
+
     def get_checksum_types(self, **kwargs):
         """Sync and publish an RPM repository."""
+        fixture_url = kwargs.get("fixture_url", RPM_UNSIGNED_FIXTURE_URL)
         package_checksum_type = kwargs.get("package_checksum_type")
         metadata_checksum_type = kwargs.get("metadata_checksum_type")
         policy = kwargs.get("policy", "immediate")
+
         # 1. create repo and remote
         repo = self.repo_api.create(gen_repo())
         self.addCleanup(self.repo_api.delete, repo.pulp_href)
 
-        body = gen_rpm_remote(policy=policy)
+        body = gen_rpm_remote(policy=policy, url=fixture_url)
         remote = self.remote_api.create(body)
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
         # 2. Sync it
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, mirror=False)
         sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
         monitor_task(sync_response.task)
 
@@ -417,51 +424,113 @@ class ChecksumTypeTestCase(PulpTestCase):
 
         return repomd_checksum_types, primary_checksum_types
 
-    def test_unspecified_checksum_types(self):
-        """Sync and publish an RPM repository and verify the checksum."""
-        repomd_checksum_types, primary_checksum_types = self.get_checksum_types()
+    def test_on_demand_unspecified_checksum_types(self):
+        """Sync and publish an RPM repository and verify the checksum types."""
+        repomd_checksum_types, primary_checksum_types = self.get_checksum_types(
+            fixture_url=RPM_SHA512_FIXTURE_URL, policy="on_demand"
+        )
 
         for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
-            self.assertEqual(repomd_checksum_type, "sha256")
+            # hack to account for the fact that our md5 and sha512 repos use md5 and sha256
+            # checksums for all metadata *except* updateinfo :(
+            if not repomd_type == "updateinfo":
+                self.assertEqual(repomd_checksum_type, "sha512")
 
         for package, package_checksum_type in primary_checksum_types.items():
-            self.assertEqual(package_checksum_type, "sha256")
+            # since none of the packages in question have sha512 checksums, the
+            # checksums they do have will be used instead. In this case, sha512.
+            self.assertEqual(package_checksum_type, "sha512")
 
-    def test_specified_package_checksum_type(self):
-        """Sync and publish an RPM repository and verify the checksum."""
+    def test_immediate_unspecified_checksum_types(self):
+        """Sync and publish an RPM repository and verify the checksum types."""
         repomd_checksum_types, primary_checksum_types = self.get_checksum_types(
-            package_checksum_type="sha256"
+            fixture_url=RPM_SHA512_FIXTURE_URL, policy="immediate"
+        )
+
+        for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
+            # hack to account for the fact that our md5 and sha512 repos use md5 and sha256
+            # checksums for all metadata *except* updateinfo :(
+            if not repomd_type == "updateinfo":
+                self.assertEqual(repomd_checksum_type, "sha512")
+
+        for package, package_checksum_type in primary_checksum_types.items():
+            self.assertEqual(package_checksum_type, "sha512")
+
+    def test_on_demand_specified_package_checksum_type(self):
+        """Sync and publish an RPM repository and verify the checksum types."""
+        repomd_checksum_types, primary_checksum_types = self.get_checksum_types(
+            package_checksum_type="sha384", policy="on_demand"
         )
 
         for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
             self.assertEqual(repomd_checksum_type, "sha256")
 
         for package, package_checksum_type in primary_checksum_types.items():
+            # since none of the packages in question have sha384 checksums, the
+            # checksums they do have will be used instead. In this case, sha256.
             self.assertEqual(package_checksum_type, "sha256")
 
-    def test_specified_metadata_checksum_type(self):
-        """Sync and publish an RPM repository and verify the checksum."""
+    def test_on_demand_specified_metadata_checksum_type(self):
+        """Sync and publish an RPM repository and verify the checksum types."""
         repomd_checksum_types, primary_checksum_types = self.get_checksum_types(
-            metadata_checksum_type="sha256"
+            metadata_checksum_type="sha384", policy="on_demand"
+        )
+
+        for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
+            self.assertEqual(repomd_checksum_type, "sha384")
+
+        for package, package_checksum_type in primary_checksum_types.items():
+            self.assertEqual(package_checksum_type, "sha256")
+
+    def test_on_demand_specified_metadata_and_package_checksum_type(self):
+        """Sync and publish an RPM repository and verify the checksum types."""
+        repomd_checksum_types, primary_checksum_types = self.get_checksum_types(
+            package_checksum_type="sha224", metadata_checksum_type="sha224", policy="on_demand"
+        )
+
+        for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
+            self.assertEqual(repomd_checksum_type, "sha224")
+
+        for package, package_checksum_type in primary_checksum_types.items():
+            # since none of the packages in question have sha224 checksums, the
+            # checksums they do have will be used instead. In this case, sha256.
+            self.assertEqual(package_checksum_type, "sha256")
+
+    def test_immediate_specified_package_checksum_type(self):
+        """Sync and publish an RPM repository and verify the checksum types."""
+        repomd_checksum_types, primary_checksum_types = self.get_checksum_types(
+            package_checksum_type="sha384", policy="immediate"
         )
 
         for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
             self.assertEqual(repomd_checksum_type, "sha256")
 
         for package, package_checksum_type in primary_checksum_types.items():
-            self.assertEqual(package_checksum_type, "sha256")
+            self.assertEqual(package_checksum_type, "sha384")
 
-    def test_specified_metadata_and_package_checksum_type(self):
-        """Sync and publish an RPM repository and verify the checksum."""
+    def test_immediate_specified_metadata_checksum_type(self):
+        """Sync and publish an RPM repository and verify the checksum types."""
         repomd_checksum_types, primary_checksum_types = self.get_checksum_types(
-            package_checksum_type="sha256", metadata_checksum_type="sha256"
+            metadata_checksum_type="sha384", policy="immediate"
         )
 
         for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
-            self.assertEqual(repomd_checksum_type, "sha256")
+            self.assertEqual(repomd_checksum_type, "sha384")
 
         for package, package_checksum_type in primary_checksum_types.items():
             self.assertEqual(package_checksum_type, "sha256")
+
+    def test_immediate_specified_metadata_and_package_checksum_type(self):
+        """Sync and publish an RPM repository and verify the checksum types."""
+        repomd_checksum_types, primary_checksum_types = self.get_checksum_types(
+            package_checksum_type="sha224", metadata_checksum_type="sha224", policy="immediate"
+        )
+
+        for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
+            self.assertEqual(repomd_checksum_type, "sha224")
+
+        for package, package_checksum_type in primary_checksum_types.items():
+            self.assertEqual(package_checksum_type, "sha224")
 
 
 class SqliteMetadataTestCase(PulpTestCase):
