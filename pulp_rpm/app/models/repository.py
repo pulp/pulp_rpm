@@ -23,7 +23,7 @@ from pulpcore.plugin.models import (
 )
 from pulpcore.plugin.repo_version_utils import remove_duplicates, validate_repo_version
 
-from pulp_rpm.app.constants import CHECKSUM_CHOICES, CHECKSUM_TYPES
+from pulp_rpm.app.constants import CHECKSUM_CHOICES
 from pulp_rpm.app.models import (
     DistributionTree,
     Package,
@@ -219,12 +219,8 @@ class RpmRepository(Repository):
     retain_package_versions = models.PositiveIntegerField(default=0)
 
     autopublish = models.BooleanField(default=False)
-    metadata_checksum_type = models.CharField(
-        default=CHECKSUM_TYPES.SHA256, choices=CHECKSUM_CHOICES, max_length=10
-    )
-    package_checksum_type = models.CharField(
-        default=CHECKSUM_TYPES.SHA256, choices=CHECKSUM_CHOICES, max_length=10
-    )
+    metadata_checksum_type = models.CharField(null=True, choices=CHECKSUM_CHOICES, max_length=10)
+    package_checksum_type = models.CharField(null=True, choices=CHECKSUM_CHOICES, max_length=10)
     gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
     repo_gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
     sqlite_metadata = models.BooleanField(default=False)

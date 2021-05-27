@@ -231,6 +231,7 @@ class RpmPublicationViewSet(PublicationViewSet):
         serializer.is_valid(raise_exception=True)
         repository_version = serializer.validated_data.get("repository_version")
         repository = RpmRepository.objects.get(pk=repository_version.repository.pk)
+
         metadata_checksum_type = serializer.validated_data.get(
             "metadata_checksum_type", repository.metadata_checksum_type
         )

@@ -237,22 +237,30 @@ class PublicationData:
             self.publish_artifacts(content, prefix=name)
 
 
-def get_checksum_type(name, checksum_types):
+def get_checksum_type(name, checksum_types, default=CHECKSUM_TYPES.SHA256):
     """
     Get checksum algorithm for publishing metadata.
 
     Args:
         name (str): Name of the metadata type.
         checksum_types (dict): Checksum types for metadata and packages.
-
+    Kwargs:
+        default: The checksum type used if there is no specified nor original checksum type.
     """
     original = checksum_types.get("original")
     metadata = checksum_types.get("metadata")
-    checksum_type = metadata if metadata else original.get(name, CHECKSUM_TYPES.SHA256)
+    checksum_type = metadata if metadata else original.get(name, default)
     # "sha" -> "SHA" -> "CHECKSUM_TYPES.SHA" -> "sha1"
     normalized_checksum_type = getattr(CHECKSUM_TYPES, checksum_type.upper())
+    return normalized_checksum_type
+
+
+def cr_checksum_type_from_string(checksum_type):
+    """
+    Convert checksum type from string to createrepo_c enum variant.
+    """
     # "sha1" -> "SHA1" -> "cr.SHA1"
-    return getattr(cr, normalized_checksum_type.upper())
+    return getattr(cr, checksum_type.upper())
 
 
 def publish(
@@ -279,9 +287,6 @@ def publish(
     checksum_types = checksum_types or {}
 
     checksum_types["original"] = repository.original_checksum_types
-    original_metadata_checksum_type = repository.original_checksum_types.get(
-        "primary", CHECKSUM_TYPES.SHA256
-    )
 
     log.info(
         _("Publishing: repository={repo}, version={version}").format(
@@ -292,9 +297,9 @@ def publish(
 
     with tempfile.TemporaryDirectory("."):
         with RpmPublication.create(repository_version) as publication:
-            publication.package_checksum_type = checksum_types.get("package", CHECKSUM_TYPES.SHA256)
-            publication.metadata_checksum_type = checksum_types.get(
-                "metadata", original_metadata_checksum_type
+            publication.metadata_checksum_type = get_checksum_type("primary", checksum_types)
+            publication.package_checksum_type = (
+                checksum_types.get("package") or publication.metadata_checksum_type
             )
 
             if gpgcheck_options is not None:
@@ -552,7 +557,9 @@ def generate_repo_metadata(
     sqlite_files = ("primary_db", "filelists_db", "other_db")
     for name, path, db_to_update in repomdrecords:
         record = cr.RepomdRecord(name, path)
-        checksum_type = get_checksum_type(name, checksum_types)
+        checksum_type = cr_checksum_type_from_string(
+            get_checksum_type(name, checksum_types, default=publication.metadata_checksum_type)
+        )
         if name in sqlite_files:
             record_bz = record.compress_and_fill(checksum_type, cr.BZ2)
             record_bz.type = name
