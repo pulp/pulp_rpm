@@ -16,6 +16,7 @@ from pulpcore.plugin.models import (
     AsciiArmoredDetachedSigningService,
     ContentArtifact,
     RepositoryVersion,
+    ProgressReport,
     PublishedArtifact,
     PublishedMetadata,
 )
@@ -306,37 +307,47 @@ def publish(
             publication_data = PublicationData(publication)
             publication_data.populate()
 
-            content = publication.repository_version.content
-
-            # Main repo
-            create_repomd_xml(
-                content,
-                publication,
-                checksum_types,
-                publication_data.repomdrecords,
-                metadata_signing_service=metadata_signing_service,
+            total_repos = 1 + len(publication_data.sub_repos)
+            pb_data = dict(
+                message="Generating repository metadata",
+                code="publish.generating_metadata",
+                total=total_repos,
             )
+            with ProgressReport(**pb_data) as publish_pb:
 
-            for sub_repo in publication_data.sub_repos:
-                name = sub_repo[0]
-                checksum_types["original"] = getattr(publication_data, f"{name}_checksums")
-                content = getattr(publication_data, f"{name}_content")
-                extra_repomdrecords = getattr(publication_data, f"{name}_repomdrecords")
-                create_repomd_xml(
+                content = publication.repository_version.content
+
+                # Main repo
+                generate_repo_metadata(
                     content,
                     publication,
                     checksum_types,
-                    extra_repomdrecords,
-                    name,
+                    publication_data.repomdrecords,
                     metadata_signing_service=metadata_signing_service,
                 )
+                publish_pb.increment()
 
-        log.info(_("Publication: {publication} created").format(publication=publication.pk))
+                for sub_repo in publication_data.sub_repos:
+                    name = sub_repo[0]
+                    checksum_types["original"] = getattr(publication_data, f"{name}_checksums")
+                    content = getattr(publication_data, f"{name}_content")
+                    extra_repomdrecords = getattr(publication_data, f"{name}_repomdrecords")
+                    generate_repo_metadata(
+                        content,
+                        publication,
+                        checksum_types,
+                        extra_repomdrecords,
+                        name,
+                        metadata_signing_service=metadata_signing_service,
+                    )
+                    publish_pb.increment()
 
-        return publication
+            log.info(_("Publication: {publication} created").format(publication=publication.pk))
+
+            return publication
 
 
-def create_repomd_xml(
+def generate_repo_metadata(
     content,
     publication,
     checksum_types,

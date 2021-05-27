@@ -1137,7 +1137,7 @@ class BasicSyncTestCase(PulpTestCase):
     def optimize_report(self, progress_reports=[]):
         """Return whether an optimize progress report exists."""
         for report in progress_reports:
-            if report.message == "Optimizing Sync":
+            if report.code == "sync.was_skipped":
                 return True
         return False
 

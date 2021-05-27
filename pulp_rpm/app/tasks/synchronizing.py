@@ -261,11 +261,6 @@ def is_optimized_sync(repository, remote, url):
         and is_previous_version(repomd.revision, repository.last_sync_revision_number)
         and repository.last_sync_repomd_checksum == repomd_checksum
     )
-    if is_optimized:
-        optimize_data = dict(message="Optimizing Sync", code="sync.optimizing")
-        with ProgressReport(**optimize_data) as optimize_pb:
-            optimize_pb.done = 1
-            optimize_pb.save()
 
     return is_optimized
 
@@ -331,6 +326,10 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
         remote_url = fetch_remote_url(remote)
 
         if optimize and is_optimized_sync(repository, remote, remote_url):
+            with ProgressReport(
+                message="Skipping Sync (no change from previous sync)", code="sync.was_skipped"
+            ) as pb:
+                pb.done = 1
             return
 
         treeinfo = get_treeinfo_data(remote, remote_url)
