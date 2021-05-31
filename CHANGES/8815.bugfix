@@ -1,2 +1,0 @@
-Allow static_context to be absent.
-(backported from #8814)
