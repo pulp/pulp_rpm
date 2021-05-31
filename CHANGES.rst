@@ -66,6 +66,24 @@ Misc
 ----
 
 
+3.11.1 (2021-05-31)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed sync for the case when SRPMs are asked to be skipped.
+  (backported from #8812)
+  `#8813 <https://pulp.plan.io/issues/8813>`_
+- Allow static_context to be absent.
+  (backported from #8814)
+  `#8815 <https://pulp.plan.io/issues/8815>`_
+
+
+----
+
+
 3.11.0 (2021-05-18)
 ===================
 
