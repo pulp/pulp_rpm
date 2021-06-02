@@ -95,7 +95,7 @@ log = logging.getLogger(__name__)
 # TODO: https://pulp.plan.io/issues/8687
 # A global dictionary for storing data about the remote's metadata files, used for mirroring
 # Indexed by repository.pk due to sub-repos.
-metadata_files_for_mirroring = collections.defaultdict(list)
+metadata_files_for_mirroring = collections.defaultdict(dict)
 # A global dictionary for storing data mapping pkgid to location_href for all packages, used
 # for mirroring. Indexed by repository.pk due to sub-repos.
 pkgid_to_location_href = collections.defaultdict(dict)
@@ -110,7 +110,7 @@ def store_metadata_for_mirroring(repo, dl_result, relative_path):
         relative_path: The relative path to the metadata file within the repository
     """
     global metadata_files_for_mirroring
-    metadata_files_for_mirroring[str(repo.pk)].append((dl_result, relative_path))
+    metadata_files_for_mirroring[str(repo.pk)][relative_path] = dl_result
 
 
 def store_package_for_mirroring(repo, pkgid, location_href):
@@ -134,7 +134,18 @@ def mirrored_publish(version):
         version: The repository version to mirror-publish
     """
     with RpmPublication.create(version, pass_through=False) as publication:
-        for (result, relative_path) in metadata_files_for_mirroring[str(version.repository.pk)]:
+        repo_metadata_files = metadata_files_for_mirroring[str(version.repository.pk)]
+
+        has_repomd_signature = "repodata/repomd.xml.asc" in repo_metadata_files.keys()
+        has_sqlite = any([".sqlite" in href for href in repo_metadata_files.keys()])
+
+        publication.package_checksum_type = CHECKSUM_TYPES.UNKNOWN
+        publication.metadata_checksum_type = CHECKSUM_TYPES.UNKNOWN
+        publication.gpgcheck = 0
+        publication.repo_gpgcheck = has_repomd_signature
+        publication.sqlite_metadata = has_sqlite
+
+        for (relative_path, result) in repo_metadata_files.items():
             PublishedMetadata.create_from_file(
                 file=File(open(result.path, "rb")),
                 relative_path=relative_path,
