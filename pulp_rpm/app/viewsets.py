@@ -250,12 +250,17 @@ class RpmPublicationViewSet(PublicationViewSet):
             "sqlite_metadata", repository.sqlite_metadata
         )
 
+        if repository.metadata_signing_service:
+            signing_service_pk = repository.metadata_signing_service.pk
+        else:
+            signing_service_pk = None
+
         result = dispatch(
             tasks.publish,
             [repository_version.repository],
             kwargs={
-                "repository_version_pk": str(repository_version.pk),
-                "metadata_signing_service": repository.metadata_signing_service,
+                "repository_version_pk": repository_version.pk,
+                "metadata_signing_service": signing_service_pk,
                 "checksum_types": checksum_types,
                 "gpgcheck_options": gpgcheck_options,
                 "sqlite_metadata": sqlite_metadata,
