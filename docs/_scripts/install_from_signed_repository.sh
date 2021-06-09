@@ -2,7 +2,7 @@
 
 BASE_URL=$(http "$BASE_ADDR""$DISTRIBUTION_HREF" | jq -r '.base_url')
 BASE_PATH=$(http "$BASE_ADDR""$DISTRIBUTION_HREF" | jq -r '.base_path')
-PUBLIC_KEY_URL="$BASE_URL"/repodata/public.key
+PUBLIC_KEY_URL="$BASE_URL"/repodata/repomd.xml.key
 
 echo "Setting up a YUM repository."
 sudo dnf config-manager --add-repo "$BASE_URL"

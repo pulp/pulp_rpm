@@ -601,11 +601,14 @@ def generate_repo_metadata(
         )
 
         # publish a public key required for further verification
-        PublishedMetadata.create_from_file(
-            relative_path=os.path.join(repodata_path, os.path.basename(sign_results["key"])),
-            publication=publication,
-            file=File(open(sign_results["key"], "rb")),
-        )
+        pubkey_name = "repomd.xml.key"
+        with open("pubkey_name", "wb+") as f:
+            f.write(signing_service.public_key.encode("utf-8"))
+            PublishedMetadata.create_from_file(
+                relative_path=os.path.join(repodata_path, pubkey_name),
+                publication=publication,
+                file=File(f),
+            )
     else:
         PublishedMetadata.create_from_file(
             relative_path=os.path.join(repodata_path, os.path.basename(repomd_path)),

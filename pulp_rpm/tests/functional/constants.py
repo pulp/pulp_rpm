@@ -365,6 +365,7 @@ RPM_KICKSTART_REPOSITORY_ROOT_CONTENT = [
 ]
 
 PULP_FIXTURES_COMMON_URL = "https://github.com/pulp/pulp-fixtures/raw/master/common/"
+PUBLIC_GPG_KEY_URL = urljoin(PULP_FIXTURES_COMMON_URL, "GPG-KEY-pulp-qe")
 PRIVATE_GPG_KEY_URL = urljoin(PULP_FIXTURES_COMMON_URL, "GPG-PRIVATE-KEY-pulp-qe")
 
 RPM_CUSTOM_REPO_METADATA_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-repo-metadata/")

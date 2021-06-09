@@ -1,4 +1,3 @@
-import urllib.parse
 import textwrap
 
 from gettext import gettext as _
@@ -439,7 +438,7 @@ class RpmDistribution(Distribution):
     repository_config_file_name = "config.repo"
 
     def content_handler(self, path):
-        """Serve config.repo and public.key."""
+        """Serve config.repo and repomd.xml.key."""
         if path == self.repository_config_file_name:
             base_url = f"{settings.CONTENT_ORIGIN}{settings.CONTENT_PATH_PREFIX}{self.base_path}/"
             publication = self.publication.cast()
@@ -458,11 +457,11 @@ class RpmDistribution(Distribution):
             signing_service = repository.metadata_signing_service
             if signing_service:
                 gpgkey_path = urlpath_sanitize(
-                    settings.CONTENT_ORIGIN, settings.CONTENT_PATH_PREFIX
+                    settings.CONTENT_ORIGIN,
+                    settings.CONTENT_PATH_PREFIX,
+                    self.base_path,
+                    "/repodata/repomd.xml.key",
                 )
-                gpgkey_path = urllib.parse.urljoin(gpgkey_path, self.base_path, True)
-                gpgkey_path += "/repodata/public.key"
-
                 val += f"gpgkey={gpgkey_path}\n"
 
             return Response(body=val)

@@ -59,7 +59,7 @@ class ContentHandlerTests(PulpTestCase):
 
         self.assertEqual(resp.status_code, 200)
         self.assertIn(b"config.repo", resp.content)
-        self.assertNotIn(b"public.key", resp.content)
+        self.assertNotIn(b"repomd.xml.key", resp.content)
 
     def testConfigRepoUnsigned(self):
         """Whether config.repo can be downloaded and has the right content."""
