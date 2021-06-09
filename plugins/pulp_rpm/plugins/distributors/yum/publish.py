@@ -735,34 +735,41 @@ class PublishErrataStep(platform_steps.UnitModelPluginStep):
         seen_non_modular_packages = set()
         seen_modules = set()
         # find all pkglists for erratum despite the repo_id associated with pkglist
-        pkglists = models.ErratumPkglist.objects(errata_id=erratum_unit.errata_id)
-        for pkglist in pkglists:
-            for collection in pkglist['collections']:
-                module = collection.get('module')
-                if module:
-                    # inside a modular collection
-                    nsvca = self._module_dict_as_nsvca(module)
-                    if nsvca in seen_modules or nsvca not in self.repo_module_nsvca:
-                        # already processed or not from the repo being published
+        match_stage = {'$match': {'errata_id': erratum_unit.errata_id}}
+        unwind_collections_stage = {'$unwind': '$collections'}
+        unwind_packages_stage = {'$unwind': '$collections.packages'}
+        group_stage = {'$group': {'_id': '$collections.module',
+                                  'packages': {'$addToSet': '$collections.packages'}}}
+        collections = models.ErratumPkglist.objects.aggregate(
+            match_stage, unwind_collections_stage, unwind_packages_stage, group_stage,
+            allowDiskUse=True)
+
+        for collection in collections:
+            module = collection.get('_id')
+            if module:
+                # inside a modular collection
+                nsvca = self._module_dict_as_nsvca(module)
+                if nsvca in seen_modules or nsvca not in self.repo_module_nsvca:
+                    # already processed or not from the repo being published
+                    continue
+                seen_modules.add(nsvca)
+                collection_index += 1
+                new_collection = self._new_collection(
+                    repo_id, '{}_{}'.format(collection_index, module['name']))
+                ret.append(new_collection)
+                new_collection['module'] = module
+            for package in collection.get('packages', []):
+                if not module:
+                    # only non-modular packages are tracked;
+                    # modular packages are not tracked because the same package can be present
+                    # in different modules and duplicated modules are already filtered out.
+                    if package['filename'] in seen_non_modular_packages:
                         continue
-                    seen_modules.add(nsvca)
-                    collection_index += 1
-                    new_collection = self._new_collection(
-                        repo_id, '{}_{}'.format(collection_index, module['name']))
-                    ret.append(new_collection)
-                    new_collection['module'] = module
-                for package in collection.get('packages', []):
-                    if not module:
-                        # only non-modular packages are tracked;
-                        # modular packages are not tracked because the same package can be present
-                        # in different modules and duplicated modules are already filtered out.
-                        if package['filename'] in seen_non_modular_packages:
-                            continue
-                        seen_non_modular_packages.add(package['filename'])
-                    if models.NEVRA._fromdict(package) in self.repo_unit_nevra:
-                        new_collection['packages'].append(package)
-                # ret[0] is special; all non-modular package collections are aggregated there
-                new_collection = ret[0]
+                    seen_non_modular_packages.add(package['filename'])
+                if models.NEVRA._fromdict(package) in self.repo_unit_nevra:
+                    new_collection['packages'].append(package)
+            # ret[0] is special; all non-modular package collections are aggregated there
+            new_collection = ret[0]
         return ret
 
 
