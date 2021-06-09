@@ -192,11 +192,11 @@ def init_signed_repo_configuration():
     commands. Then, it creates a new signing service on the fly.
     """
     # download the private key
-    completed_process = subprocess.run(
+    priv_key = subprocess.run(
         ("wget", "-q", "-O", "-", PRIVATE_GPG_KEY_URL), stdout=subprocess.PIPE
-    )
+    ).stdout
     # import the downloaded private key
-    subprocess.run(("gpg", "--import"), input=completed_process.stdout)
+    subprocess.run(("gpg", "--import"), input=priv_key)
 
     # set the imported key to the maximum trust level
     key_fingerprint = "6EDF301256480B9B801EBA3D05A5E6DA269D9D98"
@@ -206,14 +206,14 @@ def init_signed_repo_configuration():
     # create a new signing service
     utils_dir_path = os.path.dirname(os.path.realpath(__file__))
     signing_script_path = os.path.join(utils_dir_path, "sign-metadata.sh")
+
     subprocess.run(
         (
-            "django-admin",
-            "shell",
-            "-c",
-            "from pulpcore.app.models.content import AsciiArmoredDetachedSigningService;"
-            "AsciiArmoredDetachedSigningService.objects.create(name='sign-metadata',"
-            f"script='{signing_script_path}')",
+            "pulpcore-manager",
+            "add-signing-service",
+            "sign-metadata",
+            f"{signing_script_path}",
+            "Pulp QE",
         )
     )
 

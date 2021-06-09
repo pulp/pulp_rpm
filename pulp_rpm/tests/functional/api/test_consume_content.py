@@ -106,7 +106,6 @@ class PackageManagerConsumeTestCase(PulpTestCase):
         self.assertEqual(rpm_name, rpm[0])
 
 
-@unittest.skip("Temporarily broken due to GHA migration")
 class ConsumeSignedRepomdTestCase(PulpTestCase):
     """A test case that verifies the publishing of a signed repository."""
 
@@ -121,6 +120,11 @@ class ConsumeSignedRepomdTestCase(PulpTestCase):
         signing_services = cls.api_client.using_handler(api.page_handler).get(
             "pulp/api/v3/signing-services/", params={"name": "sign-metadata"}
         )
+        # NOTE: This is not used by the CI, only by local tests. The CI uses a separate
+        # environment for API tests and Pulp, so the API tests don't have direct access
+        # to run terminal commands. And cli.Client has issues with it as well.
+        #
+        # In the event of issues go look at post_before_script.sh.
         if not signing_services:
             init_signed_repo_configuration()
 
@@ -171,7 +175,7 @@ class ConsumeSignedRepomdTestCase(PulpTestCase):
 
         if has_signing_service:
             self.assertIn(
-                bytes(f'gpgkey={distribution["base_url"]}repodata/public.key', "utf-8"),
+                bytes(f'gpgkey={distribution["base_url"]}repodata/repomd.xml.key', "utf-8"),
                 response.content,
                 options,
             )
@@ -219,7 +223,7 @@ class ConsumeSignedRepomdTestCase(PulpTestCase):
             ("sudo", "dnf", "config-manager", "--add-repo", distribution["base_url"])
         )
         repo_id = "*{}_".format(distribution["base_path"])
-        public_key_url = f"{distribution['base_url']}repodata/public.key"
+        public_key_url = f"{distribution['base_url']}repodata/repomd.xml.key"
         self.cli_client.run(
             (
                 "sudo",
