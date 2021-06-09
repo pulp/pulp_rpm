@@ -106,7 +106,6 @@ class PackageManagerConsumeTestCase(PulpTestCase):
         self.assertEqual(rpm_name, rpm[0])
 
 
-@unittest.skip("Temporarily broken due to GHA migration")
 class ConsumeSignedRepomdTestCase(PulpTestCase):
     """A test case that verifies the publishing of a signed repository."""
 
@@ -171,7 +170,7 @@ class ConsumeSignedRepomdTestCase(PulpTestCase):
 
         if has_signing_service:
             self.assertIn(
-                bytes(f'gpgkey={distribution["base_url"]}repodata/public.key', "utf-8"),
+                bytes(f'gpgkey={distribution["base_url"]}repodata/repomd.xml.key', "utf-8"),
                 response.content,
                 options,
             )
@@ -219,7 +218,7 @@ class ConsumeSignedRepomdTestCase(PulpTestCase):
             ("sudo", "dnf", "config-manager", "--add-repo", distribution["base_url"])
         )
         repo_id = "*{}_".format(distribution["base_path"])
-        public_key_url = f"{distribution['base_url']}repodata/public.key"
+        public_key_url = f"{distribution['base_url']}repodata/repomd.xml.key"
         self.cli_client.run(
             (
                 "sudo",
