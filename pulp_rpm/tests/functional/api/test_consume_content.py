@@ -238,7 +238,8 @@ class ConsumeSignedRepomdTestCase(PulpTestCase):
     def install_package(self):
         """Install and verify the installed package."""
         rpm_name = "walrus"
-        self.pkg_mgr.install(rpm_name)
+        # self.pkg_mgr.install(rpm_name)
+        self.cli_client.run(("sudo", "dnf", "install", rpm_name))
         self.addCleanup(self.pkg_mgr.uninstall, rpm_name)
         rpm = self.cli_client.run(("rpm", "-q", rpm_name)).stdout.strip().split("-")
         self.assertEqual(rpm_name, rpm[0])
