@@ -84,7 +84,7 @@ class RpmDownloader(HttpDownloader):
         """
         if self.sles_auth_token:
             auth_param = f"?{self.sles_auth_token}"
-            url = urlpath_sanitize(self.url, auth_param)
+            url = urlpath_sanitize(self.url) + auth_param
         else:
             url = self.url
 
