@@ -1,0 +1,1 @@
+Fixed a trailing slash sometimes being inserted improperly if sles_auth_token is used.
