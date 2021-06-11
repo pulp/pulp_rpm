@@ -83,6 +83,7 @@ from pulp_rpm.app.kickstart.treeinfo import PulpTreeInfo, TreeinfoData
 
 from pulp_rpm.app.comps import strdict_to_dict, dict_digest
 from pulp_rpm.app.shared_utils import is_previous_version, get_sha256, urlpath_sanitize
+from pulp_rpm.app.metadata_parsing import iterative_files_changelog_parser
 
 import gi
 
@@ -552,8 +553,11 @@ class RpmFirstStage(Stage):
 
         # TODO: handle parsing errors/warnings, warningcb callback can be used below
         cr.xml_parse_primary(primary_xml_path, pkgcb=pkgcb, do_files=False)
-        cr.xml_parse_filelists(filelists_xml_path, newpkgcb=newpkgcb)
-        cr.xml_parse_other(other_xml_path, newpkgcb=newpkgcb)
+
+        # only left behind to make swapping back for testing easier - we are doing our own separate
+        # parsing of other.xml and filelists.xml
+        # cr.xml_parse_filelists(filelists_xml_path, newpkgcb=newpkgcb)
+        # cr.xml_parse_other(other_xml_path, newpkgcb=newpkgcb)
         return packages
 
     async def run(self):
@@ -591,6 +595,10 @@ class RpmFirstStage(Stage):
                 async def run_repomdrecord_download(name, location_href, downloader):
                     result = await downloader.run()
                     return name, location_href, result
+
+                file_extension = [
+                    record.location_href for record in repomd.records if record.type == "primary"
+                ][0].split(".")[-1]
 
                 for record in repomd.records:
                     record_checksum_type = getattr(CHECKSUM_TYPES, record.checksum_type.upper())
@@ -663,7 +671,7 @@ class RpmFirstStage(Stage):
                                 reason=_("File not found: {}".format(exc.request_info.url))
                             )
 
-            await self.parse_repository_metadata(repomd, repomd_files)
+            await self.parse_repository_metadata(repomd, repomd_files, file_extension)
 
     async def parse_distribution_tree(self):
         """Parse content from the file treeinfo if present."""
@@ -693,7 +701,7 @@ class RpmFirstStage(Stage):
             dc.extra_data = self.treeinfo
             await self.put(dc)
 
-    async def parse_repository_metadata(self, repomd, metadata_results):
+    async def parse_repository_metadata(self, repomd, metadata_results, file_extension):
         """Parse repository metadata."""
         needed_metadata = set(PACKAGE_REPODATA) - set(metadata_results.keys())
 
@@ -708,6 +716,7 @@ class RpmFirstStage(Stage):
             metadata_results["primary"],
             metadata_results["filelists"],
             metadata_results["other"],
+            file_extension=file_extension,
         )
 
         modulemd_list = []
@@ -942,7 +951,7 @@ class RpmFirstStage(Stage):
 
         return dc_groups
 
-    async def parse_packages(self, primary_xml, filelists_xml, other_xml):
+    async def parse_packages(self, primary_xml, filelists_xml, other_xml, file_extension="gz"):
         """Parse packages from the remote repository."""
         packages = await RpmFirstStage.parse_repodata(
             primary_xml.path, filelists_xml.path, other_xml.path
@@ -959,12 +968,26 @@ class RpmFirstStage(Stage):
             "code": "sync.parsing.packages",
             "total": len(packages),
         }
+
+        extra_repodata_parser = iterative_files_changelog_parser(
+            file_extension, filelists_xml.path, other_xml.path
+        )
         with ProgressReport(**progress_data) as packages_pb:
             while True:
                 try:
-                    (_, pkg) = packages.popitem(last=False)
+                    (pkgid, pkg) = packages.popitem(last=False)
                 except KeyError:
                     break
+
+                pkgid_extra, files, changelogs = next(extra_repodata_parser)
+
+                assert pkgid == pkgid_extra, (
+                    "Package id from primary metadata ({}), does not match package id "
+                    "from filelists, other metadata ({})"
+                ).format(pkgid, pkgid_extra)
+
+                pkg.files = files
+                pkg.changelogs = changelogs
                 package = Package(**Package.createrepo_to_dict(pkg))
                 del pkg
 
