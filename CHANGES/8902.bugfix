@@ -1,0 +1,4 @@
+Pinned version of productmd to be <1.33.
+
+Users with productmd 1.33 were experiencing TypeError: serialize() got an unexpected keyword
+argument 'main_variant'
