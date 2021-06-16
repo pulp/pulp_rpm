@@ -83,6 +83,19 @@ fi
 
 cd ..
 
+
+git clone --depth=1 https://github.com/pulp/pulp-smash.git
+
+if [ -n "$PULP_SMASH_PR_NUMBER" ]; then
+  cd pulp-smash
+  git fetch --depth=1 origin pull/$PULP_SMASH_PR_NUMBER/head:$PULP_SMASH_PR_NUMBER
+  git checkout $PULP_SMASH_PR_NUMBER
+  cd ..
+fi
+
+pip install --upgrade --force-reinstall ./pulp-smash
+
+
 git clone --depth=1 https://github.com/pulp/pulp-openapi-generator.git
 if [ -n "$PULP_OPENAPI_GENERATOR_PR_NUMBER" ]; then
   cd pulp-openapi-generator
@@ -102,8 +115,7 @@ fi
 
 cd pulp-cli
 pip install -e .
-pulp config create --base-url http://pulp --location tests/settings.toml
-sed -i "s/true/false/g" tests/settings.toml
+pulp config create --base-url http://pulp --location tests/settings.toml --no-verify-ssl
 mkdir ~/.config/pulp
 cp tests/settings.toml ~/.config/pulp/settings.toml
 cd ..
@@ -117,19 +129,6 @@ if [ -n "$PULPCORE_PR_NUMBER" ]; then
   git checkout $PULPCORE_PR_NUMBER
 fi
 cd ..
-
-
-
-git clone --depth=1 https://github.com/pulp/pulp-smash.git
-
-if [ -n "$PULP_SMASH_PR_NUMBER" ]; then
-  cd pulp-smash
-  git fetch --depth=1 origin pull/$PULP_SMASH_PR_NUMBER/head:$PULP_SMASH_PR_NUMBER
-  git checkout $PULP_SMASH_PR_NUMBER
-  cd ..
-fi
-
-pip install --upgrade --force-reinstall ./pulp-smash
 
 
 

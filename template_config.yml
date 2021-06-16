@@ -41,11 +41,12 @@ pulp_settings:
   allowed_import_paths:
   - /tmp
 pulpcore_branch: '3.12'
-pulpcore_pip_version_specifier: '~=3.12.0'
+pulpcore_pip_version_specifier: ~=3.12.0
 pulpprojectdotorg_key_id: aa499d7938ed
 pydocstyle: true
 pypi_username: pulp
 redmine_project: pulp_rpm
+release_user: pulpbot
 test_bindings: false
 test_cli: true
 test_fips_nightly: false

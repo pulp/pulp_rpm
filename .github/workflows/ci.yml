@@ -10,9 +10,6 @@ on:
   pull_request:
     branches:
       - '*'
-  push:
-    branches:
-      - '*'
 
 jobs:
 
@@ -102,6 +99,13 @@ jobs:
           PY_COLORS: '1'
           ANSIBLE_FORCE_COLOR: '1'
         shell: bash
+
+      - name: Install Python client
+        run: .github/workflows/scripts/install_python_client.sh
+
+      - name: Install Ruby client
+        if: ${{ env.TEST == 'bindings' }}
+        run: .github/workflows/scripts/install_ruby_client.sh
 
       - name: Before Script
         run: |
