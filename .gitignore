@@ -47,6 +47,7 @@ cover
 
 # Sphinx
 docs/_build
+docs/_static/api.json
 
 # Vim
 *.swp
