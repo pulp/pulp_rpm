@@ -2,13 +2,14 @@
 import unittest
 import itertools
 
+from pulpcore.client.pulpcore import ArtifactsApi, ApiClient as CoreApiClient
+
 from pulp_smash import api, cli, config
-from pulp_smash.pulp3.bindings import PulpTestCase
-from pulp_smash.pulp3.constants import (
-    ON_DEMAND_DOWNLOAD_POLICIES,
+from pulp_smash.pulp3.bindings import (
+    delete_orphans,
+    PulpTestCase,
 )
 from pulp_smash.pulp3.utils import (
-    delete_orphans,
     gen_distribution,
     gen_repo,
     sync,
@@ -36,22 +37,39 @@ class PackageManagerConsumeTestCase(PulpTestCase):
     def setUpClass(cls):
         """Verify whether dnf or yum are present."""
         cls.cfg = config.get_config()
+        configuration = cls.cfg.get_bindings_config()
+        core_client = CoreApiClient(configuration)
+        cls.artifacts_api = ArtifactsApi(core_client)
+        cls.before_consumption_artifact_count = 0
         cls.pkg_mgr = cli.PackageManager(cls.cfg)
         cls.pkg_mgr.raise_if_unsupported(unittest.SkipTest, "This test requires dnf or yum.")
 
     def _has_dnf(self):
         return self.pkg_mgr.name == "dnf"
 
-    def test_on_demand_policies(self):
-        """Verify whether content on demand synced can be consumed.
+    def test_on_demand_policy(self):
+        """Verify whether content synced with on_demand policy can be consumed.
 
         This test targets the following issue:
 
         `Pulp #4496 <https://pulp.plan.io/issues/4496>`_
         """
-        for policy in ON_DEMAND_DOWNLOAD_POLICIES:
-            delete_orphans(self.cfg)
-            self.do_test(policy)
+        delete_orphans()
+        self.do_test("on_demand")
+        new_artifact_count = self.artifacts_api.list().count
+        self.assertGreater(new_artifact_count, self.before_consumption_artifact_count)
+
+    def test_streamed_policy(self):
+        """Verify whether content synced with streamed policy can be consumed.
+
+        This test targets the following issue:
+
+        `Pulp #4496 <https://pulp.plan.io/issues/4496>`_
+        """
+        delete_orphans()
+        self.do_test("streamed")
+        new_artifact_count = self.artifacts_api.list().count
+        self.assertEqual(new_artifact_count, self.before_consumption_artifact_count)
 
     def test_immediate(self):
         """Verify whether package manager can consume content from Pulp.
@@ -60,7 +78,10 @@ class PackageManagerConsumeTestCase(PulpTestCase):
 
         `Pulp #3204 <https://pulp.plan.io/issues/3204>`_
         """
+        delete_orphans()
         self.do_test("immediate")
+        new_artifact_count = self.artifacts_api.list().count
+        self.assertEqual(new_artifact_count, self.before_consumption_artifact_count)
 
     def do_test(self, policy):
         """Verify whether package manager can consume content from Pulp."""
@@ -75,6 +96,8 @@ class PackageManagerConsumeTestCase(PulpTestCase):
         repo = client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(client.delete, repo["pulp_href"])
 
+        before_sync_artifact_count = self.artifacts_api.list().count
+        self.assertEqual(before_sync_artifact_count, 0)
         sync(self.cfg, remote, repo)
 
         publication = publish(self.cfg, repo)
@@ -99,6 +122,7 @@ class PackageManagerConsumeTestCase(PulpTestCase):
             )
         )
         self.addCleanup(cli_client.run, ("sudo", "dnf", "config-manager", "--disable", repo_id))
+        self.before_consumption_artifact_count = self.artifacts_api.list().count
         rpm_name = "walrus"
         self.pkg_mgr.install(rpm_name)
         self.addCleanup(self.pkg_mgr.uninstall, rpm_name)
