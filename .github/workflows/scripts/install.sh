@@ -41,7 +41,7 @@ image:
   tag: "${TAG}"
 plugins:
   - name: pulpcore
-    source: pulpcore3.13
+    source: pulpcore~=3.13.0
   - name: pulp_rpm
     source:  "${PLUGIN_NAME}"
 services:
