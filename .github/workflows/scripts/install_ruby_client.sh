@@ -10,26 +10,15 @@
 set -euv
 
 # make sure this script runs at the repo root
-cd "$(dirname "$(realpath -e "$0")")"/../..
+cd "$(dirname "$(realpath -e "$0")")"/../../..
 
 export PULP_URL="${PULP_URL:-http://pulp}"
-
-mkdir ~/.gem || true
-touch ~/.gem/credentials
-echo "---
-:rubygems_api_key: $RUBYGEMS_API_KEY" > ~/.gem/credentials
-sudo chmod 600 ~/.gem/credentials
 
 export REPORTED_VERSION=$(http pulp/pulp/api/v3/status/ | jq --arg plugin rpm --arg legacy_plugin pulp_rpm -r '.versions[] | select(.component == $plugin or .component == $legacy_plugin) | .version')
 export DESCRIPTION="$(git describe --all --exact-match `git rev-parse HEAD`)"
 if [[ $DESCRIPTION == 'tags/'$REPORTED_VERSION ]]; then
   export VERSION=${REPORTED_VERSION}
 else
-  # Daily publishing of development version (ends in ".dev" reported as ".dev0")
-  if [ "${REPORTED_VERSION%.dev*}" == "${REPORTED_VERSION}" ]; then
-    echo "Refusing to publish bindings. $REPORTED_VERSION does not contain 'dev'."
-    exit 1
-  fi
   export EPOCH="$(date +%s)"
   export VERSION=${REPORTED_VERSION}${EPOCH}
 fi
@@ -38,7 +27,10 @@ export response=$(curl --write-out %{http_code} --silent --output /dev/null http
 
 if [ "$response" == "200" ];
 then
-  echo "pulp_rpm $VERSION has already been released. Skipping."
+  echo "pulp_rpm client $VERSION has already been released. Installing from RubyGems.org."
+  gem install pulp_rpm_client -v $VERSION
+  touch pulp_rpm_client-$VERSION.gem
+  tar cvf ruby-client.tar ./pulp_rpm_client-$VERSION.gem
   exit
 fi
 
@@ -47,5 +39,5 @@ cd ../pulp-openapi-generator
 ./generate.sh pulp_rpm ruby $VERSION
 cd pulp_rpm-client
 gem build pulp_rpm_client
-GEM_FILE="$(ls pulp_rpm_client-*)"
-gem push ${GEM_FILE}
+gem install --both ./pulp_rpm_client-$VERSION.gem
+tar cvf ../../pulp_rpm/ruby-client.tar ./pulp_rpm_client-$VERSION.gem
