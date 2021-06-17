@@ -13,6 +13,44 @@ Changelog
 
 .. towncrier release notes start
 
+3.13.0 (2021-06-17)
+
+Features
+--------
+
+- A sync with mirror=True will automatically create a publication using the existing metadata downloaded from the original repo, keeping the repository signature intact.
+  `#6353 <https://pulp.plan.io/issues/6353>`_
+- Allow the checksum types for packages and metadata to be unspecified, and intelligently decide which ones to use based on context if so.
+  `#8722 <https://pulp.plan.io/issues/8722>`_
+- Auto-publish no longer modifies distributions.
+  Auto-distribute now only requires setting a distribution's ``repository`` field.
+  `#8759 <https://pulp.plan.io/issues/8759>`_
+- Substantially improved memory consumption while processing extremely large repositories.
+  `#8864 <https://pulp.plan.io/issues/8864>`_
+
+
+Bugfixes
+--------
+
+- Fixed publication of a distribution tree if productmd 1.33+ is installed.
+  `#8807 <https://pulp.plan.io/issues/8807>`_
+- Fixed sync for the case when SRPMs are asked to be skipped.
+  `#8812 <https://pulp.plan.io/issues/8812>`_
+- Allow static_context to be absent.
+  `#8814 <https://pulp.plan.io/issues/8814>`_
+- Fixed a trailing slash sometimes being inserted improperly if sles_auth_token is used.
+  `#8816 <https://pulp.plan.io/issues/8816>`_
+
+
+Misc
+----
+
+- `#8681 <https://pulp.plan.io/issues/8681>`_
+
+
+----
+
+
 3.12.0 (2021-05-19)
 ===================
 
