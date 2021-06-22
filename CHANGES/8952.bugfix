@@ -1,0 +1,1 @@
+Taught sync to process modulemd before packages so is_modular can be known.

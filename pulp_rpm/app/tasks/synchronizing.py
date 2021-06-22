@@ -712,17 +712,21 @@ class RpmFirstStage(Stage):
 
         await self.parse_distribution_tree()
 
+        # modularity-parsing MUST COME BEFORE package-parsing!
+        # The only way to know if a package is 'modular' in a repo, is to
+        # know that it is referenced in modulemd.
+        modulemd_list = []
+        modulemd_result = metadata_results.get("modules", None)
+        if modulemd_result:
+            modulemd_list = await self.parse_modules_metadata(modulemd_result)
+
+        # **Now** we can successfully parse package-metadata
         await self.parse_packages(
             metadata_results["primary"],
             metadata_results["filelists"],
             metadata_results["other"],
             file_extension=file_extension,
         )
-
-        modulemd_list = []
-        modulemd_result = metadata_results.get("modules", None)
-        if modulemd_result:
-            modulemd_list = await self.parse_modules_metadata(modulemd_result)
 
         groups_list = []
         comps_result = metadata_results.get("group", None)
