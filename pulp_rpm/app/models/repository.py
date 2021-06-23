@@ -52,6 +52,9 @@ class RpmRemote(Remote):
     TYPE = "rpm"
     sles_auth_token = models.CharField(max_length=512, null=True)
 
+    DEFAULT_DOWNLOAD_CONCURRENCY = 7
+    DEFAULT_MAX_RETRIES = 4
+
     @property
     def download_factory(self):
         """

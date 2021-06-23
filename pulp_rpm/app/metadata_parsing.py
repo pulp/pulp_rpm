@@ -80,11 +80,11 @@ def iterative_files_changelog_parser(file_extension, filelists_xml_path, other_x
 
                 break
 
-            filelists_root_element.clear()  # clear all previously parsed ancestors of the root
-            other_root_element.clear()
-
             (filelists_pkgid, files) = process_filelists_package_element(filelists_element)
             (other_pkgid, changelogs) = process_other_package_element(other_element)
+
+            filelists_root_element.clear()  # clear all previously parsed ancestors of the root
+            other_root_element.clear()
 
             assert (
                 filelists_pkgid == other_pkgid
