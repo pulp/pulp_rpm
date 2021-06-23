@@ -219,6 +219,12 @@ jobs:
         env:
           SECRETS_CONTEXT: ${{ toJson(secrets) }}
 
+      - name: Install python dependencies
+        run: |
+          echo ::group::PYDEPS
+          pip install gitpython python-redmine
+          echo ::endgroup::
+
       - name: Push branch and tag to GitHub
         run: bash .github/workflows/scripts/push_branch_and_tag_to_github.sh ${{ github.event.inputs.release }}
       - name: Download built docs
