@@ -100,7 +100,7 @@ def process_filelists_package_element(element):
     pkgid = element.attrib["pkgid"]
 
     files = []
-    for element in element.findall("file"):
+    for element in element.findall("{*}file"):
         basename, filename = os.path.split(element.text)
         ftype = element.attrib.get("type")
 
@@ -114,7 +114,7 @@ def process_other_package_element(element):
     pkgid = element.attrib["pkgid"]
 
     changelogs = []
-    for element in element.findall("changelog"):
+    for element in element.findall("{*}changelog"):
         author = element.attrib["author"]
         date = int(element.attrib["date"])
         text = element.text

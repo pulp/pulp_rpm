@@ -1,0 +1,2 @@
+Fix filelists and changelogs not always being parsed correctly.
+(backported from #8955)
