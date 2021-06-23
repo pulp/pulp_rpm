@@ -972,6 +972,7 @@ class RpmFirstStage(Stage):
         extra_repodata_parser = iterative_files_changelog_parser(
             file_extension, filelists_xml.path, other_xml.path
         )
+        seen_pkgids = set()
         with ProgressReport(**progress_data) as packages_pb:
             while True:
                 try:
@@ -979,7 +980,19 @@ class RpmFirstStage(Stage):
                 except KeyError:
                     break
 
-                pkgid_extra, files, changelogs = next(extra_repodata_parser)
+                while True:
+                    pkgid_extra, files, changelogs = next(extra_repodata_parser)
+                    if pkgid_extra in seen_pkgids:
+                        # This is a dirty hack to handle cases that "shouldn't" happen.
+                        # Sometimes repositories have packages listed twice under the same pkgid.
+                        # This is a problem because the primary.xml parsing deduplicates the
+                        # entries by placing them into a dict keyed by pkgid. So if the iterative
+                        # parser(s) run into a package we've seen before, we should skip it and
+                        # move on.
+                        continue
+                    else:
+                        seen_pkgids.add(pkgid)
+                        break
 
                 assert pkgid == pkgid_extra, (
                     "Package id from primary metadata ({}), does not match package id "
