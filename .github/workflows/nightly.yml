@@ -36,11 +36,6 @@ jobs:
         with:
           python-version: "3.7"
 
-      - uses: actions/setup-ruby@v1
-        if: ${{ env.TEST == 'bindings' || env.TEST == 'generate-bindings' }}
-        with:
-          ruby-version: "2.6"
-
       - name: Install httpie
         run: |
           echo ::group::HTTPIE
@@ -53,6 +48,11 @@ jobs:
       - name: Before Install
         run: .github/workflows/scripts/before_install.sh
         shell: bash
+
+      - uses: ruby/setup-ruby@v1
+        if: ${{ env.TEST == 'bindings' || env.TEST == 'generate-bindings' }}
+        with:
+          ruby-version: "2.6"
 
       - name: Install
         run: .github/workflows/scripts/install.sh
