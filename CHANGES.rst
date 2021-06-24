@@ -13,6 +13,35 @@ Changelog
 
 .. towncrier release notes start
 
+3.13.2 (2021-06-23)
+
+Bugfixes
+--------
+
+- Taught sync to process modulemd before packages so is_modular can be known.
+  (backported from #8952)
+  `#8964 <https://pulp.plan.io/issues/8964>`_
+
+
+----
+
+
+3.13.1 (2021-06-23)
+
+Bugfixes
+--------
+
+- Fix filelists and changelogs not always being parsed correctly.
+  (backported from #8955)
+  `#8961 <https://pulp.plan.io/issues/8961>`_
+- Fix an AssertionError that could occur when processing malformed (but technically valid) metadata.
+  (backported from #8944)
+  `#8962 <https://pulp.plan.io/issues/8962>`_
+
+
+----
+
+
 3.13.0 (2021-06-17)
 
 Features

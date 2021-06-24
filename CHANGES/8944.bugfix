@@ -1,1 +1,0 @@
-Fix an AssertionError that could occur when processing malformed (but technically valid) metadata.
