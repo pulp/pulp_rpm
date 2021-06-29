@@ -103,7 +103,7 @@ def _get_profile_defaults(module):
     profile_defaults = {}
     for stream, defaults in module.peek_profile_defaults().items():
         profile_defaults[stream] = defaults.get()
-    return bson.BSON.encode(profile_defaults)
+    return bson.binary.Binary(bson.BSON.encode(profile_defaults))
 
 
 def _get_dependencies(module):
