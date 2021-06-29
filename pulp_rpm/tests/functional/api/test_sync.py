@@ -38,6 +38,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_CUSTOM_REPO_METADATA_CHANGED_FIXTURE_URL,
     RPM_CUSTOM_REPO_METADATA_FIXTURE_URL,
     RPM_EPEL_URL,
+    RPM_EPEL_MIRROR_URL,
     RPM_FIXTURE_SUMMARY,
     RPM_INVALID_FIXTURE_URL,
     RPM_KICKSTART_FIXTURE_SUMMARY,
@@ -137,6 +138,14 @@ class BasicSyncTestCase(PulpTestCase):
 
         self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
         self.assertDictEqual(get_added_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
+
+    def test_sync_from_valid_mirror_list_feed_with_params(self):
+        """Sync RPM content from a mirror list feed which contains a valid remote URL."""
+        remote = self.remote_api.create(gen_rpm_remote(RPM_EPEL_MIRROR_URL))
+        repo, remote = self.do_test(remote=remote)
+
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
     def test_sync_from_invalid_mirror_list_feed(self):
         """Sync RPM content from a mirror list feed which contains an invalid remote URL."""
