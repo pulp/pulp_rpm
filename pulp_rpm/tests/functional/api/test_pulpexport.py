@@ -21,7 +21,7 @@ from pulp_rpm.tests.functional.utils import (
 from pulpcore.client.pulpcore import (
     ApiClient as CoreApiClient,
     ExportersPulpApi,
-    ExportersCoreExportsApi,
+    ExportersPulpExportsApi,
 )
 
 from pulpcore.client.pulp_rpm import (
@@ -69,7 +69,7 @@ class BaseExporterCase(PulpTestCase):
         cls.repo_api = RepositoriesRpmApi(cls.rpm_client)
         cls.remote_api = RemotesRpmApi(cls.rpm_client)
         cls.exporter_api = ExportersPulpApi(cls.core_client)
-        cls.exports_api = ExportersCoreExportsApi(cls.core_client)
+        cls.exports_api = ExportersPulpExportsApi(cls.core_client)
 
         (cls.repo, cls.remote) = cls._setup_repositories()
 
