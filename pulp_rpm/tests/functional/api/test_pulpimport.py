@@ -21,9 +21,9 @@ from pulp_rpm.tests.functional.utils import (
 from pulpcore.client.pulpcore import (
     ApiClient as CoreApiClient,
     ExportersPulpApi,
-    ExportersCoreExportsApi,
+    ExportersPulpExportsApi,
     ImportersPulpApi,
-    ImportersCoreImportsApi,
+    ImportersPulpImportsApi,
 )
 from pulpcore.client.pulp_rpm import (
     ContentDistributionTreesApi,
@@ -183,9 +183,9 @@ class PulpImportTestCase(PulpImportTestBase):
         cls.repo_api = RepositoriesRpmApi(cls.rpm_client)
         cls.remote_api = RemotesRpmApi(cls.rpm_client)
         cls.exporter_api = ExportersPulpApi(cls.core_client)
-        cls.exports_api = ExportersCoreExportsApi(cls.core_client)
+        cls.exports_api = ExportersPulpExportsApi(cls.core_client)
         cls.importer_api = ImportersPulpApi(cls.core_client)
-        cls.imports_api = ImportersCoreImportsApi(cls.core_client)
+        cls.imports_api = ImportersPulpImportsApi(cls.core_client)
 
         cls.import_repos, cls.export_repos, cls.remotes = cls._setup_repositories()
         cls.exporter = cls._create_exporter()
@@ -232,9 +232,9 @@ class DistributionTreePulpImportTestCase(PulpImportTestBase):
         cls.repo_api = RepositoriesRpmApi(cls.rpm_client)
         cls.remote_api = RemotesRpmApi(cls.rpm_client)
         cls.exporter_api = ExportersPulpApi(cls.core_client)
-        cls.exports_api = ExportersCoreExportsApi(cls.core_client)
+        cls.exports_api = ExportersPulpExportsApi(cls.core_client)
         cls.importer_api = ImportersPulpApi(cls.core_client)
-        cls.imports_api = ImportersCoreImportsApi(cls.core_client)
+        cls.imports_api = ImportersPulpImportsApi(cls.core_client)
         cls.dist_tree_api = ContentDistributionTreesApi(cls.rpm_client)
 
         cls.import_repos, cls.export_repos, cls.remotes = cls._setup_repositories(
@@ -271,9 +271,9 @@ class ParallelImportTestCase(PulpImportTestBase):
         cls.repo_api = RepositoriesRpmApi(cls.rpm_client)
         cls.remote_api = RemotesRpmApi(cls.rpm_client)
         cls.exporter_api = ExportersPulpApi(cls.core_client)
-        cls.exports_api = ExportersCoreExportsApi(cls.core_client)
+        cls.exports_api = ExportersPulpExportsApi(cls.core_client)
         cls.importer_api = ImportersPulpApi(cls.core_client)
-        cls.imports_api = ImportersCoreImportsApi(cls.core_client)
+        cls.imports_api = ImportersPulpImportsApi(cls.core_client)
         cls.dist_tree_api = ContentDistributionTreesApi(cls.rpm_client)
 
         cls.import_repos, cls.export_repos, cls.remotes = cls._setup_repositories(
