@@ -29,6 +29,7 @@ plugin_default_branch: master
 plugin_name: pulp_rpm
 plugin_snake: pulp_rpm
 publish_docs_to_pulpprojectdotorg: true
+pulp_scheme: https
 pulp_settings:
   allowed_content_checksums:
   - sha1

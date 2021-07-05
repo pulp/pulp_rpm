@@ -12,6 +12,11 @@ on:
       release:
         description: "Release tag (e.g. 3.2.1)"
         required: true
+      before_script:
+        description: |
+          Bash code to run before script.sh is executed. This should only be used when re-running
+          a workflow to correct some aspect of the docs. e.g.: git checkout origin/3.14 CHANGES.rst
+        required: false
 
 env:
   RELEASE_WORKFLOW: true
@@ -37,7 +42,7 @@ jobs:
       - name: Install python dependencies
         run: |
           echo ::group::PYDEPS
-          pip install bandersnatch bump2version gitpython python-redmine towncrier wheel
+          pip install bandersnatch bump2version gitpython python-redmine towncrier==19.9.0 wheel
           echo ::endgroup::
 
       - name: Configure Git with pulpbot name and email
@@ -139,6 +144,10 @@ jobs:
         if: ${{ env.TEST == 'bindings' || env.TEST == 'generate-bindings' }}
         run: .github/workflows/scripts/install_ruby_client.sh
 
+      - name: Additional before_script
+        run: ${{ github.event.inputs.before_script }}
+        shell: bash
+
       - name: Script
         if: ${{ env.TEST != 'generate-bindings' }}
         run: .github/workflows/scripts/script.sh
@@ -168,7 +177,7 @@ jobs:
       - name: After failure
         if: failure()
         run: |
-          http --timeout 30 --check-status --pretty format --print hb http://pulp/pulp/api/v3/status/ || true
+          http --timeout 30 --check-status --pretty format --print hb https://pulp/pulp/api/v3/status/ || true
           docker images || true
           docker ps -a || true
           docker logs pulp || true
@@ -199,6 +208,11 @@ jobs:
       - uses: actions/setup-ruby@v1
         with:
           ruby-version: "2.6"
+
+      - name: Configure Git with pulpbot name and email
+        run: |
+          git config --global user.name 'pulpbot'
+          git config --global user.email 'pulp-infra@redhat.com'
 
       - name: Untar repository
         run: |
@@ -258,11 +272,15 @@ jobs:
 
       - name: Publish client to rubygems
         run: bash .github/workflows/scripts/publish_client_gem.sh
+
       - name: Update Redmine
         run: bash .ci/scripts/update_redmine.sh
 
       - name: Create release on GitHub
         run: bash .github/workflows/scripts/create_release_from_tag.sh ${{ github.event.inputs.release }}
+
+      - name: Cleanup repository before making changelog PR
+        run: rm -rf .lock generation pulp_rpm_client* *-client.tar pulp_rpm.tar todo web docs.tar
 
       - name: Stage changelog for master branch
         run: python .github/workflows/scripts/stage-changelog-for-master.py ${{ github.event.inputs.release }}
