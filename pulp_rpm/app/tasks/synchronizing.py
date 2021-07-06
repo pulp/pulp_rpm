@@ -199,6 +199,8 @@ def get_repomd_file(remote, url):
     except ClientResponseError as exc:
         if 404 == exc.status:
             return
+        else:
+            raise
     except FileNotFoundError:
         return
 
