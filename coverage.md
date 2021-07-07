@@ -16,13 +16,14 @@ This file contains list of features and their test coverage.
   As a user, I can sync all yum content types ( NO drpm) with optimization in mirror mode| PART
    | only types contained in rpm-unsigned |
 | As a user, my mirror-mode syncs are exactly identical to the upstream repo (checksums, metadata files, repomd signature, package locations, extra_files.json) | NO | Needs fixture https://pulp.plan.io/issues/8809 |
+| As a user, I can sync an RPM repository from the local filesystem | PART | Only tested with basic fixture in immediate mode with mirroring enabled |
 | As a user, I can sync and skip specific type (srpm) | YES |  |
 | As a user, I can sync opensuse repository | NO |  |
 | As a user, I can sync Oracle repository using ULN | NO | |
 | As a user, I can sync from a mirror list | YES |  |
 | As a user, I can sync from a mirror list with comments | YES |  |
 | As a user, I can sync from CDN using certificates | YES |  |
-| As a user, I can re-sync custom reposotory metadata when it was the only change in a repository | YES |  |
+| As a user, I can re-sync custom repository metadata when it was the only change in a repository | YES |  |
 | **Duplicates** |  |  |
 | As a user, I have only one advisory with the same id in a repo version | YES |  |
 | As a user, I have only one module with the same NSVCA in a repo version | NO |  |

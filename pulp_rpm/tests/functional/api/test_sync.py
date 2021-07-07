@@ -128,6 +128,32 @@ class BasicSyncTestCase(PulpTestCase):
         self.assertEqual(latest_version_href, repo.latest_version_href)
         self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
 
+    def test_sync_local(self):
+        """Test syncing from the local filesystem."""
+        import shutil
+
+        if not shutil.which("wget"):
+            unittest.skip("Cannot run file:// sync tests without 'wget' available.")
+
+        cli.Client(self.cfg).run(
+            (
+                "wget",
+                "--recursive",
+                "--no-parent",
+                "--no-host-directories",
+                "--directory-prefix",
+                "/tmp",
+                RPM_UNSIGNED_FIXTURE_URL,
+            )
+        )
+
+        remote = self.remote_api.create(gen_rpm_remote(url="file:///tmp/rpm-unsigned/"))
+
+        repo, remote = self.do_test(remote=remote, mirror=True)
+
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
     def test_sync_from_valid_mirror_list_feed(self):
         """Sync RPM content from a mirror list feed which contains a valid remote URL."""
         remote = self.remote_api.create(gen_rpm_remote(RPM_MIRROR_LIST_GOOD_FIXTURE_URL))
@@ -1094,7 +1120,7 @@ class BasicSyncTestCase(PulpTestCase):
         self.assertEqual(present_package_count, 0)
         self.assertEqual(present_advisory_count, SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT)
 
-    def do_test(self, repository=None, remote=None):
+    def do_test(self, repository=None, remote=None, mirror=False):
         """Sync a repository.
 
         Args:
@@ -1102,6 +1128,7 @@ class BasicSyncTestCase(PulpTestCase):
                 object of RPM repository
             remote (pulp_rpm.app.models.repository.RpmRemote):
                 object of RPM Remote
+            mirror (bool): Whether to use mirror-mode during the sync
         Returns (tuple):
             tuple of instances of
             pulp_rpm.app.models.repository.RpmRepository, pulp_rpm.app.models.repository.RpmRemote
@@ -1118,7 +1145,7 @@ class BasicSyncTestCase(PulpTestCase):
         else:
             remote = self.remote_api.read(remote.pulp_href)
 
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, mirror=mirror)
         sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
         monitor_task(sync_response.task)
         return self.repo_api.read(repo.pulp_href), self.remote_api.read(remote.pulp_href)

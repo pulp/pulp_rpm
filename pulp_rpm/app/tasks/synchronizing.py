@@ -633,6 +633,8 @@ class RpmFirstStage(Stage):
                         metadata_pb.increment()
                 except ClientResponseError as exc:
                     raise HTTPNotFound(reason=_("File not found: {}".format(exc.request_info.url)))
+                except FileNotFoundError:
+                    raise
 
                 if self.mirror:
                     # optional signature and key files for repomd metadata
@@ -644,7 +646,7 @@ class RpmFirstStage(Stage):
                             result = await downloader.run()
                             store_metadata_for_mirroring(self.repository, result, file_href)
                             metadata_pb.increment()
-                        except ClientResponseError:
+                        except (ClientResponseError, FileNotFoundError):
                             pass
 
                     # extra files to copy, e.g. EULA, LICENSE
@@ -655,7 +657,7 @@ class RpmFirstStage(Stage):
                         result = await downloader.run()
                         store_metadata_for_mirroring(self.repository, result, "extra_files.json")
                         metadata_pb.increment()
-                    except ClientResponseError:
+                    except (ClientResponseError, FileNotFoundError):
                         pass
                     else:
                         try:
@@ -676,6 +678,8 @@ class RpmFirstStage(Stage):
                             raise HTTPNotFound(
                                 reason=_("File not found: {}".format(exc.request_info.url))
                             )
+                        except FileNotFoundError:
+                            raise
 
             await self.parse_repository_metadata(repomd, repomd_files, file_extension)
 
