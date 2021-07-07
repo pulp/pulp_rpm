@@ -1,0 +1,2 @@
+Restored ability to correctly handle complicated mirrorlist URLs.
+(backported from #8981)
