@@ -179,8 +179,8 @@ def get_repomd_file(remote, url):
     Check if repodata exists.
 
     Args:
-        remote(RpmRemote or UlnRemote): An RpmRemote or UlnRemote to download with.
-        url(str): A remote repository URL
+        remote (RpmRemote or UlnRemote): An RpmRemote or UlnRemote to download with.
+        url (str): A remote repository URL
 
     Returns:
         pulpcore.plugin.download.DownloadResult: downloaded repomd.xml
@@ -193,16 +193,7 @@ def get_repomd_file(remote, url):
     # in. See https://pulp.plan.io/issues/8981 for more details.
     url = url.split("?")[0]
     downloader = remote.get_downloader(url=urlpath_sanitize(url, "repodata/repomd.xml"))
-
-    try:
-        result = downloader.fetch()
-    except ClientResponseError as exc:
-        if 404 == exc.status:
-            return
-    except FileNotFoundError:
-        return
-
-    return result
+    return downloader.fetch()
 
 
 def fetch_mirror(remote):
@@ -219,9 +210,19 @@ def fetch_mirror(remote):
             match = re.match(url_pattern, mirror)
             if not match:
                 continue
-            repodata_exists = get_repomd_file(remote, match.group(2))
-            if match and repodata_exists:
-                return match.group(2)
+
+            mirror_url = match.group(2)
+            try:
+                get_repomd_file(remote, mirror_url)
+                # just check if the metadata exists
+                return mirror_url
+            except Exception as exc:
+                log.warning(
+                    "Url '{}' from mirrorlist was tried and failed with error: {}".format(
+                        mirror_url, exc
+                    )
+                )
+                continue
 
     return None
 
@@ -232,16 +233,30 @@ def fetch_remote_url(remote):
     def normalize_url(url):
         return url.rstrip("/") + "/"
 
-    remote_url = normalize_url(remote.url)
-    if get_repomd_file(remote, remote_url):
-        return remote_url
+    try:
+        normalized_remote_url = normalize_url(remote.url)
+        get_repomd_file(remote, normalized_remote_url)
+        # just check if the metadata exists
+        return normalized_remote_url
+    except ClientResponseError as exc:
+        log.info(
+            _("Attempting to resolve a true url from potential mirrolist url '{}'").format(
+                remote.url
+            )
+        )
+        remote_url = fetch_mirror(remote)
+        if remote_url:
+            log.info(
+                _("Using url '{}' from mirrorlist in place of the provided url {}").format(
+                    remote_url, remote.url
+                )
+            )
+            return normalize_url(remote_url)
 
-    remote_url = fetch_mirror(remote)
-    if remote_url:
-        log.info(_("Using url '{}' from mirrorlist").format(remote_url))
-        return normalize_url(remote_url)
+        if exc.status == 404:
+            raise ValueError(_("An invalid remote URL was provided: {}").format(remote.url))
 
-    raise ValueError(_("An invalid remote URL was provided: {}").format(remote.url))
+        raise exc
 
 
 def is_optimized_sync(repository, remote, url):
@@ -263,13 +278,13 @@ def is_optimized_sync(repository, remote, url):
 
     """
     with tempfile.TemporaryDirectory("."):
-        result = get_repomd_file(remote, url)
-        if not result:
+        try:
+            result = get_repomd_file(remote, url)
+            repomd_path = result.path
+            repomd = cr.Repomd(repomd_path)
+            repomd_checksum = get_sha256(repomd_path)
+        except Exception:
             return False
-
-        repomd_path = result.path
-        repomd = cr.Repomd(repomd_path)
-        repomd_checksum = get_sha256(repomd_path)
 
     is_optimized = (
         repository.last_sync_remote
@@ -366,9 +381,15 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
             treeinfo["repositories"].update({directory: str(sub_repo.pk)})
             path = f"{repodata}/"
             new_url = urlpath_sanitize(remote_url, path)
-            with tempfile.TemporaryDirectory("."):
-                repodata_exists = get_repomd_file(remote, new_url)
-            if repodata_exists:
+
+            try:
+                with tempfile.TemporaryDirectory("."):
+                    get_repomd_file(remote, new_url)
+            except ClientResponseError as exc:
+                if exc.status == 404:
+                    continue
+                raise exc
+            else:
                 if optimize and is_optimized_sync(sub_repo, remote, new_url):
                     continue
                 stage = RpmFirstStage(
