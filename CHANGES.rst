@@ -13,6 +13,32 @@ Changelog
 
 .. towncrier release notes start
 
+3.13.3 (2021-07-07)
+===================
+
+
+Bugfixes
+--------
+
+- 
+  `#9023 <https://pulp.plan.io/issues/9023>`_
+- Restored ability to correctly handle complicated mirrorlist URLs.
+  (backported from #8981)
+  `#9026 <https://pulp.plan.io/issues/9026>`_
+- Fix UnboundLocalException if Pulp receives a non-404 HTTP error code when attempting to download metadata.
+  (backported from #8787)
+  `#9027 <https://pulp.plan.io/issues/9027>`_
+
+
+Misc
+----
+
+- `#7350 <https://pulp.plan.io/issues/7350>`_
+
+
+----
+
+
 3.13.2 (2021-06-23)
 
 Bugfixes

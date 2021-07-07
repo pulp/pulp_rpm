@@ -1,2 +1,0 @@
-Fix UnboundLocalException if Pulp receives a non-404 HTTP error code when attempting to download metadata.
-(backported from #8787)
