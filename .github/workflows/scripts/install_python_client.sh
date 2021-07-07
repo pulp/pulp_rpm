@@ -16,7 +16,7 @@ cd "$(dirname "$(realpath -e "$0")")"/../../..
 
 pip install twine wheel
 
-export REPORTED_VERSION=$(http pulp/pulp/api/v3/status/ | jq --arg plugin rpm --arg legacy_plugin pulp_rpm -r '.versions[] | select(.component == $plugin or .component == $legacy_plugin) | .version')
+export REPORTED_VERSION=$(http $PULP_URL/pulp/api/v3/status/ | jq --arg plugin rpm --arg legacy_plugin pulp_rpm -r '.versions[] | select(.component == $plugin or .component == $legacy_plugin) | .version')
 export DESCRIPTION="$(git describe --all --exact-match `git rev-parse HEAD`)"
 if [[ $DESCRIPTION == 'tags/'$REPORTED_VERSION ]]; then
   export VERSION=${REPORTED_VERSION}
@@ -37,7 +37,7 @@ then
 fi
 
 cd ../pulp-openapi-generator
-
+rm -rf pulp_rpm-client
 ./generate.sh pulp_rpm python $VERSION
 cd pulp_rpm-client
 python setup.py sdist bdist_wheel --python-tag py3
