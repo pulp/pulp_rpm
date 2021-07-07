@@ -186,6 +186,12 @@ def get_repomd_file(remote, url):
         pulpcore.plugin.download.DownloadResult: downloaded repomd.xml
 
     """
+    # URLs, esp mirrorlist URLs, can come into this method with parameters attached.
+    # This causes the urlpath_sanitize() below to return something like
+    # "http://path?param&param/repodata/repomd.xml", which is **not** an expected/useful response.
+    # Make sure we're only looking for the repomd.xml file, no matter what weirdness comes
+    # in. See https://pulp.plan.io/issues/8981 for more details.
+    url = url.split("?")[0]
     downloader = remote.get_downloader(url=urlpath_sanitize(url, "repodata/repomd.xml"))
 
     try:
