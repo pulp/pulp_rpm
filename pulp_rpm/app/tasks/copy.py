@@ -93,13 +93,15 @@ def find_children_of_content(content, src_repo_version):
     for packagegroup in packagegroups.iterator():
         group_package_names = [pkg["name"] for pkg in packagegroup.packages]
         for pkg in group_package_names:
-            packages_by_name = [
-                pkg
-                for pkg in Package.objects.with_age().filter(
-                    name=pkg, pk__in=src_repo_version.content
-                )
-                if pkg.age == 1
-            ]
+            packages_by_name = Package.objects.filter(name=pkg, pk__in=content)
+            if not packages_by_name.exists():
+                packages_by_name = [
+                    pkg
+                    for pkg in Package.objects.with_age().filter(
+                        name=pkg, pk__in=src_repo_version.content
+                    )
+                    if pkg.age == 1
+                ]
             for pkg in packages_by_name:
                 children.add(pkg.pk)
 
