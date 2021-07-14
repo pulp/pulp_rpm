@@ -38,20 +38,25 @@ class ContentHandlerTests(PulpTestCase):
 
     def setUp(self) -> None:
         """Set up the test."""
-        repo = self.repo_api.create(gen_repo())
-        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self._setUp()
 
-        publish_data = RpmRpmPublication(repository=repo.pulp_href)
+    def _setUp(self, cleanup=True):
+        """Helper to the setUp method."""
+        self.repo = self.repo_api.create(gen_repo())
+
+        publish_data = RpmRpmPublication(repository=self.repo.pulp_href)
         publish_response = self.publications_api.create(publish_data)
         created_resources = monitor_task(publish_response.task).created_resources
         publication_href = created_resources[0]
-        self.addCleanup(self.publications_api.delete, publication_href)
 
         dist_data = gen_distribution(publication=publication_href)
         dist_response = self.distributions_api.create(dist_data)
         created_resources = monitor_task(dist_response.task).created_resources
         self.dist = self.distributions_api.read(created_resources[0])
-        self.addCleanup(self.distributions_api.delete, self.dist.pulp_href)
+        if cleanup:
+            self.addCleanup(self.repo_api.delete, self.repo.pulp_href)
+            self.addCleanup(self.publications_api.delete, publication_href)
+            self.addCleanup(self.distributions_api.delete, self.dist.pulp_href)
 
     def testConfigRepoInListingUnsigned(self):
         """Whether the served resources are in the directory listing."""
@@ -63,6 +68,28 @@ class ContentHandlerTests(PulpTestCase):
 
     def testConfigRepoUnsigned(self):
         """Whether config.repo can be downloaded and has the right content."""
+        self.config_repo_check()
+
+    def testConfigRepoAutoDistribute(self):
+        """Whether config.repo is properly served using auto-distribute."""
+        self._setUp(cleanup=False)
+        self.addCleanup(self.repo_api.delete, self.repo.pulp_href)
+        self.addCleanup(self.distributions_api.delete, self.dist.pulp_href)
+        publication_href = self.dist.publication
+        body = {"repository": self.repo.pulp_href}
+        monitor_task(self.distributions_api.partial_update(self.dist.pulp_href, body).task)
+        # Check that distribution is now using repository to auto-distribute
+        self.dist = self.distributions_api.read(self.dist.pulp_href)
+        self.assertEqual(self.repo.pulp_href, self.dist.repository)
+        self.assertIsNone(self.dist.publication)
+        self.config_repo_check()
+        # Delete publication and check that 404 is now returned
+        self.publications_api.delete(publication_href)
+        resp = requests.get(f"{self.dist.base_url}config.repo")
+        self.assertEqual(resp.status_code, 404)
+
+    def config_repo_check(self):
+        """Helper to do the tests on config.repo."""
         resp = requests.get(f"{self.dist.base_url}config.repo")
 
         self.assertEqual(resp.status_code, 200)
