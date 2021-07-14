@@ -5,6 +5,7 @@ from gettext import gettext as _
 from logging import getLogger
 
 from aiohttp.web_response import Response
+from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
 from django.db import models, transaction
@@ -440,8 +441,10 @@ class RpmDistribution(Distribution):
     def content_handler(self, path):
         """Serve config.repo and public.key."""
         if path == self.repository_config_file_name:
+            repository, publication = self.get_repository_and_publication()
+            if not publication:
+                return
             base_url = f"{settings.CONTENT_ORIGIN}{settings.CONTENT_PATH_PREFIX}{self.base_path}/"
-            publication = self.publication.cast()
             val = textwrap.dedent(
                 f"""\
                 [{self.name}]
@@ -452,8 +455,6 @@ class RpmDistribution(Distribution):
                 """
             )
 
-            repository_pk = self.publication.repository.pk
-            repository = RpmRepository.objects.get(pk=repository_pk)
             signing_service = repository.metadata_signing_service
             if signing_service:
                 gpgkey_path = urlpath_sanitize(
@@ -472,6 +473,28 @@ class RpmDistribution(Distribution):
         if rel_path == "":
             retval.add(self.repository_config_file_name)
         return retval
+
+    def get_repository_and_publication(self):
+        """Retrieves the repository and publication associated with this distribution if exists."""
+        repository = publication = None
+        if self.publication:
+            publication = self.publication.cast()
+            repository = publication.repository.cast()
+        elif self.repository:
+            repository = self.repository.cast()
+            versions = repository.versions.all()
+            publications = Publication.objects.filter(
+                repository_version__in=versions, complete=True
+            )
+            try:
+                publication = (
+                    publications.select_related("repository_version")
+                    .latest("repository_version", "pulp_created")
+                    .cast()
+                )
+            except ObjectDoesNotExist:
+                pass
+        return repository, publication
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
