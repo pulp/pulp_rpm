@@ -1,0 +1,1 @@
+Fixed a SUSE sync-error involving repomd-extra files with '-' in their filename.

@@ -90,7 +90,9 @@ class PublicationData:
             current_file = content_artifact.artifact.file.file
             path = content_artifact.relative_path.split("/")[-1]
             if repo_metadata_file.checksum in path:
-                path = path.split("-")[-1]
+                # filenames can be checksum-xxxx.yyy - but can also be checksum-mmm-nnn-ooo.yyy
+                # split off the checksum, keep the rest
+                path = "-".join(path.split("-")[1:])
             if folder:
                 path = os.path.join(folder, path)
             with open(path, "wb") as new_file:
@@ -555,6 +557,7 @@ def generate_repo_metadata(
     repomdrecords.extend(extra_repomdrecords)
 
     sqlite_files = ("primary_db", "filelists_db", "other_db")
+
     for name, path, db_to_update in repomdrecords:
         record = cr.RepomdRecord(name, path)
         checksum_type = cr_checksum_type_from_string(
