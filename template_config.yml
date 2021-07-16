@@ -17,6 +17,7 @@ deploy_daily_client_to_rubygems: true
 deploy_to_pypi: true
 docker_fixtures: true
 docs_test: true
+flake8: true
 issue_tracker: redmine
 plugin_app_label: rpm
 plugin_camel: PulpRpm
@@ -48,6 +49,7 @@ pydocstyle: true
 pypi_username: pulp
 redmine_project: pulp_rpm
 release_user: pulpbot
+sync_ci: true
 test_bindings: false
 test_cli: true
 test_fips_nightly: false
