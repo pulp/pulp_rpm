@@ -4,6 +4,7 @@ from itertools import chain
 import hashlib
 
 import createrepo_c as cr
+from datetime import datetime
 
 from django.conf import settings
 from django.db import (
@@ -142,6 +143,23 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
 
     """
 
+    def _datetime_heuristics(in_str):
+        # issue- and update-dates can be datetimes, empty, or timetamps. Alas.
+        # Try to Do The Right Thing.
+        # Return None if we give up
+        if not in_str:
+            return None
+
+        dt = parse_datetime(in_str)
+        if not dt:
+            try:
+                tstamp = int(in_str)
+                dt = datetime.fromtimestamp(tstamp)
+            except:  # noqa
+                # No idea what this is - give up and return None
+                return None
+        return dt
+
     def _do_merge():
         # previous_advisory is used to copy the object and thus the variable refers to a
         # different object after `merge_advisories` call
@@ -153,10 +171,12 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
 
     to_add, to_remove, to_exclude = [], [], []
 
-    previous_updated_date = parse_datetime(
+    previous_updated_date = _datetime_heuristics(
         previous_advisory.updated_date or previous_advisory.issued_date
     )
-    added_updated_date = parse_datetime(added_advisory.updated_date or added_advisory.issued_date)
+    added_updated_date = _datetime_heuristics(
+        added_advisory.updated_date or added_advisory.issued_date
+    )
     previous_updated_version = previous_advisory.version
     added_updated_version = added_advisory.version
     previous_pkglist = set(previous_advisory.get_pkglist())

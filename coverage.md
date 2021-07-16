@@ -24,6 +24,8 @@ This file contains list of features and their test coverage.
 | As a user, I can sync from a mirror list with comments | YES |  |
 | As a user, I can sync from CDN using certificates | YES |  |
 | As a user, I can re-sync custom repository metadata when it was the only change in a repository | YES |  |
+| As a user, I can sync an existing advisory whose dates are timestamps (as opposed to datetimes) | NO  | Example: https://updates.suse.com/SUSE/Updates/SLE-SERVER/12-SP5/x86_64/update/ |
+| As a user, I can sync repos with repomd.xml files whose filenames contain dashes (e.g., app-icons.tar.gz) | NO  | Example: https://updates.suse.com/SUSE/Updates/SLE-SERVER/12-SP5/x86_64/update/ |
 | **Duplicates** |  |  |
 | As a user, I have only one advisory with the same id in a repo version | YES |  |
 | As a user, I have only one module with the same NSVCA in a repo version | NO |  |
