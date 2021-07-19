@@ -127,52 +127,55 @@ def store_package_for_mirroring(repo, pkgid, location_href):
     pkgid_to_location_href[str(repo.pk)][pkgid] = location_href
 
 
-def mirrored_publish(version):
+def add_metadata_to_publication(publication, version, prefix=""):
     """Create a mirrored publication for the given repository version.
 
     Uses the `metadata_files` global data.
 
     Args:
-        version: The repository version to mirror-publish
+        publication: The publication to add downloaded repo metadata to
+        version: The repository version the repo corresponds to
+    Kwargs:
+        prefix: Subdirectory underneath the root repository (if a sub-repo)
     """
-    with RpmPublication.create(version, pass_through=False) as publication:
-        repo_metadata_files = metadata_files_for_mirroring[str(version.repository.pk)]
+    repo_metadata_files = metadata_files_for_mirroring[str(version.repository.pk)]
 
-        has_repomd_signature = "repodata/repomd.xml.asc" in repo_metadata_files.keys()
-        has_sqlite = any([".sqlite" in href for href in repo_metadata_files.keys()])
+    has_repomd_signature = "repodata/repomd.xml.asc" in repo_metadata_files.keys()
+    has_sqlite = any([".sqlite" in href for href in repo_metadata_files.keys()])
 
-        publication.package_checksum_type = CHECKSUM_TYPES.UNKNOWN
-        publication.metadata_checksum_type = CHECKSUM_TYPES.UNKNOWN
-        publication.gpgcheck = 0
-        publication.repo_gpgcheck = has_repomd_signature
-        publication.sqlite_metadata = has_sqlite
+    publication.package_checksum_type = CHECKSUM_TYPES.UNKNOWN
+    publication.metadata_checksum_type = CHECKSUM_TYPES.UNKNOWN
+    publication.gpgcheck = 0
+    publication.repo_gpgcheck = has_repomd_signature
+    publication.sqlite_metadata = has_sqlite
 
-        for (relative_path, result) in repo_metadata_files.items():
-            PublishedMetadata.create_from_file(
-                file=File(open(result.path, "rb")),
-                relative_path=relative_path,
-                publication=publication,
-            )
-
-        published_artifacts = []
-        pkg_data = (
-            ContentArtifact.objects.filter(
-                content__in=version.content, content__pulp_type=Package.get_pulp_type()
-            )
-            .select_related("content__rpm_package")
-            .only("pk", "artifact", "content", "content__rpm_package__pkgId")
+    for (relative_path, result) in repo_metadata_files.items():
+        PublishedMetadata.create_from_file(
+            file=File(open(result.path, "rb")),
+            relative_path=os.path.join(prefix, relative_path),
+            publication=publication,
         )
-        for ca in pkg_data.iterator():
-            pa = PublishedArtifact(
-                content_artifact=ca,
-                relative_path=pkgid_to_location_href[str(version.repository.pk)][
-                    ca.content.rpm_package.pkgId
-                ],
-                publication=publication,
-            )
-            published_artifacts.append(pa)
 
-        PublishedArtifact.objects.bulk_create(published_artifacts)
+    published_artifacts = []
+    pkg_data = (
+        ContentArtifact.objects.filter(
+            content__in=version.content, content__pulp_type=Package.get_pulp_type()
+        )
+        .select_related("content__rpm_package")
+        .only("pk", "artifact", "content", "content__rpm_package__pkgId")
+    )
+    for ca in pkg_data.iterator():
+        relative_path = pkgid_to_location_href[str(version.repository.pk)][
+            ca.content.rpm_package.pkgId
+        ]
+        pa = PublishedArtifact(
+            content_artifact=ca,
+            relative_path=os.path.join(prefix, relative_path),
+            publication=publication,
+        )
+        published_artifacts.append(pa)
+
+    PublishedArtifact.objects.bulk_create(published_artifacts)
 
 
 def get_repomd_file(remote, url):
@@ -368,6 +371,8 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
 
         treeinfo = get_treeinfo_data(remote, remote_url)
 
+    sub_repos = []
+
     if treeinfo:
         treeinfo["repositories"] = {}
         for repodata in set(treeinfo["download"]["repodatas"]):
@@ -407,8 +412,7 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
                     sub_repo.last_sync_remote = remote
                     sub_repo.last_sync_repo_version = sub_repo.latest_version().number
                     sub_repo.save()
-                    if mirror:
-                        mirrored_publish(subrepo_version)
+                    sub_repos.append((directory, subrepo_version))
 
     first_stage = RpmFirstStage(
         remote,
@@ -426,7 +430,11 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
         repository.last_sync_repo_version = version.number
         repository.save()
         if mirror:
-            mirrored_publish(version)
+            with RpmPublication.create(version, pass_through=False) as publication:
+                add_metadata_to_publication(publication, version)
+                for (name, subrepo_version) in sub_repos:
+                    add_metadata_to_publication(publication, subrepo_version, prefix=name)
+
     return version
 
 
