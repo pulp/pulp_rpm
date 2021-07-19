@@ -1,4 +1,5 @@
 """Constants for Pulp RPM plugin tests."""
+
 from urllib.parse import urljoin
 
 from pulp_smash import config
@@ -80,6 +81,8 @@ RPM_SHA512_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-with-sha-512/")
 
 RPM_SIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-signed/")
 """The URL to a repository with signed RPM packages."""
+
+RPM_COMPLEX_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-complex-pkg/")
 
 RPM_SINGLE_REQUEST_UPLOAD = urljoin(BASE_PATH, "content/rpm/packages/")
 
@@ -197,6 +200,103 @@ RPM_PACKAGE_DATA = {
     # everything nicely
 }
 """The metadata for one RPM package."""
+
+
+RPM_COMPLEX_PACKAGE_DATA = {
+    "arch": "x86_64",
+    "artifact": None,
+    "changelogs": [
+        [
+            "Lucille Bluth <lucille@bluthcompany.com> - 1.1.1-1",
+            1617192000,
+            "- It's a banana, Michael. How much could it cost, $10?",
+        ],
+        [
+            "Job Bluth <job@alliance-of-magicians.com> - 2.2.2-2",
+            1619352000,
+            "- I've made a huge mistake",
+        ],
+        [
+            "George Bluth <george@federalprison.gov> - 3.3.3-3",
+            1623672000,
+            "- There’s always money in the banana stand",
+        ],
+    ],
+    "checksum_type": "sha256",
+    "conflicts": [["foxnetwork", "GT", "0", "5555", None, False]],
+    "description": "Complex package",
+    "enhances": [["(bananas or magic)", None, None, None, None, False]],
+    "epoch": "1",
+    "files": [
+        [None, "/etc/complex/", "pkg.cfg"],
+        [None, "/usr/bin/", "complex_a"],
+        ["dir", "/usr/share/doc/", "complex-package"],
+        [None, "/usr/share/doc/complex-package/", "README"],
+        ["dir", "/var/lib/", "complex"],
+        ["ghost", "/var/log/", "complex.log"],
+    ],
+    "is_modular": False,
+    "location_base": "",
+    "location_href": "complex-package-2.3.4-5.el8.x86_64.rpm",
+    "md5": None,
+    "name": "complex-package",
+    "obsoletes": [
+        ["bluemangroup", "LT", "0", "32.1", "0", False],
+        ["cornballer", "LT", "0", "444", None, False],
+    ],
+    "pkg_id": "bbb7b0e9350a0f75b923bdd0ef4f9af39765c668a3e70bfd3486ea9f0f618aaf",
+    "provides": [
+        ["/usr/bin/ls", None, None, None, None, False],
+        ["complex-package", "EQ", "1", "2.3.4", "5.el8", False],
+        ["complex-package(x86-64)", "EQ", "1", "2.3.4", "5.el8", False],
+        ["laughter", "EQ", "0", "33", None, False],
+        ["narration(ronhoward)", None, None, None, None, False],
+    ],
+    "recommends": [
+        ["((hiding and attic) if light-treason)", None, None, None, None, False],
+        ["GeneParmesan(PI)", None, None, None, None, False],
+        ["yacht", "GT", "9", "11.0", "0", False],
+    ],
+    "release": "5.el8",
+    "requires": [
+        ["/usr/bin/bash", None, None, None, None, False],
+        ["/usr/sbin/useradd", None, None, None, None, True],
+        ["arson", "GE", "0", "1.0.0", "1", False],
+        ["fur", "LE", "0", "2", None, False],
+        ["staircar", "LE", "0", "99.1", "3", False],
+    ],
+    "rpm_buildhost": "localhost",
+    "rpm_group": "Development/Tools",
+    "rpm_header_end": 8413,
+    "rpm_header_start": 4504,
+    "rpm_license": "MPLv2",
+    "rpm_packager": "Michael Bluth",
+    "rpm_sourcerpm": "complex-package-2.3.4-5.el8.src.rpm",
+    "rpm_vendor": "Bluth Company",
+    "sha1": None,
+    "sha224": None,
+    "sha256": None,
+    "sha384": None,
+    "sha512": None,
+    "size_archive": 932,
+    "size_installed": 117,
+    "size_package": 8680,
+    "suggests": [
+        ["(bobloblaw >= 1.1 if maritimelaw else anyone < 0.5.1-2)", None, None, None, None, False],
+        ["(dove and return)", None, None, None, None, False],
+        ["(job or money > 9000)", None, None, None, None, False],
+    ],
+    "summary": "A package for exercising many different features of RPM metadata",
+    "supplements": [
+        ["((hiding and illusion) unless alliance-of-magicians)", None, None, None, None, False],
+        ["comedy", "EQ", "0", "11.1", "4", False],
+    ],
+    "time_build": 1627052743,
+    "time_file": 1627056000,
+    "url": "http://bobloblaw.com",
+    "version": "2.3.4",
+}
+
 
 RPM_PACKAGE_DATA2 = {
     "name": "duck",

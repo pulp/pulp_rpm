@@ -100,11 +100,12 @@ def process_filelists_package_element(element):
     pkgid = element.attrib["pkgid"]
 
     files = []
-    for element in element.findall("{*}file"):
-        basename, filename = os.path.split(element.text)
-        ftype = element.attrib.get("type")
-
-        files.append((ftype, basename, filename))
+    for subelement in element:
+        if subelement.tag == "file" or re.sub(NS_STRIP_RE, "", subelement.tag) == "file":
+            basename, filename = os.path.split(subelement.text)
+            basename = f"{basename}/"
+            ftype = subelement.attrib.get("type")
+            files.append((ftype, basename, filename))
 
     return pkgid, files
 
@@ -114,11 +115,11 @@ def process_other_package_element(element):
     pkgid = element.attrib["pkgid"]
 
     changelogs = []
-    for element in element.findall("{*}changelog"):
-        author = element.attrib["author"]
-        date = int(element.attrib["date"])
-        text = element.text
-
-        changelogs.append((author, date, text))
+    for subelement in element:
+        if subelement.tag == "changelog" or re.sub(NS_STRIP_RE, "", subelement.tag) == "changelog":
+            author = subelement.attrib["author"]
+            date = int(subelement.attrib["date"])
+            text = subelement.text
+            changelogs.append((author, date, text))
 
     return pkgid, changelogs

@@ -590,10 +590,9 @@ class RpmFirstStage(Stage):
         # TODO: handle parsing errors/warnings, warningcb callback can be used below
         cr.xml_parse_primary(primary_xml_path, pkgcb=pkgcb, do_files=False)
 
-        # only left behind to make swapping back for testing easier - we are doing our own separate
-        # parsing of other.xml and filelists.xml
-        # cr.xml_parse_filelists(filelists_xml_path, newpkgcb=newpkgcb)
-        # cr.xml_parse_other(other_xml_path, newpkgcb=newpkgcb)
+        if not settings.RPM_ITERATIVE_PARSING:
+            cr.xml_parse_filelists(filelists_xml_path, newpkgcb=newpkgcb)
+            cr.xml_parse_other(other_xml_path, newpkgcb=newpkgcb)
         return packages
 
     async def run(self):
@@ -1029,27 +1028,29 @@ class RpmFirstStage(Stage):
                 except KeyError:
                     break
 
-                while True:
-                    pkgid_extra, files, changelogs = next(extra_repodata_parser)
-                    if pkgid_extra in seen_pkgids:
-                        # This is a dirty hack to handle cases that "shouldn't" happen.
-                        # Sometimes repositories have packages listed twice under the same pkgid.
-                        # This is a problem because the primary.xml parsing deduplicates the
-                        # entries by placing them into a dict keyed by pkgid. So if the iterative
-                        # parser(s) run into a package we've seen before, we should skip it and
-                        # move on.
-                        continue
-                    else:
-                        seen_pkgids.add(pkgid)
-                        break
+                if settings.RPM_ITERATIVE_PARSING:
+                    while True:
+                        pkgid_extra, files, changelogs = next(extra_repodata_parser)
+                        if pkgid_extra in seen_pkgids:
+                            # This is a dirty hack to handle cases that "shouldn't" happen.
+                            # Sometimes repositories have packages listed twice under the same
+                            # pkgid. This is a problem because the primary.xml parsing
+                            # deduplicates the entries by placing them into a dict keyed by pkgid.
+                            # So if the iterative parser(s) run into a package we've seen before,
+                            # we should skip it and move on.
+                            continue
+                        else:
+                            seen_pkgids.add(pkgid)
+                            break
 
-                assert pkgid == pkgid_extra, (
-                    "Package id from primary metadata ({}), does not match package id "
-                    "from filelists, other metadata ({})"
-                ).format(pkgid, pkgid_extra)
+                    assert pkgid == pkgid_extra, (
+                        "Package id from primary metadata ({}), does not match package id "
+                        "from filelists, other metadata ({})"
+                    ).format(pkgid, pkgid_extra)
 
-                pkg.files = files
-                pkg.changelogs = changelogs
+                    pkg.files = files
+                    pkg.changelogs = changelogs
+
                 package = Package(**Package.createrepo_to_dict(pkg))
                 del pkg
 

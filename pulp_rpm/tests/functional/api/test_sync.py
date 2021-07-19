@@ -3,6 +3,8 @@ import os
 import unittest
 from random import choice
 
+import dictdiffer
+
 from django.utils.dateparse import parse_datetime
 
 from pulp_smash import cli, config
@@ -39,6 +41,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_CUSTOM_REPO_METADATA_FIXTURE_URL,
     RPM_EPEL_URL,
     RPM_EPEL_MIRROR_URL,
+    RPM_COMPLEX_FIXTURE_URL,
     RPM_FIXTURE_SUMMARY,
     RPM_INVALID_FIXTURE_URL,
     RPM_KICKSTART_FIXTURE_SUMMARY,
@@ -52,6 +55,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_MODULAR_STATIC_FIXTURE_SUMMARY,
     RPM_PACKAGE_CONTENT_NAME,
     RPM_PACKAGE_COUNT,
+    RPM_COMPLEX_PACKAGE_DATA,
     RPM_REFERENCES_UPDATEINFO_URL,
     RPM_RICH_WEAK_FIXTURE_URL,
     RPM_SHA512_FIXTURE_URL,
@@ -72,6 +76,7 @@ from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa
 
 from pulpcore.client.pulp_rpm import (
     ContentDistributionTreesApi,
+    ContentPackagesApi,
     RepositoriesRpmApi,
     RpmRepositorySyncURL,
     RemotesRpmApi,
@@ -90,6 +95,8 @@ class BasicSyncTestCase(PulpTestCase):
         cls.cli_client = cli.Client(cls.cfg)
         cls.repo_api = RepositoriesRpmApi(cls.client)
         cls.remote_api = RemotesRpmApi(cls.client)
+        cls.packages_api = ContentPackagesApi(cls.client)
+
         delete_orphans(cls.cfg)
         cls.md5_allowed = "md5" in get_pulp_setting(cls.cli_client, "ALLOWED_CONTENT_CHECKSUMS")
 
@@ -436,6 +443,48 @@ class BasicSyncTestCase(PulpTestCase):
                     original_packages[nevra]["pkgId"],
                 )
 
+    def test_metadata_correctly_synced(self):
+        """Test that the metadata returned by the Pulp API post-sync matches what we expect.
+
+        Do the following:
+
+        1. Sync a repo.
+        2. Query package metadata from the API.
+        3. Match it against the metadata that we expect to be there.
+        """
+        delete_orphans()
+        body = gen_rpm_remote(RPM_COMPLEX_FIXTURE_URL, policy="on_demand")
+        remote = self.remote_api.create(body)
+
+        # sync
+        repo, remote = self.do_test(remote=remote)
+
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        package = self.packages_api.list(name=RPM_COMPLEX_PACKAGE_DATA["name"]).results[0]
+        package = package.to_dict()
+        # delete pulp-specific metadata
+        package.pop("pulp_href")
+        package.pop("pulp_created")
+
+        # sort file and changelog metadata
+        package["changelogs"].sort(reverse=True)
+        for metadata in [package, RPM_COMPLEX_PACKAGE_DATA]:
+            # the list-of-lists can't be sorted easily so we produce a string representation
+            files = []
+            for f in metadata["files"]:
+                files.append(
+                    "{basename}{filename} type={type}".format(
+                        basename=f[1], filename=f[2], type=f[0] or "file"
+                    )
+                )
+            metadata["files"] = sorted(files)
+
+        diff = dictdiffer.diff(package, RPM_COMPLEX_PACKAGE_DATA)
+        self.assertListEqual(list(diff), [], list(diff))
+
     def test_sync_diff_checksum_packages(self):
         """Sync two fixture content with same NEVRA and different checksum.
 
@@ -454,7 +503,7 @@ class BasicSyncTestCase(PulpTestCase):
         * `Pulp #4297 <https://pulp.plan.io/issues/4297>`_
         * `Pulp #3954 <https://pulp.plan.io/issues/3954>`_
         """
-        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
+        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL, policy="on_demand")
         remote = self.remote_api.create(body)
 
         # sync with SHA256
@@ -505,7 +554,7 @@ class BasicSyncTestCase(PulpTestCase):
         # We need to use the unsigned fixture because the one used down below
         # has unsigned RPMs. Signed and unsigned units have different hashes,
         # so they're seen as different units.
-        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
+        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL, policy="on_demand")
         remote = self.remote_api.create(body)
 
         # sync
@@ -1299,7 +1348,7 @@ class AdditiveModeTestCase(PulpTestCase):
         repo = repo_api.create(gen_repo())
         self.addCleanup(repo_api.delete, repo.pulp_href)
 
-        body = gen_rpm_remote(url=RPM_UNSIGNED_FIXTURE_URL)
+        body = gen_rpm_remote(url=RPM_UNSIGNED_FIXTURE_URL, policy="on_demand")
         remote = remote_api.create(body)
         self.addCleanup(remote_api.delete, remote.pulp_href)
 
@@ -1308,7 +1357,7 @@ class AdditiveModeTestCase(PulpTestCase):
         monitor_task(sync_response.task)
 
         # 2. create another remote and re-sync
-        body = gen_rpm_remote(url=SRPM_UNSIGNED_FIXTURE_URL)
+        body = gen_rpm_remote(url=SRPM_UNSIGNED_FIXTURE_URL, policy="on_demand")
         remote = remote_api.create(body)
         self.addCleanup(remote_api.delete, remote.pulp_href)
 
@@ -1343,7 +1392,7 @@ class MirrorModeTestCase(PulpTestCase):
         self.addCleanup(repo_api.delete, repo.pulp_href)
         self.assertEqual(publications_api.list().count, 0)
 
-        body = gen_rpm_remote(url=SRPM_UNSIGNED_FIXTURE_URL)
+        body = gen_rpm_remote(url=SRPM_UNSIGNED_FIXTURE_URL, policy="on_demand")
         remote = remote_api.create(body)
         self.addCleanup(remote_api.delete, remote.pulp_href)
 

@@ -1,4 +1,5 @@
 """Utilities for tests for the rpm plugin."""
+import gzip
 import os
 import requests
 import subprocess
@@ -251,3 +252,22 @@ def get_package_repo_path(package_filename):
 
     """
     return os.path.join(PACKAGES_DIRECTORY, package_filename.lower()[0], package_filename)
+
+
+def read_xml_gz(content):
+    """
+    Read xml and xml.gz.
+
+    Tests work normally but fails for S3 due '.gz'
+    Why is it only compressed for S3?
+    """
+    with NamedTemporaryFile() as temp_file:
+        temp_file.write(content)
+        temp_file.seek(0)
+
+        try:
+            content_xml = gzip.open(temp_file.name).read()
+        except OSError:
+            # FIXME: fix this as in CI primary/update_info.xml has '.gz' but it is not gzipped
+            content_xml = temp_file.read()
+        return content_xml
