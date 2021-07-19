@@ -1,9 +1,11 @@
 """Tests that publish rpm plugin repositories."""
-import gzip
+import collections
 import os
-from tempfile import NamedTemporaryFile
 from random import choice
 from xml.etree import ElementTree
+
+import xmltodict
+import dictdiffer
 
 from pulp_smash import cli, config
 from pulp_smash.utils import get_pulp_setting, http_get
@@ -20,6 +22,7 @@ from pulp_smash.pulp3.utils import (
 
 from pulp_rpm.tests.functional.constants import (
     RPM_ALT_LAYOUT_FIXTURE_URL,
+    RPM_COMPLEX_FIXTURE_URL,
     RPM_FIXTURE_SUMMARY,
     RPM_KICKSTART_FIXTURE_URL,
     RPM_KICKSTART_REPOSITORY_ROOT_CONTENT,
@@ -33,7 +36,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_UNSIGNED_FIXTURE_URL,
     SRPM_UNSIGNED_FIXTURE_URL,
 )
-from pulp_rpm.tests.functional.utils import gen_rpm_client, gen_rpm_remote, skip_if
+from pulp_rpm.tests.functional.utils import gen_rpm_client, gen_rpm_remote, skip_if, read_xml_gz
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 from pulpcore.client.pulp_rpm import (
@@ -45,25 +48,6 @@ from pulpcore.client.pulp_rpm import (
     RpmRpmPublication,
 )
 from pulpcore.client.pulp_rpm.exceptions import ApiException
-
-
-def read_xml_gz(content):
-    """
-    Read xml and xml.gz.
-
-    Tests work normally but fails for S3 due '.gz'
-    Why is it only compressed for S3?
-    """
-    with NamedTemporaryFile() as temp_file:
-        temp_file.write(content)
-        temp_file.seek(0)
-
-        try:
-            content_xml = gzip.open(temp_file.name).read()
-        except OSError:
-            # FIXME: fix this as in CI primary/update_info.xml has '.gz' but it is not gzipped
-            content_xml = temp_file.read()
-        return content_xml
 
 
 class PublishAnyRepoVersionTestCase(PulpTestCase):
@@ -248,14 +232,12 @@ class ValidateNoChecksumTagTestCase(PulpTestCase):
     """Publish repository and validate the updateinfo.
 
     This Test does the following:
-
     1. Create a rpm repo and a remote.
     2. Sync the repo with the remote.
     3. Publish and distribute the repo.
     4. Check whether CheckSum tag ``sum`` not present in ``updateinfo.xml``.
 
-    This test targets the following issue:
-
+    This test targets the following issues:
     * `Pulp #4109 <https://pulp.plan.io/issues/4109>`_
     * `Pulp #4033 <https://pulp.plan.io/issues/4033>`_
     """
@@ -330,6 +312,178 @@ class ValidateNoChecksumTagTestCase(PulpTestCase):
         data_elems = [elem for elem in root_elem.findall(xpath) if elem.get("type") == "updateinfo"]
         xpath = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
         return data_elems[0].find(xpath).get("href")
+
+
+class MetadataTestCase(PulpTestCase):
+    """Publish repository and validate the metadata is the same.
+
+    This Test does the following:
+
+    1. Create a rpm repo and a remote.
+    2. Sync the repo with the remote.
+    3. Publish and distribute the repo.
+    4. Download the metadata of both the original and Pulp-created repos.
+    5. Convert it into a canonical form (XML -> JSON -> Dict -> apply a sorting order).
+    6. Compare the metadata.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.cfg = config.get_config()
+        cls.client = gen_rpm_client()
+        cls.repo_api = RepositoriesRpmApi(cls.client)
+        cls.remote_api = RemotesRpmApi(cls.client)
+        cls.publications = PublicationsRpmApi(cls.client)
+        cls.distributions = DistributionsRpmApi(cls.client)
+
+    def test_complex_repo(self):
+        """Test the "complex" fixture that covers more of the metadata cases.
+
+        The standard fixtures have no changelogs and don't cover "ghost" files. The repo
+        with the "complex-package" does, and also does a better job of covering rich deps
+        and other atypical metadata.
+        """
+        delete_orphans()
+        self.do_test(RPM_COMPLEX_FIXTURE_URL)
+
+    def do_test(self, repo_url):
+        """Sync and publish an RPM repository and verify the metadata is what was expected."""
+        # 1. create repo and remote
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+
+        body = gen_rpm_remote(repo_url, policy="on_demand")
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # 2. Sync it
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+
+        # 3. Publish and distribute
+        publish_data = RpmRpmPublication(repository=repo.pulp_href)
+        publish_response = self.publications.create(publish_data)
+        created_resources = monitor_task(publish_response.task).created_resources
+        publication_href = created_resources[0]
+        self.addCleanup(self.publications.delete, publication_href)
+
+        body = gen_distribution()
+        body["publication"] = publication_href
+        distribution_response = self.distributions.create(body)
+        created_resources = monitor_task(distribution_response.task).created_resources
+        distribution = self.distributions.read(created_resources[0])
+        self.addCleanup(self.distributions.delete, distribution.pulp_href)
+
+        # 4. Download and parse the metadata.
+        original_repomd = ElementTree.fromstring(
+            http_get(os.path.join(repo_url, "repodata/repomd.xml"))
+        )
+
+        reproduced_repomd = ElementTree.fromstring(
+            http_get(os.path.join(distribution.base_url, "repodata/repomd.xml"))
+        )
+
+        def get_metadata_content(base_url, repomd_elem, meta_type):
+            """Return the text contents of metadata file.
+
+            Provided a url, a repomd root element, and a metadata type, locate the metadata
+            file's location href, download it from the provided url, un-gzip it, parse it, and
+            return the root element node.
+
+            Don't use this with large repos because it will blow up.
+            """
+            # <ns0:repomd xmlns:ns0="http://linux.duke.edu/metadata/repo">
+            #     <ns0:data type="primary">
+            #         <ns0:checksum type="sha256">[…]</ns0:checksum>
+            #         <ns0:location href="repodata/[…]-primary.xml.gz" />
+            #         …
+            #     </ns0:data>
+            #     …
+            xpath = "{{{}}}data".format(RPM_NAMESPACES["metadata/repo"])
+            data_elems = [
+                elem for elem in repomd_elem.findall(xpath) if elem.get("type") == meta_type
+            ]
+            xpath = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
+            location_href = data_elems[0].find(xpath).get("href")
+
+            return read_xml_gz(http_get(os.path.join(base_url, location_href)))
+
+        # 5, 6. Convert the metadata into a more workable form and then compare.
+        for metadata_file in ["primary", "filelists", "other"]:
+            with self.subTest(metadata_file):
+                original_metadata = get_metadata_content(repo_url, original_repomd, metadata_file)
+                generated_metadata = get_metadata_content(
+                    distribution.base_url, reproduced_repomd, metadata_file
+                )
+
+                self.compare_metadata_file(original_metadata, generated_metadata, metadata_file)
+
+    def compare_metadata_file(self, original_metadata_text, generated_metadata_text, meta_type):
+        """Compare two metadata files.
+
+        First convert the metadata into a canonical form. We convert from XML to JSON, and then to
+        a dict, and then apply transformations to the dict to standardize the ordering. Then, we
+        perform comparisons and observe any differences.
+        """
+        metadata_block_names = {
+            "primary": "metadata",
+            "filelists": "filelists",
+            "other": "otherdata",
+        }
+        subsection = metadata_block_names[meta_type]
+
+        # First extract the package entries
+        original_metadata = xmltodict.parse(original_metadata_text)[subsection]["package"]
+        generated_metadata = xmltodict.parse(generated_metadata_text)[subsection]["package"]
+
+        # The other transformations are inside the package nodes - they differ by type of metadata
+        if meta_type == "primary":
+            # location_href gets rewritten by Pulp so we should ignore these differences
+            ignore = {"location.@href", "format.file"}
+            # we need to make sure all of the requirements are in the same order
+            requirement_types = [
+                "rpm:suggests",
+                "rpm:recommends",
+                "rpm:enhances",
+                "rpm:provides",
+                "rpm:requires",
+                "rpm:obsoletes",
+                "rpm:conflicts",
+                "rpm:supplements",
+            ]
+            for md_file in [original_metadata, generated_metadata]:
+                for req in requirement_types:
+                    if md_file["format"].get(req):
+                        md_file["format"][req] = sorted(md_file["format"][req])
+        elif meta_type == "filelists":
+            ignore = {}
+            # make sure the files are all in the same order and type and sort them
+            # nodes with a "type" attribute in the XML become OrderedDicts, so we have to convert
+            # them to a string representation.
+            for md_file in [original_metadata, generated_metadata]:
+                if md_file.get("file"):
+                    files = []
+                    for f in md_file["file"]:
+                        if isinstance(f, collections.OrderedDict):
+                            files.append(
+                                "{path} type={type}".format(path=f["@type"], type=f["#text"])
+                            )
+                        else:
+                            files.append(f)
+
+                    md_file["file"] = sorted(files)
+        elif meta_type == "other":
+            ignore = {}
+            # make sure the changelogs are in the same order
+            for md_file in [original_metadata, generated_metadata]:
+                if md_file.get("changelog"):
+                    md_file["changelog"] = sorted(md_file["changelog"], key=lambda x: x["@author"])
+
+        # The metadata dicts should now be consistently ordered. Check for differences.
+        diff = dictdiffer.diff(original_metadata, generated_metadata, ignore=ignore)
+        self.assertListEqual(list(diff), [], list(diff))
 
 
 class ChecksumTypeTestCase(PulpTestCase):
@@ -595,14 +749,14 @@ class SqliteMetadataTestCase(PulpTestCase):
         sqlite_files = [elem for elem in data_elems if elem.get("type").endswith("_db")]
 
         if with_sqlite:
-            self.assertEquals(3, len(sqlite_files))
+            self.assertEqual(3, len(sqlite_files))
 
             for db_elem in sqlite_files:
                 location_xpath = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
                 db_href = db_elem.find(location_xpath).get("href")
                 http_get(os.path.join(distribution.base_url, db_href))
         else:
-            self.assertEquals(0, len(sqlite_files))
+            self.assertEqual(0, len(sqlite_files))
 
     def test_sqlite_metadata(self):
         """Sync and publish an RPM repository and verify that the sqlite metadata exists."""
