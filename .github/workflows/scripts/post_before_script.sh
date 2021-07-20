@@ -6,7 +6,7 @@ cmd_stdin_prefix bash -c "cat > /root/sign-metadata.sh" < "$GITHUB_WORKSPACE"/pu
 cmd_stdin_prefix bash -c "cat > /root/sign.py" < "$PWD"/.github/workflows/scripts/sign.py
 
 cmd_prefix bash -c "curl -L https://github.com/pulp/pulp-fixtures/raw/master/common/GPG-PRIVATE-KEY-pulp-qe | gpg --import"
-cmd_prefix bash -c "curl -O https://github.com/pulp/pulp-fixtures/raw/master/common/GPG-KEY-pulp-qe"
+cmd_prefix bash -c "curl -O -L https://github.com/pulp/pulp-fixtures/raw/master/common/GPG-KEY-pulp-qe"
 cmd_prefix chmod a+x /root/sign-metadata.sh /root/sign.py
 
 # If KEY_FINGERPRINT changes, change it in sign.py as well.
