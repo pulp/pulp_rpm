@@ -9,6 +9,7 @@ import tempfile
 from collections import defaultdict
 from gettext import gettext as _  # noqa:F401
 
+from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files import File
 from django.db import transaction
@@ -685,10 +686,15 @@ class RpmFirstStage(Stage):
                             with open(result.path, "r") as f:
                                 extra_files = json.loads(f.read())
                                 for data in extra_files["data"]:
+                                    filtered_checksums = {
+                                        digest: value
+                                        for digest, value in data["checksums"].items()
+                                        if digest in settings.ALLOWED_CONTENT_CHECKSUMS
+                                    }
                                     downloader = self.remote.get_downloader(
                                         url=urlpath_sanitize(self.remote_url, data["file"]),
                                         expected_size=data["size"],
-                                        expected_digests=data["checksums"],
+                                        expected_digests=filtered_checksums,
                                     )
                                     result = await downloader.run()
                                     store_metadata_for_mirroring(
