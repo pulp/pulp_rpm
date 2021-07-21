@@ -256,7 +256,7 @@ def _copy_update_collections_for(advisory, collections):
     new_collections = []
     with transaction.atomic():
         for collection in collections:
-            uc_packages = collection.packages.all()
+            uc_packages = list(collection.packages.all())
             collection.pk = None
             collection.update_record = advisory
             collection.save()
