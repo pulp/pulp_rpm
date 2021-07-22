@@ -18,6 +18,7 @@ from pulp_smash.pulp3.utils import (
     get_removed_content,
     delete_orphans,
     modify_repo,
+    wget_download_on_host,
 )
 from pulp_smash.utils import get_pulp_setting
 
@@ -137,23 +138,7 @@ class BasicSyncTestCase(PulpTestCase):
 
     def test_sync_local(self):
         """Test syncing from the local filesystem."""
-        import shutil
-
-        if not shutil.which("wget"):
-            unittest.skip("Cannot run file:// sync tests without 'wget' available.")
-
-        cli.Client(self.cfg).run(
-            (
-                "wget",
-                "--recursive",
-                "--no-parent",
-                "--no-host-directories",
-                "--directory-prefix",
-                "/tmp",
-                RPM_UNSIGNED_FIXTURE_URL,
-            )
-        )
-
+        wget_download_on_host(RPM_UNSIGNED_FIXTURE_URL, "/tmp")
         remote = self.remote_api.create(gen_rpm_remote(url="file:///tmp/rpm-unsigned/"))
 
         repo, remote = self.do_test(remote=remote, mirror=True)
