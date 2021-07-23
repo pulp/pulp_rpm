@@ -503,3 +503,5 @@ PULP_TYPE_PACKAGE_GROUP = "rpm.packagegroup"
 PULP_TYPE_REPOMETADATA = "rpm.repo_metadata_file"
 PULP_TYPE_MODULEMD = "rpm.modulemd"
 PULP_TYPE_MODULEMD_DEFAULTS = "rpm.modulemd_defaults"
+
+PACKAGES_DIRECTORY = "Packages"
