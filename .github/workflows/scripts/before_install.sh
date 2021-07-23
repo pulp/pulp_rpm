@@ -53,6 +53,10 @@ echo "legacy_component_name: pulp_rpm" >> .ci/ansible/vars/main.yaml
 echo "component_name: rpm" >> .ci/ansible/vars/main.yaml
 echo "component_version: '${COMPONENT_VERSION}'" >> .ci/ansible/vars/main.yaml
 
+
+echo "ci_base: pulp/pulp-ci-centos:python36" >> .ci/ansible/vars/main.yaml
+
+
 export PRE_BEFORE_INSTALL=$PWD/.github/workflows/scripts/pre_before_install.sh
 export POST_BEFORE_INSTALL=$PWD/.github/workflows/scripts/post_before_install.sh
 
@@ -71,13 +75,16 @@ then
   export PULP_SMASH_PR_NUMBER=$(echo $COMMIT_MSG | grep -oP 'Required\ PR:\ https\:\/\/github\.com\/pulp\/pulp-smash\/pull\/(\d+)' | awk -F'/' '{print $7}')
   export PULP_OPENAPI_GENERATOR_PR_NUMBER=$(echo $COMMIT_MSG | grep -oP 'Required\ PR:\ https\:\/\/github\.com\/pulp\/pulp-openapi-generator\/pull\/(\d+)' | awk -F'/' '{print $7}')
   export PULP_CLI_PR_NUMBER=$(echo $COMMIT_MSG | grep -oP 'Required\ PR:\ https\:\/\/github\.com\/pulp\/pulp-cli\/pull\/(\d+)' | awk -F'/' '{print $7}')
-  echo $COMMIT_MSG | sed -n -e 's/.*CI Base Image:\s*\([-_/[:alnum:]]*:[-_[:alnum:]]*\).*/ci_base: "\1"/p' >> .ci/ansible/vars/main.yaml
+  export CI_BASE_IMAGE=$(echo $COMMIT_MSG | sed -n -e 's/.*CI Base Image:\s*\([-_/[:alnum:]]*:[-_[:alnum:]]*\).*/ci_base: "\1"/p')
+  if [[ ! -z "$CI_BASE_IMAGE" ]]; then
+    sed -i '/ci_base:/d' .ci/ansible/vars/main.yml
+    echo $CI_BASE_IMAGE >> .ci/ansible/vars/main.yaml
+  fi
 else
   export PULPCORE_PR_NUMBER=
   export PULP_SMASH_PR_NUMBER=
   export PULP_OPENAPI_GENERATOR_PR_NUMBER=
   export PULP_CLI_PR_NUMBER=
-  export CI_BASE_IMAGE=
 fi
 
 

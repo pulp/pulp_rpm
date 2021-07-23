@@ -13,8 +13,6 @@ from tempfile import NamedTemporaryFile
 from pulp_smash import api, cli, config, selectors
 from pulp_smash.pulp3.utils import gen_remote, get_content, require_pulp_3, require_pulp_plugins
 
-from pulp_rpm.app.constants import PACKAGES_DIRECTORY
-
 from pulp_rpm.tests.functional.constants import (
     PRIVATE_GPG_KEY_URL,
     RPM_COPY_PATH,
@@ -22,6 +20,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_SIGNED_URL,
     RPM_UNSIGNED_FIXTURE_URL,
     RPM_PUBLICATION_PATH,
+    PACKAGES_DIRECTORY,
 )
 
 from pulpcore.client.pulpcore import ApiClient as CoreApiClient, ArtifactsApi, TasksApi
