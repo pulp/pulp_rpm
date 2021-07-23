@@ -467,7 +467,7 @@ class BasicSyncTestCase(PulpTestCase):
                 )
             metadata["files"] = sorted(files)
 
-        diff = dictdiffer.diff(package, RPM_COMPLEX_PACKAGE_DATA)
+        diff = dictdiffer.diff(package, RPM_COMPLEX_PACKAGE_DATA, ignore={"time_file"})
         self.assertListEqual(list(diff), [], list(diff))
 
     def test_sync_diff_checksum_packages(self):
