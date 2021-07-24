@@ -13,6 +13,42 @@ Changelog
 
 .. towncrier release notes start
 
+3.14.0 (2021-07-24)
+===================
+
+
+Bugfixes
+--------
+
+- Taught pulp_rpm how to deal with timestamp and filename oddities of SUSE repos.
+  `#8275 <https://pulp.plan.io/issues/8275>`_
+- Updated the signing service code to be compatible with pulpcore 3.10+.
+  `#8608 <https://pulp.plan.io/issues/8608>`_
+- Fixed inclusion by package group of an additional version of packages already selected to be copied
+  `#9055 <https://pulp.plan.io/issues/9055>`_
+- User proxy auth credentials of a Remote when syncing content.
+  `#9064 <https://pulp.plan.io/issues/9064>`_
+- Fixed server error when accessing /config.repo while using auto-distribute
+  `#9071 <https://pulp.plan.io/issues/9071>`_
+- Fixed a SUSE sync-error involving repomd-extra files with '-' in their filename.
+  `#9096 <https://pulp.plan.io/issues/9096>`_
+- Fix repository "mirroring" for repositories with Kickstart metadata / "Distribution Trees".
+  `#9098 <https://pulp.plan.io/issues/9098>`_
+- The fix for a previous issue resulting in incorrect metadata (#8995) was still regressing in some circumstances. Implemented a complete fix and added tests to ensure it never recurs.
+  `#9107 <https://pulp.plan.io/issues/9107>`_
+- Fixed an issue where mirrored syncs could fail if extra_files.json declared a checksum of a type that was disallowed in the Pulp settings.
+  `#9111 <https://pulp.plan.io/issues/9111>`_
+
+
+Misc
+----
+
+- `#7891 <https://pulp.plan.io/issues/7891>`_, `#8972 <https://pulp.plan.io/issues/8972>`_
+
+
+----
+
+
 3.13.3 (2021-07-07)
 ===================
 

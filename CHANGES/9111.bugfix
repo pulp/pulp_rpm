@@ -1,1 +1,0 @@
-Fixed an issue where mirrored syncs could fail if extra_files.json declared a checksum of a type that was disallowed in the Pulp settings.
