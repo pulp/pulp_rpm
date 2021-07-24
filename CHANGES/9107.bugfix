@@ -1,1 +1,0 @@
-The fix for a previous issue resulting in incorrect metadata (#8995) was still regressing in some circumstances. Implemented a complete fix and added tests to ensure it never recurs.
