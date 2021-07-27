@@ -131,7 +131,7 @@ For ULN remotes you must provide your ULN login credentials via the ``username``
 
 Note how we are using the ``pulp/api/v3/remotes/rpm/uln/`` API endpoint, rather than ``pulp/api/v3/remotes/rpm/rpm/``.
 
-You can also sepcify the ULN Server base URL for a remote using the ``uln_server_base_url`` parameter.
+You can also specify the ULN Server base URL for a remote using the ``uln_server_base_url`` parameter.
 If you do not provide this parameter, a sync with the remote will default to the contents of the ``DEFAULT_ULN_SERVER_BASE_URL`` setting, which is ``https://linux-update.oracle.com/`` by default.
 The `pulpcore configuration documentation <https://docs.pulpproject.org/pulpcore/installation/configuration.html>`_ has more on how to change Pulp settings.
 
@@ -281,4 +281,3 @@ Distribution GET response (when task complete):
         "pulp_created": "2019-11-27T13:30:38.238857Z",
         "pulp_href": "/pulp/api/v3/distributions/rpm/rpm/c1166d2d-0832-4e90-85fd-e34e94e6a156/"
     }
-
