@@ -86,6 +86,7 @@ def resolve_advisories(version, previous_version):
         for advisory_id in advisory_conflicts:
             previous_advisory = previous_advisories.get(id=advisory_id)
             added_advisory = UpdateRecord.objects.get(id=advisory_id, pk__in=added_advisory_pks)
+            added_advisory.touch()
             to_add, to_remove, to_exclude = resolve_advisory_conflict(
                 previous_advisory, added_advisory
             )
@@ -333,6 +334,7 @@ def merge_advisories(previous_advisory, added_advisory):
                 merged_advisory.save()
         except IntegrityError:
             merged_advisory = UpdateRecord.objects.get(digest=merged_digest)
+            merged_advisory.touch()
         else:
             # For UpdateCollections, make sure we don't re-use the collections for either of the
             # advisories being merged

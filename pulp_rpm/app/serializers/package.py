@@ -256,6 +256,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
                 ["=".join(item) for item in new_pkg.items() if item[0] in keywords]
             )
 
+            package.get().touch()
             raise serializers.ValidationError(
                 _("There is already a package with: {values}.").format(values=error_data)
             )
