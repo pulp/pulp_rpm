@@ -4,7 +4,6 @@ import unittest
 from random import choice
 
 import dictdiffer
-
 from django.utils.dateparse import parse_datetime
 
 from pulp_smash import cli, config
@@ -45,8 +44,10 @@ from pulp_rpm.tests.functional.constants import (
     RPM_EPEL_URL,
     RPM_EPEL_MIRROR_URL,
     RPM_COMPLEX_FIXTURE_URL,
+    RPM_COMPLEX_PACKAGE_DATA,
     RPM_FIXTURE_SUMMARY,
     RPM_INVALID_FIXTURE_URL,
+    RPM_KICKSTART_DATA,
     RPM_KICKSTART_FIXTURE_SUMMARY,
     RPM_KICKSTART_FIXTURE_URL,
     RPM_MD5_REPO_FIXTURE_URL,
@@ -58,7 +59,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_MODULAR_STATIC_FIXTURE_SUMMARY,
     RPM_PACKAGE_CONTENT_NAME,
     RPM_PACKAGE_COUNT,
-    RPM_COMPLEX_PACKAGE_DATA,
     RPM_REFERENCES_UPDATEINFO_URL,
     RPM_RICH_WEAK_FIXTURE_URL,
     RPM_SHA512_FIXTURE_URL,
@@ -252,27 +252,28 @@ class BasicSyncTestCase(PulpTestCase):
         content_summary = get_content_summary(repo.to_dict())
         self.assertGreater(content_summary[RPM_PACKAGE_CONTENT_NAME], 0)
 
-    def test_kickstarter(self):
+    def test_kickstart_immediate(self):
+        """Test syncing kickstart repositories"""
+        self.do_kickstart_test("immediate")
+
+    def test_kickstart_on_demand(self):
+        """Test syncing kickstart repositories"""
+        self.do_kickstart_test("on_demand")
+
+    def do_kickstart_test(self, policy):
         """Sync repositories with the rpm plugin.
-
-        This test targets the following issue:
-
-        `Pulp #5202 <https://pulp.plan.io/issues/5202>`_
-
-        In order to sync a repository a remote has to be associated within
-        this repository.
 
         Do the following:
 
         1. Create a remote.
-        2. Sync the remote. (repo will be created automatically)
+        2. Sync the remote.
         3. Assert that the correct number of units were added and are present
            in the repo.
         4. Sync the remote one more time.
         5. Assert that repository version is the same the previous one.
         6. Assert that the same number of packages are present.
         """
-        body = gen_rpm_remote(RPM_KICKSTART_FIXTURE_URL)
+        body = gen_rpm_remote(RPM_KICKSTART_FIXTURE_URL, policy=policy)
         remote = self.remote_api.create(body)
 
         # sync
@@ -296,51 +297,6 @@ class BasicSyncTestCase(PulpTestCase):
         # Test distribution tree API
         dist_tree_api = ContentDistributionTreesApi(self.client)
         self.assertEqual(dist_tree_api.list().results[0].release_short, "RHEL")
-
-        # Check that nothing has changed since the last sync.
-        self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_KICKSTART_FIXTURE_SUMMARY)
-        self.assertEqual(latest_version_href, repo.latest_version_href)
-
-    def test_kickstarter_on_demand(self):
-        """Sync repositories with the rpm plugin.
-
-        This test targets the following issue:
-
-        `Pulp #5202 <https://pulp.plan.io/issues/5202>`_
-
-        In order to sync a repository a remote has to be associated within
-        this repository.
-
-        Do the following:
-
-        1. Create a remote.
-        2. Sync the remote. (repo will be created automatically)
-        3. Assert that the correct number of units were added and are present
-           in the repo.
-        4. Sync the remote one more time.
-        5. Assert that repository version is the same the previous one.
-        6. Assert that the same number of packages are present.
-        """
-        body = gen_rpm_remote(RPM_KICKSTART_FIXTURE_URL, policy="on_demand")
-        remote = self.remote_api.create(body)
-
-        # sync
-        repo, remote = self.do_test(remote=remote)
-
-        # add resources to clean up
-        self.addCleanup(self.repo_api.delete, repo.pulp_href)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
-
-        # Check that we have the correct content counts.
-        self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_KICKSTART_FIXTURE_SUMMARY)
-        self.assertDictEqual(
-            get_added_content_summary(repo.to_dict()), RPM_KICKSTART_FIXTURE_SUMMARY
-        )
-
-        latest_version_href = repo.latest_version_href
-
-        # sync again
-        repo, remote = self.do_test(repository=repo, remote=remote)
 
         # Check that nothing has changed since the last sync.
         self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_KICKSTART_FIXTURE_SUMMARY)
@@ -429,48 +385,6 @@ class BasicSyncTestCase(PulpTestCase):
                     mutated_packages[nevra]["pkgId"],
                     original_packages[nevra]["pkgId"],
                 )
-
-    def test_metadata_correctly_synced(self):
-        """Test that the metadata returned by the Pulp API post-sync matches what we expect.
-
-        Do the following:
-
-        1. Sync a repo.
-        2. Query package metadata from the API.
-        3. Match it against the metadata that we expect to be there.
-        """
-        delete_orphans()
-        body = gen_rpm_remote(RPM_COMPLEX_FIXTURE_URL, policy="on_demand")
-        remote = self.remote_api.create(body)
-
-        # sync
-        repo, remote = self.do_test(remote=remote)
-
-        # add resources to clean up
-        self.addCleanup(self.repo_api.delete, repo.pulp_href)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
-
-        package = self.packages_api.list(name=RPM_COMPLEX_PACKAGE_DATA["name"]).results[0]
-        package = package.to_dict()
-        # delete pulp-specific metadata
-        package.pop("pulp_href")
-        package.pop("pulp_created")
-
-        # sort file and changelog metadata
-        package["changelogs"].sort(reverse=True)
-        for metadata in [package, RPM_COMPLEX_PACKAGE_DATA]:
-            # the list-of-lists can't be sorted easily so we produce a string representation
-            files = []
-            for f in metadata["files"]:
-                files.append(
-                    "{basename}{filename} type={type}".format(
-                        basename=f[1], filename=f[2], type=f[0] or "file"
-                    )
-                )
-            metadata["files"] = sorted(files)
-
-        diff = dictdiffer.diff(package, RPM_COMPLEX_PACKAGE_DATA, ignore={"time_file"})
-        self.assertListEqual(list(diff), [], list(diff))
 
     def test_sync_diff_checksum_packages(self):
         """Sync two fixture content with same NEVRA and different checksum.
@@ -1354,6 +1268,128 @@ class SyncInvalidTestCase(PulpTestCase):
         except PulpTaskError as exc:
             task_result = exc.task.to_dict()
         return task_result
+
+
+class SyncedMetadataTestCase(PulpTestCase):
+    """Sync a repository and validate that the package metadata is correct."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.cfg = config.get_config()
+        cls.client = gen_rpm_client()
+        cls.repo_api = RepositoriesRpmApi(cls.client)
+        cls.remote_api = RemotesRpmApi(cls.client)
+        cls.publications = PublicationsRpmApi(cls.client)
+
+    def setUp(self):
+        """Setup to run before every test."""
+        delete_orphans()
+
+    def test_core_metadata(self):
+        """Test that the metadata returned by the Pulp API post-sync matches what we expect.
+
+        Do the following:
+
+        1. Sync a repo.
+        2. Query package metadata from the API.
+        3. Match it against the metadata that we expect to be there.
+        """
+        body = gen_rpm_remote(RPM_COMPLEX_FIXTURE_URL, policy="on_demand")
+        remote = self.remote_api.create(body)
+
+        # sync
+        repo, remote = self.do_test(remote=remote)
+
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        packages_api = ContentPackagesApi(self.client)
+
+        package = packages_api.list(name=RPM_COMPLEX_PACKAGE_DATA["name"]).results[0]
+        package = package.to_dict()
+        # delete pulp-specific metadata
+        package.pop("pulp_href")
+        package.pop("pulp_created")
+
+        # sort file and changelog metadata
+        package["changelogs"].sort(reverse=True)
+        for metadata in [package, RPM_COMPLEX_PACKAGE_DATA]:
+            # the list-of-lists can't be sorted easily so we produce a string representation
+            files = []
+            for f in metadata["files"]:
+                files.append(
+                    "{basename}{filename} type={type}".format(
+                        basename=f[1], filename=f[2], type=f[0] or "file"
+                    )
+                )
+            metadata["files"] = sorted(files)
+
+        # TODO: figure out how to un-ignore "time_file" without breaking the tests
+        diff = dictdiffer.diff(package, RPM_COMPLEX_PACKAGE_DATA, ignore={"time_file"})
+        self.assertListEqual(list(diff), [], list(diff))
+
+    def test_treeinfo_metadata(self):
+        """Test that the metadata returned by the Pulp API post-sync matches what we expect.
+
+        Do the following:
+
+        1. Sync a repo.
+        2. Query treeinfo metadata from the API.
+        3. Match it against the metadata that we expect to be there.
+        """
+        body = gen_rpm_remote(RPM_KICKSTART_FIXTURE_URL, policy="on_demand")
+        remote = self.remote_api.create(body)
+
+        # sync
+        repo, remote = self.do_test(remote=remote)
+
+        # add resources to clean up
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        distribution_trees_api = ContentDistributionTreesApi(self.client)
+
+        distribution_tree = distribution_trees_api.list(name=RPM_KICKSTART_DATA["name"]).results[0]
+        distribution_tree = distribution_tree.to_dict()
+        # delete pulp-specific metadata
+        distribution_tree.pop("pulp_href")
+        distribution_tree.pop("pulp_created")
+
+        # TODO: figure out how to un-ignore "time_file" without breaking the tests
+        diff = dictdiffer.diff(distribution_tree, RPM_KICKSTART_DATA)
+        self.assertListEqual(list(diff), [], list(diff))
+
+    def do_test(self, repository=None, remote=None, mirror=False):
+        """Sync a repository.
+
+        Args:
+            repository (pulp_rpm.app.models.repository.RpmRepository):
+                object of RPM repository
+            remote (pulp_rpm.app.models.repository.RpmRemote):
+                object of RPM Remote
+            mirror (bool): Whether to use mirror-mode during the sync
+        Returns (tuple):
+            tuple of instances of
+            pulp_rpm.app.models.repository.RpmRepository, pulp_rpm.app.models.repository.RpmRemote
+        """
+        if repository:
+            repo = self.repo_api.read(repository.pulp_href)
+        else:
+            repo = self.repo_api.create(gen_repo())
+            self.assertEqual(repo.latest_version_href, f"{repo.pulp_href}versions/0/")
+
+        if not remote:
+            body = gen_rpm_remote()
+            remote = self.remote_api.create(body)
+        else:
+            remote = self.remote_api.read(remote.pulp_href)
+
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, mirror=mirror)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+        return self.repo_api.read(repo.pulp_href), self.remote_api.read(remote.pulp_href)
 
 
 class AdditiveModeTestCase(PulpTestCase):
