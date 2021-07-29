@@ -152,6 +152,8 @@ class Package(Content):
 
     objects = PackageManager()
 
+    PROTECTED_FROM_RECLAIM = False
+
     TYPE = "package"
 
     # Required metadata
