@@ -23,7 +23,6 @@ from pulp_smash.pulp3.utils import (
 from pulp_rpm.tests.functional.constants import (
     RPM_ALT_LAYOUT_FIXTURE_URL,
     RPM_COMPLEX_FIXTURE_URL,
-    RPM_COMPLEX_PACKAGE_DATA,
     RPM_FIXTURE_SUMMARY,
     RPM_KICKSTART_FIXTURE_URL,
     RPM_KICKSTART_REPOSITORY_ROOT_CONTENT,
@@ -185,78 +184,6 @@ class SyncPublishTestCase(PulpTestCase):
         self.assertIsNotNone(publication_href)
 
 
-class DistributionTreeMetadataTestCase(PulpTestCase):
-    """Publish repository and validate the metadata is the same.
-
-    This Test does the following:
-
-    1. Create a rpm repo and a remote.
-    2. Sync the repo with the remote.
-    3. Publish and distribute the repo.
-    4. Download the metadata of both the original and Pulp-created repos.
-    5. Convert it into a canonical form (XML -> JSON -> Dict -> apply a sorting order).
-    6. Compare the metadata.
-    """
-
-    @classmethod
-    def setUpClass(cls):
-        """Create class-wide variables."""
-        cls.cfg = config.get_config()
-        cls.client = gen_rpm_client()
-        cls.repo_api = RepositoriesRpmApi(cls.client)
-        cls.remote_api = RemotesRpmApi(cls.client)
-        cls.publications = PublicationsRpmApi(cls.client)
-        cls.distributions = DistributionsRpmApi(cls.client)
-
-    def test_complex_repo(self):
-        """Test the "complex" fixture that covers more of the metadata cases.
-
-        The standard fixtures have no changelogs and don't cover "ghost" files. The repo
-        with the "complex-package" does, and also does a better job of covering rich deps
-        and other atypical metadata.
-        """
-        delete_orphans()
-        self.do_test(RPM_KICKSTART_FIXTURE_URL)
-
-    def do_test(self, repo_url):
-        """Sync and publish an RPM repository and verify the metadata is what was expected."""
-        # 1. create repo and remote
-        repo = self.repo_api.create(gen_repo())
-        self.addCleanup(self.repo_api.delete, repo.pulp_href)
-
-        body = gen_rpm_remote(repo_url, policy="on_demand")
-        remote = self.remote_api.create(body)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
-
-        # 2. Sync it
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
-        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
-        monitor_task(sync_response.task)
-
-        # 3. Publish and distribute
-        publish_data = RpmRpmPublication(repository=repo.pulp_href)
-        publish_response = self.publications.create(publish_data)
-        created_resources = monitor_task(publish_response.task).created_resources
-        publication_href = created_resources[0]
-        self.addCleanup(self.publications.delete, publication_href)
-
-        body = gen_distribution()
-        body["publication"] = publication_href
-        distribution_response = self.distributions.create(body)
-        created_resources = monitor_task(distribution_response.task).created_resources
-        distribution = self.distributions.read(created_resources[0])
-        self.addCleanup(self.distributions.delete, distribution.pulp_href)
-
-        # 4. Download and parse the metadata.
-        original_treeinfo = ElementTree.fromstring(
-            http_get(os.path.join(repo_url, ".treeinfo"))
-        )
-
-        reproduced_treeinfo = ElementTree.fromstring(
-            http_get(os.path.join(distribution.base_url, ".treeinfo"))
-        )
-
-
 # TODO: check the updateinfo metadata to confirm the references are there.
 class SyncPublishReferencesUpdateTestCase(PulpTestCase):
     """Sync/publish a repo that ``updateinfo.xml`` contains references."""
@@ -388,7 +315,7 @@ class ValidateNoChecksumTagTestCase(PulpTestCase):
         return data_elems[0].find(xpath).get("href")
 
 
-class MetadataTestCase(PulpTestCase):
+class CoreMetadataTestCase(PulpTestCase):
     """Publish repository and validate the metadata is the same.
 
     This Test does the following:
@@ -563,6 +490,122 @@ class MetadataTestCase(PulpTestCase):
         # The metadata dicts should now be consistently ordered. Check for differences.
         diff = dictdiffer.diff(original_metadata, generated_metadata, ignore=ignore)
         self.assertListEqual(list(diff), [], list(diff))
+
+
+class DistributionTreeMetadataTestCase(PulpTestCase):
+    """Publish repository and validate the distribution tree metadata is correct.
+
+    This test does the following:
+
+    1. Create a rpm repo and a remote.
+    2. Sync the repo with the remote.
+    3. Publish and distribute the repo.
+    4. Download the treeinfo metadata of both the original and Pulp-created repos.
+    5. Sort fields so that it is directly comparable.
+    6. Compare the metadata, ignoring the differences that are expected, such as path rewriting.
+    """
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.cfg = config.get_config()
+        cls.client = gen_rpm_client()
+        cls.repo_api = RepositoriesRpmApi(cls.client)
+        cls.remote_api = RemotesRpmApi(cls.client)
+        cls.publications = PublicationsRpmApi(cls.client)
+        cls.distributions = DistributionsRpmApi(cls.client)
+
+    def test_mirror_publish(self):
+        """Test the "complex" fixture that covers more of the metadata cases.
+
+        The standard fixtures have no changelogs and don't cover "ghost" files. The repo
+        with the "complex-package" does, and also does a better job of covering rich deps
+        and other atypical metadata.
+        """
+        delete_orphans()
+        self.do_test(True)
+
+    def test_standard_publish(self):
+        """Test the "complex" fixture that covers more of the metadata cases.
+
+        The standard fixtures have no changelogs and don't cover "ghost" files. The repo
+        with the "complex-package" does, and also does a better job of covering rich deps
+        and other atypical metadata.
+        """
+        delete_orphans()
+        self.do_test(False)
+
+    def do_test(self, mirror):
+        """Sync and publish an RPM repository and verify the metadata is what was expected."""
+        from configparser import ConfigParser
+
+        # 1. create repo and remote
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+
+        body = gen_rpm_remote(RPM_KICKSTART_FIXTURE_URL, policy="on_demand")
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # 2. Sync it
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, mirror=mirror)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
+
+        # 3. Publish and distribute
+        publish_data = RpmRpmPublication(repository=repo.pulp_href)
+        publish_response = self.publications.create(publish_data)
+        created_resources = monitor_task(publish_response.task).created_resources
+        publication_href = created_resources[0]
+        self.addCleanup(self.publications.delete, publication_href)
+
+        body = gen_distribution()
+        body["publication"] = publication_href
+        distribution_response = self.distributions.create(body)
+        created_resources = monitor_task(distribution_response.task).created_resources
+        distribution = self.distributions.read(created_resources[0])
+        self.addCleanup(self.distributions.delete, distribution.pulp_href)
+
+        # 4. Download and parse the metadata.
+        original_treeinfo = http_get(os.path.join(RPM_KICKSTART_FIXTURE_URL, ".treeinfo"))
+        generated_treeinfo = http_get(os.path.join(distribution.base_url, ".treeinfo"))
+
+        config = ConfigParser()
+        config.read_string(original_treeinfo.decode("utf-8"))
+        original_treeinfo = config._sections
+
+        config = ConfigParser()
+        config.read_string(generated_treeinfo.decode("utf-8"))
+        generated_treeinfo = config._sections
+
+        # 5. Re-arrange the metadata so that it can be compared.
+        # TODO: These really should be in the same order they were in originally.
+        # https://pulp.plan.io/issues/9208
+        for metadata_dict in [original_treeinfo, generated_treeinfo]:
+            metadata_dict["general"]["variants"] = ",".join(
+                sorted(metadata_dict["general"]["variants"].split(","))
+            )
+            metadata_dict["tree"]["variants"] = ",".join(
+                sorted(metadata_dict["tree"]["variants"].split(","))
+            )
+
+        diff = dictdiffer.diff(original_treeinfo, generated_treeinfo)
+        differences = []
+
+        # skip any differences that are "correct" i.e. rewritten "repository" and "packages" paths
+        for d in diff:
+            (diff_type, diff_name, _, new_value) = (d[0], d[1], d[2][0], d[2][1])
+            # ('change', 'variant-Land.packages', ('Packages', 'Land/Packages'))
+            if diff_type == "change":
+                if diff_name.endswith(".packages") or diff_name.endswith(".repository"):
+                    # TODO: this is ignoring problems with the generated metadata
+                    # https://pulp.plan.io/issues/9208
+                    if "../" not in new_value:
+                        continue
+
+            differences.append(d)
+
+        self.assertListEqual(differences, [], differences)
 
 
 class ChecksumTypeTestCase(PulpTestCase):
