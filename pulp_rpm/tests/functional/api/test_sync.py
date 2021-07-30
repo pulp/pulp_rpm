@@ -253,11 +253,11 @@ class BasicSyncTestCase(PulpTestCase):
         self.assertGreater(content_summary[RPM_PACKAGE_CONTENT_NAME], 0)
 
     def test_kickstart_immediate(self):
-        """Test syncing kickstart repositories"""
+        """Test syncing kickstart repositories."""
         self.do_kickstart_test("immediate")
 
     def test_kickstart_on_demand(self):
-        """Test syncing kickstart repositories"""
+        """Test syncing kickstart repositories."""
         self.do_kickstart_test("on_demand")
 
     def do_kickstart_test(self, policy):
@@ -1299,7 +1299,7 @@ class SyncedMetadataTestCase(PulpTestCase):
         remote = self.remote_api.create(body)
 
         # sync
-        repo, remote = self.do_test(remote=remote)
+        repo, remote = self.do_setup(remote=remote)
 
         # add resources to clean up
         self.addCleanup(self.repo_api.delete, repo.pulp_href)
@@ -1343,7 +1343,7 @@ class SyncedMetadataTestCase(PulpTestCase):
         remote = self.remote_api.create(body)
 
         # sync
-        repo, remote = self.do_test(remote=remote)
+        repo, remote = self.do_setup(remote=remote)
 
         # add resources to clean up
         self.addCleanup(self.repo_api.delete, repo.pulp_href)
@@ -1351,17 +1351,22 @@ class SyncedMetadataTestCase(PulpTestCase):
 
         distribution_trees_api = ContentDistributionTreesApi(self.client)
 
-        distribution_tree = distribution_trees_api.list(name=RPM_KICKSTART_DATA["name"]).results[0]
+        distribution_tree = distribution_trees_api.list().results[0]
         distribution_tree = distribution_tree.to_dict()
         # delete pulp-specific metadata
         distribution_tree.pop("pulp_href")
-        distribution_tree.pop("pulp_created")
 
-        # TODO: figure out how to un-ignore "time_file" without breaking the tests
+        # sort kickstart metadata so that we can compare the dicts properly
+        for d in [distribution_tree, RPM_KICKSTART_DATA]:
+            d["addons"] = sorted(d["addons"], key=lambda x: x["addon_id"])
+            d["images"] = sorted(d["images"], key=lambda x: x["path"])
+            d["checksums"] = sorted(d["checksums"], key=lambda x: x["path"])
+            d["variants"] = sorted(d["variants"], key=lambda x: x["variant_id"])
+
         diff = dictdiffer.diff(distribution_tree, RPM_KICKSTART_DATA)
         self.assertListEqual(list(diff), [], list(diff))
 
-    def do_test(self, repository=None, remote=None, mirror=False):
+    def do_setup(self, repository=None, remote=None, mirror=False):
         """Sync a repository.
 
         Args:

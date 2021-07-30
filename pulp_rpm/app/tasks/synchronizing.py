@@ -103,16 +103,16 @@ metadata_files_for_mirroring = collections.defaultdict(dict)
 pkgid_to_location_href = collections.defaultdict(dict)
 
 
-def store_metadata_for_mirroring(repo, dl_result, relative_path):
+def store_metadata_for_mirroring(repo, md_path, relative_path):
     """Used to store data about the downloaded metadata for mirror-publishing after the sync.
 
     Args:
         repo: Which repository the metadata is associated with
-        dl_result: The DownloadResult from downloading the metadata
+        md_path: The path to the metadata file
         relative_path: The relative path to the metadata file within the repository
     """
     global metadata_files_for_mirroring
-    metadata_files_for_mirroring[str(repo.pk)][relative_path] = dl_result
+    metadata_files_for_mirroring[str(repo.pk)][relative_path] = md_path
 
 
 def store_package_for_mirroring(repo, pkgid, location_href):
@@ -149,9 +149,9 @@ def add_metadata_to_publication(publication, version, prefix=""):
     publication.repo_gpgcheck = has_repomd_signature
     publication.sqlite_metadata = has_sqlite
 
-    for (relative_path, result) in repo_metadata_files.items():
+    for (relative_path, metadata_file_path) in repo_metadata_files.items():
         PublishedMetadata.create_from_file(
-            file=File(open(result.path, "rb")),
+            file=File(open(metadata_file_path, "rb")),
             relative_path=os.path.join(prefix, relative_path),
             publication=publication,
         )
@@ -344,17 +344,33 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
 
             try:
                 result = downloader.fetch()
-                store_metadata_for_mirroring(repository, result, namespace)
             except FileNotFoundError:
                 continue
 
             treeinfo = PulpTreeInfo()
             treeinfo.load(f=result.path)
-            treeinfo_parsed = treeinfo.parsed_sections()
             sha256 = result.artifact_attributes["sha256"]
-            treeinfo_serialized = TreeinfoData(treeinfo_parsed).to_dict(
-                hash=sha256, filename=namespace
+            treeinfo_data = TreeinfoData(treeinfo.parsed_sections())
+
+            # import pydevd_pycharm
+            # pydevd_pycharm.settrace(
+            #     "localhost", port=12735, stdoutToServer=True, stderrToServer=True
+            # )
+
+            # get the data we need before changing the original
+            treeinfo_serialized = treeinfo_data.to_dict(hash=sha256, filename=namespace)
+
+            # rewrite the treeinfo file such that the variant repository and package location
+            # is a relative subtree
+            treeinfo.rewrite_subrepo_paths(treeinfo_data)
+
+            # TODO: better way to do this?
+            main_variant = treeinfo.original_parser._sections.get("general", {}).get(
+                "variant", None
             )
+            treeinfo_file = tempfile.NamedTemporaryFile(delete=False)
+            treeinfo.dump(treeinfo_file.name, main_variant=main_variant)
+            store_metadata_for_mirroring(repository, treeinfo_file.name, namespace)
             break
 
         return treeinfo_serialized
@@ -607,7 +623,7 @@ class RpmFirstStage(Stage):
                     url=urlpath_sanitize(self.remote_url, "repodata/repomd.xml")
                 )
                 result = await downloader.run()
-                store_metadata_for_mirroring(self.repository, result, "repodata/repomd.xml")
+                store_metadata_for_mirroring(self.repository, result.path, "repodata/repomd.xml")
                 metadata_pb.increment()
 
                 repomd_path = result.path
@@ -657,7 +673,7 @@ class RpmFirstStage(Stage):
                 try:
                     for future in asyncio.as_completed(list(repomd_downloaders.values())):
                         name, location_href, result = await future
-                        store_metadata_for_mirroring(self.repository, result, location_href)
+                        store_metadata_for_mirroring(self.repository, result.path, location_href)
                         repomd_files[name] = result
                         metadata_pb.increment()
                 except ClientResponseError as exc:
@@ -673,7 +689,7 @@ class RpmFirstStage(Stage):
                                 url=urlpath_sanitize(self.remote_url, file_href)
                             )
                             result = await downloader.run()
-                            store_metadata_for_mirroring(self.repository, result, file_href)
+                            store_metadata_for_mirroring(self.repository, result.path, file_href)
                             metadata_pb.increment()
                         except (ClientResponseError, FileNotFoundError):
                             pass
@@ -684,7 +700,9 @@ class RpmFirstStage(Stage):
                             url=urlpath_sanitize(self.remote_url, "extra_files.json")
                         )
                         result = await downloader.run()
-                        store_metadata_for_mirroring(self.repository, result, "extra_files.json")
+                        store_metadata_for_mirroring(
+                            self.repository, result.path, "extra_files.json"
+                        )
                         metadata_pb.increment()
                     except (ClientResponseError, FileNotFoundError):
                         pass
@@ -705,7 +723,7 @@ class RpmFirstStage(Stage):
                                     )
                                     result = await downloader.run()
                                     store_metadata_for_mirroring(
-                                        self.repository, result, data["file"]
+                                        self.repository, result.path, data["file"]
                                     )
                                     metadata_pb.increment()
                         except ClientResponseError as exc:
