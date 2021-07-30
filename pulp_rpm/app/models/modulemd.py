@@ -1,6 +1,5 @@
 from logging import getLogger
 
-from django.contrib.postgres.fields import JSONField
 from django.db import models
 
 from pulpcore.plugin.models import Content
@@ -50,8 +49,8 @@ class Modulemd(Content):
     arch = models.CharField(max_length=255)
 
     static_context = models.BooleanField(null=True)
-    dependencies = JSONField(default=list)
-    artifacts = JSONField(default=list)
+    dependencies = models.JSONField(default=list)
+    artifacts = models.JSONField(default=list)
     packages = models.ManyToManyField(Package)
 
     class Meta:
@@ -78,7 +77,7 @@ class ModulemdDefaults(Content):
 
     module = models.CharField(max_length=255)
     stream = models.CharField(max_length=255)
-    profiles = JSONField(default=list)
+    profiles = models.JSONField(default=list)
 
     digest = models.CharField(unique=True, max_length=64)
 

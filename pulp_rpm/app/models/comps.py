@@ -2,7 +2,6 @@ from logging import getLogger
 
 import libcomps
 
-from django.contrib.postgres.fields import JSONField
 from django.db import models
 
 from pulpcore.plugin.models import Content
@@ -67,12 +66,12 @@ class PackageGroup(Content):
     display_order = models.IntegerField(null=True)
     name = models.CharField(max_length=255)
     description = models.TextField(default="")
-    packages = JSONField(default=list)
+    packages = models.JSONField(default=list)
 
     biarch_only = models.BooleanField(default=False)
 
-    desc_by_lang = JSONField(default=dict)
-    name_by_lang = JSONField(default=dict)
+    desc_by_lang = models.JSONField(default=dict)
+    name_by_lang = models.JSONField(default=dict)
 
     digest = models.CharField(unique=True, max_length=64)
 
@@ -226,10 +225,10 @@ class PackageCategory(Content):
     description = models.TextField(default="")
     display_order = models.IntegerField(null=True)
 
-    group_ids = JSONField(default=list)
+    group_ids = models.JSONField(default=list)
 
-    desc_by_lang = JSONField(default=dict)
-    name_by_lang = JSONField(default=dict)
+    desc_by_lang = models.JSONField(default=dict)
+    name_by_lang = models.JSONField(default=dict)
 
     digest = models.CharField(unique=True, max_length=64)
 
@@ -352,11 +351,11 @@ class PackageEnvironment(Content):
     description = models.TextField(default="")
     display_order = models.IntegerField(null=True)
 
-    group_ids = JSONField(default=list)
-    option_ids = JSONField(default=list)
+    group_ids = models.JSONField(default=list)
+    option_ids = models.JSONField(default=list)
 
-    desc_by_lang = JSONField(default=dict)
-    name_by_lang = JSONField(default=dict)
+    desc_by_lang = models.JSONField(default=dict)
+    name_by_lang = models.JSONField(default=dict)
 
     digest = models.CharField(unique=True, max_length=64)
 
@@ -462,7 +461,7 @@ class PackageLangpacks(Content):
 
     TYPE = "packagelangpacks"
 
-    matches = JSONField(default=dict)
+    matches = models.JSONField(default=dict)
 
     digest = models.CharField(unique=True, max_length=64)
 

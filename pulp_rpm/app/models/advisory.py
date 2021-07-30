@@ -2,7 +2,6 @@ from logging import getLogger
 
 import createrepo_c as cr
 
-from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.utils.dateparse import parse_datetime
 
@@ -253,7 +252,7 @@ class UpdateCollection(BaseModel):
 
     name = models.TextField(null=True)
     shortname = models.TextField(null=True)
-    module = JSONField(null=True)
+    module = models.JSONField(null=True)
 
     update_record = models.ForeignKey(
         UpdateRecord, related_name="collections", on_delete=models.deletion.CASCADE
