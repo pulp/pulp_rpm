@@ -2,7 +2,6 @@ from logging import getLogger
 
 import createrepo_c as cr
 
-from django.contrib.postgres.fields import JSONField
 from django.db import models
 from django.db.models import Window, F
 from django.db.models.functions import RowNumber
@@ -180,7 +179,7 @@ class Package(Content):
     #   date (int):     date of changelog - seconds since epoch
     #   author (str):   author of the changelog
     #   changelog (str: changelog text
-    changelogs = JSONField(default=list)
+    changelogs = models.JSONField(default=list)
 
     # A JSON-encoded list of dictionaries, each of which represents a single file.
     # Each file dict contains the following fields:
@@ -188,7 +187,7 @@ class Package(Content):
     #   type (str):     one of "" (regular file), "dir", "ghost"
     #   path (str):     path to file
     #   name (str):     filename
-    files = JSONField(default=list)
+    files = models.JSONField(default=list)
 
     # Each of these is a JSON-encoded list of dictionaries, each of which represents a dependency.
     # Each dependency dict contains the following fields:
@@ -199,14 +198,14 @@ class Package(Content):
     #   version (str):  version
     #   release (str):  release
     #   pre (bool):     preinstall
-    requires = JSONField(default=list)
-    provides = JSONField(default=list)
-    conflicts = JSONField(default=list)
-    obsoletes = JSONField(default=list)
-    suggests = JSONField(default=list)
-    enhances = JSONField(default=list)
-    recommends = JSONField(default=list)
-    supplements = JSONField(default=list)
+    requires = models.JSONField(default=list)
+    provides = models.JSONField(default=list)
+    conflicts = models.JSONField(default=list)
+    obsoletes = models.JSONField(default=list)
+    suggests = models.JSONField(default=list)
+    enhances = models.JSONField(default=list)
+    recommends = models.JSONField(default=list)
+    supplements = models.JSONField(default=list)
 
     location_base = models.TextField()
     location_href = models.TextField()

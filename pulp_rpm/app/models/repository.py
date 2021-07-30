@@ -6,7 +6,6 @@ from logging import getLogger
 from aiohttp.web_response import Response
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
-from django.contrib.postgres.fields import JSONField
 from django.db import models
 from pulpcore.plugin.download import DownloaderFactory
 from pulpcore.plugin.models import (
@@ -217,7 +216,7 @@ class RpmRepository(Repository):
     last_sync_remote = models.ForeignKey(Remote, null=True, on_delete=models.SET_NULL)
     last_sync_repo_version = models.PositiveIntegerField(default=0)
     last_sync_repomd_checksum = models.CharField(max_length=64, null=True)
-    original_checksum_types = JSONField(default=dict)
+    original_checksum_types = models.JSONField(default=dict)
     retain_package_versions = models.PositiveIntegerField(default=0)
 
     autopublish = models.BooleanField(default=False)
