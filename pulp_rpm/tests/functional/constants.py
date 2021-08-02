@@ -485,6 +485,7 @@ RPM_MD5_REPO_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-with-md5/")
 
 RPM_DIFF_NAME_SAME_CONTENT_URL = urljoin(PULP_FIXTURES_BASE_URL, "diff-name-same-content/")
 
+AMAZON_MIRROR = "http://amazonlinux.us-east-1.amazonaws.com/2/core/latest/x86_64/mirror.list"
 CENTOS6_URL = "http://mirror.centos.org/centos-6/6.10/os/x86_64/"
 CENTOS7_URL = "http://mirror.centos.org/centos-7/7/os/x86_64/"
 CENTOS8_KICKSTART_APP_URL = "http://mirror.centos.org/centos-8/8/AppStream/x86_64/kickstart/"

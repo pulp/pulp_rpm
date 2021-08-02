@@ -3,8 +3,7 @@ import os
 from aiohttp_xmlrpc.client import ServerProxy
 from logging import getLogger
 from lxml import etree
-from urllib.parse import urlparse
-
+from urllib.parse import quote, unquote, urlparse
 from pulpcore.plugin.download import FileDownloader, HttpDownloader
 from pulp_rpm.app.exceptions import UlnCredentialsError
 from pulp_rpm.app.shared_utils import urlpath_sanitize
@@ -82,11 +81,15 @@ class RpmDownloader(HttpDownloader):
         This method provides the same return object type and documented in
         :meth:`~pulpcore.plugin.download.BaseDownloader._run`.
         """
+        # Some upstream-repos (eg, Amazon) require url-encoded paths for things like "libc++"
+        # Let's make them happy
+        new_url = quote(unquote(self.url), safe=":/")
+
         if self.sles_auth_token:
             auth_param = f"?{self.sles_auth_token}"
-            url = urlpath_sanitize(self.url) + auth_param
+            url = urlpath_sanitize(new_url) + auth_param
         else:
-            url = self.url
+            url = new_url
 
         async with self.session.get(
             url, proxy=self.proxy, proxy_auth=self.proxy_auth, auth=self.auth
