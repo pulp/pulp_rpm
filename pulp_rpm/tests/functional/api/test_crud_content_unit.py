@@ -20,7 +20,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_PACKAGE_FILENAME,
     RPM_PACKAGE_FILENAME2,
     RPM_SIGNED_URL,
-    RPM_SIGNED_URL2,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
@@ -131,44 +130,6 @@ class ContentUnitTestCase(PulpTestCase):
         task_result = cm.exception.task.to_dict()
         msg = "There is already a package with"
         self.assertTrue(msg in task_result["error"]["description"])
-
-    def test_06_second_unit_raises_error(self):
-        """
-        Create a duplicate content unit with different ``artifacts`` and same ``repo_key_fields``.
-        """
-        delete_orphans()
-        client = gen_rpm_client()
-        repo_api = RepositoriesRpmApi(client)
-
-        repo = repo_api.create(gen_repo())
-        self.addCleanup(repo_api.delete, repo.pulp_href)
-
-        artifact = gen_artifact()
-
-        # create first content unit.
-        content_attrs = {"artifact": artifact["pulp_href"], "relative_path": "test_package"}
-        response = self.rpm_content_api.create(**content_attrs)
-        monitor_task(response.task)
-
-        artifact = gen_artifact(url=RPM_SIGNED_URL2)
-
-        # create second content unit.
-        second_content_attrs = {"artifact": artifact["pulp_href"]}
-        second_content_attrs["relative_path"] = content_attrs["relative_path"]
-        response = self.rpm_content_api.create(**second_content_attrs)
-        monitor_task(response.task)
-
-        data = {"add_content_units": [c.pulp_href for c in self.rpm_content_api.list().results]}
-        response = repo_api.modify(repo.pulp_href, data)
-        with self.assertRaises(PulpTaskError) as cm:
-            monitor_task(response.task)
-        task = cm.exception.task.to_dict()
-
-        error_message = "Cannot create repository version. Path is duplicated: {}.".format(
-            content_attrs["relative_path"]
-        )
-
-        self.assertEqual(task["error"]["description"], error_message)
 
 
 class ContentUnitRemoveTestCase(PulpTestCase):

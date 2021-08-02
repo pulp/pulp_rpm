@@ -23,6 +23,7 @@ from pulp_smash.pulp3.utils import (
 from pulp_smash.utils import get_pulp_setting
 
 from pulp_rpm.tests.functional.constants import (
+    CENTOS7_OPSTOOLS,
     PULP_TYPE_ADVISORY,
     PULP_TYPE_MODULEMD,
     PULP_TYPE_PACKAGE,
@@ -1239,6 +1240,22 @@ class BasicSyncTestCase(PulpTestCase):
             "rpm-with-md5/bear-4.1-1.noarch.rpm contains forbidden checksum type",
             ctx.exception.task.error["description"],
         )
+
+    def test_one_nevra_two_locations_and_checksums(self):
+        """Sync a repository known to have one nevra, in two locations, with different content.
+
+        While 'odd', this is a real-world occurrence.
+        """
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+
+        body = gen_rpm_remote(url=CENTOS7_OPSTOOLS, policy="on_demand")
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
 
     @skip_if(bool, "md5_allowed", True)
     def test_sync_metadata_with_unsupported_checksum_type(self):
