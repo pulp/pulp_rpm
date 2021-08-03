@@ -23,6 +23,7 @@ from pulp_smash.pulp3.utils import (
 from pulp_smash.utils import get_pulp_setting
 
 from pulp_rpm.tests.functional.constants import (
+    AMAZON_MIRROR,
     CENTOS7_OPSTOOLS,
     PULP_TYPE_ADVISORY,
     PULP_TYPE_MODULEMD,
@@ -1283,6 +1284,29 @@ class BasicSyncTestCase(PulpTestCase):
             "'ALLOWED_CONTENT_CHECKSUMS'",
             ctx.exception.task.error["description"],
         )
+
+    @unittest.skip("Works fine but takes 180s to run - skip unless specifically needed.")
+    def test_requires_urlencoded_paths(self):
+        """Sync a repository known to FAIL when an RPM has non-urlencoded characters in its path.
+
+        See Amazon, java-11-amazon-corretto-javadoc-11.0.8+10-1.amzn2.x86_64.rpm, and
+        issue https://pulp.plan.io/issues/8875 .
+
+        NOTE: testing that this 'works' requires testing against a webserver that does
+        whatever-it-is that Amazon's backend is doing. That's why it requires the external repo.
+        The rest of the pulp_rpm test-suite is showing us that the code for this fix isn't
+        breaking anyone *else*...
+        """
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+
+        body = gen_rpm_remote(url=AMAZON_MIRROR, policy="on_demand")
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        monitor_task(sync_response.task)
 
 
 class SyncInvalidTestCase(PulpTestCase):

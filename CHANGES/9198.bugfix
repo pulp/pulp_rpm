@@ -1,0 +1,2 @@
+Taught downloader to be handle rpms with special characters in ways Amazon likes.
+(backported from #8875)
