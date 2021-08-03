@@ -231,7 +231,7 @@ class PublicationData:
                 repository = addon_or_variant.repository.cast()
                 repository_version = repository.latest_version()
 
-                if repository_version and repository.sub_repo:
+                if repository_version and repository.user_hidden:
                     addon_or_variant_id = getattr(addon_or_variant, f"{relation}_id")
                     self.sub_repos.append(
                         (
