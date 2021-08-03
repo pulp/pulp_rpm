@@ -109,7 +109,7 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin):
     """
 
     endpoint_name = "rpm"
-    queryset = RpmRepository.objects.exclude(sub_repo=True)
+    queryset = RpmRepository.objects.exclude(user_hidden=True)
     serializer_class = RpmRepositorySerializer
 
     @extend_schema(

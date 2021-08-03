@@ -7,19 +7,17 @@ from aiohttp.web_response import Response
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
 from django.contrib.postgres.fields import JSONField
-from django.db import models, transaction
+from django.db import models
 from pulpcore.plugin.download import DownloaderFactory
 from pulpcore.plugin.models import (
     Artifact,
     AsciiArmoredDetachedSigningService,
     Content,
-    CreatedResource,
     Remote,
     Repository,
     RepositoryVersion,
     Publication,
     Distribution,
-    Task,
 )
 from pulpcore.plugin.repo_version_utils import (
     remove_duplicates,
@@ -184,8 +182,6 @@ class RpmRepository(Repository):
 
     Fields:
 
-        sub_repo (Boolean):
-            Whether is sub_repo or not
         last_sync_revision_number (Text):
             The revision number
         last_sync_remote (Remote):
@@ -217,7 +213,6 @@ class RpmRepository(Repository):
     metadata_signing_service = models.ForeignKey(
         AsciiArmoredDetachedSigningService, on_delete=models.SET_NULL, null=True
     )
-    sub_repo = models.BooleanField(default=False)
     last_sync_revision_number = models.CharField(max_length=20, null=True)
     last_sync_remote = models.ForeignKey(Remote, null=True, on_delete=models.SET_NULL)
     last_sync_repo_version = models.PositiveIntegerField(default=0)
@@ -231,42 +226,6 @@ class RpmRepository(Repository):
     gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
     repo_gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
     sqlite_metadata = models.BooleanField(default=False)
-
-    def new_version(self, base_version=None):
-        """
-        Create a new RepositoryVersion for this Repository.
-
-        Creation of a RepositoryVersion should be done in a RQ Job.
-
-        Args:
-            repository (pulpcore.app.models.Repository): to create a new version of
-            base_version (pulpcore.app.models.RepositoryVersion): an optional repository version
-                whose content will be used as the set of content for the new version
-
-        Returns:
-            pulpcore.app.models.RepositoryVersion: The Created RepositoryVersion
-
-        """
-        with transaction.atomic():
-            latest_version = self.versions.latest()
-            if not latest_version.complete:
-                latest_version.delete()
-
-            version = RepositoryVersion(
-                repository=self, number=int(self.next_version), base_version=base_version
-            )
-            version.save()
-
-            if base_version:
-                # first remove the content that isn't in the base version
-                version.remove_content(version.content.exclude(pk__in=base_version.content))
-                # now add any content that's in the base_version but not in version
-                version.add_content(base_version.content.exclude(pk__in=version.content))
-
-            if Task.current() and not self.sub_repo:
-                resource = CreatedResource(content_object=version)
-                resource.save()
-            return version
 
     def on_new_version(self, version):
         """

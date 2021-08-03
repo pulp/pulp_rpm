@@ -380,7 +380,7 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
                 treeinfo["repositories"].update({repodata: None})
                 continue
             name = f"{repodata}-{treeinfo['hash']}"
-            sub_repo, created = RpmRepository.objects.get_or_create(name=name, sub_repo=True)
+            sub_repo, created = RpmRepository.objects.get_or_create(name=name, user_hidden=True)
             if created:
                 sub_repo.save()
             directory = treeinfo["repo_map"][repodata]
