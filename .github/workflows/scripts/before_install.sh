@@ -38,8 +38,6 @@ if [[ "$TEST" == "upgrade" ]]; then
   rm -rf .ci .github
   cp -R /tmp/.github .
   cp -R /tmp/.ci .
-  # Pin deps
-  sed -i "s/~/=/g" requirements.txt
 fi
 
 if [[ "$TEST" == "plugin-from-pypi" ]]; then
@@ -115,7 +113,7 @@ fi
 
 cd pulp-cli
 pip install -e .
-pulp config create --base-url https://pulp --location tests/cli.toml 
+pulp config create --base-url https://pulp --location tests/cli.toml
 mkdir ~/.config/pulp
 cp tests/cli.toml ~/.config/pulp/cli.toml
 cd ..
@@ -131,6 +129,14 @@ fi
 cd ..
 
 
+
+if [[ "$TEST" == "upgrade" ]]; then
+  cd pulpcore
+  git checkout -b ci_upgrade_test
+  git fetch --depth=1 origin heads/$FROM_PULPCORE_BRANCH:$FROM_PULPCORE_BRANCH
+  git checkout $FROM_PULPCORE_BRANCH
+  cd ..
+fi
 
 
 # Intall requirements for ansible playbooks
