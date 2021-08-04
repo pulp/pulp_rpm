@@ -120,6 +120,15 @@ class PulpTreeInfo(TreeInfo):
 
         return parser._sections
 
+    def rewrite_subrepo_paths(self, treeinfo_data):
+        """Rewrite the variant repository paths to be local.
+
+        Ensure that the variant / sub-repo path is in a sub-directory.
+        """
+        for variant in self.variants.get_variants():
+            variant.paths.repository = treeinfo_data.variants[variant.id]["repository"]
+            variant.paths.packages = treeinfo_data.variants[variant.id]["packages"]
+
 
 class TreeinfoData:
     """

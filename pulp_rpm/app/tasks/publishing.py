@@ -209,13 +209,19 @@ class PublicationData:
             temp_file.flush()
             treeinfo = PulpTreeInfo()
             treeinfo.load(f=temp_file.name)
-            treeinfo_parsed = treeinfo.parsed_sections()
-            treeinfodata = TreeinfoData(treeinfo_parsed)
-            for variant in treeinfo.variants.get_variants():
-                variant.paths.repository = treeinfodata.variants[variant.id]["repository"]
-                variant.paths.packages = treeinfodata.variants[variant.id]["packages"]
+            treeinfo_data = TreeinfoData(treeinfo.parsed_sections())
+
+            # rewrite the treeinfo file such that the variant repository and package location
+            # is a relative subtree
+            treeinfo.rewrite_subrepo_paths(treeinfo_data)
+
+            # TODO: better way to do this?
+            main_variant = treeinfo.original_parser._sections.get("general", {}).get(
+                "variant", None
+            )
             treeinfo_file = tempfile.NamedTemporaryFile()
-            treeinfo.dump(treeinfo_file.name)
+            treeinfo.dump(treeinfo_file.name, main_variant=main_variant)
+
             PublishedMetadata.create_from_file(
                 relative_path=original_treeinfo_content_artifact.relative_path,
                 publication=self.publication,

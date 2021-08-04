@@ -479,15 +479,15 @@ RPM_KICKSTART_DATA = {
             "name": "Whale addon",
             "packages": "Whale/Packages",
             "type": "addon",
-            "uid": "Sea-Whale"
+            "uid": "Sea-Whale",
         },
         {
             "addon_id": "Dolphin",
             "name": "Dolphin addon",
             "packages": "Dolphin/Packages",
             "type": "addon",
-            "uid": "Sea-Dolphin"
-        }
+            "uid": "Sea-Dolphin",
+        },
     ],
     "arch": "x86_64",
     "base_product_name": None,
@@ -497,28 +497,28 @@ RPM_KICKSTART_DATA = {
     "checksums": [
         {
             "checksum": "sha256:91052b444e73f3eebdb93d1fb1506597e96c92d8de9c1e3c3f36b07a57d0a18f",
-            "path": "images/pxeboot/vmlinuz"
+            "path": "images/pxeboot/vmlinuz",
         },
         {
             "checksum": "sha256:30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
-            "path": "images/pxeboot/upgrade.img"
+            "path": "images/pxeboot/upgrade.img",
         },
         {
             "checksum": "sha256:5647f05ec18958947d32874eeb788fa396a05d0bab7c1b71f112ceb7e9b31eee",
-            "path": "images/pxeboot/initrd.img"
+            "path": "images/pxeboot/initrd.img",
         },
         {
             "checksum": "sha256:54260288eda2bd151c71358c5f2c472654d54420dbf3f2c1aafcb933a42a3074",
-            "path": "fixtures/rpm-distribution-tree/addons/whale/repodata/repomd.xml"
+            "path": "fixtures/rpm-distribution-tree/addons/whale/repodata/repomd.xml",
         },
         {
             "checksum": "sha256:b6ac17b542fc6188eafadb932d9635209e1498c1ee22ba2490f531fdbd4c49a3",
-            "path": "fixtures/rpm-distribution-tree/addons/dolphin/repodata/repomd.xml"
+            "path": "fixtures/rpm-distribution-tree/addons/dolphin/repodata/repomd.xml",
         },
         {
             "checksum": "sha256:30e14955ebf1352266dc2ff8067e68104607e750abb9d3b36582b8af909fcb58",
-            "path": "LiveOS/squashfs.img"
-        }
+            "path": "LiveOS/squashfs.img",
+        },
     ],
     "discnum": 1,
     "header_version": "1.2",
@@ -527,20 +527,20 @@ RPM_KICKSTART_DATA = {
             "artifact": None,
             "name": "upgrade",
             "path": "images/pxeboot/upgrade.img",
-            "platforms": "x86_64, xen"
+            "platforms": "x86_64, xen",
         },
         {
             "artifact": None,
             "name": "kernel",
             "path": "images/pxeboot/vmlinuz",
-            "platforms": "x86_64, xen"
+            "platforms": "x86_64, xen",
         },
         {
             "artifact": None,
             "name": "initrd",
             "path": "images/pxeboot/initrd.img",
-            "platforms": "x86_64, xen"
-        }
+            "platforms": "x86_64, xen",
+        },
     ],
     "instimage": None,
     "mainimage": "LiveOS/squashfs.img",
@@ -560,7 +560,7 @@ RPM_KICKSTART_DATA = {
             "source_repository": None,
             "type": "variant",
             "uid": "Sea",
-            "variant_id": "Sea"
+            "variant_id": "Sea",
         },
         {
             "debug_packages": None,
@@ -572,7 +572,7 @@ RPM_KICKSTART_DATA = {
             "source_repository": None,
             "type": "variant",
             "uid": "Land",
-            "variant_id": "Land"
+            "variant_id": "Land",
         },
         {
             "debug_packages": None,
@@ -584,9 +584,9 @@ RPM_KICKSTART_DATA = {
             "source_repository": None,
             "type": "variant",
             "uid": "External",
-            "variant_id": "External"
-        }
-    ]
+            "variant_id": "External",
+        },
+    ],
 }
 
 PULP_FIXTURES_COMMON_URL = "https://github.com/pulp/pulp-fixtures/raw/master/common/"
