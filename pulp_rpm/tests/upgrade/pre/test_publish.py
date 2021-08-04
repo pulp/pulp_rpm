@@ -69,7 +69,7 @@ class PublishAnyRepoVersionTestCase(PulpTestCase):
         repo = repo_api.read(repo.pulp_href)
         repo_content = get_content(repo.to_dict())[RPM_PACKAGE_CONTENT_NAME][:-1]
         for rpm_content in repo_content:
-            modify_repo(cfg, repo.to_dict(), add_units=[rpm_content])
+            modify_repo(cfg, repo.to_dict(), remove_units=[rpm_content])
         version_hrefs = tuple(ver["pulp_href"] for ver in get_versions(repo.to_dict()))
         non_latest = choice(version_hrefs[1:-1])
 
@@ -98,16 +98,16 @@ class PublishAnyRepoVersionTestCase(PulpTestCase):
 
         distribution_response = distributions.create(body)
         created_resources = monitor_task(distribution_response.task).created_resources
-        distribution = self.distributions.read(created_resources[0])
+        distribution = distributions.read(created_resources[0])
 
         # Step 6
         self.assertEqual(publication.repository_version, non_latest)
 
         # Step 7
         with self.assertRaises(ApiException):
-            body = {"repository": self.repo.pulp_href, "repository_version": non_latest}
-            self.publications.create(body)
+            body = {"repository": repo.pulp_href, "repository_version": non_latest}
+            publications.create(body)
 
         # Step 8
-        url = self.cfg.get_content_host_base_url() + "/pulp/content/pulp_pre_upgrade_test/"
+        url = cfg.get_content_host_base_url() + "/pulp/content/pulp_pre_upgrade_test/"
         self.assertEqual(url, distribution.base_url, url)
