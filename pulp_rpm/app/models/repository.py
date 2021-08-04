@@ -266,6 +266,9 @@ class RpmRepository(Repository):
             if Task.current() and not self.sub_repo:
                 resource = CreatedResource(content_object=version)
                 resource.save()
+
+            self.invalidate_cache()
+
             return version
 
     def on_new_version(self, version):
