@@ -2,6 +2,10 @@
 
 set -euv
 
+if [[ "$TEST" == "upgrade" ]]; then
+    exit
+fi
+
 cmd_stdin_prefix bash -c "cat > /root/sign-metadata.sh" < "$GITHUB_WORKSPACE"/pulp_rpm/tests/functional/sign-metadata.sh
 
 cmd_prefix bash -c "curl -L https://github.com/pulp/pulp-fixtures/raw/master/common/GPG-PRIVATE-KEY-pulp-qe | gpg --import"
