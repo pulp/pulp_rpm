@@ -299,7 +299,7 @@ class RpmDeclarativeVersion(DeclarativeVersion):
             QueryExistingContents(),
             RpmContentSaver(),
             RpmInterrelateContent(),
-            RemoteArtifactSaver(),
+            RemoteArtifactSaver(fix_mismatched_remote_artifacts=True),
         ]
         return pipeline
 
