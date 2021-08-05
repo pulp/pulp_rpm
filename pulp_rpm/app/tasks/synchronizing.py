@@ -1248,13 +1248,13 @@ class RpmContentSaver(ContentSaver):
                 variants.append(instance)
 
             if addons:
-                Addon.objects.bulk_create(addons)
+                Addon.objects.bulk_create(addons, ignore_conflicts=True)
             if checksums:
-                Checksum.objects.bulk_create(checksums)
+                Checksum.objects.bulk_create(checksums, ignore_conflicts=True)
             if images:
-                Image.objects.bulk_create(images)
+                Image.objects.bulk_create(images, ignore_conflicts=True)
             if variants:
-                Variant.objects.bulk_create(variants)
+                Variant.objects.bulk_create(variants, ignore_conflicts=True)
 
         update_collection_to_save = []
         update_references_to_save = []
@@ -1303,10 +1303,12 @@ class RpmContentSaver(ContentSaver):
                     update_references_to_save.append(update_reference)
 
         if update_collection_to_save:
-            UpdateCollection.objects.bulk_create(update_collection_to_save)
+            UpdateCollection.objects.bulk_create(update_collection_to_save, ignore_conflicts=True)
 
         if update_collection_packages_to_save:
-            UpdateCollectionPackage.objects.bulk_create(update_collection_packages_to_save)
+            UpdateCollectionPackage.objects.bulk_create(
+                update_collection_packages_to_save, ignore_conflicts=True
+            )
 
         if update_references_to_save:
-            UpdateReference.objects.bulk_create(update_references_to_save)
+            UpdateReference.objects.bulk_create(update_references_to_save, ignore_conflicts=True)
