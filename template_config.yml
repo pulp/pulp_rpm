@@ -65,5 +65,5 @@ test_s3: true
 update_redmine: true
 upgrade_range:
 - pulp_rpm_branch: 3.10
-  pulpcore_branch: 3.11
+  pulpcore_branch: 3.7
 

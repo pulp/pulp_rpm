@@ -143,7 +143,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - FROM_PULPCORE_BRANCH: "3.11"
+          - FROM_PULPCORE_BRANCH: "3.7"
             FROM_PULP_RPM_BRANCH: "3.10"
 
     steps:
