@@ -5,16 +5,15 @@
 #
 # For more info visit https://github.com/pulp/plugin_template
 ---
-name: Pulp CI
-on:
-  pull_request:
-    branches:
-      - '*'
-
+name: Rpm CI
+on: {pull_request: {branches: ['*']}}
 jobs:
+
+
 
   lint:
     runs-on: ubuntu-latest
+    
 
     steps:
       - uses: actions/checkout@v2
@@ -120,13 +119,17 @@ jobs:
       - name: Script
         run: .github/workflows/scripts/script.sh
         shell: bash
+        # env vars useful for post_script.sh when present
+        env:
+          GITHUB_PULL_REQUEST: ${{ github.event.number }}
+          GITHUB_BRANCH: ${{ github.head_ref }}
+          GITHUB_REPO_SLUG: ${{ github.repository }}
 
       - name: After failure
         if: failure()
         run: |
           echo "Need to debug? Please check: https://github.com/marketplace/actions/debugging-with-tmate"
           http --timeout 30 --check-status --pretty format --print hb https://pulp/pulp/api/v3/status/ || true
-          http --timeout 30 --check-status --pretty format --print hb https://pulp/pulp/api/v3/tasks/?state=failed || true
           docker images || true
           docker ps -a || true
           docker logs pulp || true
@@ -144,7 +147,7 @@ jobs:
       matrix:
         include:
           - FROM_PULPCORE_BRANCH: "3.11"
-            FROM_PULP_RPM_BRANCH: "3.10"
+            FROM_PULP_RPM_BRANCH: "3.1"
 
     steps:
       - uses: actions/checkout@v2
@@ -203,7 +206,6 @@ jobs:
         if: failure()
         run: |
           http --timeout 30 --check-status --pretty format --print hb https://pulp/pulp/api/v3/status/ || true
-          http --timeout 30 --check-status --pretty format --print hb https://pulp/pulp/api/v3/tasks/?state=failed || true
           docker images || true
           docker ps -a || true
           docker logs pulp || true
@@ -212,3 +214,6 @@ jobs:
           docker exec pulp pip3 list
           docker exec pulp ls -latr /etc/yum.repos.d/
           docker exec pulp cat /etc/yum.repos.d/*
+
+
+
