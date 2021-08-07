@@ -1,9 +1,12 @@
 import requests
 
-from pulp_smash import config
-from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
-from pulp_smash.pulp3.utils import (
+
+from pulp_smash.pulp3.bindings import (
     delete_orphans,
+    monitor_task,
+    PulpTestCase,
+)
+from pulp_smash.pulp3.utils import (
     gen_distribution,
     gen_repo,
 )
@@ -24,17 +27,16 @@ class ContentHandlerTests(PulpTestCase):
     @classmethod
     def tearDownClass(cls) -> None:
         """Clean up after testing."""
-        delete_orphans(cls.cfg)
+        delete_orphans()
 
     @classmethod
     def setUpClass(cls) -> None:
         """Set up the class."""
-        cls.cfg = config.get_config()
         cls.client = gen_rpm_client()
         cls.repo_api = RepositoriesRpmApi(cls.client)
         cls.publications_api = PublicationsRpmApi(cls.client)
         cls.distributions_api = DistributionsRpmApi(cls.client)
-        delete_orphans(cls.cfg)
+        delete_orphans()
 
     def setUp(self):
         """Setup method."""

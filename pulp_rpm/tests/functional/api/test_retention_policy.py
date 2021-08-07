@@ -2,8 +2,11 @@
 
 from collections import defaultdict
 
-from pulp_smash import config
-from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
+from pulp_smash.pulp3.bindings import (
+    delete_orphans,
+    monitor_task,
+    PulpTestCase,
+)
 from pulp_smash.pulp3.utils import (
     gen_repo,
     get_added_content_summary,
@@ -11,7 +14,6 @@ from pulp_smash.pulp3.utils import (
     get_content_summary,
     get_removed_content,
     get_removed_content_summary,
-    delete_orphans,
 )
 
 from pulp_rpm.tests.functional.constants import (
@@ -39,11 +41,10 @@ class RetentionPolicyTestCase(PulpTestCase):
     @classmethod
     def setUpClass(cls):
         """Create class-wide variables."""
-        cls.cfg = config.get_config()
         cls.client = gen_rpm_client()
         cls.repo_api = RepositoriesRpmApi(cls.client)
         cls.remote_api = RemotesRpmApi(cls.client)
-        delete_orphans(cls.cfg)
+        delete_orphans()
 
     def test_sync_with_retention(self):
         """Verify functionality with sync.

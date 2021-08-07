@@ -9,9 +9,12 @@ import dictdiffer
 
 from pulp_smash import cli, config
 from pulp_smash.utils import get_pulp_setting, http_get
-from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
-from pulp_smash.pulp3.utils import (
+from pulp_smash.pulp3.bindings import (
     delete_orphans,
+    monitor_task,
+    PulpTestCase,
+)
+from pulp_smash.pulp3.utils import (
     gen_repo,
     gen_distribution,
     get_content,

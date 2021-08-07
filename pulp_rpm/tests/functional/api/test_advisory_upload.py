@@ -5,8 +5,13 @@ from tempfile import NamedTemporaryFile
 
 from pulp_smash import api, config
 
-from pulp_smash.pulp3.bindings import PulpTaskError, PulpTestCase, monitor_task
-from pulp_smash.pulp3.utils import delete_orphans, gen_repo
+from pulp_smash.pulp3.bindings import (
+    delete_orphans,
+    monitor_task,
+    PulpTaskError,
+    PulpTestCase,
+)
+from pulp_smash.pulp3.utils import gen_repo
 from pulp_smash.utils import http_get
 
 from pulp_rpm.tests.functional.utils import (
