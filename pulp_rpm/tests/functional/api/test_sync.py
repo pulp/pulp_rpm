@@ -7,7 +7,12 @@ import dictdiffer
 from django.utils.dateparse import parse_datetime
 
 from pulp_smash import cli, config
-from pulp_smash.pulp3.bindings import PulpTaskError, PulpTestCase, monitor_task
+from pulp_smash.pulp3.bindings import (
+    delete_orphans,
+    monitor_task,
+    PulpTaskError,
+    PulpTestCase,
+)
 from pulp_smash.pulp3.utils import (
     gen_repo,
     get_added_content_summary,
@@ -15,7 +20,6 @@ from pulp_smash.pulp3.utils import (
     get_content,
     get_content_summary,
     get_removed_content,
-    delete_orphans,
     modify_repo,
     wget_download_on_host,
 )
@@ -100,7 +104,7 @@ class BasicSyncTestCase(PulpTestCase):
         cls.remote_api = RemotesRpmApi(cls.client)
         cls.packages_api = ContentPackagesApi(cls.client)
 
-        delete_orphans(cls.cfg)
+        delete_orphans()
         cls.md5_allowed = "md5" in get_pulp_setting(cls.cli_client, "ALLOWED_CONTENT_CHECKSUMS")
 
     def test_sync(self):

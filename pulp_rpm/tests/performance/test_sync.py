@@ -5,9 +5,8 @@ from datetime import datetime
 from urllib.parse import urljoin
 
 from pulp_smash import api, config
-from pulp_smash.pulp3.bindings import monitor_task
+from pulp_smash.pulp3.bindings import delete_orphans, monitor_task
 from pulp_smash.pulp3.utils import (
-    delete_orphans,
     gen_repo,
     get_added_content_summary,
     get_content,
@@ -50,7 +49,7 @@ class SyncTestCase(unittest.TestCase):
         cls.cfg = config.get_config()
         cls.client = api.Client(cls.cfg, api.json_handler)
 
-        delete_orphans(cls.cfg)
+        delete_orphans()
 
     def parse_date_from_string(self, s, parse_format="%Y-%m-%dT%H:%M:%S.%fZ"):
         """Parse string to datetime object.
@@ -81,7 +80,7 @@ class SyncTestCase(unittest.TestCase):
         4. Assert that repository version is not None.
         5. Assert that distribution_tree units were added and are present in the repo.
         """
-        delete_orphans(self.cfg)
+        delete_orphans()
         repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo["pulp_href"])
 
@@ -189,12 +188,11 @@ class CDNTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Create class-wide variables."""
-        cls.cfg = config.get_config()
         cls.client = gen_rpm_client()
         cls.repo_api = RepositoriesRpmApi(cls.client)
         cls.remote_api = RemotesRpmApi(cls.client)
         cls.repometadatafiles = ContentRepoMetadataFilesApi(cls.client)
-        delete_orphans(cls.cfg)
+        delete_orphans()
         # Certificates processing
         cls.cdn_client_cert = False
         if (

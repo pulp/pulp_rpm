@@ -6,11 +6,13 @@ will fail if this is not the case.
 """
 from pulp_smash import api, cli, config
 from pulp_smash.utils import uuid4
-from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task, monitor_task_group
-from pulp_smash.pulp3.utils import (
+from pulp_smash.pulp3.bindings import (
     delete_orphans,
-    gen_repo,
+    monitor_task,
+    monitor_task_group,
+    PulpTestCase,
 )
+from pulp_smash.pulp3.utils import gen_repo
 
 from pulp_rpm.tests.functional.constants import RPM_KICKSTART_FIXTURE_URL, RPM_UNSIGNED_FIXTURE_URL
 from pulp_rpm.tests.functional.utils import (
@@ -123,7 +125,7 @@ class PulpImportTestBase(PulpTestCase):
 
         cls._delete_exporter()
 
-        delete_orphans(cls.cfg)
+        delete_orphans()
 
     def _create_importer(self, name=None, cleanup=True):
         """Create an importer."""
@@ -291,7 +293,7 @@ class ParallelImportTestCase(PulpImportTestBase):
         """Remaining clean up repos/export already gone by now."""
         for repo in self.import_repos:
             self.repo_api.delete(repo.pulp_href)
-        delete_orphans(self.cfg)
+        delete_orphans()
 
     def _post_export_cleanup(self):
         """
@@ -302,7 +304,7 @@ class ParallelImportTestCase(PulpImportTestBase):
             self.remote_api.delete(remote.pulp_href)
         for repo in self.export_repos:
             self.repo_api.delete(repo.pulp_href)
-        delete_orphans(self.cfg)
+        delete_orphans()
 
     def test_clean_import(self):
         """Test an import into an empty instance."""

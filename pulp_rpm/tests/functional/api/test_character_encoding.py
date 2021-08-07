@@ -3,10 +3,9 @@ from urllib.parse import urljoin
 
 from pulp_smash import api, config, utils
 from pulp_smash.exceptions import TaskReportError
-from pulp_smash.pulp3.bindings import PulpTestCase
+from pulp_smash.pulp3.bindings import delete_orphans, PulpTestCase
 from pulp_smash.pulp3.constants import ARTIFACTS_PATH
 from pulp_smash.pulp3.utils import (
-    delete_orphans,
     gen_repo,
     get_versions,
 )
@@ -40,7 +39,7 @@ class UploadEncodingMetadataTestCase(PulpTestCase):
     @classmethod
     def tearDownClass(cls):
         """Clean class-wide variable."""
-        delete_orphans(cls.cfg)
+        delete_orphans()
 
     def test_upload_non_ascii(self):
         """Test whether one can upload an RPM with non-ascii metadata."""
