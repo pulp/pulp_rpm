@@ -5,9 +5,12 @@ from random import choice
 from requests.exceptions import HTTPError
 
 from pulp_smash import api, config
-from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
-from pulp_smash.pulp3.utils import (
+from pulp_smash.pulp3.bindings import (
     delete_orphans,
+    monitor_task,
+    PulpTestCase,
+)
+from pulp_smash.pulp3.utils import (
     gen_repo,
     get_added_content_summary,
     get_content,
@@ -94,7 +97,7 @@ class StaticContextModuleTestCase(BaseCopy):
         cls.cfg = config.get_config()
         cls.client = api.Client(cls.cfg, api.json_handler)
 
-        delete_orphans(cls.cfg)
+        delete_orphans()
 
     def test_copy(self):
         """Test copying a static_context-using repo to an empty destination."""
@@ -134,7 +137,7 @@ class BasicCopyTestCase(BaseCopy):
         cls.cfg = config.get_config()
         cls.client = api.Client(cls.cfg, api.json_handler)
 
-        delete_orphans(cls.cfg)
+        delete_orphans()
 
     def test_copy_all(self):
         """Test copying all the content from one repo to another."""
@@ -291,7 +294,7 @@ class DependencySolvingTestCase(BaseCopy):
         cls.cfg = config.get_config()
         cls.client = api.Client(cls.cfg, api.json_handler)
 
-        delete_orphans(cls.cfg)
+        delete_orphans()
 
     def _do_test(self, criteria, expected_results):
         """Test copying content units with the RPM plugin.
@@ -363,7 +366,7 @@ class StrictPackageCopyTestCase(PulpTestCase):
         cls.rpm_content_api = ContentPackagesApi(cls.client)
         cls.test_package = "whale"
         cls.test_package_dependencies = ["shark", "stork"]
-        delete_orphans(cls.cfg)
+        delete_orphans()
 
     def test_strict_copy_package_to_empty_repo(self):
         """Test copy package and its dependencies to empty repository.
@@ -586,7 +589,7 @@ class AdvisoryCopyTestCase(PulpTestCase):
 
         cls.test_advisory = "RHEA-2012:0055"
         cls.test_advisory_dependencies = ["walrus", "penguin", "shark"]
-        delete_orphans(cls.cfg)
+        delete_orphans()
 
     def test_child_detection(self):
         """Test copy advisory and its direct package & module dependencies to empty repository.

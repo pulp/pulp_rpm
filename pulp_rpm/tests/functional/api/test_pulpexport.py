@@ -6,12 +6,13 @@ the case.
 """
 from pulp_smash import api, cli, config
 from pulp_smash.utils import uuid4
-from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
-
-from pulp_smash.pulp3.utils import (
+from pulp_smash.pulp3.bindings import (
     delete_orphans,
-    gen_repo,
+    monitor_task,
+    PulpTestCase,
 )
+
+from pulp_smash.pulp3.utils import gen_repo
 
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
@@ -78,7 +79,7 @@ class BaseExporterCase(PulpTestCase):
         """Clean up after ourselves."""
         cls.remote_api.delete(cls.remote.pulp_href)
         cls.repo_api.delete(cls.repo.pulp_href)
-        delete_orphans(cls.cfg)
+        delete_orphans()
 
     def _delete_exporter(self, exporter):
         """

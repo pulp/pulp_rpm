@@ -1,7 +1,11 @@
 """Tests distribution trees."""
 
 from pulp_smash import config
-from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
+from pulp_smash.pulp3.bindings import (
+    delete_orphans,
+    monitor_task,
+    PulpTestCase,
+)
 from pulp_rpm.tests.functional.utils import rpm_copy
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
@@ -9,7 +13,6 @@ from pulp_smash.pulp3.utils import (
     gen_repo,
     get_added_content_summary,
     get_content,
-    delete_orphans,
 )
 
 from pulp_rpm.tests.functional.utils import gen_rpm_client, gen_rpm_remote
@@ -42,7 +45,7 @@ class DistributionTreeCopyTestCase(PulpTestCase):
         cls.dist_tree_api = ContentDistributionTreesApi(cls.client)
         cls.repo_api = RepositoriesRpmApi(cls.client)
         cls.remote_api = RemotesRpmApi(cls.client)
-        delete_orphans(cls.cfg)
+        delete_orphans()
 
     def do_sync(self, remote_url):
         """Create and sync repository with remote_url.
@@ -114,13 +117,12 @@ class DistributionTreeTest(PulpTestCase):
     @classmethod
     def setUpClass(cls):
         """Create class-wide variables."""
-        cls.cfg = config.get_config()
         cls.client = gen_rpm_client()
         cls.dist_tree_api = ContentDistributionTreesApi(cls.client)
         cls.packages_api = ContentPackagesApi(cls.client)
         cls.repo_api = RepositoriesRpmApi(cls.client)
         cls.remote_api = RemotesRpmApi(cls.client)
-        delete_orphans(cls.cfg)
+        delete_orphans()
 
     def do_test(self, repository=None, remote=None):
         """Sync a repository.
@@ -259,5 +261,5 @@ class DistributionTreeTest(PulpTestCase):
 
         self.assertEqual(self.repo_api.list().count, 0)
         # Remove orphans and check if distribution tree was removed.
-        delete_orphans(self.cfg)
+        delete_orphans()
         self.assertEqual(self.dist_tree_api.list().count, 0)

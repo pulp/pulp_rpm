@@ -3,8 +3,13 @@ import requests
 
 from urllib.parse import urljoin
 
-from pulp_smash.pulp3.bindings import PulpTaskError, PulpTestCase, monitor_task
-from pulp_smash.pulp3.utils import delete_orphans, gen_repo, get_content
+from pulp_smash.pulp3.bindings import (
+    delete_orphans,
+    monitor_task,
+    PulpTaskError,
+    PulpTestCase,
+)
+from pulp_smash.pulp3.utils import gen_repo, get_content
 
 from pulp_rpm.tests.functional.utils import (
     gen_artifact,

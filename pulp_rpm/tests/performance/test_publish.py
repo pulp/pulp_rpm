@@ -8,8 +8,8 @@ from urllib.parse import urljoin
 from productmd.treeinfo import TreeInfo
 
 from pulp_smash import api, config, utils
+from pulp_smash.pulp3.bindings import delete_orphans
 from pulp_smash.pulp3.utils import (
-    delete_orphans,
     gen_repo,
     get_added_content_summary,
     get_content_summary,
@@ -60,7 +60,7 @@ class PublishTestCase(unittest.TestCase):
         cls.cfg = config.get_config()
         cls.client = api.Client(cls.cfg, api.json_handler)
 
-        delete_orphans(cls.cfg)
+        delete_orphans()
 
     def parse_date_from_string(self, s, parse_format="%Y-%m-%dT%H:%M:%S.%fZ"):
         """Parse string to datetime object.
@@ -90,7 +90,7 @@ class PublishTestCase(unittest.TestCase):
         5. Assert that distribution_tree units were added and are present in the repo.
         6. Publish
         """
-        delete_orphans(self.cfg)
+        delete_orphans()
         repo = self.client.post(RPM_REPO_PATH, gen_repo())
         self.addCleanup(self.client.delete, repo["pulp_href"])
 
