@@ -359,6 +359,9 @@ class Package(Content):
 
         package = cr.Package()
         package.arch = getattr(self, PULP_PACKAGE_ATTRS.ARCH)
+        log.info("CHANGELOGS")
+        log.info(getattr(self, PULP_PACKAGE_ATTRS.CHANGELOGS))
+        log.info(list_to_createrepo_c(getattr(self, PULP_PACKAGE_ATTRS.CHANGELOGS)))
         package.changelogs = list_to_createrepo_c(getattr(self, PULP_PACKAGE_ATTRS.CHANGELOGS))
         package.checksum_type = getattr(
             CHECKSUM_TYPES, getattr(self, PULP_PACKAGE_ATTRS.CHECKSUM_TYPE).upper()
@@ -367,6 +370,10 @@ class Package(Content):
         package.description = getattr(self, PULP_PACKAGE_ATTRS.DESCRIPTION)
         package.enhances = list_to_createrepo_c(getattr(self, PULP_PACKAGE_ATTRS.ENHANCES))
         package.epoch = getattr(self, PULP_PACKAGE_ATTRS.EPOCH)
+        log.info("FILES")
+        log.info(getattr(self, PULP_PACKAGE_ATTRS.FILES))
+        log.info(list_to_createrepo_c(getattr(self, PULP_PACKAGE_ATTRS.FILES)))
+        package.changelogs = list_to_createrepo_c(getattr(self, PULP_PACKAGE_ATTRS.CHANGELOGS))
         package.files = list_to_createrepo_c(getattr(self, PULP_PACKAGE_ATTRS.FILES))
         package.location_base = getattr(self, PULP_PACKAGE_ATTRS.LOCATION_BASE)
         package.location_href = getattr(self, PULP_PACKAGE_ATTRS.LOCATION_HREF)

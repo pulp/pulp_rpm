@@ -125,6 +125,11 @@ jobs:
           GITHUB_BRANCH: ${{ github.head_ref }}
           GITHUB_REPO_SLUG: ${{ github.repository }}
 
+      - name: Setup tmate session
+        if: ${{ failure() }}
+        uses: mxschmitt/action-tmate@v3
+        timeout-minutes: 15
+
       - name: After failure
         if: failure()
         run: |
