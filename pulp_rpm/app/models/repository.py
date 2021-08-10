@@ -463,6 +463,7 @@ class RpmDistribution(Distribution):
     """
 
     TYPE = "rpm"
+    SERVE_FROM_PUBLICATION = True
     repository_config_file_name = "config.repo"
 
     def content_handler(self, path):
