@@ -13,6 +13,33 @@ Changelog
 
 .. towncrier release notes start
 
+3.14.1 (2021-08-11)
+===================
+
+
+Bugfixes
+--------
+
+- Taught pulp_rpm to be more lenient in the face of non-standard repos.
+  (backported from #7208)
+  `#9192 <https://pulp.plan.io/issues/9192>`_
+- Fixed Pulp 3 to Pulp 2 sync for the package groups with empty packagelist, e.g. RHEL8 Appstream repository.
+  (backported from #8713)
+  `#9193 <https://pulp.plan.io/issues/9193>`_
+- Taught downloader to be handle rpms with special characters in ways Amazon likes.
+  (backported from #8875)
+  `#9198 <https://pulp.plan.io/issues/9198>`_
+- Fixed multiple bugs in distribution tree metadata generation regarding "variant" and "variants" metadata.
+  (backported from #8622)
+  `#9218 <https://pulp.plan.io/issues/9218>`_
+- Unpublished content is no longer available for consumption.
+  (backported from #9223)
+  `#9226 <https://pulp.plan.io/issues/9226>`_
+
+
+----
+
+
 3.14.0 (2021-07-24)
 ===================
 
