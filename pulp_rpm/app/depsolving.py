@@ -583,6 +583,7 @@ class Solver:
         self._finalized = False
         self._pool = solv.Pool()
         self._pool.setarch()  # prevent https://github.com/openSUSE/libsolv/issues/267
+        self._pool.set_flag(solv.Pool.POOL_FLAG_IMPLICITOBSOLETEUSESCOLORS, 1)
         self.mapping = UnitSolvableMapping()
 
     def finalize(self):
@@ -710,91 +711,29 @@ class Solver:
         solvable = conversion_func(repo, unit)
         self.mapping.register(unit["pk"], solvable, libsolv_repo_name)
 
-    # def _handle_nothing_provides(self, info):
-    #     """Handle a case where nothing provides a given requirement.
+    def _build_warnings(self, problems):
+        """Builds a list of 'warnable' depsolving errors.
 
-    #     Some units may depend on other units outside the repo, and that will cause issues with
-    #     the solver. We need to create some dummy packages to fulfill those provides so that the
-    #     solver can continue. Essentially we pretend the missing dependencies are already
-    #     installed.
+        "install" problems aren't relevant to "is the repo-version resulting from this copy
+        dependency-complete", so we choose to ignore them, as they only hide 'real'
+        depsolving issues while alarming the user.
 
-    #     :param info: A class describing why the rule was broken
-    #     :type info: solv.RuleInfo
-    #     """
-    #     target_repo = self.mapping.get_repo(COMBINED_TARGET_REPO_NAME)
-    #     if not target_repo:
-    #         return
-    #     dummy = target_repo.add_solvable()
-    #     dummy.name = 'dummy-provides:{}'.format(str(info.dep))
-    #     dummy.arch = 'noarch'
-    #     dummy.evr = ''
-    #     dummy.add_deparray(solv.SOLVABLE_PROVIDES, info.dep)
-    #     self._pool.createwhatprovides()
-    #     _LOGGER.debug('Created dummy provides: {name}', name=info.dep.str())
-
-    # def _handle_same_name(self, info, jobs):
-    #     """Handle a case where multiple versions of a package are "installed".
-
-    #     Libsolv by default will make the assumption that you can't "install" multiple versions of
-    #     a package, so in cases where we create that situation, we need to pass a special flag.
-    #     """
-
-    #     def locate_solvable_job(solvable, flags, jobs):
-    #         for idx, job in enumerate(jobs):
-    #             if job.what == solvable.id and job.how == flags:
-    #                 _LOGGER.debug('Found job: %s', str(job))
-    #                 return idx
-
-    #     def enforce_solvable_job(solvable, flags, jobs):
-    #         idx = locate_solvable_job(solvable, flags, jobs)
-    #         if idx is not None:
-    #             return
-
-    #         enforce_job = self._pool.Job(flags, solvable.id)
-    #         jobs.append(enforce_job)
-    #         _LOGGER.debug('Added job %s', enforce_job)
-
-    #     install_flags = solv.Job.SOLVER_INSTALL | solv.Job.SOLVER_SOLVABLE
-    #     enforce_flags = install_flags | solv.Job.SOLVER_MULTIVERSION
-
-    #     enforce_solvable_job(info.solvable, enforce_flags, jobs)
-    #     enforce_solvable_job(info.othersolvable, enforce_flags, jobs)
-
-    # def _handle_problems(self, problems, jobs):
-    #     """Handle problems libsolv finds during the depsolving process that can be worked around.
-    #     """
-    #     for problem in problems:
-    #         for problem_rule in problem.findallproblemrules():
-    #             for info in problem_rule.allinfos():
-    #                 if info.type == solv.Solver.SOLVER_RULE_PKG_NOTHING_PROVIDES_DEP:
-    #                     # No solvable provides the dep
-    #                     if not self.ignore_missing:
-    #                         continue
-    #                     self._handle_nothing_provides(info)
-
-    #                 elif info.type == solv.Solver.SOLVER_RULE_PKG_REQUIRES:
-    #                     # A solvable provides the dep but could not be installed for some reason
-    #                     continue
-
-    #                 elif info.type == solv.Solver.SOLVER_RULE_INFARCH:
-    #                     # The solver isn't allowed to rely on packages of an inferior architecture
-    #                     # ie. i686 when x86_64 is being solved for
-    #                     continue
-
-    #                 elif info.type == solv.Solver.SOLVER_RULE_PKG_SAME_NAME:
-    #                     # The deps can only be fulfilled by multiple versions of a package,
-    #                     # but installing multiple versions of the same package is not allowed.
-    #                     self._handle_same_name(info, jobs)
-
-    #                 else:
-    #                     _LOGGER.warning(
-    #                         'No workaround available for problem \'%s\'. '
-    #                         'You may refer to the libsolv Solver class documentation '
-    #                         'for more details. See https://github.com/openSUSE/'
-    #                         'libsolv/blob/master/doc/libsolv-bindings.txt'
-    #                         '#the-solver-class.', problem_rule.info().problemstr()
-    #                     )
-    #     self._pool.createwhatprovides()
+        Args:
+            problems: (list) List of libsolv.Problem from latest depsolving attempt
+        Returns: (list) List of error-strings for 'warnable' problems.
+        """
+        warn_on = [
+            solv.Solver.SOLVER_RULE_JOB_NOTHING_PROVIDES_DEP,
+            solv.Solver.SOLVER_RULE_JOB_UNKNOWN_PACKAGE,
+            solv.Solver.SOLVER_RULE_PKG,
+        ]
+        warnings = []
+        for problem in problems:
+            for problem_rule in problem.findallproblemrules():
+                for info in problem_rule.allinfos():
+                    if info.type in warn_on:
+                        warnings.append(str(info))
+        return warnings
 
     def resolve_dependencies(self, unit_repo_map):
         """Resolve the total set of packages needed for the packages passed in, as DNF would.
@@ -815,6 +754,9 @@ class Solver:
         are other options available.
 
         See: https://github.com/openSUSE/libsolv/blob/master/doc/libsolv-bindings.txt#the-job-class
+
+        In the context of this use of libsolv, we have added/are taking advantage of the flag
+        solv.Pool.POOL_FLAG_IMPLICITOBSOLETEUSESCOLORS. to handle multiarch repos correctly.
 
         Args:
             unit_repo_map: (dict) An iterable oflibsolv_repo_name =
@@ -856,13 +798,15 @@ class Solver:
                 previous_problems = problems
                 attempt += 1
 
-            if problems:
-                # The solver is simply ignoring the problems encountered and proceeds associating
-                # any new solvables/units. This might be reported back to the user one day over
-                # the REST API.
+            # The solver is simply ignoring the problems encountered and proceeds associating
+            # any new solvables/units. This might be reported back to the user one day over
+            # the REST API. For now, log only "real" dependency issues (typically some variant
+            # of "can't find the package"
+            dependency_warnings = self._build_warnings(raw_problems)
+            if dependency_warnings:
                 logger.warning(
                     "Encountered problems solving dependencies, "
-                    "copy may be incomplete: {}".format(", ".join(problems))
+                    "copy may be incomplete: {}".format(", ".join(dependency_warnings))
                 )
 
             transaction = solver.transaction()
@@ -870,6 +814,7 @@ class Solver:
 
         solvables_to_copy = set(solvables)
         result_solvables = set()
+
         while solvables_to_copy:
             # Take one solvable
             solvable = solvables_to_copy.pop()
