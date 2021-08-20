@@ -69,13 +69,13 @@ class RpmRepositorySerializer(RepositorySerializer):
         help_text=_("The checksum type for metadata."),
         choices=CHECKSUM_CHOICES,
         required=False,
-        allow_null=True,
+        default="unknown",
     )
     package_checksum_type = serializers.ChoiceField(
         help_text=_("The checksum type for packages."),
         choices=CHECKSUM_CHOICES,
         required=False,
-        allow_null=True,
+        default="unknown",
     )
     gpgcheck = serializers.IntegerField(
         max_value=1,
