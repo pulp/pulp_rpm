@@ -1,0 +1,2 @@
+Fixed some errors that can occur on occasions when identical content is being synced from multiple sources at once.
+(backported from #9029)
