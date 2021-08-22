@@ -1,0 +1,1 @@
+Fixed an issue where mirror-mode syncs would not provide all of the files described in the .treeinfo metadata.
