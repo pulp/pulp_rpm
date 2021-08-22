@@ -502,7 +502,12 @@ def create_repomd_xml(
 
     comps.toxml_f(
         comps_xml_path,
-        xml_options={"default_explicit": True, "empty_groups": True, "uservisible_explicit": True},
+        xml_options={
+            "default_explicit": True,
+            "empty_groups": True,
+            "empty_packages": True,
+            "uservisible_explicit": True,
+        },
     )
 
     pri_xml.close()
