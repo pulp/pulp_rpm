@@ -5,19 +5,15 @@
 #
 # For more info visit https://github.com/pulp/plugin_template
 ---
-name: Pulp CI
-on:
-  pull_request:
-    branches:
-      - '*'
-  push:
-    branches:
-      - '*'
-
+name: Rpm CI
+on: {pull_request: {branches: ['*']}}
 jobs:
+
+
 
   lint:
     runs-on: ubuntu-latest
+    
 
     steps:
       - uses: actions/checkout@v2
@@ -28,7 +24,7 @@ jobs:
 
       - uses: actions/setup-python@v2
         with:
-          python-version: "3.7"
+          python-version: "3.6"
 
         # dev_requirements contains tools needed for flake8, etc.
       - name: Install requirements
@@ -37,6 +33,7 @@ jobs:
       - name: Check commit message
         if: github.event_name == 'pull_request'
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_CONTEXT: ${{ github.event.pull_request.commits_url }}
         run: sh .github/workflows/scripts/check_commit.sh
 
@@ -81,7 +78,7 @@ jobs:
 
       - uses: actions/setup-python@v2
         with:
-          python-version: "3.7"
+          python-version: "3.6"
 
       - name: Install httpie
         run: |
@@ -103,6 +100,13 @@ jobs:
           ANSIBLE_FORCE_COLOR: '1'
         shell: bash
 
+      - name: Install Python client
+        run: .github/workflows/scripts/install_python_client.sh
+
+      - name: Install Ruby client
+        if: ${{ env.TEST == 'bindings' }}
+        run: .github/workflows/scripts/install_ruby_client.sh
+
       - name: Before Script
         run: |
           .github/workflows/scripts/before_script.sh
@@ -116,6 +120,11 @@ jobs:
       - name: Script
         run: .github/workflows/scripts/script.sh
         shell: bash
+        # env vars useful for post_script.sh when present
+        env:
+          GITHUB_PULL_REQUEST: ${{ github.event.number }}
+          GITHUB_BRANCH: ${{ github.head_ref }}
+          GITHUB_REPO_SLUG: ${{ github.repository }}
 
       - name: After failure
         if: failure()
@@ -130,3 +139,6 @@ jobs:
           docker exec pulp pip3 list
           docker exec pulp ls -latr /etc/yum.repos.d/
           docker exec pulp cat /etc/yum.repos.d/*
+
+
+
