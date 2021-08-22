@@ -14,6 +14,7 @@ from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files import File
 from django.db import transaction
+from django.db.models import Q
 
 from aiohttp.client_exceptions import ClientResponseError
 from aiohttp.web_exceptions import HTTPNotFound
@@ -158,6 +159,8 @@ def add_metadata_to_publication(publication, version, prefix=""):
         )
 
     published_artifacts = []
+
+    # Handle packages
     pkg_data = (
         ContentArtifact.objects.filter(
             content__in=version.content, content__pulp_type=Package.get_pulp_type()
@@ -175,6 +178,35 @@ def add_metadata_to_publication(publication, version, prefix=""):
             publication=publication,
         )
         published_artifacts.append(pa)
+
+    # Handle everything else
+    # TODO: this code is copied directly from publication, we should deduplicate it later
+    # (if possible)
+    is_treeinfo = Q(relative_path__in=["treeinfo", ".treeinfo"])
+    unpublishable_types = Q(
+        content__pulp_type__in=[
+            RepoMetadataFile.get_pulp_type(),
+            Modulemd.get_pulp_type(),
+            ModulemdDefaults.get_pulp_type(),
+            # already dealt with
+            Package.get_pulp_type(),
+        ]
+    )
+
+    contentartifact_qs = (
+        ContentArtifact.objects.filter(content__in=version.content)
+        .exclude(unpublishable_types)
+        .exclude(is_treeinfo)
+    )
+
+    for content_artifact in contentartifact_qs.values("pk", "relative_path").iterator():
+        published_artifacts.append(
+            PublishedArtifact(
+                relative_path=content_artifact["relative_path"],
+                publication=publication,
+                content_artifact_id=content_artifact["pk"],
+            )
+        )
 
     PublishedArtifact.objects.bulk_create(published_artifacts)
 
