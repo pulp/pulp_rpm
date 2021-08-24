@@ -1,0 +1,2 @@
+Taught pulp_rpm to be more lenient in the face of non-standard repos.
+(backported from #7208)
