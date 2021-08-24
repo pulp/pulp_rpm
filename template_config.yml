@@ -1,7 +1,7 @@
 # This config represents the latest values used when running the plugin-template. Any settings that
 # were not present before running plugin-template have been added with their default values.
 
-# generated with plugin_template@2021.04.08-95-gbf7866c
+# generated with plugin_template@2021.04.08-98-gd000611
 
 additional_plugins: []
 additional_repos: []
@@ -11,6 +11,7 @@ check_gettext: true
 check_manifest: true
 check_openapi_schema: true
 check_stray_pulpcore_imports: true
+ci_env: {}
 ci_trigger: '{pull_request: {branches: [''*'']}}'
 core_import_allowed: []
 coverage: false
@@ -51,6 +52,7 @@ pulp_settings:
   - /tmp
 pulpcore_branch: master
 pulpcore_pip_version_specifier: null
+pulpcore_revision: null
 pulpprojectdotorg_key_id: aa499d7938ed
 pydocstyle: true
 pypi_username: pulp
