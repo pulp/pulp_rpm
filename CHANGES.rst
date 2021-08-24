@@ -246,6 +246,33 @@ Misc
 ----
 
 
+3.11.2 (2021-08-24)
+===================
+
+
+Bugfixes
+--------
+
+- Taught pulp_rpm how to deal with timestamp and filename oddities of SUSE repos.
+  (backported from #8275)
+  `#9113 <https://pulp.plan.io/issues/9113>`_
+- Fixed Pulp 3 to Pulp 2 sync for the package groups with empty packagelist, e.g. RHEL8 Appstream repository.
+  (backported from #8713)
+  `#9195 <https://pulp.plan.io/issues/9195>`_
+- Taught pulp_rpm to be more lenient in the face of non-standard repos.
+  (backported from #7208)
+  `#9285 <https://pulp.plan.io/issues/9285>`_
+
+
+Misc
+----
+
+- `#9228 <https://pulp.plan.io/issues/9228>`_
+
+
+----
+
+
 3.11.1 (2021-05-31)
 ===================
 
