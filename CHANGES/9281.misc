@@ -1,2 +1,0 @@
-Package's custom manager inherits from ContentManager.
-(backported from #9279)
