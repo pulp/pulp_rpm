@@ -118,16 +118,49 @@ class PublicationData:
             content__pulp_type=Package.get_pulp_type()
         )
 
+        paths = set()
+        duplicated_paths = []
         for content_artifact in contentartifact_qs.values("pk", "relative_path").iterator():
             relative_path = content_artifact["relative_path"]
             relative_path = os.path.join(
                 prefix, PACKAGES_DIRECTORY, relative_path.lower()[0], relative_path
             )
+            #
+            # Some Suboptimal Repos have the 'same' artifact living in multiple places.
+            # Specifically, the same NEVRA, in more than once place, **with different checksums**
+            # (since if all that was different was location_href there would be only one
+            # ContentArtifact in the first place).
+            #
+            # pulp_rpm wants to publish a 'canonical' repository-layout, under which an RPM
+            # "name-version-release-arch" appears at "Packages/n/name-version-release-arch.rpm".
+            # Because the assumption is that Packages don't "own" their path, only the filename
+            # is kept as relative_path.
+            #
+            # In this case, we have to pick one - which is essentially what the rest of the RPM
+            # Ecosystem does when faced with the impossible. This code takes the first-found. We
+            # could implement something more complicated, if there are better options
+            # (choose by last-created maybe?)
+            #
+            # Note that this only impacts user-created publications, which produce the "standard"
+            # RPM layout of repo/Packages/f/foo.rpm. A publication created by mirror-sync retains
+            # whatever layout their "upstream" repo-metadata dictates.
+            #
+            if relative_path in paths:
+                duplicated_paths.append(f'{relative_path}:{content_artifact["pk"]}')
+                continue
+            else:
+                paths.add(relative_path)
             published_artifacts.append(
                 PublishedArtifact(
                     relative_path=relative_path,
                     publication=self.publication,
                     content_artifact_id=content_artifact["pk"],
+                )
+            )
+        if duplicated_paths:
+            log.warning(
+                _("Duplicate paths found at publish : {problems} ").format(
+                    problems="; ".join(duplicated_paths)
                 )
             )
 

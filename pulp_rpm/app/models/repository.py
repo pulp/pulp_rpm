@@ -21,7 +21,11 @@ from pulpcore.plugin.models import (
     PublicationDistribution,
     Task,
 )
-from pulpcore.plugin.repo_version_utils import remove_duplicates, validate_repo_version
+from pulpcore.plugin.repo_version_utils import (
+    remove_duplicates,
+    validate_duplicate_content,
+    validate_version_paths,
+)
 
 from pulp_rpm.app.constants import CHECKSUM_CHOICES
 from pulp_rpm.app.models import (
@@ -241,7 +245,28 @@ class RpmRepository(Repository):
         from pulp_rpm.app.advisory import resolve_advisories  # avoid circular import
 
         resolve_advisories(new_version, previous_version)
-        validate_repo_version(new_version)
+
+        #
+        # Some repositories are odd. A given NEVRA with different checksums can appear at
+        # different locations in the repo, or a single Artifact can be referenced by more than one
+        # name.
+        #
+        # validate_duplicate_content() takes repo-keys into account - so same-NEVRA, diff-location
+        # passes the test.
+        #
+        # The validate_version_paths() test checks for different-nevras, but same relative-path,
+        # and raises an exception. Because of these odd repositories, this can't be fatal - so
+        # we warn about it, but continue. At publish, we will have to pick one.
+        validate_duplicate_content(new_version)
+        try:
+            validate_version_paths(new_version)
+        except ValueError as ve:
+            log.warning(
+                _(
+                    "New version of repository {repo} reports duplicate/overlap errors : "
+                    "{value_errors}"
+                ).format(repo=new_version.repository.name, value_errors=str(ve))
+            )
 
     def _apply_retention_policy(self, new_version):
         """Apply the repository's "retain_package_versions" settings to the new version.
