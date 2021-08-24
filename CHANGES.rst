@@ -13,6 +13,30 @@ Changelog
 
 .. towncrier release notes start
 
+3.14.2 (2021-08-24)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed some errors that can occur on occasions when identical content is being synced from multiple sources at once.
+  (backported from #9029)
+  `#9267 <https://pulp.plan.io/issues/9267>`_
+- Fixed an issue where mirror-mode syncs would not provide all of the files described in the .treeinfo metadata.
+  (backported from #9230)
+  `#9270 <https://pulp.plan.io/issues/9270>`_
+
+
+Misc
+----
+
+- `#9281 <https://pulp.plan.io/issues/9281>`_
+
+
+----
+
+
 3.14.1 (2021-08-11)
 ===================
 
