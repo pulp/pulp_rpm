@@ -7,7 +7,7 @@ from django.db import models
 from django.db.models import Window, F
 from django.db.models.functions import RowNumber
 
-from pulpcore.plugin.models import Content
+from pulpcore.plugin.models import Content, ContentManager
 
 from pulp_rpm.app.constants import (
     CHECKSUM_CHOICES,
@@ -29,7 +29,7 @@ class RpmVersionField(models.Field):
         return "pulp_evr_t"
 
 
-class PackageManager(models.Manager):
+class PackageManager(ContentManager):
     """Custom Package object manager."""
 
     def with_age(self):
