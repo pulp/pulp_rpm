@@ -363,12 +363,11 @@ class CoreMetadataTestCase(PulpTestCase):
         remote = self.remote_api.create(body)
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
-        # 2. Sync it
+        # 2, 3. Sync, publish and distribute
         repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
         sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
         monitor_task(sync_response.task)
 
-        # 3. Publish and distribute
         publish_data = RpmRpmPublication(repository=repo.pulp_href)
         publish_response = self.publications.create(publish_data)
         created_resources = monitor_task(publish_response.task).created_resources
@@ -503,6 +502,7 @@ class DistributionTreeMetadataTestCase(PulpTestCase):
     4. Download the treeinfo metadata of both the original and Pulp-created repos.
     5. Sort fields so that it is directly comparable.
     6. Compare the metadata, ignoring the differences that are expected, such as path rewriting.
+    7. Try downloading the extra files listed in the .treeinfo, make sure the requests succeed.
     """
 
     @classmethod
@@ -540,23 +540,20 @@ class DistributionTreeMetadataTestCase(PulpTestCase):
         from configparser import ConfigParser
 
         # 1. create repo and remote
-        repo = self.repo_api.create(gen_repo())
+        repo = self.repo_api.create(gen_repo(autopublish=not mirror))
         self.addCleanup(self.repo_api.delete, repo.pulp_href)
 
         body = gen_rpm_remote(RPM_KICKSTART_FIXTURE_URL, policy="on_demand")
         remote = self.remote_api.create(body)
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
-        # 2. Sync it
+        # 2, 3. Sync and publish
         repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, mirror=mirror)
         sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
-        monitor_task(sync_response.task)
+        created_resources = monitor_task(sync_response.task).created_resources
 
-        # 3. Publish and distribute
-        publish_data = RpmRpmPublication(repository=repo.pulp_href)
-        publish_response = self.publications.create(publish_data)
-        created_resources = monitor_task(publish_response.task).created_resources
-        publication_href = created_resources[0]
+        publication_href = [r for r in created_resources if "publication" in r][0]
+
         self.addCleanup(self.publications.delete, publication_href)
 
         body = gen_distribution()
@@ -571,14 +568,16 @@ class DistributionTreeMetadataTestCase(PulpTestCase):
         generated_treeinfo = http_get(os.path.join(distribution.base_url, ".treeinfo"))
 
         config = ConfigParser()
+        config.optionxform = str  # by default it will cast keys to lower case
         config.read_string(original_treeinfo.decode("utf-8"))
         original_treeinfo = config._sections
 
         config = ConfigParser()
+        config.optionxform = str  # by default it will cast keys to lower case
         config.read_string(generated_treeinfo.decode("utf-8"))
         generated_treeinfo = config._sections
 
-        # 5. Re-arrange the metadata so that it can be compared.
+        # 5, 6. Re-arrange the metadata so that it can be compared, and do the comparison.
         # TODO: These really should be in the same order they were in originally.
         # https://pulp.plan.io/issues/9208
         for metadata_dict in [original_treeinfo, generated_treeinfo]:
@@ -606,6 +605,17 @@ class DistributionTreeMetadataTestCase(PulpTestCase):
             differences.append(d)
 
         self.assertListEqual(differences, [], differences)
+
+        # 7. Try downloading the files listed in the .treeinfo metadata, make sure they're
+        # actually there.
+        for path, checksum in original_treeinfo["checksums"].items():
+            if path.startswith("fixtures"):
+                # TODO: the .treeinfo metadata is actually wrong for these files, so we can't
+                # check them because they won't be there.
+                continue
+
+            checksum_type, checksum = checksum.split(":")
+            http_get(os.path.join(distribution.base_url, path))
 
 
 class ChecksumTypeTestCase(PulpTestCase):
