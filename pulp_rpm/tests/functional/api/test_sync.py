@@ -66,7 +66,6 @@ from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
     gen_rpm_remote,
     progress_reports,
-    skip_if,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
@@ -1138,7 +1137,7 @@ class BasicSyncTestCase(PulpTestCase):
                 return True
         return False
 
-    @skip_if(bool, "md5_allowed", True)
+    @unittest.skip("This is not supported properly in pulpcore 3.7.")
     def test_sync_packages_with_unsupported_checksum_type(self):
         """
         Sync an RPM repository with an unsupported checksum (md5).
