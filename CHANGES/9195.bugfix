@@ -1,2 +1,0 @@
-Fixed Pulp 3 to Pulp 2 sync for the package groups with empty packagelist, e.g. RHEL8 Appstream repository.
-(backported from #8713)
