@@ -45,7 +45,7 @@ tasks = TasksApi(core_client)
 def set_up_module():
     """Skip tests Pulp 3 isn't under test or if pulp_rpm isn't installed."""
     require_pulp_3(SkipTest)
-    require_pulp_plugins({"rpm"}, SkipTest)
+    require_pulp_plugins({"pulp_rpm"}, SkipTest)
 
 
 def gen_rpm_client():
