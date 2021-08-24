@@ -9,7 +9,7 @@ black: true
 check_commit_message: true
 check_gettext: true
 check_manifest: true
-check_openapi_schema: true
+check_openapi_schema: false
 check_stray_pulpcore_imports: true
 ci_trigger: '{pull_request: {branches: [''*'']}}'
 core_import_allowed: []

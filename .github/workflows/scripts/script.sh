@@ -34,11 +34,6 @@ if [[ "$TEST" = "docs" ]]; then
   tar -cvf docs.tar ./_build
   cd ..
 
-  echo "Validating OpenAPI schema..."
-  cat $PWD/.ci/scripts/schema.py | cmd_stdin_prefix bash -c "cat > /tmp/schema.py"
-  cmd_prefix bash -c "python3 /tmp/schema.py"
-  cmd_prefix bash -c "pulpcore-manager spectacular --file pulp_schema.yml --validate"
-
   if [ -f $POST_DOCS_TEST ]; then
     source $POST_DOCS_TEST
   fi
