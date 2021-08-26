@@ -137,7 +137,8 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin):
 
         result = dispatch(
             tasks.synchronize,
-            [repository, remote],
+            shared_resources=[remote],
+            exclusive_resources=[repository],
             kwargs={
                 "mirror": mirror,
                 "remote_pk": str(remote.pk),
@@ -257,7 +258,7 @@ class RpmPublicationViewSet(PublicationViewSet):
 
         result = dispatch(
             tasks.publish,
-            [repository_version.repository],
+            exclusive_resources=[repository_version.repository],
             kwargs={
                 "repository_version_pk": repository_version.pk,
                 "metadata_signing_service": signing_service_pk,
@@ -303,10 +304,14 @@ class CopyViewSet(viewsets.ViewSet):
         dependency_solving = serializer.validated_data["dependency_solving"]
         config = serializer.validated_data["config"]
 
-        config, repos = self._process_config(config)
+        config, shared_repos, exclusive_repos = self._process_config(config)
 
         async_result = dispatch(
-            tasks.copy_content, repos, args=[config, dependency_solving], kwargs={}
+            tasks.copy_content,
+            shared_resources=shared_repos,
+            exclusive_resources=exclusive_repos,
+            args=[config, dependency_solving],
+            kwargs={},
         )
         return OperationPostponedResponse(async_result, request)
 
@@ -318,7 +323,11 @@ class CopyViewSet(viewsets.ViewSet):
         repos so that the task can lock on them.
         """
         result = []
-        repos = []
+        # exclusive use of the destination repos is needed since new repository versions are being
+        # created, but source repos can be accessed in a read-only fashion in parallel, so long
+        # as there are no simultaneous modifications.
+        shared_repos = []
+        exclusive_repos = []
 
         for entry in config:
             r = dict()
@@ -328,7 +337,8 @@ class CopyViewSet(viewsets.ViewSet):
             dest_repo = NamedModelViewSet().get_resource(entry["dest_repo"], RpmRepository)
             r["source_repo_version"] = source_version.pk
             r["dest_repo"] = dest_repo.pk
-            repos.extend((source_version.repository, dest_repo))
+            shared_repos.append(source_version.repository)
+            exclusive_repos.append(dest_repo)
 
             if "dest_base_version" in entry:
                 try:
@@ -347,7 +357,7 @@ class CopyViewSet(viewsets.ViewSet):
                     r["content"].append(NamedModelViewSet().extract_pk(c))
             result.append(r)
 
-        return result, repos
+        return result, shared_repos, exclusive_repos
 
 
 class PackageGroupViewSet(ReadOnlyContentViewSet):
