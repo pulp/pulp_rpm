@@ -785,19 +785,8 @@ class Solver:
             Take a list of jobs, get a solution, return the set of solvables that needed to
             be installed.
             """
-            previous_problems = set()
-            attempt = 1
-
-            while True:
-                solver = self._pool.Solver()
-                raw_problems = solver.solve(jobs)
-                problems = set(str(problem) for problem in raw_problems)
-                if not problems or previous_problems == problems:
-                    break
-                # self._handle_problems(raw_problems, jobs)  TODO
-                previous_problems = problems
-                attempt += 1
-
+            solver = self._pool.Solver()
+            raw_problems = solver.solve(jobs)
             # The solver is simply ignoring the problems encountered and proceeds associating
             # any new solvables/units. This might be reported back to the user one day over
             # the REST API. For now, log only "real" dependency issues (typically some variant
