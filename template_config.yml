@@ -50,8 +50,8 @@ pulp_settings:
   - /tmp
   allowed_import_paths:
   - /tmp
-pulpcore_branch: master
-pulpcore_pip_version_specifier: null
+pulpcore_branch: '3.15'
+pulpcore_pip_version_specifier: '>=3.15.0,<3.17'
 pulpcore_revision: null
 pulpprojectdotorg_key_id: aa499d7938ed
 pydocstyle: true
@@ -73,5 +73,5 @@ test_s3: true
 update_redmine: true
 upgrade_range:
 - pulp_rpm_branch: '3.10'
-  pulpcore_branch: 3.11
+  pulpcore_branch: '3.11'
 
