@@ -1,7 +1,7 @@
 from itertools import chain
 
 from import_export import fields
-from import_export.widgets import ForeignKeyWidget
+from import_export.widgets import JSONWidget, ForeignKeyWidget
 
 from pulpcore.plugin.importexport import BaseContentResource, QueryModelResource
 from pulpcore.plugin.models import Content
@@ -79,6 +79,10 @@ class ModulemdResource(RpmContentResource):
     Resource for import/export of rpm_modulemd entities.
     """
 
+    dependencies = fields.Field(
+        column_name="dependencies", attribute="dependencies", widget=JSONWidget(), default=list()
+    )
+
     class Meta:
         model = Modulemd
         import_id_fields = model.natural_key_fields()
@@ -99,6 +103,37 @@ class PackageResource(RpmContentResource):
     Resource for import/export of rpm_package entities.
     """
 
+    changelogs = fields.Field(
+        column_name="changelogs", attribute="changelogs", widget=JSONWidget(), default=list()
+    )
+    conflicts = fields.Field(
+        column_name="conflicts", attribute="conflicts", widget=JSONWidget(), default=list()
+    )
+    enhances = fields.Field(
+        column_name="enhances", attribute="enhances", widget=JSONWidget(), default=list()
+    )
+    files = fields.Field(
+        column_name="files", attribute="files", widget=JSONWidget(), default=list()
+    )
+    obsoletes = fields.Field(
+        column_name="obsoletes", attribute="obsoletes", widget=JSONWidget(), default=list()
+    )
+    provides = fields.Field(
+        column_name="provides", attribute="provides", widget=JSONWidget(), default=list()
+    )
+    recommends = fields.Field(
+        column_name="recommends", attribute="recommends", widget=JSONWidget(), default=list()
+    )
+    requires = fields.Field(
+        column_name="requires", attribute="requires", widget=JSONWidget(), default=list()
+    )
+    suggests = fields.Field(
+        column_name="suggests", attribute="suggests", widget=JSONWidget(), default=list()
+    )
+    supplements = fields.Field(
+        column_name="supplements", attribute="supplements", widget=JSONWidget(), default=list()
+    )
+
     class Meta:
         model = Package
         import_id_fields = model.natural_key_fields()
@@ -108,6 +143,16 @@ class PackageCategoryResource(RpmContentResource):
     """
     Resource for import/export of rpm_packagecategory entities.
     """
+
+    group_ids = fields.Field(
+        column_name="group_ids", attribute="group_ids", widget=JSONWidget(), default=list()
+    )
+    desc_by_lang = fields.Field(
+        column_name="desc_by_lang", attribute="desc_by_lang", widget=JSONWidget(), default=dict()
+    )
+    name_by_lang = fields.Field(
+        column_name="name_by_lang", attribute="name_by_lang", widget=JSONWidget(), default=dict()
+    )
 
     class Meta:
         model = PackageCategory
@@ -119,6 +164,16 @@ class PackageGroupResource(RpmContentResource):
     Resource for import/export of rpm_packagegroup entities.
     """
 
+    packages = fields.Field(
+        column_name="packages", attribute="packages", widget=JSONWidget(), default=list()
+    )
+    desc_by_lang = fields.Field(
+        column_name="desc_by_lang", attribute="desc_by_lang", widget=JSONWidget(), default=dict()
+    )
+    name_by_lang = fields.Field(
+        column_name="name_by_lang", attribute="name_by_lang", widget=JSONWidget(), default=dict()
+    )
+
     class Meta:
         model = PackageGroup
         import_id_fields = model.natural_key_fields()
@@ -129,6 +184,19 @@ class PackageEnvironmentResource(RpmContentResource):
     Resource for import/export of rpm_packageenvironment entities.
     """
 
+    group_ids = fields.Field(
+        column_name="group_ids", attribute="group_ids", widget=JSONWidget(), default=list()
+    )
+    option_ids = fields.Field(
+        column_name="option_ids", attribute="option_ids", widget=JSONWidget(), default=list()
+    )
+    desc_by_lang = fields.Field(
+        column_name="desc_by_lang", attribute="desc_by_lang", widget=JSONWidget(), default=dict()
+    )
+    name_by_lang = fields.Field(
+        column_name="name_by_lang", attribute="name_by_lang", widget=JSONWidget(), default=dict()
+    )
+
     class Meta:
         model = PackageEnvironment
         import_id_fields = model.natural_key_fields()
@@ -138,6 +206,10 @@ class PackageLangpacksResource(RpmContentResource):
     """
     Resource for import/export of rpm_packagelangpack entities.
     """
+
+    matches = fields.Field(
+        column_name="matches", attribute="matches", widget=JSONWidget(), default=dict()
+    )
 
     class Meta:
         model = PackageLangpacks
@@ -342,6 +414,13 @@ class DistributionTreeRepositoryResource(QueryModelResource):
     Resource for import/export of distribution tree subrepos.
     """
 
+    original_checksum_types = fields.Field(
+        column_name="original_checksum_types",
+        attribute="original_checksum_types",
+        widget=JSONWidget(),
+        default=dict(),
+    )
+
     def set_up_queryset(self):
         """
         Set up a queryset for RepositoryVersion distribution tree repos.
@@ -368,6 +447,7 @@ class UpdateCollectionResource(QueryModelResource):
     Resource for import/export of rpm_updatecollection entities.
     """
 
+    module = fields.Field(column_name="module", attribute="module", widget=JSONWidget())
     update_record = fields.Field(
         column_name="update_record",
         attribute="update_record",
