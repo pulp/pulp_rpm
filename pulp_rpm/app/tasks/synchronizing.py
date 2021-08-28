@@ -85,7 +85,7 @@ from pulp_rpm.app.kickstart.treeinfo import PulpTreeInfo, TreeinfoData
 
 from pulp_rpm.app.comps import strdict_to_dict, dict_digest
 from pulp_rpm.app.shared_utils import is_previous_version, get_sha256, urlpath_sanitize
-from pulp_rpm.app.metadata_parsing import iterative_files_changelog_parser
+from pulp_rpm.app.metadata_parsing import MetadataParser
 
 import gi
 
@@ -584,65 +584,6 @@ class RpmFirstStage(Stage):
         cr.xml_parse_updateinfo(updateinfo_xml_path, uinfo)
         return uinfo.updates
 
-    @staticmethod
-    async def parse_repodata(primary_xml_path, filelists_xml_path, other_xml_path):
-        """
-        Parse repodata to extract package info.
-
-        Args:
-            primary_xml_path(str): a path to a downloaded primary.xml
-            filelists_xml_path(str): a path to a downloaded filelists.xml
-            other_xml_path(str): a path to a downloaded other.xml
-
-        Returns:
-            dict: createrepo_c package objects with the pkgId as a key
-
-        """
-
-        def pkgcb(pkg):
-            """
-            A callback which is used when a whole package entry in xml is parsed.
-
-            Args:
-                pkg(preaterepo_c.Package): a parsed metadata for a package
-
-            """
-            packages[pkg.pkgId] = pkg
-
-        def newpkgcb(pkgId, name, arch):
-            """
-            A callback which is used when a new package entry is encountered.
-
-            Only opening <package> element is parsed at that moment.
-            This function has to return a package which parsed data will be added to
-            or None if a package should be skipped.
-
-            pkgId, name and arch of a package can be used to skip further parsing. Available
-            only for filelists.xml and other.xml.
-
-            Args:
-                pkgId(str): pkgId of a package
-                name(str): name of a package
-                arch(str): arch of a package
-
-            Returns:
-                createrepo_c.Package: a package which parsed data should be added to.
-
-                If None is returned, further parsing of a package will be skipped.
-
-            """
-            return packages.get(pkgId, None)
-
-        packages = collections.OrderedDict()
-
-        # TODO: handle parsing errors/warnings, warningcb callback can be used below
-        cr.xml_parse_primary(primary_xml_path, pkgcb=pkgcb, do_files=False)
-
-        if not settings.RPM_ITERATIVE_PARSING:
-            cr.xml_parse_filelists(filelists_xml_path, newpkgcb=newpkgcb)
-            cr.xml_parse_other(other_xml_path, newpkgcb=newpkgcb)
-        return packages
-
     async def run(self):
         """Build `DeclarativeContent` from the repodata."""
         with tempfile.TemporaryDirectory("."):
@@ -1051,58 +992,28 @@ class RpmFirstStage(Stage):
 
     async def parse_packages(self, primary_xml, filelists_xml, other_xml, file_extension="gz"):
         """Parse packages from the remote repository."""
-        packages = await RpmFirstStage.parse_repodata(
+        parser = MetadataParser.from_metadata_files(
             primary_xml.path, filelists_xml.path, other_xml.path
         )
-
-        # skip SRPM if defined
-        if "srpm" in self.skip_types and not self.mirror:
-            packages = collections.OrderedDict(
-                (pkgId, pkg) for pkgId, pkg in packages.items() if pkg.arch != "src"
-            )
 
         progress_data = {
             "message": "Parsed Packages",
             "code": "sync.parsing.packages",
-            "total": len(packages),
+            "total": parser.count_packages(),
         }
 
-        extra_repodata_parser = iterative_files_changelog_parser(
-            file_extension, filelists_xml.path, other_xml.path
-        )
-        seen_pkgids = set()
         with ProgressReport(**progress_data) as packages_pb:
-            while True:
-                try:
-                    (pkgid, pkg) = packages.popitem(last=False)
-                except KeyError:
-                    break
+            # skip SRPM if defined
+            skip_srpms = "srpm" in self.skip_types and not self.mirror
 
-                if settings.RPM_ITERATIVE_PARSING:
-                    while True:
-                        pkgid_extra, files, changelogs = next(extra_repodata_parser)
-                        if pkgid_extra in seen_pkgids:
-                            # This is a dirty hack to handle cases that "shouldn't" happen.
-                            # Sometimes repositories have packages listed twice under the same
-                            # pkgid. This is a problem because the primary.xml parsing
-                            # deduplicates the entries by placing them into a dict keyed by pkgid.
-                            # So if the iterative parser(s) run into a package we've seen before,
-                            # we should skip it and move on.
-                            continue
-                        else:
-                            seen_pkgids.add(pkgid)
-                            break
+            async def on_package(pkg):
+                """Callback when handling a completed package.
 
-                    assert pkgid == pkgid_extra, (
-                        "Package id from primary metadata ({}), does not match package id "
-                        "from filelists, other metadata ({})"
-                    ).format(pkgid, pkgid_extra)
-
-                    pkg.files = files
-                    pkg.changelogs = changelogs
-
+                Args:
+                    pkg (createrepo_c.Package): A completed createrepo_c package.
+                """
                 package = Package(**Package.createrepo_to_dict(pkg))
-                del pkg
+                del pkg  # delete it as soon as we're done with it
 
                 store_package_for_mirroring(self.repository, package.pkgId, package.location_href)
                 artifact = Artifact(size=package.size_package)
@@ -1134,6 +1045,13 @@ class RpmFirstStage(Stage):
 
                 packages_pb.increment()
                 await self.put(dc)
+
+            if settings.RPM_ITERATIVE_PARSING:
+                for pkg in parser.parse_packages_iterative(file_extension, skip_srpms=skip_srpms):
+                    await on_package(pkg)
+            else:
+                for pkg in parser.parse_packages(skip_srpms=skip_srpms):
+                    await on_package(pkg)
 
     async def parse_advisories(self, result):
         """Parse advisories from the remote repository."""
