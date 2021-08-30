@@ -3,10 +3,17 @@ import unittest
 import itertools
 
 from pulpcore.client.pulpcore import ArtifactsApi, ApiClient as CoreApiClient
-
+from pulpcore.client.pulp_rpm import (
+    DistributionsRpmApi,
+    PublicationsRpmApi,
+    RemotesRpmApi,
+    RepositoriesRpmApi,
+    RpmRepositorySyncURL,
+)
 from pulp_smash import api, cli, config
 from pulp_smash.pulp3.bindings import (
     delete_orphans,
+    monitor_task,
     PulpTestCase,
 )
 from pulp_smash.pulp3.utils import (
@@ -17,6 +24,7 @@ from pulp_smash.pulp3.utils import (
 
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_remote,
+    gen_rpm_client,
     init_signed_repo_configuration,
 )
 from pulp_rpm.tests.functional.constants import (
@@ -24,6 +32,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_REMOTE_PATH,
     RPM_REPO_PATH,
     REPO_WITH_XML_BASE_URL,
+    RPM_UNSIGNED_FIXTURE_URL,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 from pulp_rpm.tests.functional.utils import publish
@@ -41,6 +50,11 @@ class PackageManagerConsumeTestCase(PulpTestCase):
         configuration = cls.cfg.get_bindings_config()
         core_client = CoreApiClient(configuration)
         cls.artifacts_api = ArtifactsApi(core_client)
+        cls.client = gen_rpm_client()
+        cls.repo_api = RepositoriesRpmApi(cls.client)
+        cls.remote_api = RemotesRpmApi(cls.client)
+        cls.publications = PublicationsRpmApi(cls.client)
+        cls.distributions = DistributionsRpmApi(cls.client)
         cls.before_consumption_artifact_count = 0
         cls.pkg_mgr = cli.PackageManager(cls.cfg)
         cls.pkg_mgr.raise_if_unsupported(unittest.SkipTest, "This test requires dnf or yum.")
@@ -48,73 +62,91 @@ class PackageManagerConsumeTestCase(PulpTestCase):
     def _has_dnf(self):
         return self.pkg_mgr.name == "dnf"
 
-    def test_on_demand_policy(self):
-        """Verify whether content synced with on_demand policy can be consumed.
-
-        This test targets the following issue:
-
-        `Pulp #4496 <https://pulp.plan.io/issues/4496>`_
-        """
+    def test_on_demand_policy_mirror(self):
+        """Verify that content synced with on_demand policy in mirror mode can be consumed."""
         delete_orphans()
-        self.do_test("on_demand")
+        self.do_test("on_demand", mirror=True)
         new_artifact_count = self.artifacts_api.list().count
         self.assertGreater(new_artifact_count, self.before_consumption_artifact_count)
 
-    def test_streamed_policy(self):
-        """Verify whether content synced with streamed policy can be consumed.
-
-        This test targets the following issue:
-
-        `Pulp #4496 <https://pulp.plan.io/issues/4496>`_
-        """
+    def test_streamed_policy_mirror(self):
+        """Verify that content synced with streamed policy in mirror mode can be consumed."""
         delete_orphans()
-        self.do_test("streamed")
+        self.do_test("streamed", mirror=True)
         new_artifact_count = self.artifacts_api.list().count
         self.assertEqual(new_artifact_count, self.before_consumption_artifact_count)
 
-    def test_immediate(self):
-        """Verify whether package manager can consume content from Pulp.
-
-        This test targets the following issue:
-
-        `Pulp #3204 <https://pulp.plan.io/issues/3204>`_
-        """
+    def test_immediate_policy_mirror(self):
+        """Verify that content synced with immediate policy in mirror mode can be consumed."""
         delete_orphans()
-        self.do_test("immediate")
+        self.do_test("immediate", mirror=True)
+        new_artifact_count = self.artifacts_api.list().count
+        self.assertEqual(new_artifact_count, self.before_consumption_artifact_count)
+
+    def test_on_demand_policy_not_mirror(self):
+        """Verify that content synced with on_demand policy can be consumed."""
+        delete_orphans()
+        self.do_test("on_demand", mirror=False)
+        new_artifact_count = self.artifacts_api.list().count
+        self.assertGreater(new_artifact_count, self.before_consumption_artifact_count)
+
+    def test_streamed_policy_not_mirror(self):
+        """Verify that content synced with streamed policy can be consumed."""
+        delete_orphans()
+        self.do_test("streamed", mirror=False)
+        new_artifact_count = self.artifacts_api.list().count
+        self.assertEqual(new_artifact_count, self.before_consumption_artifact_count)
+
+    def test_immediate_policy_not_mirror(self):
+        """Verify that content synced with immediate policy can be consumed."""
+        delete_orphans()
+        self.do_test("immediate", mirror=False)
         new_artifact_count = self.artifacts_api.list().count
         self.assertEqual(new_artifact_count, self.before_consumption_artifact_count)
 
     def test_with_xml_base_in_metadata(self):
-        pass
+        """Verify the package manager can consume content synced from a repo that uses xml:base.
 
-    def do_test(self, policy, mirror):
+        xml:base / location_base is a "feature" of RPM metadata that tells the client to use a
+        completely different base path when looking up relative paths.
+        """
+        delete_orphans()
+        self.do_test("immediate", mirror=False, url=REPO_WITH_XML_BASE_URL)
+        new_artifact_count = self.artifacts_api.list().count
+        self.assertEqual(new_artifact_count, self.before_consumption_artifact_count)
+
+    def do_test(self, policy, mirror=False, url=RPM_UNSIGNED_FIXTURE_URL):
         """Verify whether package manager can consume content from Pulp."""
         if not self._has_dnf():
             self.skipTest("This test requires dnf")
 
-        client = api.Client(self.cfg, api.json_handler)
         body = gen_rpm_remote(policy=policy)
-        remote = client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(client.delete, remote["pulp_href"])
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
-        repo = client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(client.delete, repo["pulp_href"])
+        repo = self.repo_api.create(gen_repo(autopublish=not mirror))
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
 
         before_sync_artifact_count = self.artifacts_api.list().count
         self.assertEqual(before_sync_artifact_count, 0)
-        sync(self.cfg, remote, repo, mirror=mirror)
 
-        publication = publish(self.cfg, repo)
-        self.addCleanup(client.delete, publication["pulp_href"])
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, mirror=mirror)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        created_resources = monitor_task(sync_response.task).created_resources
+
+        publication_href = [r for r in created_resources if "publication" in r][0]
+        self.addCleanup(self.publications.delete, publication_href)
 
         body = gen_distribution()
-        body["publication"] = publication["pulp_href"]
-        distribution = client.using_handler(api.task_handler).post(RPM_DISTRIBUTION_PATH, body)
-        self.addCleanup(client.delete, distribution["pulp_href"])
+        body["publication"] = publication_href
+        distribution_response = self.distributions.create(body)
+        created_resources = monitor_task(distribution_response.task).created_resources
+        distribution = self.distributions.read(created_resources[0])
+        self.addCleanup(self.distributions.delete, distribution.pulp_href)
 
         cli_client = cli.Client(self.cfg)
-        cli_client.run(("sudo", "dnf", "config-manager", "--add-repo", distribution["base_url"]))
-        repo_id = "*{}_".format(distribution["base_path"])
+        cli_client.run(("sudo", "dnf", "config-manager", "--add-repo", distribution.base_url))
+        repo_id = "*{}_".format(distribution.base_path)
         cli_client.run(
             (
                 "sudo",
