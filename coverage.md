@@ -60,7 +60,7 @@ This file contains list of features and their test coverage.
 | As a user, when a module is removed, its packages are removed as well ( not referenced by other modules) | NO |  |
 | As a user, I can't remove content when it is used in a repository | PART | covered list in test_crud_content |
 | **Consumer cases** |  |  |
-| As a user, I can use dnf to install all the content served by Pulp | PART | only covers rpm installation |
+| As a user, I can use dnf to install all the content served by Pulp | PART | only covers rpm installation with DNF |
 | **Retention** |  |  |
 | As a user, I can have a repository option that retains the latest N packages of the same name | PART | No coverage of packages with differing arch in same repo (src, i686, x86_64), no coverage of non-sync repo modifications, no coverage of modular RPMs being exempted. |
 | As a user, I can export RPM-repository content to be consumed by a downstream Pulp3 instance. | PART | basic pulp-export succeeds |
