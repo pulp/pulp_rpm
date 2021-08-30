@@ -23,6 +23,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_DISTRIBUTION_PATH,
     RPM_REMOTE_PATH,
     RPM_REPO_PATH,
+    REPO_WITH_XML_BASE_URL,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 from pulp_rpm.tests.functional.utils import publish
@@ -83,7 +84,10 @@ class PackageManagerConsumeTestCase(PulpTestCase):
         new_artifact_count = self.artifacts_api.list().count
         self.assertEqual(new_artifact_count, self.before_consumption_artifact_count)
 
-    def do_test(self, policy):
+    def test_with_xml_base_in_metadata(self):
+        pass
+
+    def do_test(self, policy, mirror):
         """Verify whether package manager can consume content from Pulp."""
         if not self._has_dnf():
             self.skipTest("This test requires dnf")
@@ -98,7 +102,7 @@ class PackageManagerConsumeTestCase(PulpTestCase):
 
         before_sync_artifact_count = self.artifacts_api.list().count
         self.assertEqual(before_sync_artifact_count, 0)
-        sync(self.cfg, remote, repo)
+        sync(self.cfg, remote, repo, mirror=mirror)
 
         publication = publish(self.cfg, repo)
         self.addCleanup(client.delete, publication["pulp_href"])
