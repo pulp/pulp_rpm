@@ -32,6 +32,7 @@ from pulp_rpm.tests.functional.constants import (
     PULP_TYPE_MODULEMD,
     PULP_TYPE_PACKAGE,
     PULP_TYPE_REPOMETADATA,
+    REPO_WITH_XML_BASE_URL,
     RPM_ADVISORY_CONTENT_NAME,
     RPM_ADVISORY_COUNT,
     RPM_ADVISORY_DIFFERENT_PKGLIST_URL,
@@ -97,15 +98,12 @@ class BasicSyncTestCase(PulpTestCase):
     @classmethod
     def setUpClass(cls):
         """Create class-wide variables."""
-        cls.cfg = config.get_config()
         cls.client = gen_rpm_client()
-        cls.cli_client = cli.Client(cls.cfg)
         cls.repo_api = RepositoriesRpmApi(cls.client)
         cls.remote_api = RemotesRpmApi(cls.client)
         cls.packages_api = ContentPackagesApi(cls.client)
 
         delete_orphans()
-        cls.md5_allowed = "md5" in get_pulp_setting(cls.cli_client, "ALLOWED_CONTENT_CHECKSUMS")
 
     def test_sync(self):
         """Sync repositories with the rpm plugin.
@@ -1074,6 +1072,23 @@ class BasicSyncTestCase(PulpTestCase):
         self.assertEqual(present_package_count, 0)
         self.assertEqual(present_advisory_count, SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT)
 
+    def test_sync_skip_srpm_ignored_on_mirror(self):
+        """SRPMs are not skipped if the repo is synced in mirror mode."""  # noqa
+        # TODO: This might change with https://pulp.plan.io/issues/9231
+        body = gen_rpm_remote(SRPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+        repo = self.repo_api.create(gen_repo())
+        self.sync(repository=repo, remote=remote, skip_types=["srpm"], mirror=True)
+
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        repo = self.repo_api.read(repo.pulp_href)
+        present_package_count = len(get_content(repo.to_dict())[PULP_TYPE_PACKAGE])
+        present_advisory_count = len(get_content(repo.to_dict())[PULP_TYPE_ADVISORY])
+        self.assertEqual(present_package_count, SRPM_UNSIGNED_FIXTURE_PACKAGE_COUNT)
+        self.assertEqual(present_advisory_count, SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT)
+
     def do_test(self, repository=None, remote=None, mirror=False):
         """Sync a repository.
 
@@ -1131,35 +1146,6 @@ class BasicSyncTestCase(PulpTestCase):
                 return True
         return False
 
-    @unittest.skip(
-        "Needs a repo where an unacceptable checksum is used for packages, but not for metadata"
-    )
-    @skip_if(bool, "md5_allowed", True)
-    def test_sync_packages_with_unsupported_checksum_type(self):
-        """
-        Sync an RPM repository with an unsupported checksum (md5) used for packages.
-
-        This test require disallowed 'MD5' checksum type from ALLOWED_CONTENT_CHECKSUMS settings.
-        """
-        # 1. create repo and remote
-        repo = self.repo_api.create(gen_repo())
-        self.addCleanup(self.repo_api.delete, repo.pulp_href)
-
-        body = gen_rpm_remote(policy="on_demand", url=RPM_MD5_REPO_FIXTURE_URL)
-        remote = self.remote_api.create(body)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
-
-        # 2. Sync it
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
-        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
-        with self.assertRaises(PulpTaskError) as ctx:
-            monitor_task(sync_response.task)
-
-        self.assertIn(
-            "rpm-with-md5/bear-4.1-1.noarch.rpm contains forbidden checksum type",
-            ctx.exception.task.error["description"],
-        )
-
     def test_one_nevra_two_locations_and_checksums(self):
         """Sync a repository known to have one nevra, in two locations, with different content.
 
@@ -1175,33 +1161,6 @@ class BasicSyncTestCase(PulpTestCase):
         repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
         sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
         monitor_task(sync_response.task)
-
-    @skip_if(bool, "md5_allowed", True)
-    def test_sync_metadata_with_unsupported_checksum_type(self):
-        """
-        Sync an RPM repository with an unsupported checksum (md5).
-
-        This test require disallowed 'MD5' checksum type from ALLOWED_CONTENT_CHECKSUMS settings.
-        """
-        # 1. create repo and remote
-        repo = self.repo_api.create(gen_repo())
-        self.addCleanup(self.repo_api.delete, repo.pulp_href)
-
-        body = gen_rpm_remote(policy="on_demand", url=RPM_MD5_REPO_FIXTURE_URL)
-        remote = self.remote_api.create(body)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
-
-        # 2. Sync it
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
-        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
-        with self.assertRaises(PulpTaskError) as ctx:
-            monitor_task(sync_response.task)
-
-        self.assertIn(
-            "does not contain at least one trusted hasher which is specified in "
-            "'ALLOWED_CONTENT_CHECKSUMS'",
-            ctx.exception.task.error["description"],
-        )
 
     @unittest.skip("Works fine but takes 180s to run - skip unless specifically needed.")
     def test_requires_urlencoded_paths(self):
@@ -1227,21 +1186,23 @@ class BasicSyncTestCase(PulpTestCase):
         monitor_task(sync_response.task)
 
 
-class SyncInvalidTestCase(PulpTestCase):
-    """Sync a repository with a given url on the remote."""
+class InvalidSyncConfigTestCase(PulpTestCase):
+    """Test syncing with invalid configurations."""
 
     @classmethod
     def setUpClass(cls):
         """Create class-wide variables."""
         cls.client = gen_rpm_client()
+        cls.cli_client = cli.Client(config.get_config())
+        cls.md5_allowed = "md5" in get_pulp_setting(cls.cli_client, "ALLOWED_CONTENT_CHECKSUMS")
 
     def test_invalid_url(self):
         """Sync a repository using a remote url that does not exist.
 
         Test that we get a task failure. See :meth:`do_test`.
         """
-        task = self.do_test("http://i-am-an-invalid-url.com/invalid/")
-        self.assertIsNotNone(task["error"]["description"])
+        error = self.do_test("http://i-am-an-invalid-url.com/invalid/")
+        self.assertIsNotNone(error)
 
     def test_invalid_rpm_content(self):
         """Sync a repository using an invalid plugin_content repository.
@@ -1249,11 +1210,52 @@ class SyncInvalidTestCase(PulpTestCase):
         Assert that an exception is raised, and that error message has
         keywords related to the reason of the failure. See :meth:`do_test`.
         """
-        task = self.do_test(RPM_INVALID_FIXTURE_URL)
+        error = self.do_test(RPM_INVALID_FIXTURE_URL)
         for key in ("missing", "filelists.xml"):
-            self.assertIn(key, task["error"]["description"])
+            self.assertIn(key, error)
 
-    def do_test(self, url):
+    @skip_if(bool, "md5_allowed", True)
+    def test_sync_metadata_with_unsupported_checksum_type(self):
+        """
+        Sync an RPM repository with an unsupported checksum (md5).
+
+        This test require disallowed 'MD5' checksum type from ALLOWED_CONTENT_CHECKSUMS settings.
+        """
+        error = self.do_test(RPM_MD5_REPO_FIXTURE_URL)
+
+        self.assertIn(
+            "does not contain at least one trusted hasher which is specified in "
+            "'ALLOWED_CONTENT_CHECKSUMS'",
+            error,
+        )
+
+    @unittest.skip(
+        "Needs a repo where an unacceptable checksum is used for packages, but not for metadata"
+    )
+    @skip_if(bool, "md5_allowed", True)
+    def test_sync_packages_with_unsupported_checksum_type(self):
+        """
+        Sync an RPM repository with an unsupported checksum (md5) used for packages.
+
+        This test require disallowed 'MD5' checksum type from ALLOWED_CONTENT_CHECKSUMS settings.
+        """
+        error = self.do_test(RPM_MD5_REPO_FIXTURE_URL)
+
+        self.assertIn(
+            "rpm-with-md5/bear-4.1-1.noarch.rpm contains forbidden checksum type",
+            error,
+        )
+
+    def test_mirror_with_xml_base_fails(self):
+        """Test that if a repository that uses xml:base is synced in mirror-mode, it fails."""
+        error = self.do_test(REPO_WITH_XML_BASE_URL, mirror=True)
+
+        self.assertIn(
+            "xml:base",
+            error,
+        )
+
+    def do_test(self, url, mirror=False):
         """Sync a repository given ``url`` on the remote."""
         repo_api = RepositoriesRpmApi(self.client)
         remote_api = RemotesRpmApi(self.client)
@@ -1261,17 +1263,17 @@ class SyncInvalidTestCase(PulpTestCase):
         repo = repo_api.create(gen_repo())
         self.addCleanup(repo_api.delete, repo.pulp_href)
 
-        body = gen_rpm_remote(url=url)
+        body = gen_rpm_remote(url=url, policy="on_demand")
         remote = remote_api.create(body)
         self.addCleanup(remote_api.delete, remote.pulp_href)
 
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, mirror=mirror)
         sync_response = repo_api.sync(repo.pulp_href, repository_sync_data)
-        try:
-            task_result = monitor_task(sync_response.task)
-        except PulpTaskError as exc:
-            task_result = exc.task.to_dict()
-        return task_result
+
+        with self.assertRaises(PulpTaskError) as ctx:
+            monitor_task(sync_response.task)
+
+        return ctx.exception.task.error["description"]
 
 
 class SyncedMetadataTestCase(PulpTestCase):

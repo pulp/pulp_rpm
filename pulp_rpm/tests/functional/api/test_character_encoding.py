@@ -3,7 +3,7 @@ from urllib.parse import urljoin
 
 from pulp_smash import api, config, utils
 from pulp_smash.exceptions import TaskReportError
-from pulp_smash.pulp3.bindings import delete_orphans, PulpTestCase
+from pulp_smash.pulp3.bindings import PulpTestCase, delete_orphans
 from pulp_smash.pulp3.constants import ARTIFACTS_PATH
 from pulp_smash.pulp3.utils import (
     gen_repo,
