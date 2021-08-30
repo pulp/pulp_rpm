@@ -1,0 +1,1 @@
+Take advantage of a newer and more memory-efficient createrepo_c API for parsing metadata.

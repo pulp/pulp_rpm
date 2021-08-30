@@ -240,7 +240,7 @@ class MetadataParser:
         # We *do not* want to skip srpms when parsing primary because otherwise we run into
         # trouble when we encounter them again on the iterative side of the parser. Just skip
         # them at the end.
-        for pkg in self.parse_packages(only_primary=True):
+        for pkg in self.yield_packages(only_primary=True):
             pkgid = pkg.pkgId
             while True:
                 pkgid_extra, files, changelogs = next(extra_repodata_parser)
@@ -268,14 +268,19 @@ class MetadataParser:
             pkg.changelogs = changelogs
             yield pkg
 
-    def parse_packages(self, only_primary=False, skip_srpms=False):
-        """Parse packages using the traditional createrepo_c parser."""
+    def parse_packages(self, only_primary=False):
+        """Parse packages into an OrderedDictionary using the traditional createrepo_c parser."""
         packages = parse_repodata(
             self.primary_xml_path,
             self.filelists_xml_path,
             self.other_xml_path,
             only_primary=only_primary,
         )
+        return packages
+
+    def yield_packages(self, only_primary=False, skip_srpms=False):
+        """Iterate the packages in the original order in which they were parsed."""
+        packages = self.parse_packages(only_primary=only_primary)
         while True:
             try:
                 (pkgid, pkg) = packages.popitem(last=False)
@@ -286,3 +291,14 @@ class MetadataParser:
                 continue
 
             yield pkg
+
+    def for_each_package(self, pkgcb):
+        """Run a callback for each complete package encountered during metadata parsing."""
+        cr.xml_parse_main_metadata_together(
+            str(self.primary_xml_path),
+            str(self.filelists_xml_path),
+            str(self.other_xml_path),
+            None,
+            pkgcb,
+            warningcb,
+        )

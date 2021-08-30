@@ -9,7 +9,7 @@ import tempfile
 from collections import defaultdict
 from gettext import gettext as _  # noqa:F401
 
-from asgiref.sync import sync_to_async
+from asgiref.sync import sync_to_async, async_to_sync
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files import File
@@ -1071,10 +1071,21 @@ class RpmFirstStage(Stage):
                 await self.put(dc)
 
             if settings.RPM_ITERATIVE_PARSING:
-                for pkg in parser.parse_packages_iterative(file_extension, skip_srpms=skip_srpms):
-                    await on_package(pkg)
+                if settings.RPM_USE_OLD_ITERATIVE_PARSER:
+                    for pkg in parser.parse_packages_iterative(
+                        file_extension, skip_srpms=skip_srpms
+                    ):
+                        await on_package(pkg)
+                else:
+
+                    @async_to_sync
+                    async def _package_callback(pkg):
+                        if not skip_srpms or pkg.arch != "src":
+                            await on_package(pkg)
+
+                    parser.for_each_package(_package_callback)
             else:
-                for pkg in parser.parse_packages(skip_srpms=skip_srpms):
+                for pkg in parser.yield_packages(skip_srpms=skip_srpms):
                     await on_package(pkg)
 
     async def parse_advisories(self, result):

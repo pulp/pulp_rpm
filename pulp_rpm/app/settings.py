@@ -9,3 +9,4 @@ INSTALLED_APPS = ["django_readonly_field", "dynaconf_merge"]
 ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION = False
 DEFAULT_ULN_SERVER_BASE_URL = "https://linux-update.oracle.com/"
 RPM_ITERATIVE_PARSING = True
+RPM_USE_OLD_ITERATIVE_PARSER = True
