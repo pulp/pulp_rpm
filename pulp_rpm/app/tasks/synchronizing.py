@@ -105,6 +105,12 @@ metadata_files_for_mirroring = collections.defaultdict(dict)
 pkgid_to_location_href = collections.defaultdict(dict)
 
 
+XML_BASE_AND_MIRROR_INCOMPATIBLE_ERR_MSG = (
+    "Repositories which provide an 'xml:base' parameter (location_base) in their "
+    "metadata are incompatible with 'mirror mode'."
+)
+
+
 def store_metadata_for_mirroring(repo, md_path, relative_path):
     """Used to store data about the downloaded metadata for mirror-publishing after the sync.
 
@@ -340,6 +346,14 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
     Sync content from the remote repository.
 
     Create a new version of the repository that is synchronized with the remote.
+
+    If mirror=True, a publication will be created with a copy of the original metadata.
+    In this event, SRPMs and other types listed in "skip_types" will *not* be skipped.
+
+    If mirror=True and the repository uses the xml:base / location_base feature, then
+    the sync will fail. This feature is incompatible with the intentions of most Pulp
+    users, as it will tell clients to look for metadata / packages from a source outside
+    of the repository.
 
     Args:
         remote_pk (str): The remote PK.
@@ -625,11 +639,15 @@ class RpmFirstStage(Stage):
                     checksum_types[record.type] = record_checksum_type
                     record.checksum_type = record_checksum_type
 
+                    if self.mirror and record.location_base:
+                        raise ValueError(XML_BASE_AND_MIRROR_INCOMPATIBLE_ERR_MSG)
+
                     if not self.mirror and record.type not in types_to_download:
                         continue
 
+                    base_url = record.location_base or self.remote_url
                     downloader = self.remote.get_downloader(
-                        url=urlpath_sanitize(self.remote_url, record.location_href),
+                        url=urlpath_sanitize(base_url, record.location_href),
                         expected_size=record.size,
                         expected_digests={record_checksum_type: record.checksum},
                     )
@@ -1008,14 +1026,18 @@ class RpmFirstStage(Stage):
                 Args:
                     pkg (createrepo_c.Package): A completed createrepo_c package.
                 """
+                if self.mirror and pkg.location_base:
+                    raise ValueError(XML_BASE_AND_MIRROR_INCOMPATIBLE_ERR_MSG)
+
                 package = Package(**Package.createrepo_to_dict(pkg))
+                base_url = pkg.location_base or self.remote_url
+                url = urlpath_sanitize(base_url, package.location_href)
                 del pkg  # delete it as soon as we're done with it
 
                 store_package_for_mirroring(self.repository, package.pkgId, package.location_href)
                 artifact = Artifact(size=package.size_package)
                 checksum_type = getattr(CHECKSUM_TYPES, package.checksum_type.upper())
                 setattr(artifact, checksum_type, package.pkgId)
-                url = urlpath_sanitize(self.remote_url, package.location_href)
                 filename = os.path.basename(package.location_href)
                 da = DeclarativeArtifact(
                     artifact=artifact,
