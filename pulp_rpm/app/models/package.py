@@ -286,8 +286,7 @@ class Package(Content):
             PULP_PACKAGE_ATTRS.ENHANCES: getattr(package, CR_PACKAGE_ATTRS.ENHANCES, []),
             PULP_PACKAGE_ATTRS.EPOCH: getattr(package, CR_PACKAGE_ATTRS.EPOCH) or "",
             PULP_PACKAGE_ATTRS.FILES: getattr(package, CR_PACKAGE_ATTRS.FILES, []),
-            PULP_PACKAGE_ATTRS.LOCATION_BASE: getattr(package, CR_PACKAGE_ATTRS.LOCATION_BASE)
-            or "",
+            PULP_PACKAGE_ATTRS.LOCATION_BASE: "",  # TODO, delete this entirely
             PULP_PACKAGE_ATTRS.LOCATION_HREF: getattr(package, CR_PACKAGE_ATTRS.LOCATION_HREF),
             PULP_PACKAGE_ATTRS.NAME: getattr(package, CR_PACKAGE_ATTRS.NAME),
             PULP_PACKAGE_ATTRS.OBSOLETES: getattr(package, CR_PACKAGE_ATTRS.OBSOLETES, []),
@@ -367,7 +366,7 @@ class Package(Content):
         package.enhances = list_to_createrepo_c(getattr(self, PULP_PACKAGE_ATTRS.ENHANCES))
         package.epoch = getattr(self, PULP_PACKAGE_ATTRS.EPOCH)
         package.files = list_to_createrepo_c(getattr(self, PULP_PACKAGE_ATTRS.FILES))
-        package.location_base = getattr(self, PULP_PACKAGE_ATTRS.LOCATION_BASE)
+        package.location_base = ""  # TODO: delete this entirely
         package.location_href = getattr(self, PULP_PACKAGE_ATTRS.LOCATION_HREF)
         package.name = getattr(self, PULP_PACKAGE_ATTRS.NAME)
         package.obsoletes = list_to_createrepo_c(getattr(self, PULP_PACKAGE_ATTRS.OBSOLETES))
