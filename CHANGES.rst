@@ -13,6 +13,34 @@ Changelog
 
 .. towncrier release notes start
 
+
+3.14.3 (2021-08-31)
+===================
+
+
+Bugfixes
+--------
+
+- Taught copy-depsolving to behave better in a multiarch environment.
+  (backported from #9238)
+  `#9293 <https://pulp.plan.io/issues/9293>`_
+- Taught copy/ API to only do depsolving once when asked for.
+  (backported from #9287)
+  `#9298 <https://pulp.plan.io/issues/9298>`_
+- Fix an error that could occur when performing a non-mirror sync while using the `skip_types` option.
+  (backported from #9308)
+  `#9312 <https://pulp.plan.io/issues/9312>`_
+- For certain repos which use a rare feature of RPM metadata, "mirroring" would lead to a surprising / suboptimal result for most Pulp users. We now reject syncing these repos with mirroring enabled.
+  (backported from #9303)
+  `#9315 <https://pulp.plan.io/issues/9315>`_
+
+
+Misc
+----
+
+- `#9318 <https://pulp.plan.io/issues/9318>`_
+
+
 3.15.0 (2021-08-27)
 ===================
 
