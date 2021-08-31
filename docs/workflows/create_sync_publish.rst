@@ -215,6 +215,11 @@ RepositoryVersion GET response (when sync task complete):
         "pulp_href": "/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/versions/1/"
     }
 
+.. note::
+
+    To set up a regular sync task, use one of the external tools that deal with periodic background jobs.
+    Learn more about scheduling tasks `here <https://docs.pulpproject.org/pulpcore/workflows/scheduling-tasks.html>`_.
+
 
 .. _publication-workflow:
 
