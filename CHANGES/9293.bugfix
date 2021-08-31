@@ -1,2 +1,0 @@
-Taught copy-depsolving to behave better in a multiarch environment.
-(backported from #9238)
