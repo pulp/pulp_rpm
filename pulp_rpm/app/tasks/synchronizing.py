@@ -655,7 +655,8 @@ class RpmFirstStage(Stage):
                     for file_href in ["repodata/repomd.xml.asc", "repodata/repomd.xml.key"]:
                         try:
                             downloader = self.remote.get_downloader(
-                                url=urlpath_sanitize(self.remote_url, file_href)
+                                url=urlpath_sanitize(self.remote_url, file_href),
+                                silence_errors_for_response_status_codes={403, 404},
                             )
                             result = await downloader.run()
                             store_metadata_for_mirroring(self.repository, result.path, file_href)
@@ -666,7 +667,8 @@ class RpmFirstStage(Stage):
                     # extra files to copy, e.g. EULA, LICENSE
                     try:
                         downloader = self.remote.get_downloader(
-                            url=urlpath_sanitize(self.remote_url, "extra_files.json")
+                            url=urlpath_sanitize(self.remote_url, "extra_files.json"),
+                            silence_errors_for_response_status_codes={403, 404},
                         )
                         result = await downloader.run()
                         store_metadata_for_mirroring(
