@@ -1019,8 +1019,9 @@ class RpmFirstStage(Stage):
         }
 
         async with ProgressReport(**progress_data) as packages_pb:
-            # skip SRPM if defined
-            skip_srpms = "srpm" in self.skip_types and not self.mirror
+            # in mirror mode, we need to include SRPMs even if they were included in "skip_types"
+            skip_srpms = "srpm" in self.skip_types
+            skip_parsing_srpms = skip_srpms and not self.mirror
 
             async def on_package(pkg):
                 """Callback when handling a completed package.
@@ -1034,6 +1035,9 @@ class RpmFirstStage(Stage):
                 package = Package(**Package.createrepo_to_dict(pkg))
                 base_url = pkg.location_base or self.remote_url
                 url = urlpath_sanitize(base_url, package.location_href)
+                # in mirror mode, if SRPMs were included in 'skip_types', we configure a deferred
+                # download even if the overall policy was 'immediate'
+                deferred_download_override = skip_srpms and self.mirror and pkg.arch == "src"
                 del pkg  # delete it as soon as we're done with it
 
                 store_package_for_mirroring(self.repository, package.pkgId, package.location_href)
@@ -1041,12 +1045,13 @@ class RpmFirstStage(Stage):
                 checksum_type = getattr(CHECKSUM_TYPES, package.checksum_type.upper())
                 setattr(artifact, checksum_type, package.pkgId)
                 filename = os.path.basename(package.location_href)
+
                 da = DeclarativeArtifact(
                     artifact=artifact,
                     url=url,
                     relative_path=filename,
                     remote=self.remote,
-                    deferred_download=self.deferred_download,
+                    deferred_download=self.deferred_download or deferred_download_override,
                 )
                 dc = DeclarativeContent(content=package, d_artifacts=[da])
                 dc.extra_data = defaultdict(list)
@@ -1067,10 +1072,12 @@ class RpmFirstStage(Stage):
                 await self.put(dc)
 
             if settings.RPM_ITERATIVE_PARSING:
-                for pkg in parser.parse_packages_iterative(file_extension, skip_srpms=skip_srpms):
+                for pkg in parser.parse_packages_iterative(
+                    file_extension, skip_srpms=skip_parsing_srpms
+                ):
                     await on_package(pkg)
             else:
-                for pkg in parser.parse_packages(skip_srpms=skip_srpms):
+                for pkg in parser.parse_packages(skip_srpms=skip_parsing_srpms):
                     await on_package(pkg)
 
     async def parse_advisories(self, result):

@@ -1074,7 +1074,7 @@ class BasicSyncTestCase(PulpTestCase):
 
     def test_sync_skip_srpm_ignored_on_mirror(self):
         """SRPMs are not skipped if the repo is synced in mirror mode."""  # noqa
-        # TODO: This might change with https://pulp.plan.io/issues/9231
+        delete_orphans()
         body = gen_rpm_remote(SRPM_UNSIGNED_FIXTURE_URL)
         remote = self.remote_api.create(body)
         repo = self.repo_api.create(gen_repo())
@@ -1084,7 +1084,10 @@ class BasicSyncTestCase(PulpTestCase):
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
         repo = self.repo_api.read(repo.pulp_href)
-        present_package_count = len(get_content(repo.to_dict())[PULP_TYPE_PACKAGE])
+        package_content = get_content(repo.to_dict())[PULP_TYPE_PACKAGE]
+        for package in package_content:
+            self.assertEqual(package["artifact"], None)
+        present_package_count = len(package_content)
         present_advisory_count = len(get_content(repo.to_dict())[PULP_TYPE_ADVISORY])
         self.assertEqual(present_package_count, SRPM_UNSIGNED_FIXTURE_PACKAGE_COUNT)
         self.assertEqual(present_advisory_count, SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT)

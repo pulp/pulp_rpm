@@ -1,0 +1,1 @@
+The current behavior of the `skip_types` setting is that it is ignored during "mirror" syncs, as mirroring implies syncing everything. However this could significantly inflate disk space required if using the "immediate" policy. We now adjust the behavior so that in this scenario, the download policy for SRPMs is set to "on_demand" despite the overall download policy.
