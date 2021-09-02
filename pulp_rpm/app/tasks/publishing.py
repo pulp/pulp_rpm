@@ -487,27 +487,25 @@ def generate_repo_metadata(
 
     pkg_to_hash = {}
     for ca in contentartifact_qs.iterator():
-        pkgid = None
-        if ca.content.rpm_package.checksum_type not in settings.ALLOWED_CONTENT_CHECKSUMS:
-            raise ValueError(
-                "Package {} as content unit {} contains forbidden checksum type '{}', "
-                "thus can't be published. {}".format(
-                    ca.content.rpm_package.nevra,
-                    ca.content.pk,
-                    ca.content.rpm_package.checksum_type,
-                    ALLOWED_CHECKSUM_ERROR_MSG,
-                )
-            )
         if package_checksum_type:
             package_checksum_type = package_checksum_type.lower()
             pkgid = getattr(ca.artifact, package_checksum_type, None)
-        if pkgid:
-            pkg_to_hash[ca.content_id] = (package_checksum_type, pkgid)
-        else:
-            pkg_to_hash[ca.content_id] = (
-                ca.content.rpm_package.checksum_type,
-                ca.content.rpm_package.pkgId,
-            )
+
+        if not package_checksum_type or not pkgid:
+            if ca.content.rpm_package.checksum_type not in settings.ALLOWED_CONTENT_CHECKSUMS:
+                raise ValueError(
+                    "Package {} as content unit {} contains forbidden checksum type '{}', "
+                    "thus can't be published. {}".format(
+                        ca.content.rpm_package.nevra,
+                        ca.content.pk,
+                        ca.content.rpm_package.checksum_type,
+                        ALLOWED_CHECKSUM_ERROR_MSG,
+                    )
+                )
+            package_checksum_type = ca.content.rpm_package.checksum_type
+            pkgid = ca.content.rpm_package.pkgId
+
+        pkg_to_hash[ca.content_id] = (package_checksum_type, pkgid)
 
     # Process all packages
     for package in packages.iterator():
