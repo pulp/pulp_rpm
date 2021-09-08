@@ -258,7 +258,7 @@ class RpmPublicationViewSet(PublicationViewSet):
 
         result = dispatch(
             tasks.publish,
-            exclusive_resources=[repository_version.repository],
+            shared_resources=[repository_version.repository],
             kwargs={
                 "repository_version_pk": repository_version.pk,
                 "metadata_signing_service": signing_service_pk,
