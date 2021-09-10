@@ -45,7 +45,12 @@ class RpmDownloader(HttpDownloader):
     """
 
     def __init__(
-        self, *args, silence_errors_for_response_status_codes=None, sles_auth_token=None, **kwargs
+        self,
+        *args,
+        silence_errors_for_response_status_codes=None,
+        sles_auth_token=None,
+        urlencode=True,
+        **kwargs,
     ):
         """
         Initialize the downloader.
@@ -57,6 +62,18 @@ class RpmDownloader(HttpDownloader):
         self.silence_errors_for_response_status_codes = silence_errors_for_response_status_codes
 
         super().__init__(*args, **kwargs)
+
+        new_url = self.url
+        if urlencode:
+            # Some upstream-repos (eg, Amazon) require url-encoded paths for things like "libc++"
+            # Let's make them happy
+            new_url = quote(unquote(self.url), safe=":/")
+
+        if self.sles_auth_token:
+            auth_param = f"?{self.sles_auth_token}"
+            self.url = urlpath_sanitize(new_url) + auth_param
+        else:
+            self.url = new_url
 
     def raise_for_status(self, response):
         """
@@ -81,18 +98,8 @@ class RpmDownloader(HttpDownloader):
         This method provides the same return object type and documented in
         :meth:`~pulpcore.plugin.download.BaseDownloader._run`.
         """
-        # Some upstream-repos (eg, Amazon) require url-encoded paths for things like "libc++"
-        # Let's make them happy
-        new_url = quote(unquote(self.url), safe=":/")
-
-        if self.sles_auth_token:
-            auth_param = f"?{self.sles_auth_token}"
-            url = urlpath_sanitize(new_url) + auth_param
-        else:
-            url = new_url
-
         async with self.session.get(
-            url, proxy=self.proxy, proxy_auth=self.proxy_auth, auth=self.auth
+            self.url, proxy=self.proxy, proxy_auth=self.proxy_auth, auth=self.auth
         ) as response:
             self.raise_for_status(response)
             to_return = await self._handle_response(response)
