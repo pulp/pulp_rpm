@@ -616,7 +616,9 @@ RPM_CDN_BASEOS_URL = "https://cdn.redhat.com/content/dist/rhel8/8.2/x86_64/baseo
 EPEL8_MIRRORLIST_URL = "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-8&arch=x86_64"
 EPEL8_PLAYGROUND_KICKSTART_URL = "http://mirrors.sonic.net/epel/playground/8/Everything/x86_64/os/"
 REPO_WITH_XML_BASE_URL = "https://harbottle.gitlab.io/harbottle-main/8/x86_64/"
-
+REPO_WITH_EXTERNAL_LOCATION_HREF_URL = (
+    "https://packages.rundeck.com/pagerduty/rundeck/rpm_any/rpm_any/x86_64/"
+)
 
 PULP_TYPE_ADVISORY = "rpm.advisory"
 PULP_TYPE_DISTRIBUTION_TREE = "rpm.distribution_tree"
