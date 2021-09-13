@@ -33,6 +33,7 @@ from pulp_rpm.tests.functional.constants import (
     PULP_TYPE_PACKAGE,
     PULP_TYPE_REPOMETADATA,
     REPO_WITH_XML_BASE_URL,
+    REPO_WITH_EXTERNAL_LOCATION_HREF_URL,
     RPM_ADVISORY_CONTENT_NAME,
     RPM_ADVISORY_COUNT,
     RPM_ADVISORY_DIFFERENT_PKGLIST_URL,
@@ -1247,11 +1248,25 @@ class InvalidSyncConfigTestCase(PulpTestCase):
         )
 
     def test_mirror_with_xml_base_fails(self):
-        """Test that if a repository that uses xml:base is synced in mirror-mode, it fails."""
+        """Test that syncing a repository that uses xml:base in mirror mode fails."""
         error = self.do_test(REPO_WITH_XML_BASE_URL, mirror=True)
 
         self.assertIn(
-            "xml:base",
+            "features which are incompatible with 'mirror' sync",
+            error,
+        )
+
+    def test_mirror_with_external_location_href_fails(self):
+        """
+        Test that syncing a repository that uses contains an external location_href fails.
+
+        External location_href refers to a location_href that points outside of the repo,
+        e.g. ../../Packages/blah.rpm
+        """
+        error = self.do_test(REPO_WITH_EXTERNAL_LOCATION_HREF_URL, mirror=True)
+
+        self.assertIn(
+            "features which are incompatible with 'mirror' sync",
             error,
         )
 

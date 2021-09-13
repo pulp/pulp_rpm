@@ -104,9 +104,9 @@ metadata_files_for_mirroring = collections.defaultdict(dict)
 pkgid_to_location_href = collections.defaultdict(dict)
 
 
-XML_BASE_AND_MIRROR_INCOMPATIBLE_ERR_MSG = (
-    "Repositories which provide an 'xml:base' parameter (location_base) in their "
-    "metadata are incompatible with 'mirror mode'."
+MIRROR_INCOMPATIBLE_REPO_ERR_MSG = (
+    "This repository uses features which are incompatible with 'mirror' sync. "
+    "Please sync without mirroring enabled."
 )
 
 
@@ -643,8 +643,8 @@ class RpmFirstStage(Stage):
                     checksum_types[record.type] = record_checksum_type
                     record.checksum_type = record_checksum_type
 
-                    if self.mirror and record.location_base:
-                        raise ValueError(XML_BASE_AND_MIRROR_INCOMPATIBLE_ERR_MSG)
+                    if self.mirror and record.location_base or ".." in record.location_href:
+                        raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
 
                     if not self.mirror and record.type not in types_to_download:
                         continue
@@ -1032,8 +1032,8 @@ class RpmFirstStage(Stage):
                 Args:
                     pkg (createrepo_c.Package): A completed createrepo_c package.
                 """
-                if self.mirror and pkg.location_base:
-                    raise ValueError(XML_BASE_AND_MIRROR_INCOMPATIBLE_ERR_MSG)
+                if self.mirror and pkg.location_base or ".." in pkg.location_href:
+                    raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
 
                 package = Package(**Package.createrepo_to_dict(pkg))
                 base_url = pkg.location_base or self.remote_url
