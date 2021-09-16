@@ -643,7 +643,11 @@ class RpmFirstStage(Stage):
                     checksum_types[record.type] = record_checksum_type
                     record.checksum_type = record_checksum_type
 
-                    if self.mirror and record.location_base or ".." in record.location_href:
+                    if self.mirror and (
+                        record.location_base
+                        or ".." in record.location_href
+                        or record.type == "prestodelta"
+                    ):
                         raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
 
                     if not self.mirror and record.type not in types_to_download:
