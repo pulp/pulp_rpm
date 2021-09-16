@@ -1,0 +1,1 @@
+For certain repos which use Delta RPMs (which Pulp 3 does not and will not support) we now reject syncing these repos with mirroring enabled to avoid confusing clients with unusable Delta metadata.
