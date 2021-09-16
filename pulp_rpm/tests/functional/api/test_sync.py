@@ -27,6 +27,7 @@ from pulp_smash.utils import get_pulp_setting
 
 from pulp_rpm.tests.functional.constants import (
     AMAZON_MIRROR,
+    DRPM_UNSIGNED_FIXTURE_URL,
     CENTOS7_OPSTOOLS,
     PULP_TYPE_ADVISORY,
     PULP_TYPE_MODULEMD,
@@ -1258,12 +1259,25 @@ class InvalidSyncConfigTestCase(PulpTestCase):
 
     def test_mirror_with_external_location_href_fails(self):
         """
-        Test that syncing a repository that uses contains an external location_href fails.
+        Test that syncing a repository that contains an external location_href fails in mirror mode.
 
         External location_href refers to a location_href that points outside of the repo,
         e.g. ../../Packages/blah.rpm
         """
         error = self.do_test(REPO_WITH_EXTERNAL_LOCATION_HREF_URL, mirror=True)
+
+        self.assertIn(
+            "features which are incompatible with 'mirror' sync",
+            error,
+        )
+
+    def test_mirror_with_delta_metadata_fails(self):
+        """
+        Test that syncing a repository that contains prestodelta metadata fails in mirror mode.
+
+        Otherwise we would be mirroring the metadata without mirroring the DRPM packages.
+        """
+        error = self.do_test(DRPM_UNSIGNED_FIXTURE_URL, mirror=True)
 
         self.assertIn(
             "features which are incompatible with 'mirror' sync",
