@@ -31,6 +31,7 @@ from pulpcore.plugin.models import (
     PublishedMetadata,
 )
 from pulpcore.plugin.stages import (
+    ACSArtifactHandler,
     ArtifactDownloader,
     ArtifactSaver,
     ContentSaver,
@@ -271,34 +272,40 @@ def fetch_mirror(remote):
     return None
 
 
-def fetch_remote_url(remote):
+def fetch_remote_url(remote, custom_url=None):
     """Fetch a single remote from which can be content synced."""
 
-    def normalize_url(url):
-        return url.rstrip("/") + "/"
+    def normalize_url(url_to_normalize):
+        return url_to_normalize.rstrip("/") + "/"
+
+    url = custom_url or remote.url
 
     try:
-        normalized_remote_url = normalize_url(remote.url)
+        normalized_remote_url = normalize_url(url)
         get_repomd_file(remote, normalized_remote_url)
         # just check if the metadata exists
         return normalized_remote_url
     except ClientResponseError as exc:
-        log.info(
-            _("Attempting to resolve a true url from potential mirrolist url '{}'").format(
-                remote.url
+        # If 'custom_url' is passed it is a call from ACS refresh
+        # which doesn't support mirror lists.
+        if custom_url:
+            raise ValueError(
+                _("Remote URL {} for Alternate Content Source is invalid").format(custom_url)
             )
+        log.info(
+            _("Attempting to resolve a true url from potential mirrolist url '{}'").format(url)
         )
         remote_url = fetch_mirror(remote)
         if remote_url:
             log.info(
                 _("Using url '{}' from mirrorlist in place of the provided url {}").format(
-                    remote_url, remote.url
+                    remote_url, url
                 )
             )
             return normalize_url(remote_url)
 
         if exc.status == 404:
-            raise ValueError(_("An invalid remote URL was provided: {}").format(remote.url))
+            raise ValueError(_("An invalid remote URL was provided: {}").format(url))
 
         raise exc
 
@@ -344,7 +351,7 @@ def should_optimize_sync(sync_details, last_sync_details):
     return True
 
 
-def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize):
+def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url=None):
     """
     Sync content from the remote repository.
 
@@ -366,6 +373,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize):
         sync_policy (str): How to perform the sync.
         skip_types (list): List of content to skip.
         optimize(bool): Optimize mode.
+        url(str): Custom URL to use instead of Remote's URL
 
     Raises:
         ValueError: If the remote does not specify a url to sync.
@@ -377,7 +385,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize):
         remote = UlnRemote.objects.get(pk=remote_pk)
     repository = RpmRepository.objects.get(pk=repository_pk)
 
-    if not remote.url:
+    if not remote.url and not url:
         raise ValueError(_("A remote must have a url specified to synchronize."))
 
     log.info(_("Synchronizing: repository={r} remote={p}").format(r=repository.name, p=remote.name))
@@ -442,7 +450,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize):
         }
 
     with tempfile.TemporaryDirectory("."):
-        remote_url = fetch_remote_url(remote)
+        remote_url = fetch_remote_url(remote, url)
         sync_details = get_sync_details(
             remote, remote_url, sync_policy, repository.latest_version()
         )
@@ -547,6 +555,15 @@ class RpmDeclarativeVersion(DeclarativeVersion):
     Subclassed Declarative version creates a custom pipeline for RPM sync.
     """
 
+    def __init__(self, *args, **kwargs):
+        """
+        Adding support for ACS.
+
+        Adding it here, because we call RpmDeclarativeVersion multiple times in sync.
+        """
+        kwargs["acs"] = True
+        super().__init__(*args, **kwargs)
+
     def pipeline_stages(self, new_version):
         """
         Build a list of stages feeding into the ContentUnitAssociation stage.
@@ -564,13 +581,19 @@ class RpmDeclarativeVersion(DeclarativeVersion):
         pipeline = [
             self.first_stage,
             QueryExistingArtifacts(),
-            ArtifactDownloader(),
-            ArtifactSaver(),
-            QueryExistingContents(),
-            RpmContentSaver(),
-            RpmInterrelateContent(),
-            RemoteArtifactSaver(fix_mismatched_remote_artifacts=True),
         ]
+        if self.acs:
+            pipeline.append(ACSArtifactHandler())
+        pipeline.extend(
+            [
+                ArtifactDownloader(),
+                ArtifactSaver(),
+                QueryExistingContents(),
+                RpmContentSaver(),
+                RpmInterrelateContent(),
+                RemoteArtifactSaver(fix_mismatched_remote_artifacts=True),
+            ]
+        )
         return pipeline
 
 
