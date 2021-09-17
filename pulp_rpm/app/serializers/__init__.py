@@ -1,3 +1,4 @@
+from .acs import RpmAlternateContentSourceSerializer  # noqa
 from .advisory import (  # noqa
     MinimalUpdateRecordSerializer,
     UpdateCollectionSerializer,
