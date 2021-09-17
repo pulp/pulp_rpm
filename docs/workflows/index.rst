@@ -46,3 +46,4 @@ Workflows
    manage
    copy
    metadata_signing
+   alternate-content-source
