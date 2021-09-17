@@ -31,3 +31,4 @@ library with:
    manage
    copy
    metadata_signing
+   alternate-content-source
