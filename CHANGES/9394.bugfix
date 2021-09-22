@@ -1,0 +1,2 @@
+Fixes a regression in support for syncing from mirrorlists.
+(backported from #9329)

@@ -1183,7 +1183,7 @@ class BasicSyncTestCase(PulpTestCase):
         remote = self.remote_api.create(body)
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, mirror=False)
         sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
         monitor_task(sync_response.task)
 

@@ -243,7 +243,7 @@ def fetch_mirror(remote):
 
     URLs which are commented out or have any punctuations in front of them are being ignored.
     """
-    downloader = remote.get_downloader(url=remote.url.rstrip("/"))
+    downloader = remote.get_downloader(url=remote.url.rstrip("/"), urlencode=False)
     result = downloader.fetch()
 
     url_pattern = re.compile(r"(^|^[\w\s=]+\s)((http(s)?)://.*)")
@@ -1036,7 +1036,7 @@ class RpmFirstStage(Stage):
                 Args:
                     pkg (createrepo_c.Package): A completed createrepo_c package.
                 """
-                if self.mirror and pkg.location_base or ".." in pkg.location_href:
+                if self.mirror and (pkg.location_base or ".." in pkg.location_href):
                     raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
 
                 package = Package(**Package.createrepo_to_dict(pkg))
