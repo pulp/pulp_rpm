@@ -146,23 +146,23 @@ class SyncPublishTestCase(PulpTestCase):
         cls.publications = PublicationsRpmApi(cls.client)
 
     def test_rpm_rich_weak(self):
-        """Sync and publish an RPM repository. See :meth: `do_test`."""
+        """Sync and publish an RPM repository."""
         self.do_test(RPM_RICH_WEAK_FIXTURE_URL)
 
     def test_rpm_long_updateinfo(self):
-        """Sync and publish an RPM repository. See :meth: `do_test`."""
+        """Sync and publish an RPM repository."""
         self.do_test(RPM_LONG_UPDATEINFO_FIXTURE_URL)
 
     def test_rpm_alt_layout(self):
-        """Sync and publish an RPM repository. See :meth: `do_test`."""
+        """Sync and publish an RPM repository."""
         self.do_test(RPM_ALT_LAYOUT_FIXTURE_URL)
 
     def test_rpm_sha512(self):
-        """Sync and publish an RPM repository. See :meth: `do_test`."""
+        """Sync and publish an RPM repository."""
         self.do_test(RPM_SHA512_FIXTURE_URL)
 
     def test_srpm(self):
-        """Sync and publish a SRPM repository. See :meth: `do_test`."""
+        """Sync and publish a SRPM repository."""
         self.do_test(SRPM_UNSIGNED_FIXTURE_URL)
 
     def do_test(self, url):
