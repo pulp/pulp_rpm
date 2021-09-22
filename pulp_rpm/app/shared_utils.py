@@ -45,7 +45,12 @@ def urlpath_sanitize(*args):
     Args:
         Arbitrary list of arguments to be join()ed
     """
-    return "/".join(a.strip("/") for a in args + ("",) if a)
+    segments = []
+    for a in args + ("",):
+        stripped = a.strip("/")
+        if stripped:
+            segments.append(stripped)
+    return "/".join(segments)
 
 
 def get_sha256(file_path):
