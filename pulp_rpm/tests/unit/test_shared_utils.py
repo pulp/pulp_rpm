@@ -59,6 +59,8 @@ class TestSharedUtils(TestCase):
         self.assertEqual(ab_expected, urlpath_sanitize("a", "/b"))
         self.assertEqual(ab_expected, urlpath_sanitize("a", "/b/"))
         self.assertEqual(ab_expected, urlpath_sanitize("a/", "/b"))
+        self.assertEqual(ab_expected, urlpath_sanitize("a/", "", "/b"))
+        self.assertEqual(ab_expected, urlpath_sanitize("a/", "/", "/b"))
 
         # a b c : a /b/ /c : /a/ /b/ /c/
         self.assertEqual(abc_expected, urlpath_sanitize("a", "b", "c"))
