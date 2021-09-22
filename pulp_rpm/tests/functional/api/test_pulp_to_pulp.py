@@ -1,6 +1,5 @@
 """Tests that verify download of content served by Pulp."""
 from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
-from pulp_smash.pulp3.constants import ON_DEMAND_DOWNLOAD_POLICIES
 from pulp_smash.pulp3.utils import (
     gen_distribution,
     gen_repo,
@@ -29,35 +28,22 @@ class SynctoSyncTestCase(PulpTestCase):
     """Sync repositories with the rpm plugin."""
 
     def test_immediate(self):
-        """Sync content from Pulp. Content is synced with immediate.
-
-        See :meth:`do_test`.
-        """
+        """Sync content from Pulp with an immediate policy."""
         self.do_test("immediate")
 
-    def test_on_demand_download_policies(self):
-        """Sync content from Pulp. Content is synced with an On-Demand policy.
+    def test_on_demand(self):
+        """Sync content from Pulp with an on_demand policy."""
+        self.do_test("on_demand")
 
-        See :meth:`do_test`.
-
-        """
-        for policy in ON_DEMAND_DOWNLOAD_POLICIES:
-            with self.subTest(policy):
-                self.do_test(policy)
+    def test_streamed(self):
+        """Sync content from Pulp with an streamed policy."""
+        self.do_test("streamed")
 
     def do_test(self, policy):
-        """Verify whether content served by pulp can be synced.
+        """Verify whether content served by Pulp can be synced.
 
-        The process of publishing content is more involved in Pulp 3 than it
-        was under Pulp 2. Given a repository, the process is as follows:
-
-        1. Create a publication from the repository. (The latest repository
-           version is selected if no version is specified.) A publication is a
-           repository version plus metadata.
-        2. Create a distribution from the publication. The distribution defines
-           at which URLs a publication is available, e.g.
-           ``http://example.com/content/foo/`` and
-           ``http://example.com/content/bar/``.
+        The initial sync to Pulp is one of many different download policies, the second sync is
+        immediate in order to exercise downloading all of the files.
 
         Do the following:
 
@@ -108,7 +94,7 @@ class SynctoSyncTestCase(PulpTestCase):
         repo2 = repo_api.create(gen_repo())
         self.addCleanup(repo_api.delete, repo2.pulp_href)
 
-        body = gen_rpm_remote(url=distribution.base_url, policy=policy)
+        body = gen_rpm_remote(url=distribution.base_url, policy="immediate")
         remote2 = remote_api.create(body)
         self.addCleanup(remote_api.delete, remote2.pulp_href)
 
