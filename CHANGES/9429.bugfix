@@ -1,2 +1,0 @@
-Fix an edge case where the repo gpg key URL would be calculated incorrectly if CONTENT_PREFIX was set to "/".
-(backported from #9350)

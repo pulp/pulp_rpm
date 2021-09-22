@@ -1,2 +1,0 @@
-For certain repos which use a rare feature of RPM metadata, "mirroring" would lead to a broken repo. We now reject syncing these repos with mirroring enabled.
-(backported from #9328)
