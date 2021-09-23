@@ -1,0 +1,2 @@
+Set the "revision" of empty repositories to 0, rather than the current time (default).
+(backported from #9402)

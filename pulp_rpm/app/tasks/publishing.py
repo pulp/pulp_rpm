@@ -575,6 +575,10 @@ def generate_repo_metadata(
     upd_xml.close()
 
     repomd = cr.Repomd()
+    # If the repository is empty, use a revision of 0
+    # See: https://pulp.plan.io/issues/9402
+    if not content.exists():
+        repomd.revision = "0"
 
     if publication.sqlite_metadata:
         repomdrecords = [
