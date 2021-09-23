@@ -14,6 +14,35 @@ Changelog
 .. towncrier release notes start
 
 
+3.14.4 (2021-09-22)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed metadata generation after changing ALLOWED_CONTENT_CHECKSUMS.
+  (backported from #8571)
+  `#9332 <https://pulp.plan.io/issues/9332>`_
+- Vastly improved copy-with-depsolving performance.
+  (backported from #9387)
+  `#9388 <https://pulp.plan.io/issues/9388>`_
+- For certain repos which use a rare feature of RPM metadata, "mirroring" would lead to a broken repo. We now reject syncing these repos with mirroring enabled.
+  (backported from #9328)
+  `#9392 <https://pulp.plan.io/issues/9392>`_
+- Fixes a regression in support for syncing from mirrorlists.
+  (backported from #9329)
+  `#9394 <https://pulp.plan.io/issues/9394>`_
+- For certain repos which use Delta RPMs (which Pulp 3 does not and will not support) we now reject syncing these repos with mirroring enabled to avoid confusing clients with unusable Delta metadata.
+  (backported from #9407)
+  `#9408 <https://pulp.plan.io/issues/9408>`_
+- Fix an edge case where the repo gpg key URL would be calculated incorrectly if CONTENT_PREFIX was set to "/".
+  (backported from #9350)
+  `#9429 <https://pulp.plan.io/issues/9429>`_
+
+----
+
+
 3.14.3 (2021-08-31)
 ===================
 
@@ -39,6 +68,8 @@ Misc
 ----
 
 - `#9318 <https://pulp.plan.io/issues/9318>`_
+
+----
 
 
 3.15.0 (2021-08-27)
