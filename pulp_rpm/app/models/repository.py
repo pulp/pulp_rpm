@@ -472,10 +472,15 @@ class RpmDistribution(Distribution):
             repository, publication = self.get_repository_and_publication()
             if not publication:
                 return
-            base_url = f"{settings.CONTENT_ORIGIN}{settings.CONTENT_PATH_PREFIX}{self.base_path}/"
+            base_url = "{}/".format(
+                urlpath_sanitize(
+                    settings.CONTENT_ORIGIN, settings.CONTENT_PATH_PREFIX, self.base_path
+                )
+            )
             val = textwrap.dedent(
                 f"""\
                 [{self.name}]
+                name={self.name}
                 enabled=1
                 baseurl={base_url}
                 gpgcheck={publication.gpgcheck}
@@ -486,9 +491,7 @@ class RpmDistribution(Distribution):
             signing_service = repository.metadata_signing_service
             if signing_service:
                 gpgkey_path = urlpath_sanitize(
-                    settings.CONTENT_ORIGIN,
-                    settings.CONTENT_PATH_PREFIX,
-                    self.base_path,
+                    base_url,
                     "/repodata/repomd.xml.key",
                 )
                 val += f"gpgkey={gpgkey_path}\n"
