@@ -1,0 +1,5 @@
+Restored the functionality of specifying basic-auth parameters in a remote's URL.
+
+NOTE: it's much better to specify username/pwd explcitly on the Remote, rather
+than relying on embedding them in the URL. This fix will probably be deprecated in
+the future.
