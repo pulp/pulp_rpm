@@ -13,6 +13,38 @@ Changelog
 
 .. towncrier release notes start
 
+3.14.5 (2021-09-29)
+===================
+
+
+Bugfixes
+--------
+
+- Generated .repo file now includes the "name" field.
+  (backported from #9438)
+  `#9439 <https://pulp.plan.io/issues/9439>`_
+- Use checksum type of a package for publication if it's not configured.
+
+  (backported from #9448)
+  `#9449 <https://pulp.plan.io/issues/9449>`_
+- Restored the functionality of specifying basic-auth parameters in a remote's URL.
+
+  NOTE: it's much better to specify username/pwd explcitly on the Remote, rather
+  than relying on embedding them in the URL. This fix will probably be deprecated in
+  the future.
+  (backported from #9464)
+  `#9472 <https://pulp.plan.io/issues/9472>`_
+
+
+Misc
+----
+
+- `#9437 <https://pulp.plan.io/issues/9437>`_
+
+
+----
+
+
 3.14.4 (2021-09-22)
 ===================
 
