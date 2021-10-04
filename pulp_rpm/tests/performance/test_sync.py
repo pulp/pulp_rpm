@@ -15,8 +15,8 @@ from pulp_smash.pulp3.utils import (
 
 from pulp_rpm.tests.functional.constants import (
     PULP_TYPE_REPOMETADATA,
-    RPM_CDN_APPSTREAM_URL,
-    RPM_CDN_BASEOS_URL,
+    RHEL8_APPSTREAM_CDN_URL,
+    RHEL8_BASEOS_CDN_URL,
     RPM_KICKSTART_FIXTURE_SUMMARY,
     RPM_KICKSTART_FIXTURE_URL,
     RPM_REMOTE_PATH,
@@ -24,7 +24,7 @@ from pulp_rpm.tests.functional.constants import (
     CENTOS7_URL,
     CENTOS8_APPSTREAM_URL,
     CENTOS8_BASEOS_URL,
-    CENTOS8_KICKSTART_APP_URL,
+    CENTOS8_KICKSTART_APPSTREAM_URL,
     CENTOS8_KICKSTART_BASEOS_URL,
     EPEL8_MIRRORLIST_URL,
     EPEL8_PLAYGROUND_KICKSTART_URL,
@@ -167,7 +167,7 @@ class SyncTestCase(unittest.TestCase):
 
     def test_centos8_kickstart_appstream_on_demand(self):
         """Kickstart Sync CentOS 8 AppStream."""
-        self.rpm_sync(url=CENTOS8_KICKSTART_APP_URL)
+        self.rpm_sync(url=CENTOS8_KICKSTART_APPSTREAM_URL)
 
     def test_epel8_mirrorlist_with_comment(self):
         """Kickstart Sync EPEL 8 (which includes a comment line)."""
@@ -221,7 +221,7 @@ class CDNTestCase(unittest.TestCase):
         self.addCleanup(self.repo_api.delete, repo_appstream.pulp_href)
 
         body = gen_rpm_remote(
-            url=RPM_CDN_APPSTREAM_URL,
+            url=RHEL8_APPSTREAM_CDN_URL,
             client_cert=self.cdn_client_cert,
             client_key=self.cdn_client_key,
             ca_cert=self.cdn_ca_cert,
@@ -239,7 +239,7 @@ class CDNTestCase(unittest.TestCase):
         self.addCleanup(self.repo_api.delete, repo_baseos.pulp_href)
 
         body = gen_rpm_remote(
-            url=RPM_CDN_BASEOS_URL,
+            url=RHEL8_BASEOS_CDN_URL,
             tls_validation=False,
             client_cert=self.cdn_client_cert,
             client_key=self.cdn_client_key,

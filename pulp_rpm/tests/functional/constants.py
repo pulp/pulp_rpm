@@ -610,16 +610,19 @@ RPM_ONLY_METADATA_REPO_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-unsigned-meta-
 AMAZON_MIRROR = "http://amazonlinux.us-east-1.amazonaws.com/2/core/latest/x86_64/mirror.list"
 CENTOS6_URL = "http://mirror.centos.org/centos-6/6.10/os/x86_64/"
 CENTOS7_URL = "http://mirror.centos.org/centos-7/7/os/x86_64/"
-CENTOS8_KICKSTART_APP_URL = "http://mirror.centos.org/centos-8/8/AppStream/x86_64/kickstart/"
+CENTOS8_KICKSTART_APPSTREAM_URL = "http://mirror.centos.org/centos-8/8/AppStream/x86_64/kickstart/"
 CENTOS8_KICKSTART_BASEOS_URL = "http://mirror.centos.org/centos-8/8/BaseOS/x86_64/kickstart/"
 CENTOS8_APPSTREAM_URL = "http://mirror.centos.org/centos-8/8/AppStream/x86_64/os/"
 CENTOS8_BASEOS_URL = "http://mirror.centos.org/centos-8/8/BaseOS/x86_64/os/"
 CENTOS7_OPSTOOLS = "http://ftp.cs.stanford.edu/centos/7/opstools/x86_64/"
 EPEL7_URL = "https://dl.fedoraproject.org/pub/epel/7/x86_64/"
-RPM_CDN_APPSTREAM_URL = "https://cdn.redhat.com/content/dist/rhel8/8.2/x86_64/appstream/os/"
-RPM_CDN_BASEOS_URL = "https://cdn.redhat.com/content/dist/rhel8/8.2/x86_64/baseos/os/"
 EPEL8_MIRRORLIST_URL = "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-8&arch=x86_64"
 EPEL8_PLAYGROUND_KICKSTART_URL = "http://mirrors.sonic.net/epel/playground/8/Everything/x86_64/os/"
+RHEL8_APPSTREAM_CDN_URL = "https://cdn.redhat.com/content/dist/rhel8/8.2/x86_64/appstream/os/"
+RHEL8_BASEOS_CDN_URL = "https://cdn.redhat.com/content/dist/rhel8/8.2/x86_64/baseos/os/"
+RHEL6_KICKSTART_CDN_URL = "https://cdn.redhat.com/content/dist/rhel/server/6/6.10/x86_64/kickstart/"
+
+# TODO: static test fixtures for these
 REPO_WITH_XML_BASE_URL = "https://harbottle.gitlab.io/harbottle-main/8/x86_64/"
 REPO_WITH_EXTERNAL_LOCATION_HREF_URL = (
     "https://packages.rundeck.com/pagerduty/rundeck/rpm_any/rpm_any/x86_64/"
