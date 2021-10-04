@@ -471,6 +471,7 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize, url=None
                     mirror,
                     skip_types=skip_types,
                     new_url=new_url,
+                    namespace=directory,
                 )
                 dv = RpmDeclarativeVersion(first_stage=stage, repository=sub_repo)
                 subrepo_version = dv.create()
@@ -568,6 +569,7 @@ class RpmFirstStage(Stage):
         skip_types=None,
         new_url=None,
         treeinfo=None,
+        namespace=None,
     ):
         """
         The first stage of a pulp_rpm sync pipeline.
@@ -582,6 +584,7 @@ class RpmFirstStage(Stage):
             skip_types (list): List of content to skip
             new_url(str): URL to replace remote url
             treeinfo(dict): Treeinfo data
+            namespace(str): Path where this repo is located relative to some parent repo.
 
         """
         super().__init__()
@@ -591,6 +594,11 @@ class RpmFirstStage(Stage):
         self.deferred_download = deferred_download
         self.mirror = mirror
 
+        # How many directories deep this repo is nested within another repo (if at all).
+        # Backwards relative paths that are shallower than this depth are permitted (in mirror
+        # mode), to accomodate sub-repos which re-use packages from the parent repo.
+        self.namespace_depth = 0 if not namespace else len(namespace.strip("/").split("/"))
+
         self.treeinfo = treeinfo
         self.skip_types = [] if skip_types is None else skip_types
 
@@ -598,6 +606,10 @@ class RpmFirstStage(Stage):
 
         self.nevra_to_module = defaultdict(dict)
         self.pkgname_to_groups = defaultdict(list)
+
+    def is_illegal_relative_path(self, path):
+        """Whether a relative path points outside the repository being synced."""
+        return path.count("../") > self.namespace_depth
 
     @staticmethod
     async def parse_updateinfo(updateinfo_xml_path):
@@ -662,12 +674,12 @@ class RpmFirstStage(Stage):
                     checksum_types[record.type] = record_checksum_type
                     record.checksum_type = record_checksum_type
 
-                    if self.mirror and (
-                        record.location_base
-                        or ".." in record.location_href
-                        or record.type == "prestodelta"
-                    ):
-                        raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
+                    if self.mirror:
+                        uses_base_url = record.location_base
+                        illegal_relative_path = self.is_illegal_relative_path(record.location_href)
+
+                        if uses_base_url or illegal_relative_path or record.type == "prestodelta":
+                            raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
 
                     if not self.mirror and record.type not in types_to_download:
                         continue
@@ -1055,8 +1067,12 @@ class RpmFirstStage(Stage):
                 Args:
                     pkg (createrepo_c.Package): A completed createrepo_c package.
                 """
-                if self.mirror and (pkg.location_base or ".." in pkg.location_href):
-                    raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
+                if self.mirror:
+                    uses_base_url = pkg.location_base
+                    illegal_relative_path = self.is_illegal_relative_path(pkg.location_href)
+
+                    if uses_base_url or illegal_relative_path:
+                        raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
 
                 package = Package(**Package.createrepo_to_dict(pkg))
                 base_url = pkg.location_base or self.remote_url
