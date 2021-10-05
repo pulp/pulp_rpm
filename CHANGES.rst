@@ -14,6 +14,109 @@ Changelog
 .. towncrier release notes start
 
 
+3.15.0 (2021-08-27)
+===================
+
+
+Features
+--------
+
+- Enable reclaim disk space for packages. This feature is available with pulpcore 3.15+.
+  `#9176 <https://pulp.plan.io/issues/9176>`_
+
+
+Bugfixes
+--------
+
+- Taught pulp_rpm to be more lenient in the face of non-standard repos.
+  `#7208 <https://pulp.plan.io/issues/7208>`_
+- Fixed multiple bugs in distribution tree metadata generation regarding "variant" and "variants" metadata.
+  `#8622 <https://pulp.plan.io/issues/8622>`_
+- Fixed Pulp 3 to Pulp 2 sync for the package groups with empty packagelist, e.g. RHEL8 Appstream repository.
+  `#8713 <https://pulp.plan.io/issues/8713>`_
+- Taught downloader to be handle rpms with special characters in ways Amazon likes.
+  `#8875 <https://pulp.plan.io/issues/8875>`_
+- Fixed some errors that can occur on occasions when identical content is being synced from multiple sources at once.
+  `#9029 <https://pulp.plan.io/issues/9029>`_
+- Comply with orphan clean up changes introduced in pulpcore 3.15
+  `#9151 <https://pulp.plan.io/issues/9151>`_
+- Unpublished content is no longer available for consumption.
+  `#9223 <https://pulp.plan.io/issues/9223>`_
+- Fixed an issue where mirror-mode syncs would not provide all of the files described in the .treeinfo metadata.
+  `#9230 <https://pulp.plan.io/issues/9230>`_
+- Taught copy-depsolving to behave better in a multiarch environment.
+  `#9238 <https://pulp.plan.io/issues/9238>`_
+- Fixed bug where sync tasks would open a lot of DB connections.
+  `#9253 <https://pulp.plan.io/issues/9253>`_
+- Improved the parallelism of copy operations.
+  `#9255 <https://pulp.plan.io/issues/9255>`_
+- Taught copy/ API to only do depsolving once when asked for.
+  `#9287 <https://pulp.plan.io/issues/9287>`_
+
+
+Deprecations and Removals
+-------------------------
+
+- Dropped support for Python 3.6 and 3.7. pulp_rpm now supports Python 3.8+.
+  `#9033 <https://pulp.plan.io/issues/9033>`_
+
+
+Misc
+----
+
+- `#8494 <https://pulp.plan.io/issues/8494>`_, `#9279 <https://pulp.plan.io/issues/9279>`_
+
+
+----
+
+
+3.14.6 (2021-10-05)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed an issue where some repositories were unnecessarily prevented from using mirror-mode sync.
+  (backported from #9486)
+  `#9487 <https://pulp.plan.io/issues/9487>`_
+
+
+----
+
+
+3.14.5 (2021-09-29)
+===================
+
+
+Bugfixes
+--------
+
+- Generated .repo file now includes the "name" field.
+  (backported from #9438)
+  `#9439 <https://pulp.plan.io/issues/9439>`_
+- Use checksum type of a package for publication if it's not configured.
+
+  (backported from #9448)
+  `#9449 <https://pulp.plan.io/issues/9449>`_
+- Restored the functionality of specifying basic-auth parameters in a remote's URL.
+
+  NOTE: it's much better to specify username/pwd explcitly on the Remote, rather
+  than relying on embedding them in the URL. This fix will probably be deprecated in
+  the future.
+  (backported from #9464)
+  `#9472 <https://pulp.plan.io/issues/9472>`_
+
+
+Misc
+----
+
+- `#9437 <https://pulp.plan.io/issues/9437>`_
+
+
+----
+
+
 3.14.4 (2021-09-22)
 ===================
 
@@ -68,62 +171,6 @@ Misc
 ----
 
 - `#9318 <https://pulp.plan.io/issues/9318>`_
-
-----
-
-
-3.15.0 (2021-08-27)
-===================
-
-
-Features
---------
-
-- Enable reclaim disk space for packages. This feature is available with pulpcore 3.15+.
-  `#9176 <https://pulp.plan.io/issues/9176>`_
-
-
-Bugfixes
---------
-
-- Taught pulp_rpm to be more lenient in the face of non-standard repos.
-  `#7208 <https://pulp.plan.io/issues/7208>`_
-- Fixed multiple bugs in distribution tree metadata generation regarding "variant" and "variants" metadata.
-  `#8622 <https://pulp.plan.io/issues/8622>`_
-- Fixed Pulp 3 to Pulp 2 sync for the package groups with empty packagelist, e.g. RHEL8 Appstream repository.
-  `#8713 <https://pulp.plan.io/issues/8713>`_
-- Taught downloader to be handle rpms with special characters in ways Amazon likes.
-  `#8875 <https://pulp.plan.io/issues/8875>`_
-- Fixed some errors that can occur on occasions when identical content is being synced from multiple sources at once.
-  `#9029 <https://pulp.plan.io/issues/9029>`_
-- Comply with orphan clean up changes introduced in pulpcore 3.15
-  `#9151 <https://pulp.plan.io/issues/9151>`_
-- Unpublished content is no longer available for consumption.
-  `#9223 <https://pulp.plan.io/issues/9223>`_
-- Fixed an issue where mirror-mode syncs would not provide all of the files described in the .treeinfo metadata.
-  `#9230 <https://pulp.plan.io/issues/9230>`_
-- Taught copy-depsolving to behave better in a multiarch environment.
-  `#9238 <https://pulp.plan.io/issues/9238>`_
-- Fixed bug where sync tasks would open a lot of DB connections.
-  `#9253 <https://pulp.plan.io/issues/9253>`_
-- Improved the parallelism of copy operations.
-  `#9255 <https://pulp.plan.io/issues/9255>`_
-- Taught copy/ API to only do depsolving once when asked for.
-  `#9287 <https://pulp.plan.io/issues/9287>`_
-
-
-Deprecations and Removals
--------------------------
-
-- Dropped support for Python 3.6 and 3.7. pulp_rpm now supports Python 3.8+.
-  `#9033 <https://pulp.plan.io/issues/9033>`_
-
-
-Misc
-----
-
-- `#8494 <https://pulp.plan.io/issues/8494>`_, `#9279 <https://pulp.plan.io/issues/9279>`_
-
 
 ----
 
