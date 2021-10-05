@@ -13,6 +13,21 @@ Changelog
 
 .. towncrier release notes start
 
+3.14.6 (2021-10-05)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed an issue where some repositories were unnecessarily prevented from using mirror-mode sync.
+  (backported from #9486)
+  `#9487 <https://pulp.plan.io/issues/9487>`_
+
+
+----
+
+
 3.14.5 (2021-09-29)
 ===================
 
