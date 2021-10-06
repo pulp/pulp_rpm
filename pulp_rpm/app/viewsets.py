@@ -25,6 +25,7 @@ from pulpcore.plugin.viewsets import (
 )
 
 from pulp_rpm.app import tasks
+from pulp_rpm.app.constants import SYNC_POLICIES
 from pulp_rpm.app.models import (
     DistributionTree,
     Modulemd,
@@ -129,18 +130,32 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin):
         serializer.is_valid(raise_exception=True)
         remote = serializer.validated_data.get("remote", repository.remote)
         mirror = serializer.validated_data.get("mirror")
+        sync_policy = serializer.validated_data.get("sync_policy")
         skip_types = serializer.validated_data.get("skip_types")
         optimize = serializer.validated_data.get("optimize")
 
-        if repository.retain_package_versions > 0 and mirror:
-            raise DRFValidationError("Cannot use 'retain_package_versions' with mirror-mode sync")
+        if not sync_policy:
+            sync_policy = SYNC_POLICIES.ADDITIVE if not mirror else SYNC_POLICIES.MIRROR_COMPLETE
+
+        # validate some invariants that involve repository-wide settings.
+        if sync_policy in (SYNC_POLICIES.MIRROR_COMPLETE, SYNC_POLICIES.MIRROR_CONTENT_ONLY):
+            err_msg = (
+                "Cannot use '{}' in combination with a 'mirror_complete' or "
+                "'mirror_content_only' sync policy."
+            )
+            if repository.retain_package_versions > 0:
+                raise DRFValidationError(err_msg.format("retain_package_versions"))
+        elif sync_policy == SYNC_POLICIES.MIRROR_COMPLETE:
+            err_msg = "Cannot use '{}' in combination with a 'mirror_complete' sync policy."
+            if repository.autopublish:
+                raise DRFValidationError(err_msg.format("autopublish"))
 
         result = dispatch(
             tasks.synchronize,
             shared_resources=[remote],
             exclusive_resources=[repository],
             kwargs={
-                "mirror": mirror,
+                "sync_policy": sync_policy,
                 "remote_pk": str(remote.pk),
                 "repository_pk": str(repository.pk),
                 "skip_types": skip_types,

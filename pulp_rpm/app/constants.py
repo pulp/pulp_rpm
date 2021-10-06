@@ -26,6 +26,18 @@ CHECKSUM_CHOICES = (
 ALLOWED_CHECKSUM_ERROR_MSG = """Checksum must be one of the allowed checksum types.
 You can adjust these with the 'ALLOWED_CONTENT_CHECKSUMS' setting."""
 
+SYNC_POLICIES = SimpleNamespace(
+    ADDITIVE="additive",
+    MIRROR_COMPLETE="mirror_complete",
+    MIRROR_CONTENT_ONLY="mirror_content_only",
+)
+
+SYNC_POLICY_CHOICES = (
+    (SYNC_POLICIES.ADDITIVE, SYNC_POLICIES.ADDITIVE),
+    (SYNC_POLICIES.MIRROR_COMPLETE, SYNC_POLICIES.MIRROR_COMPLETE),
+    (SYNC_POLICIES.MIRROR_CONTENT_ONLY, SYNC_POLICIES.MIRROR_CONTENT_ONLY),
+)
+
 CR_PACKAGE_ATTRS = SimpleNamespace(
     ARCH="arch",
     CHANGELOGS="changelogs",
