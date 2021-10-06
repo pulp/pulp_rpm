@@ -146,9 +146,13 @@ Sync repository ``foo`` using remote ``bar``
 .. literalinclude:: ../_scripts/sync.sh
    :language: bash
 
-You can specify ``mirror=True`` for a mirror mode. It means Pulp won't update
-repository using previous repository version but create a new copy of remote
-repository as a new repository version.
+There are 3 sync modes to choose from, using the ``sync_policy`` option.
+
+- ``additive`` (the default) will retain the existing contents of the Pulp repository and add the contents of the remote repository being synced.
+- ``mirror_content_only`` will synchronize the Pulp repository to contain the same content as the one remote repository being synced - removing any existing content that isn't present in the remote repo.
+- ``mirror_complete`` will act as ``mirror_content_only`` does, but additionally it will automatically create a publication that will be an _exact_ bit-for-bit copy of the remote repository being synced, rather than requiring a separate step (or ``autopublish``) to generate the metadata later. This will keep repo metadata checksums intact, but is not possible for all repositories, as some use features which are incompatible with creating local clones that are exact copies.
+
+The ``mirror`` option is deprecated, ``sync_policy`` should be used instead. If the ``mirror`` option used, a value of ``true`` will change the default ``sync_policy`` to ``mirror_complete``, while a value of ``false`` will not change the default ``sync_policy``.
 
 Optionally, you can skip ``SRPM`` packages by using ``skip_types:="[\"srpm\"]"``
 option.

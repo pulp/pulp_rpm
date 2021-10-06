@@ -62,45 +62,66 @@ class PackageManagerConsumeTestCase(PulpTestCase):
     def _has_dnf(self):
         return self.pkg_mgr.name == "dnf"
 
-    def test_on_demand_policy_mirror(self):
-        """Verify that content synced with on_demand policy in mirror mode can be consumed."""
+    def test_on_demand_policy_mirror_complete(self):
+        """Verify that content synced with on_demand policy mode can be consumed."""
         delete_orphans()
-        self.do_test("on_demand", mirror=True)
+        self.do_test("on_demand", sync_policy="mirror_complete")
         new_artifact_count = self.artifacts_api.list().count
         self.assertGreater(new_artifact_count, self.before_consumption_artifact_count)
 
-    def test_streamed_policy_mirror(self):
-        """Verify that content synced with streamed policy in mirror mode can be consumed."""
+    def test_streamed_policy_mirror_complete(self):
+        """Verify that content synced with streamed policy mode can be consumed."""
         delete_orphans()
-        self.do_test("streamed", mirror=True)
+        self.do_test("streamed", sync_policy="mirror_complete")
         new_artifact_count = self.artifacts_api.list().count
         self.assertEqual(new_artifact_count, self.before_consumption_artifact_count)
 
-    def test_immediate_policy_mirror(self):
-        """Verify that content synced with immediate policy in mirror mode can be consumed."""
+    def test_immediate_policy_mirror_complete(self):
+        """Verify that content synced with immediate policy mode can be consumed."""
         delete_orphans()
-        self.do_test("immediate", mirror=True)
+        self.do_test("immediate", sync_policy="mirror_complete")
         new_artifact_count = self.artifacts_api.list().count
         self.assertEqual(new_artifact_count, self.before_consumption_artifact_count)
 
-    def test_on_demand_policy_not_mirror(self):
+    def test_on_demand_policy_mirror_content_only(self):
+        """Verify that content synced with on_demand policy mode can be consumed."""
+        delete_orphans()
+        self.do_test("on_demand", sync_policy="mirror_content_only")
+        new_artifact_count = self.artifacts_api.list().count
+        self.assertGreater(new_artifact_count, self.before_consumption_artifact_count)
+
+    def test_streamed_policy_mirror_content_only(self):
+        """Verify that content synced with streamed policy mode can be consumed."""
+        delete_orphans()
+        self.do_test("streamed", sync_policy="mirror_content_only")
+        new_artifact_count = self.artifacts_api.list().count
+        self.assertEqual(new_artifact_count, self.before_consumption_artifact_count)
+
+    def test_immediate_policy_mirror_content_only(self):
+        """Verify that content synced with immediate policy mode can be consumed."""
+        delete_orphans()
+        self.do_test("immediate", sync_policy="mirror_content_only")
+        new_artifact_count = self.artifacts_api.list().count
+        self.assertEqual(new_artifact_count, self.before_consumption_artifact_count)
+
+    def test_on_demand_policy_additive(self):
         """Verify that content synced with on_demand policy can be consumed."""
         delete_orphans()
-        self.do_test("on_demand", mirror=False)
+        self.do_test("on_demand", sync_policy="additive")
         new_artifact_count = self.artifacts_api.list().count
         self.assertGreater(new_artifact_count, self.before_consumption_artifact_count)
 
-    def test_streamed_policy_not_mirror(self):
+    def test_streamed_policy_additive(self):
         """Verify that content synced with streamed policy can be consumed."""
         delete_orphans()
-        self.do_test("streamed", mirror=False)
+        self.do_test("streamed", sync_policy="additive")
         new_artifact_count = self.artifacts_api.list().count
         self.assertEqual(new_artifact_count, self.before_consumption_artifact_count)
 
-    def test_immediate_policy_not_mirror(self):
+    def test_immediate_policy_additive(self):
         """Verify that content synced with immediate policy can be consumed."""
         delete_orphans()
-        self.do_test("immediate", mirror=False)
+        self.do_test("immediate", sync_policy="additive")
         new_artifact_count = self.artifacts_api.list().count
         self.assertEqual(new_artifact_count, self.before_consumption_artifact_count)
 
@@ -111,11 +132,11 @@ class PackageManagerConsumeTestCase(PulpTestCase):
         completely different base path when looking up relative paths.
         """
         delete_orphans()
-        self.do_test("immediate", mirror=False, url=REPO_WITH_XML_BASE_URL)
+        self.do_test("immediate", sync_policy="mirror_content_only", url=REPO_WITH_XML_BASE_URL)
         new_artifact_count = self.artifacts_api.list().count
         self.assertEqual(new_artifact_count, self.before_consumption_artifact_count)
 
-    def do_test(self, policy, mirror=False, url=RPM_UNSIGNED_FIXTURE_URL):
+    def do_test(self, policy, sync_policy, url=RPM_UNSIGNED_FIXTURE_URL):
         """Verify whether package manager can consume content from Pulp."""
         if not self._has_dnf():
             self.skipTest("This test requires dnf")
@@ -124,13 +145,15 @@ class PackageManagerConsumeTestCase(PulpTestCase):
         remote = self.remote_api.create(body)
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
-        repo = self.repo_api.create(gen_repo(autopublish=not mirror))
+        repo = self.repo_api.create(gen_repo(autopublish=sync_policy != "mirror_complete"))
         self.addCleanup(self.repo_api.delete, repo.pulp_href)
 
         before_sync_artifact_count = self.artifacts_api.list().count
         self.assertEqual(before_sync_artifact_count, 0)
 
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, mirror=mirror)
+        repository_sync_data = RpmRepositorySyncURL(
+            remote=remote.pulp_href, sync_policy=sync_policy
+        )
         sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
         created_resources = monitor_task(sync_response.task).created_resources
 
