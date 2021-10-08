@@ -277,28 +277,6 @@ class RpmDistributionSerializer(DistributionSerializer):
         allow_null=True,
     )
 
-    def validate(self, data):
-        """
-        Ensure publication and repository are not set at the same time.
-
-        This is needed here till https://pulp.plan.io/issues/8761 is resolved.
-        """
-        data = super().validate(data)
-        repository_provided = data.get("repository", None)
-        publication_provided = data.get("publication", None)
-
-        if repository_provided and publication_provided:
-            raise serializers.ValidationError(
-                _(
-                    "Only one of the attributes 'repository' and 'publication' "
-                    "may be used simultaneously."
-                )
-            )
-        if repository_provided or publication_provided:
-            data["repository"] = repository_provided
-            data["publication"] = publication_provided
-        return data
-
     class Meta:
         fields = DistributionSerializer.Meta.fields + ("publication",)
         model = RpmDistribution
