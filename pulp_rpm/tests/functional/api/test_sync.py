@@ -79,7 +79,6 @@ from pulp_rpm.tests.functional.constants import (
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
     gen_rpm_remote,
-    progress_reports,
     skip_if,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
@@ -505,139 +504,74 @@ class BasicSyncTestCase(PulpTestCase):
         )
 
     def test_optimize(self):
-        """Sync is no-op without changes.
+        """Tests that sync is skipped when no critical parameters of the sync change.
 
-        This test targets the following issue:
+        Sync is forced if:
 
-        `Pulp #6313 <https://pulp.plan.io/issues/6313>`_
-
-        If there are no changes, a full sync should not be done.
-
-        Do the following:
-
-        1. Sync (a repo and a remote will be created automatically).
-        2. Sync again to get our task dictionary.
-        3. Assert an "Optimizing Sync" progress report is present.
-        4. Sync again with flag "optimize=False".
-        5. Assert "Optimizing Sync" progress report is absent.
-        # 6. **Create a new repo version.
-        # 7. Sync again (no flag).
-        # 8. Assert "Optimizing Sync" progress report is absent.
-        9. Update remote to have "policy=immediate".
-        10. Sync again.
-        11. Assert "Optimizing Sync" progress report is absent.
-        12. Create a new (different) remote.
-        13. Sync using the new remote.
-        14. Assert "Optimizing Sync" progress report is absent.
-        # 15. Sync again with the new remote.
-        # 16. Assert an "Optimizing Sync" progress report is present.
+        * optimize=False
+        * sync URL is different from the last sync
+        * sync_policy changes to 'mirror_complete' from something else
+        * download_policy of the remote is changed to 'immediate' from something else
+        * the repository has been modified since the last sync
+        * (NOT tested) repomd revision or repomd checksum change
         """
-        # sync
-        repo, remote = self.do_test()
-
-        # add resources to clean up
+        # create repo, remote, and sync them
+        body = gen_rpm_remote(policy="on_demand")
+        remote = self.remote_api.create(body)
+        repo, remote = self.do_test(remote=remote)
         self.addCleanup(self.repo_api.delete, repo.pulp_href)
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
-        # sync, get progress reports from task
-        report_list = self.sync(repository=repo, remote=remote)
+        # sync again, assert optimized
+        sync_task = self.sync(repository=repo, remote=remote)
+        self.assertTrue(self.task_was_optimized(sync_task))
 
-        # check for an optimization progress report
-        optimized = self.optimize_report(progress_reports=report_list)
+        # sync again with flag optimize=False, assert not optimized
+        sync_task = self.sync(repository=repo, remote=remote, optimize=False)
+        self.assertFalse(self.task_was_optimized(sync_task))
 
-        # check that sync was optimized
-        self.assertTrue(optimized)
-
-        # sync again with flag optimize=False
-        report_list = self.sync(repository=repo, remote=remote, optimize=False)
-
-        # check for an optimization progress report
-        optimized = self.optimize_report(progress_reports=report_list)
-
-        # check that sync was not optimized
-        self.assertFalse(optimized)
-
-        # create a new repo version
+        # create a new repo version, sync again, assert not optimized
         content = choice(get_content(repo.to_dict())[RPM_PACKAGE_CONTENT_NAME])
         modify_repo(config.get_config(), repo.to_dict(), remove_units=[content])
+        sync_task = self.sync(repository=repo, remote=remote)
+        self.assertFalse(self.task_was_optimized(sync_task))
 
-        # sync, get progress reports from task
-        report_list = self.sync(repository=repo, remote=remote)
-
-        # check for an optimization progress report
-        optimized = self.optimize_report(progress_reports=report_list)
-
-        # check that sync was not optimized
-        self.assertFalse(optimized)
-
-        # update remote
+        # change download policy to 'immediate', sync again, assert not optimized
         body = {"policy": "immediate"}
-        response = self.remote_api.partial_update(remote.pulp_href, body)
-        monitor_task(response.task)
+        monitor_task(self.remote_api.partial_update(remote.pulp_href, body).task)
+        sync_task = self.sync(repository=repo, remote=remote)
+        self.assertFalse(self.task_was_optimized(sync_task))
 
-        # sync, get progress reports from task
-        report_list = self.sync(repository=repo, remote=remote)
-
-        # check for an optimization progress report
-        optimized = self.optimize_report(progress_reports=report_list)
-
-        # check that sync was not optimized
-        self.assertFalse(optimized)
-
-        # create new remote
+        # create new remote with the same URL and download_policy as the first, sync with it,
+        # assert optimized
         body = gen_rpm_remote()
-        body["url"] = RPM_RICH_WEAK_FIXTURE_URL
         new_remote = self.remote_api.create(body)
-
-        # add resource to clean up
         self.addCleanup(self.remote_api.delete, new_remote.pulp_href)
+        sync_task = self.sync(repository=repo, remote=new_remote)
+        self.assertTrue(self.task_was_optimized(sync_task))
 
-        # sync with new remote
-        report_list = self.sync(repository=repo, remote=new_remote)
+        # change the URL on the new remote, sync again, assert not optimized
+        body = {"url": RPM_RICH_WEAK_FIXTURE_URL}
+        monitor_task(self.remote_api.partial_update(new_remote.pulp_href, body).task)
+        sync_task = self.sync(repository=repo, remote=new_remote)
+        self.assertFalse(self.task_was_optimized(sync_task))
 
-        # check for an optimization progress report
-        optimized = self.optimize_report(progress_reports=report_list)
+        # sync again with the new remote, assert optimized
+        sync_task = self.sync(repository=repo, remote=new_remote)
+        self.assertTrue(self.task_was_optimized(sync_task))
 
-        # check that sync was not optimized
-        self.assertFalse(optimized)
-
-        # sync again with new remote
-        report_list = self.sync(repository=repo, remote=new_remote)
-
-        # check for an optimization progress report
-        optimized = self.optimize_report(progress_reports=report_list)
-
-        # check that sync was optimized
-        self.assertTrue(optimized)
-
-    def test_mirror_mode_optimize(self):
-        """
-        Ensure mirror mode and optimize work correctly together.
-
-        Content is fully present and sync is optimized.
-
-        Do the following:
-        1. Sync (a repo and a remote will be created automatically).
-        2. Sync again with optimize=True and mirror=True
-        3. Assert an "Optimizing Sync" progress report is present.
-        4. Assert that no changes were made to a repo.
-        """
-        # sync
-        repo, remote = self.do_test()
+        # sync again with sync_policy='mirror_complete', assert not optimized, but repository
+        # version is unchanged
         first_sync_repo_version = repo.latest_version_href
+        sync_task = self.sync(repository=repo, remote=new_remote, sync_policy="mirror_complete")
+        self.assertFalse(self.task_was_optimized(sync_task))
 
-        # add resources to clean up
-        self.addCleanup(self.repo_api.delete, repo.pulp_href)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
-
-        # re-sync, get progress reports from task
-        report_list = self.sync(repository=repo, remote=remote, optimize=True, mirror=True)
         second_sync_repo_version = repo.latest_version_href
-
-        is_optimized = self.optimize_report(progress_reports=report_list)
-        self.assertTrue(is_optimized)
-
         self.assertEqual(first_sync_repo_version, second_sync_repo_version)
+
+        # sync again with mirror=True, assert optimized
+        sync_task = self.sync(repository=repo, remote=new_remote, sync_policy="mirror_complete")
+        self.assertTrue(self.task_was_optimized(sync_task))
 
     def test_sync_advisory_new_version(self):
         """Sync a repository and re-sync with newer version of Advisory.
@@ -1121,7 +1055,7 @@ class BasicSyncTestCase(PulpTestCase):
         monitor_task(sync_response.task)
         return self.repo_api.read(repo.pulp_href), self.remote_api.read(remote.pulp_href)
 
-    def sync(self, repository=None, remote=None, optimize=True, mirror=False, skip_types=None):
+    def sync(self, repository=None, remote=None, **sync_kwargs):
         """Sync a repository and return the task.
 
         Args:
@@ -1132,18 +1066,13 @@ class BasicSyncTestCase(PulpTestCase):
         Returns (list):
             list of the ProgressReport objects created from this sync
         """
-        if skip_types is None:
-            skip_types = []
-        repository_sync_data = RpmRepositorySyncURL(
-            remote=remote.pulp_href, optimize=optimize, mirror=mirror, skip_types=skip_types
-        )
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, **sync_kwargs)
         sync_response = self.repo_api.sync(repository.pulp_href, repository_sync_data)
-        monitor_task(sync_response.task)
-        return progress_reports(sync_response.task)
+        return monitor_task(sync_response.task)
 
-    def optimize_report(self, progress_reports=[]):
-        """Return whether an optimize progress report exists."""
-        for report in progress_reports:
+    def task_was_optimized(self, task):
+        """Return whether a tasks' progress reports includes an optimization report."""
+        for report in task.progress_reports:
             if report.code == "sync.was_skipped":
                 return True
         return False

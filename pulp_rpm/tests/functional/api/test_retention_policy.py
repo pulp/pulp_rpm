@@ -23,7 +23,6 @@ from pulp_rpm.tests.functional.constants import (
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
     gen_rpm_remote,
-    progress_reports,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
@@ -170,5 +169,4 @@ class RetentionPolicyTestCase(PulpTestCase):
             remote=remote.pulp_href, optimize=optimize, mirror=mirror
         )
         sync_response = self.repo_api.sync(repository.pulp_href, repository_sync_data)
-        monitor_task(sync_response.task)
-        return progress_reports(sync_response.task)
+        return monitor_task(sync_response.task).progress_reports

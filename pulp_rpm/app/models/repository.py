@@ -180,17 +180,20 @@ class RpmRepository(Repository):
     Repository for "rpm" content.
 
     Fields:
-
-        last_sync_revision_number (Text):
-            The revision number
-        last_sync_remote (Remote):
-            The remote used for the last sync
-        last_sync_repo_version (Integer):
-            The repo version number of the last sync
-        last_sync_repomd_checksum (Text):
-            The repo version repomd.xml file sha256
-        original_checksum_types (JSON):
-            Checksum for each metadata type
+        original_checksum_types (JSON): Checksum for each metadata type
+        last_sync_details (JSON): Details about the last sync including repomd, settings used, etc.
+        retain_package_versions (Integer): Max number of latest versions of each package to keep.
+        autopublish (Boolean): Whether to automatically create a publication for new versions.
+        metadata_checksum_type (String):
+            The name of a checksum type to use for metadata when generating metadata.
+        package_checksum_type (String):
+            The name of a default checksum type to use for packages when generating metadata.
+        gpgcheck (Integer):
+            1 or 0 corresponding to whether gpgcheck should be enabled in the generated .repo file.
+        repo_gpgcheck (Integer):
+            1 or 0 corresponding to whether repo_gpgcheck should be enabled in the generated
+            .repo file.
+        sqlite_metadata (Boolean): Whether to generate sqlite metadata files on publish.
     """
 
     TYPE = "rpm"
@@ -212,11 +215,8 @@ class RpmRepository(Repository):
     metadata_signing_service = models.ForeignKey(
         AsciiArmoredDetachedSigningService, on_delete=models.SET_NULL, null=True
     )
-    last_sync_revision_number = models.CharField(max_length=20, null=True)
-    last_sync_remote = models.ForeignKey(Remote, null=True, on_delete=models.SET_NULL)
-    last_sync_repo_version = models.PositiveIntegerField(default=0)
-    last_sync_repomd_checksum = models.CharField(max_length=64, null=True)
     original_checksum_types = models.JSONField(default=dict)
+    last_sync_details = models.JSONField(default=dict)
     retain_package_versions = models.PositiveIntegerField(default=0)
 
     autopublish = models.BooleanField(default=False)
