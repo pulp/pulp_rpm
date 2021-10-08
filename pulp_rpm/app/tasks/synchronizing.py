@@ -303,43 +303,45 @@ def fetch_remote_url(remote):
         raise exc
 
 
-def is_optimized_sync(repository, remote, url):
+def should_optimize_sync(sync_details, last_sync_details):
     """
-    Check whether it is possible to optimize the synchronization or not.
-
-    Caution: we are not storing when the remote was last updated, so the order of this
-    logic must remain in this order where we first check the version number as other
-    changes than sync could have taken place such that the date or repo version will be
-    different from last sync.
+    Check whether the sync should be optimized by comparing its parameters with the previous sync.
 
     Args:
-        repository(RpmRepository): An RpmRepository to check optimization for.
-        remote(RpmRemote or UlnRemote): An RPMRemote or UlnRemote to check optimization for.
-        url(str): A remote repository URL.
+        sync_details (dict): A collection of details about the current sync configuration.
+        last_sync_details (dict): A collection of details about the previous sync configuration.
 
     Returns:
         bool: True, if sync is optimized; False, otherwise.
 
     """
-    with tempfile.TemporaryDirectory("."):
-        try:
-            result = get_repomd_file(remote, url)
-            repomd_path = result.path
-            repomd = cr.Repomd(repomd_path)
-            repomd_checksum = get_sha256(repomd_path)
-        except Exception:
-            return False
-
-    is_optimized = (
-        repository.last_sync_remote
-        and remote.pk == repository.last_sync_remote.pk
-        and repository.last_sync_repo_version == repository.latest_version().number
-        and remote.pulp_last_updated <= repository.latest_version().pulp_created
-        and is_previous_version(repomd.revision, repository.last_sync_revision_number)
-        and repository.last_sync_repomd_checksum == repomd_checksum
+    might_download_content = (
+        last_sync_details.get("download_policy") != "immediate"
+        and sync_details["download_policy"] == "immediate"
     )
+    might_create_publication = (
+        last_sync_details.get("sync_policy") != SYNC_POLICIES.MIRROR_COMPLETE
+        and sync_details["sync_policy"] == SYNC_POLICIES.MIRROR_COMPLETE
+    )
+    if might_download_content or might_create_publication:
+        return False
 
-    return is_optimized
+    url_has_changed = last_sync_details.get("url") != sync_details["url"]
+    repository_has_been_modified = (
+        last_sync_details.get("most_recent_version") != sync_details["most_recent_version"]
+    )
+    if url_has_changed or repository_has_been_modified:
+        return False
+
+    old_revision = is_previous_version(sync_details["revision"], last_sync_details.get("revision"))
+    same_revision = last_sync_details.get("revision") == sync_details["revision"]
+    same_repomd_checksum = (
+        last_sync_details.get("repomd_checksum") == sync_details["repomd_checksum"]
+    )
+    if not old_revision or not (same_revision and same_repomd_checksum):
+        return False
+
+    return True
 
 
 def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize):
@@ -420,10 +422,33 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize):
 
         return treeinfo_serialized
 
+    def get_sync_details(remote, url, sync_policy, version):
+        with tempfile.TemporaryDirectory("."):
+            try:
+                result = get_repomd_file(remote, url)
+                repomd_path = result.path
+                repomd = cr.Repomd(repomd_path)
+                repomd_checksum = get_sha256(repomd_path)
+            except Exception:
+                repomd_checksum = None
+
+        return {
+            "url": remote.url,  # use the original remote url so that mirrorlists are optimizable
+            "download_policy": remote.policy,
+            "sync_policy": sync_policy,
+            "most_recent_version": version.number,
+            "revision": repomd.revision,
+            "repomd_checksum": repomd_checksum,
+        }
+
     with tempfile.TemporaryDirectory("."):
         remote_url = fetch_remote_url(remote)
+        sync_details = get_sync_details(
+            remote, remote_url, sync_policy, repository.latest_version()
+        )
+        last_sync_details = repository.last_sync_details
 
-        if optimize and is_optimized_sync(repository, remote, remote_url):
+        if optimize and should_optimize_sync(sync_details, last_sync_details):
             with ProgressReport(
                 message="Skipping Sync (no change from previous sync)", code="sync.was_skipped"
             ) as pb:
@@ -460,8 +485,14 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize):
                     continue
                 raise exc
             else:
-                if optimize and is_optimized_sync(sub_repo, remote, new_url):
+                subrepo_sync_details = get_sync_details(
+                    remote, new_url, sync_policy, sub_repo.latest_version()
+                )
+                last_sync_details = sub_repo.last_sync_details
+
+                if optimize and should_optimize_sync(subrepo_sync_details, last_sync_details):
                     continue
+
                 stage = RpmFirstStage(
                     remote,
                     sub_repo,
@@ -473,11 +504,14 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize):
                 )
                 dv = RpmDeclarativeVersion(first_stage=stage, repository=sub_repo, mirror=mirror)
                 subrepo_version = dv.create()
+
+                # save sync parameters to allow for sync optimization
                 if subrepo_version:
-                    sub_repo.last_sync_remote = remote
-                    sub_repo.last_sync_repo_version = sub_repo.latest_version().number
-                    sub_repo.save()
+                    subrepo_sync_details["most_recent_version"] = subrepo_version.number
                     sub_repos.append((directory, subrepo_version))
+
+                sub_repo.last_sync_details = subrepo_sync_details
+                sub_repo.save()
 
     first_stage = RpmFirstStage(
         remote,
@@ -490,15 +524,20 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize):
     )
     dv = RpmDeclarativeVersion(first_stage=first_stage, repository=repository, mirror=mirror)
     version = dv.create()
+
+    # save sync parameters to allow for sync optimization
     if version:
-        repository.last_sync_remote = remote
-        repository.last_sync_repo_version = version.number
-        repository.save()
-        if mirror_metadata:
-            with RpmPublication.create(version, pass_through=False) as publication:
-                add_metadata_to_publication(publication, version)
-                for (name, subrepo_version) in sub_repos:
-                    add_metadata_to_publication(publication, subrepo_version, prefix=name)
+        sync_details["most_recent_version"] = version.number
+
+    repository.last_sync_details = sync_details
+    repository.save()
+
+    if mirror_metadata:
+        version_to_publish = version if version else repository.latest_version()
+        with RpmPublication.create(version_to_publish, pass_through=False) as publication:
+            add_metadata_to_publication(publication, version_to_publish)
+            for (name, subrepo_version) in sub_repos:
+                add_metadata_to_publication(publication, subrepo_version, prefix=name)
 
     return version
 
@@ -631,9 +670,6 @@ class RpmFirstStage(Stage):
 
                 repomd_path = result.path
                 repomd = cr.Repomd(repomd_path)
-
-                self.repository.last_sync_revision_number = repomd.revision
-                self.repository.last_sync_repomd_checksum = get_sha256(repomd_path)
 
                 checksum_types = {}
                 repomd_downloaders = {}
