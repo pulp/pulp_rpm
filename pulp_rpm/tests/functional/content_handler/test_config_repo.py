@@ -74,7 +74,7 @@ class ContentHandlerTests(PulpTestCase):
     def test_config_repo_auto_distribute(self):
         """Whether config.repo is properly served using auto-distribute."""
         publication_href = self.dist.publication
-        body = {"repository": self.repo.pulp_href}
+        body = {"repository": self.repo.pulp_href, "publication": None}
         monitor_task(self.distributions_api.partial_update(self.dist.pulp_href, body).task)
         # Check that distribution is now using repository to auto-distribute
         self.dist = self.distributions_api.read(self.dist.pulp_href)
