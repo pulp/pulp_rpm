@@ -1,4 +1,5 @@
 from gettext import gettext as _
+from collections import defaultdict
 from itertools import chain
 
 import hashlib
@@ -59,11 +60,15 @@ def resolve_advisories(version, previous_version):
         pk__in=version.content.filter(pulp_type=advisory_pulp_type)
     )
     added_advisories = current_advisories
-    advisory_conflicts = []
+    previous_advisory_ids = set()
 
     # check for any conflict
-    current_ids = [adv.id for adv in current_advisories]
-    if previous_version and len(current_ids) != len(set(current_ids)):
+    unique_advisory_ids = {adv.id for adv in current_advisories}
+    if len(current_advisories) == len(unique_advisory_ids):
+        # no conflicts
+        return
+
+    if previous_version:
         previous_advisories = UpdateRecord.objects.filter(
             pk__in=previous_version.content.filter(pulp_type=advisory_pulp_type)
         )
@@ -72,27 +77,68 @@ def resolve_advisories(version, previous_version):
         # diff for querysets works fine but the result is not fully functional queryset,
         # e.g. filtering doesn't work
         added_advisories = current_advisories.difference(previous_advisories)
-        if len(list(added_advisories)) != len(set(added_advisories)):
-            raise AdvisoryConflict(
-                _(
-                    "It is not possible to add two advisories of the same id to "
-                    "a repository version."
+
+    current_advisories_by_id = defaultdict(list)
+    for advisory in current_advisories:
+        current_advisories_by_id[advisory.id].append(advisory)
+
+    added_advisories_by_id = current_advisories_by_id
+    if current_advisories != added_advisories:
+        added_advisories_by_id = defaultdict(list)
+        for advisory in added_advisories:
+            added_advisories_by_id[advisory.id].append(advisory)
+
+    # Conflicts can be in different places and behaviour differs based on that.
+    # `in_added`, when conflict happens in the added advisories, this is not allowed and
+    # should fail.
+    # `added_vs_previous`, a standard conflict between an advisory which is being added and the one
+    # in the preceding repo version. This should be resolved according to the heuristics,
+    # unless previous repo version has conflicts. In the latter case, the added advisory is picked.
+    advisory_id_conflicts = {"in_added": [], "added_vs_previous": []}
+    for advisory_id, advisories in current_advisories_by_id.items():
+        # we are only interested in conflicts where added advisory is present, we are not trying
+        # to fix old conflicts in the existing repo version. There is no real harm in htose,
+        # just confusing.
+        if len(advisories) > 1 and advisory_id in added_advisories_by_id:
+            # if the conflict is in added advisories (2+ advisories with the same id are being
+            # added), we need to collect such ids to fail later with
+            # a list of all conflicting advisories. No other processing of those is needed.
+            if len(added_advisories_by_id[advisory_id]) > 1:
+                advisory_id_conflicts["in_added"].append(advisory_id)
+            # a standard conflict is detected
+            elif advisory_id in previous_advisory_ids:
+                advisory_id_conflicts["added_vs_previous"].append(advisory_id)
+
+    if advisory_id_conflicts["in_added"]:
+        raise AdvisoryConflict(
+            _(
+                "It is not possible to add more than one advisory with the same id to a "
+                "repository version. Affected advisories: {}.".format(
+                    ",".join(advisory_id_conflicts["in_added"])
                 )
             )
-        added_advisory_ids = set(adv.id for adv in added_advisories)
-        advisory_conflicts = added_advisory_ids.intersection(previous_advisory_ids)
+        )
 
-        added_advisory_pks = [adv.pk for adv in added_advisories]
-        for advisory_id in advisory_conflicts:
-            previous_advisory = previous_advisories.get(id=advisory_id)
-            added_advisory = UpdateRecord.objects.get(id=advisory_id, pk__in=added_advisory_pks)
+    if advisory_id_conflicts["added_vs_previous"]:
+        for advisory_id in advisory_id_conflicts["added_vs_previous"]:
+            previous_advisory_qs = previous_advisories.filter(id=advisory_id)
+            # there can only be one added advisory at this point otherwise the AdvisoryConflict
+            # would have been raised by now
+            added_advisory = added_advisories_by_id[advisory_id][0]
             added_advisory.touch()
-            to_add, to_remove, to_exclude = resolve_advisory_conflict(
-                previous_advisory, added_advisory
-            )
-            content_pks_to_add.update(to_add)
-            content_pks_to_remove.update(to_remove)
-            content_pks_to_exclude.update(to_exclude)
+            if previous_advisory_qs.count() > 1:
+                # due to an old bug there could be N advisories with the same id in a repo,
+                # this is wrong and there may not be a good way to resolve those, so let's take a
+                # new one.
+                content_pks_to_add.update([added_advisory.pk])
+                content_pks_to_remove.update([adv.pk for adv in previous_advisory_qs])
+            else:
+                to_add, to_remove, to_exclude = resolve_advisory_conflict(
+                    previous_advisory_qs.first(), added_advisory
+                )
+                content_pks_to_add.update(to_add)
+                content_pks_to_remove.update(to_remove)
+                content_pks_to_exclude.update(to_exclude)
 
     if content_pks_to_add:
         version.add_content(Content.objects.filter(pk__in=content_pks_to_add))
@@ -136,11 +182,10 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
        added_advisory(pulp_rpm.app.models.UpdateRecord): Advisory which is being added
 
      Returns:
-       to_add(pulp_rpm.app.models.UpdateRecord): Advisory to add to a repo version, can be
-                                                 a newly created one
-       to_remove(pulp_rpm.app.models.UpdateRecord): Advisory to remove from a repo version
-       to_exclude(pulp_rpm.app.models.UpdateRecord): Advisory to exclude from the added set of
-                                                     content for a repo version
+       to_add(list): UUIDs of advisories to add to a repo version, can be newly created ones
+       to_remove(list): UUIDs of advisories to remove from a repo version
+       to_exclude(list): UUIDs of advisories to exclude from the added set of content for a repo
+                                  version
 
     """
 
