@@ -1,0 +1,2 @@
+Disallowed adding simultaneously multiple advisories with the same id to a repo.
+Resolved the case when two or more advisories were already in a repo version.
