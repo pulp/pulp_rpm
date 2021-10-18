@@ -377,9 +377,9 @@ in the standard unsigned rpm repository, but pkglist intersection is non-empty a
 to either pkglist.
 """
 
-RPM_ADVISORY_NO_DATES = urljoin(PULP_FIXTURES_BASE_URL, "rpm-advisory-no-dates")
+RPM_ADVISORY_NO_UPDATED_DATE = urljoin(PULP_FIXTURES_BASE_URL, "rpm-advisory-no-update-date")
 """The URL to a repository containing Advisories with same id and version as the ones
-in the standard unsigned rpm repository, but no update_date or issue_date.
+in the standard unsigned rpm repository, but no updated_date.
 """
 
 RPM_ADVISORY_TEST_ID = "RHEA-2012:0056"
