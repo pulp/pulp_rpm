@@ -39,7 +39,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_ADVISORY_DIFFERENT_PKGLIST_URL,
     RPM_ADVISORY_DIFFERENT_REPO_URL,
     RPM_ADVISORY_INCOMPLETE_PKG_LIST_URL,
-    RPM_ADVISORY_NO_DATES,
+    RPM_ADVISORY_NO_UPDATED_DATE,
     RPM_ADVISORY_TEST_ADDED_COUNT,
     RPM_ADVISORY_TEST_ID,
     RPM_ADVISORY_TEST_ID_NEW,
@@ -803,7 +803,6 @@ class BasicSyncTestCase(PulpTestCase):
 
         self.assertIn(error_msg, task_result["error"]["description"])
 
-    @unittest.skip("FIXME: Enable this test after #2245 is fixed")
     def test_sync_advisory_no_updated_date(self):
         """Test sync advisory with no update.
 
@@ -811,60 +810,56 @@ class BasicSyncTestCase(PulpTestCase):
         2. Re-sync with repo with same id and version as previous
            but missing updated_date (issued_date should be used instead).
         """
-        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
-        remote = self.remote_api.create(body)
+        remote = self.remote_api.create(gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL))
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
         # sync
         repo, remote = self.do_test(remote=remote)
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        repository_version = repo.to_dict()["latest_version_href"]
 
-        # add remote to clean up
+        remote = self.remote_api.create(gen_rpm_remote(RPM_ADVISORY_NO_UPDATED_DATE))
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
-
-        body = gen_rpm_remote(RPM_ADVISORY_NO_DATES)
-        remote = self.remote_api.create(body)
 
         # re-sync
         repo, remote = self.do_test(repo, remote)
+        repository_version_new = repo.to_dict()["latest_version_href"]
 
-        # add resources to clean up
-        self.addCleanup(self.repo_api.delete, repo.pulp_href)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+        # TODO: this test isn't ideal because in this case the new advisory with no "updated_date"
+        # has an "issued_date" older than the "updated_date" of the already-existing advisory,
+        # therefore the new one gets ignored, and nothing happens. A better version of this test
+        # would have a newer "issued_date" so that the advisory replaces the old one.
+        self.assertEqual(repository_version, repository_version_new)
 
-        added_advisory_date = [
-            advisory["updated_date"]
-            for advisory in get_added_content(repo.to_dict())[PULP_TYPE_ADVISORY]
-            if RPM_ADVISORY_TEST_ID in advisory["id"]
-        ]
-        removed_advisory_date = [
-            advisory["issued_date"]
-            for advisory in get_removed_content(repo.to_dict())[PULP_TYPE_ADVISORY]
-            if RPM_ADVISORY_TEST_ID in advisory["id"]
-        ]
+        # added_advisory_date = [
+        #     advisory["updated_date"]
+        #     for advisory in get_added_content(repo.to_dict())[PULP_TYPE_ADVISORY]
+        #     if RPM_ADVISORY_TEST_ID in advisory["id"]
+        # ]
+        # removed_advisory_date = [
+        #     advisory["issued_date"]
+        #     for advisory in get_removed_content(repo.to_dict())[PULP_TYPE_ADVISORY]
+        #     if RPM_ADVISORY_TEST_ID in advisory["id"]
+        # ]
 
-        self.assertGreater(
-            parse_datetime(added_advisory_date[0]), parse_datetime(removed_advisory_date[0])
-        )
+        # self.assertGreater(
+        #     parse_datetime(added_advisory_date[0]), parse_datetime(removed_advisory_date[0])
+        # )
 
     def test_sync_advisory_updated_update_date(self):
         """Test sync advisory with updated update_date."""
-        body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
-        remote = self.remote_api.create(body)
+        remote = self.remote_api.create(gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL))
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
         # sync
         repo, remote = self.do_test(remote=remote)
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
 
-        # add remote to clean up
+        remote = self.remote_api.create(gen_rpm_remote(RPM_UPDATED_UPDATEINFO_FIXTURE_URL))
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
-
-        body = gen_rpm_remote(RPM_UPDATED_UPDATEINFO_FIXTURE_URL)
-        remote = self.remote_api.create(body)
 
         # re-sync
         repo, remote = self.do_test(repo, remote)
-
-        # add resources to clean up
-        self.addCleanup(self.repo_api.delete, repo.pulp_href)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
         added_advisory_date = [
             advisory["updated_date"]
@@ -883,8 +878,8 @@ class BasicSyncTestCase(PulpTestCase):
 
     def test_sync_advisory_older_update_date(self):
         """Test sync advisory with older update_date."""
-        body = gen_rpm_remote(RPM_UPDATED_UPDATEINFO_FIXTURE_URL)
-        remote = self.remote_api.create(body)
+        remote = self.remote_api.create(gen_rpm_remote(RPM_UPDATED_UPDATEINFO_FIXTURE_URL))
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
         # sync
         repo, remote = self.do_test(remote=remote)
@@ -893,9 +888,6 @@ class BasicSyncTestCase(PulpTestCase):
             for advisory in get_content(repo.to_dict())[PULP_TYPE_ADVISORY]
             if advisory["id"] == RPM_ADVISORY_TEST_ID
         ]
-
-        # add remote to clean up
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
         body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
         remote = self.remote_api.create(body)
