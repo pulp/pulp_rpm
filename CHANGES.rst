@@ -70,6 +70,22 @@ Misc
 ----
 
 
+3.14.7 (2021-10-18)
+===================
+
+
+Bugfixes
+--------
+
+- Disallowed adding simultaneously multiple advisories with the same id to a repo.
+  Resolved the case when two or more advisories were already in a repo version.
+  (backported from #9503)
+  `#9519 <https://pulp.plan.io/issues/9519>`_
+
+
+----
+
+
 3.14.6 (2021-10-05)
 ===================
 
