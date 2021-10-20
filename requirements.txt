@@ -3,7 +3,7 @@ django_readonly_field
 jsonschema>=3.0
 libcomps~=0.1.15
 productmd~=1.33.0
-pulpcore>=3.15.0
+pulpcore>=3.15.0,<3.17.0
 PyGObject~=3.22
 solv~=0.7.17
 aiohttp_xmlrpc
