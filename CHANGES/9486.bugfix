@@ -1,1 +1,0 @@
-Fixed an issue where some repositories were unnecessarily prevented from using mirror-mode sync.
