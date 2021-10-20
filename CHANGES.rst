@@ -13,6 +13,70 @@ Changelog
 
 .. towncrier release notes start
 
+3.16.0 (2021-10-20)
+===================
+
+
+Features
+--------
+
+- Added a `sync_policy` parameter to the `/sync/` endpoint which will replace the `mirror` parameter and provides additional options and flexibility about how the sync should be carried out. The `mirror` parameter is now deprecated but for backwards compatibility it will remain present.
+  `#9316 <https://pulp.plan.io/issues/9316>`_
+- Make sync optimization less sensitive to remote changes which wouldn't have any impact on the sync outcomes, and fix some situations where the sync should not be skipped.
+  `#9398 <https://pulp.plan.io/issues/9398>`_
+
+
+Bugfixes
+--------
+
+- Fixed metadata generation after changing ALLOWED_CONTENT_CHECKSUMS.
+  `#8571 <https://pulp.plan.io/issues/8571>`_
+- For certain repos which use a rare feature of RPM metadata, "mirroring" would lead to a surprising / suboptimal result for most Pulp users. We now reject syncing these repos with mirroring enabled.
+  `#9303 <https://pulp.plan.io/issues/9303>`_
+- Fix an error that could occur when performing a non-mirror sync while using the `skip_types` option.
+  `#9308 <https://pulp.plan.io/issues/9308>`_
+- For certain repos which use a rare feature of RPM metadata, "mirroring" would lead to a broken repo. We now reject syncing these repos with mirroring enabled.
+  `#9328 <https://pulp.plan.io/issues/9328>`_
+- Fixes a regression in support for syncing from mirrorlists.
+  `#9329 <https://pulp.plan.io/issues/9329>`_
+- Fix an edge case where the repo gpg key URL would be calculated incorrectly if CONTENT_PREFIX was set to "/".
+  `#9350 <https://pulp.plan.io/issues/9350>`_
+- Vastly improved copy-with-depsolving performance.
+  `#9387 <https://pulp.plan.io/issues/9387>`_
+- For certain repos which use Delta RPMs (which Pulp 3 does not and will not support) we now reject syncing these repos with mirroring enabled to avoid confusing clients with unusable Delta metadata.
+  `#9407 <https://pulp.plan.io/issues/9407>`_
+- Generated .repo file now includes the "name" field.
+  `#9438 <https://pulp.plan.io/issues/9438>`_
+- Use checksum type of a package for publication if it's not configured.
+  `#9448 <https://pulp.plan.io/issues/9448>`_
+- Restored the functionality of specifying basic-auth parameters in a remote's URL.
+
+  NOTE: it's much better to specify username/pwd explcitly on the Remote, rather
+  than relying on embedding them in the URL. This fix will probably be deprecated in
+  the future.
+  `#9464 <https://pulp.plan.io/issues/9464>`_
+- Fixed an issue where some repositories were unnecessarily prevented from using mirror-mode sync.
+  `#9486 <https://pulp.plan.io/issues/9486>`_
+- Disallowed adding simultaneously multiple advisories with the same id to a repo.
+  Resolved the case when two or more advisories were already in a repo version.
+  `#9503 <https://pulp.plan.io/issues/9503>`_
+
+
+Improved Documentation
+----------------------
+
+- Added a note about scheduling tasks.
+  `#9147 <https://pulp.plan.io/issues/9147>`_
+
+
+Misc
+----
+
+- `#9135 <https://pulp.plan.io/issues/9135>`_, `#9189 <https://pulp.plan.io/issues/9189>`_, `#9402 <https://pulp.plan.io/issues/9402>`_, `#9467 <https://pulp.plan.io/issues/9467>`_
+
+
+----
+
 
 3.15.0 (2021-08-27)
 ===================

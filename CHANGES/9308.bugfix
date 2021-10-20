@@ -1,1 +1,0 @@
-Fix an error that could occur when performing a non-mirror sync while using the `skip_types` option.
