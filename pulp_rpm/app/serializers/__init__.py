@@ -5,6 +5,7 @@ from .advisory import (  # noqa
     UpdateRecordSerializer,
 )
 from .comps import (  # noqa
+    CompsXmlSerializer,
     PackageCategorySerializer,
     PackageEnvironmentSerializer,
     PackageGroupSerializer,

@@ -2,6 +2,8 @@ from gettext import gettext as _
 
 from rest_framework import serializers
 
+from pulpcore.plugin.models import Repository
+from pulpcore.plugin.serializers import DetailRelatedField
 from pulpcore.plugin.serializers import NoArtifactContentSerializer
 
 from pulp_rpm.app.models import (
@@ -143,3 +145,37 @@ class PackageLangpacksSerializer(NoArtifactContentSerializer):
     class Meta:
         fields = NoArtifactContentSerializer.Meta.fields + ("matches", "digest")
         model = PackageLangpacks
+
+
+class CompsXmlSerializer(serializers.Serializer):
+    """
+    A serializer for comps.xml Upload API.
+    """
+
+    file = serializers.FileField(
+        help_text=_(
+            "Full path of a comps.xml file that may be parsed into comps.xml Content units."
+        ),
+        required=True,
+    )
+    repository = DetailRelatedField(
+        help_text=_(
+            "URI of an RPM repository the comps.xml content units should be associated to."
+        ),
+        required=False,
+        write_only=True,
+        view_name_pattern=r"repositories(-.*/.*)-detail",
+        queryset=Repository.objects.all(),
+    )
+
+    replace = serializers.BooleanField(
+        help_text=_(
+            "If true, incoming comps.xml replaces existing comps-related ContentUnits in the "
+            "specified repository."
+        ),
+        required=False,
+        write_only=True,
+    )
+
+    class Meta:
+        fields = ("file", "repository", "replace")
