@@ -1,7 +1,6 @@
 """Constants for Pulp RPM plugin tests."""
 
 from urllib.parse import urljoin
-
 from pulp_smash import config
 from pulp_smash.pulp3.constants import (
     BASE_CONTENT_PATH,
@@ -638,3 +637,903 @@ PULP_TYPE_MODULEMD = "rpm.modulemd"
 PULP_TYPE_MODULEMD_DEFAULTS = "rpm.modulemd_defaults"
 
 PACKAGES_DIRECTORY = "Packages"
+
+"""The URL used for uploading comps.xml files."""
+COMPS_API = urljoin(BASE_PATH, "rpm/comps/")
+SMALL_COMPS_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE comps PUBLIC "-//Red Hat, Inc.//DTD Comps info//EN" "comps.dtd">
+<comps>
+  <group>
+   <id>birds</id>
+   <default>true</default>
+   <uservisible>true</uservisible>
+   <display_order>1024</display_order>
+   <name>birds</name>
+   <description></description>
+    <packagelist>
+      <packagereq type="mandatory">cockateel</packagereq>
+      <packagereq type="mandatory">duck</packagereq>
+      <packagereq type="mandatory">penguin</packagereq>
+      <packagereq type="mandatory">stork</packagereq>
+    </packagelist>
+  </group>
+  <group>
+   <id>mammals</id>
+   <default>true</default>
+   <uservisible>true</uservisible>
+   <display_order>1024</display_order>
+   <name>mammals</name>
+   <description></description>
+    <packagelist>
+      <packagereq type="mandatory">bear</packagereq>
+      <packagereq type="mandatory">camel</packagereq>
+      <packagereq type="mandatory">cat</packagereq>
+      <packagereq type="mandatory">cheetah</packagereq>
+      <packagereq type="mandatory">chimpanzee</packagereq>
+      <packagereq type="mandatory">cow</packagereq>
+      <packagereq type="mandatory">dog</packagereq>
+      <packagereq type="mandatory">dolphin</packagereq>
+      <packagereq type="mandatory">elephant</packagereq>
+      <packagereq type="mandatory">fox</packagereq>
+      <packagereq type="mandatory">giraffe</packagereq>
+      <packagereq type="mandatory">gorilla</packagereq>
+      <packagereq type="mandatory">horse</packagereq>
+      <packagereq type="mandatory">kangaroo</packagereq>
+      <packagereq type="mandatory">lion</packagereq>
+      <packagereq type="mandatory">mouse</packagereq>
+      <packagereq type="mandatory">squirrel</packagereq>
+      <packagereq type="mandatory">tiger</packagereq>
+      <packagereq type="mandatory">walrus</packagereq>
+      <packagereq type="mandatory">whale</packagereq>
+      <packagereq type="mandatory">wolf</packagereq>
+      <packagereq type="mandatory">zebra</packagereq>
+    </packagelist>
+  </group>
+  <category>
+   <id>all</id>
+   <display_order>99</display_order>
+   <name>all</name>
+   <description></description>
+    <grouplist>
+     <groupid>mammals</groupid>
+     <groupid>birds</groupid>
+    </grouplist>
+  </category>
+  <langpacks>
+    <match install="gorilla-%s" name="gorilla-en"/>
+    <match install="zebra-%s" name="zebra-docs"/>
+  </langpacks>
+</comps>"""
+SMALL_GROUPS = 2
+SMALL_CATEGORY = 1
+SMALL_LANGPACK = 1
+SMALL_ENVIRONMENTS = 0
+
+BIG_COMPS_XML = """<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE comps
+  PUBLIC '-//Red Hat, Inc.//DTD Comps info//EN'
+  'comps.dtd'>
+<comps>
+  <group>
+    <id>additional-devel</id>
+    <name>Additional Development</name>
+    <name xml:lang="as">অতিৰিক্ত উন্নয়ন</name>
+    <name xml:lang="bn">অতিরিক্ত ডিভেলপমেন্ট</name>
+    <name xml:lang="cs">Doplňky pro vývoj</name>
+    <name xml:lang="de">Zusätzliche Entwicklung</name>
+    <name xml:lang="de_CH">Zusätzliche Entwicklung</name>
+    <name xml:lang="es">Desarrollo adicional</name>
+    <name xml:lang="fr">Développement supplémentaire</name>
+    <name xml:lang="gu">વધારાનાં વિકાસ</name>
+    <name xml:lang="hi">अतिरिक्त विकास</name>
+    <name xml:lang="ia">Disveloppamento additional</name>
+    <name xml:lang="it">Sviluppo aggiuntivo</name>
+    <name xml:lang="ja">その他の開発</name>
+    <name xml:lang="kn">ಹೆಚ್ಚುವರಿ ವಿಕಸನೆ</name>
+    <name xml:lang="ko">추가 개발</name>
+    <name xml:lang="ml">അധികമായ ഡവലപ്പ്മെന്റ്</name>
+    <name xml:lang="mr">अगाऊ डेव्हलपमेंट</name>
+    <name xml:lang="or">ଅତିରିକ୍ତ ସର୍ଭର ବିକାଶ</name>
+    <name xml:lang="pa">ਵਧੀਕ ਵਿਕਾਸ</name>
+    <name xml:lang="pl">Dodatkowe programowanie</name>
+    <name xml:lang="pt">Desenvolvimento adicional</name>
+    <name xml:lang="pt_BR">Desenvolvimento adicional</name>
+    <name xml:lang="ru">Дополнительные средства разработки</name>
+    <name xml:lang="sv">Ytterligare utveckling</name>
+    <name xml:lang="ta">கூடுதல் உருவாக்கம்</name>
+    <name xml:lang="te">అదనపు అభివృద్ది</name>
+    <name xml:lang="uk">Додаткові інструменти розробки</name>
+    <name xml:lang="zh">額外開發</name>
+    <name xml:lang="zh_CN">附加开发</name>
+    <name xml:lang="zh_TW">額外開發</name>
+    <description>Additional development headers and libraries for building open-source</description>
+    <description xml:lang="cs">Doplňkové knihovny a hlavičkové soubory pro sestavování</description>
+    <description xml:lang="de">Zusätzliche Entwicklungs-Header und -Bibliotheken zur E</description>
+    <description xml:lang="de_CH">Zusätzliche Entwicklungs-Header und -Bibliotheken zu</description>
+    <description xml:lang="es">Encabezados adicionales y bibliotecas para compilar apl</description>
+    <description xml:lang="fr">En-têtes et bibliothèques de développement supplémentai</description>
+    <description xml:lang="it">Librerie e intestazioni per uno sviluppo aggiuntivo per</description>
+    <description xml:lang="ko">오픈 소스 애플리케이션 구축을 위한 기타 개발 헤더 및 라이브러리입니다.</description>
+    <description xml:lang="pl">Dodatkowe nagłówki i biblioteki do rozwijania aplikacji</description>
+    <description xml:lang="pt">Cabeçalhos de desenvolvimento adiiconal e bibliotecas p</description>
+    <description xml:lang="pt_BR">Cabeçalhos de desenvolvimento adiiconal e biblioteca</description>
+    <description xml:lang="ru">Дополнительные библиотеки и файлы заголовков для разраб</description>
+    <description xml:lang="uk">Додаткові пакунки з заголовками та бібліотеками для роз</description>
+    <description xml:lang="zh">用來建置開放式原始碼應用程式的應用程式開發表頭與函式庫。</description>
+    <description xml:lang="zh_CN">用于构建开源应用程序的附加开发标头及程序可。</description>
+    <description xml:lang="zh_TW">用來建置開放式原始碼應用程式的應用程式開發表頭與函式庫。</description>
+    <default>true</default>
+    <uservisible>false</uservisible>
+    <packagelist>
+      <packagereq type="mandatory">atlas-devel</packagereq>
+      <packagereq type="mandatory">audit-libs-devel</packagereq>
+      <packagereq type="mandatory">bzip2-devel</packagereq>
+      <packagereq type="mandatory">c-ares-devel</packagereq>
+      <packagereq type="mandatory">cyrus-sasl-devel</packagereq>
+      <packagereq type="mandatory">e2fsprogs-devel</packagereq>
+      <packagereq type="mandatory">elfutils-devel</packagereq>
+      <packagereq type="mandatory">elfutils-libelf-devel</packagereq>
+      <packagereq type="mandatory">expat-devel</packagereq>
+      <packagereq type="mandatory">fuse3-devel</packagereq>
+      <packagereq type="mandatory">gmp-devel</packagereq>
+      <packagereq type="mandatory">hmaccalc</packagereq>
+      <packagereq type="mandatory">iptables-devel</packagereq>
+      <packagereq type="mandatory">libacl-devel</packagereq>
+      <packagereq type="mandatory">libaio-devel</packagereq>
+      <packagereq type="mandatory">libattr-devel</packagereq>
+      <packagereq type="mandatory">libblkid-devel</packagereq>
+      <packagereq type="mandatory">libcap-devel</packagereq>
+      <packagereq type="mandatory">libcap-ng-devel</packagereq>
+      <packagereq type="mandatory">libcurl-devel</packagereq>
+      <packagereq type="mandatory">libffi-devel</packagereq>
+      <packagereq type="mandatory">libgcrypt-devel</packagereq>
+      <packagereq type="mandatory">libhugetlbfs-devel</packagereq>
+      <packagereq type="mandatory">libnl3-devel</packagereq>
+      <packagereq type="mandatory">libselinux-devel</packagereq>
+      <packagereq type="mandatory">libusbx-devel</packagereq>
+      <packagereq type="mandatory">libuuid-devel</packagereq>
+      <packagereq type="mandatory">lksctp-tools-devel</packagereq>
+      <packagereq type="mandatory">lz4</packagereq>
+      <packagereq type="mandatory">lz4-devel</packagereq>
+      <packagereq type="mandatory">lzo</packagereq>
+      <packagereq type="mandatory">lzo-devel</packagereq>
+      <packagereq type="mandatory">numactl-devel</packagereq>
+      <packagereq type="mandatory">pciutils-devel</packagereq>
+      <packagereq type="mandatory">pcre-devel</packagereq>
+      <packagereq type="mandatory">polkit-devel</packagereq>
+      <packagereq type="mandatory">popt-devel</packagereq>
+      <packagereq type="mandatory">rdma-core-devel</packagereq>
+      <packagereq type="mandatory">readline-devel</packagereq>
+      <packagereq type="mandatory">sqlite-devel</packagereq>
+      <packagereq type="mandatory">systemd-devel</packagereq>
+      <packagereq type="mandatory">tcl-devel</packagereq>
+      <packagereq type="mandatory">xfsprogs-devel</packagereq>
+      <packagereq type="mandatory">xz-devel</packagereq>
+    </packagelist>
+  </group>
+  <group>
+    <id>platform-devel</id>
+    <name>Platform Development</name>
+    <name xml:lang="as">প্লেটফৰ্ম উন্নয়ন</name>
+    <name xml:lang="cs">Vývoj platformy</name>
+    <name xml:lang="de">Plattformentwicklung</name>
+    <name xml:lang="de_CH">Plattformentwicklung</name>
+    <name xml:lang="es">Desarrollo de plataforma</name>
+    <name xml:lang="fr">Développement plateforme</name>
+    <name xml:lang="gu">પ્લેટફોર્મ વિકાસ</name>
+    <name xml:lang="hi">प्लैटफॉर्म विकास</name>
+    <name xml:lang="it">Sviluppo piattaforma</name>
+    <name xml:lang="ja">プラットフォーム開発</name>
+    <name xml:lang="kn">ಪ್ಲಾಟ್‌ಫಾರ್ಮ್ ವಿಕಸನ</name>
+    <name xml:lang="ko">플랫폼 개발</name>
+    <name xml:lang="ml">പ്ലാറ്റ്ഫോം വികസനം</name>
+    <name xml:lang="mr">प्लॅटफॉर्म डेव्हलपमेंट</name>
+    <name xml:lang="or">ପ୍ଲାଟଫର୍ମ ବିକାଶ</name>
+    <name xml:lang="pa">ਮੰਚ ਵਿਕਾਸ</name>
+    <name xml:lang="pl">Rozwijanie platformy</name>
+    <name xml:lang="pt">Desenvolvimento de Plataforma</name>
+    <name xml:lang="pt_BR">Desenvolvimento de Plataforma</name>
+    <name xml:lang="ru">Средства разработки платформы</name>
+    <name xml:lang="ta">இயங்கு தள உருவாக்கம்</name>
+    <name xml:lang="te">ప్లాట్‌ఫాం అభివృద్ది</name>
+    <name xml:lang="uk">Розробка для платформи</name>
+    <name xml:lang="zh">平台開發</name>
+    <name xml:lang="zh_CN">平台开发</name>
+    <name xml:lang="zh_TW">平台開發</name>
+    <description>Recommended development headers and libraries for developing applicat</description>
+    <default>true</default>
+    <uservisible>false</uservisible>
+    <packagelist>
+      <packagereq type="mandatory">fontconfig-devel</packagereq>
+      <packagereq type="mandatory">freetype-devel</packagereq>
+      <packagereq type="mandatory">glib2-devel</packagereq>
+      <packagereq type="mandatory">glibc-devel</packagereq>
+      <packagereq type="mandatory">krb5-devel</packagereq>
+      <packagereq type="mandatory">libpng-devel</packagereq>
+      <packagereq type="mandatory">ncurses-devel</packagereq>
+      <packagereq type="mandatory">openldap-devel</packagereq>
+      <packagereq type="mandatory">openssl-devel</packagereq>
+      <packagereq type="mandatory">pam-devel</packagereq>
+      <packagereq type="mandatory">zlib-devel</packagereq>
+    </packagelist>
+  </group>
+  <group>
+    <id>python-web</id>
+    <name>Python Web</name>
+    <name xml:lang="de">Python Web</name>
+    <name xml:lang="es">Python Web</name>
+    <name xml:lang="fr">Python Web</name>
+    <name xml:lang="it">Python Web</name>
+    <name xml:lang="ja">Python Web</name>
+    <name xml:lang="ko">Python Web</name>
+    <name xml:lang="pt_BR">Python Web</name>
+    <name xml:lang="ru">Python Web</name>
+    <name xml:lang="zh_CN">Python Web</name>
+    <name xml:lang="zh_TW">Python Web</name>
+    <description>Basic Python web application support.</description>
+    <description xml:lang="as">মৌলিক Python ৱেব এপ্লিকেচন সমৰ্থন।</description>
+    <description xml:lang="cs">Podpora pro základní webové aplikace v jazyce Python.</description>
+    <description xml:lang="de">Grundlegende Unterstützung für die Python Webanwendung.</description>
+    <description xml:lang="de_CH">Grundlegende Unterstützung für die Python Webanwendu</description>
+    <description xml:lang="es">Soporte de aplicaciones web en Basic Python</description>
+    <description xml:lang="fr">Prise en charge d'application web Python de base.</description>
+    <description xml:lang="gu">મૂળભૂત Python વેબ કાર્યક્રમ આધાર.</description>
+    <description xml:lang="hi">बेसिक पाइथन वेब अनुप्रयोग समर्थन.</description>
+    <description xml:lang="it">Supporto applicazione web Python di base</description>
+    <description xml:lang="ja">Python のベーシック web アプリケーションサポートです。</description>
+    <description xml:lang="kn">ಮೂಲಭೂತ Python ಜಾಲ ಅನ್ವಯ ಬೆಂಬಲ.</description>
+    <description xml:lang="ko">기본 Python 웹 애플리케이션 지원.</description>
+    <description xml:lang="ml">അടിസ്ഥാന പൈഥണ്‍ വെബ് പ്രയോഗത്തിനുള്ള പിന്തുണ.</description>
+    <description xml:lang="mr">बेसिक Python वेब ॲप्लिकेशन समर्थन.</description>
+    <description xml:lang="or">ମୌଳିକ Python ୱେବ ପ୍ରୟୋଗ ସହାୟତା।</description>
+    <description xml:lang="pa">ਮੁੱਢਲਾ ਪਾਇਥਨ ਵੈੱਬ ਐਪਲੀਕੇਸ਼ਨ ਸਮਰਥਨ।</description>
+    <description xml:lang="pl">Podstawowa obsługa aplikacji WWW w języku Python.</description>
+    <description xml:lang="pt">Suporte de aplicativo da Web Phyton Básico</description>
+    <description xml:lang="pt_BR">Suporte de aplicativo da Web Phyton Básico</description>
+    <description xml:lang="ru">Базовая поддержка веб-приложений Python.</description>
+    <description xml:lang="ta">அடிப்படை Python வலைப் பயன்பாடு ஆதரவு.</description>
+    <description xml:lang="te">సాధారణ Python వెబ్ అనువర్తన తోడ్పాటు.</description>
+    <description xml:lang="uk">Базова підтримка вебпрограм мовою Python.</description>
+    <description xml:lang="zh">基本的 Python 網站應用程式支援。</description>
+    <description xml:lang="zh_CN">基本 Python 的 web 应用程序支持。</description>
+    <description xml:lang="zh_TW">基本的 Python 網站應用程式支援。</description>
+    <default>true</default>
+    <uservisible>false</uservisible>
+    <packagelist>
+      <packagereq type="mandatory">freetype-devel</packagereq>
+      <packagereq type="mandatory">libcurl</packagereq>
+      <packagereq type="mandatory">libcurl-devel</packagereq>
+      <packagereq type="mandatory">python3-magic</packagereq>
+    </packagelist>
+  </group>
+  <category>
+    <id>development</id>
+    <name>Development</name>
+    <name xml:lang="af">Ontwikkeling</name>
+    <name xml:lang="am">እድገት</name>
+    <name xml:lang="ar">تطوير</name>
+    <name xml:lang="as">উন্নয়ন</name>
+    <name xml:lang="bal">پیش روگ</name>
+    <name xml:lang="be">Распрацоўка</name>
+    <name xml:lang="bg">Разработка</name>
+    <name xml:lang="bn">সফ্টওয়্যার নির্মাণ</name>
+    <name xml:lang="bs">Razvoj</name>
+    <name xml:lang="ca">Desenvolupament</name>
+    <name xml:lang="cs">Vývoj</name>
+    <name xml:lang="cy">Datblygiad</name>
+    <name xml:lang="da">Udvikling</name>
+    <name xml:lang="de">Softwareentwicklung</name>
+    <name xml:lang="de_CH">Softwareentwicklung</name>
+    <name xml:lang="el">Ανάπτυξη λογισμικού</name>
+    <name xml:lang="en_GB">Development</name>
+    <name xml:lang="es">Desarrollo</name>
+    <name xml:lang="et">Arendus</name>
+    <name xml:lang="eu">Garapena</name>
+    <name xml:lang="fa">برنامه‌سازی</name>
+    <name xml:lang="fa_IR">برنامه‌سازی</name>
+    <name xml:lang="fi">Ohjelmistokehitys</name>
+    <name xml:lang="fr">Développement</name>
+    <name xml:lang="gl">Desenvolvemento</name>
+    <name xml:lang="gu">વિકાસ</name>
+    <name xml:lang="he">פיתוח</name>
+    <name xml:lang="hi">विकास</name>
+    <name xml:lang="hr">Razvoj</name>
+    <name xml:lang="hu">Fejlesztőeszközök</name>
+    <name xml:lang="hy">Ծրագրավորում</name>
+    <name xml:lang="ia">Disveloppamento</name>
+    <name xml:lang="id">Pengembangan</name>
+    <name xml:lang="ilo">Panagbukel</name>
+    <name xml:lang="is">Þróun</name>
+    <name xml:lang="it">Sviluppo</name>
+    <name xml:lang="ja">開発</name>
+    <name xml:lang="ka">პრიოგრამირება</name>
+    <name xml:lang="kn">ವಿಕಾಸನ</name>
+    <name xml:lang="ko">개발</name>
+    <name xml:lang="lv">Programmēšana</name>
+    <name xml:lang="mai">विकास</name>
+    <name xml:lang="mk">Развој</name>
+    <name xml:lang="ml">ഡെവലപ്പ്മെന്‍റ്</name>
+    <name xml:lang="mr">विकास</name>
+    <name xml:lang="ms">Pembangunan</name>
+    <name xml:lang="nb">Utviklingsverktøy</name>
+    <name xml:lang="ne">विकास</name>
+    <name xml:lang="nl">Ontwikkeling</name>
+    <name xml:lang="no">Utviklingsverktøy</name>
+    <name xml:lang="nso">Tšwetšopele</name>
+    <name xml:lang="or">ବିକାଶ</name>
+    <name xml:lang="pa">ਵਿਕਾਸ</name>
+    <name xml:lang="pl">Programowanie</name>
+    <name xml:lang="pt">Desenvolvimento</name>
+    <name xml:lang="pt_BR">Desenvolvimento</name>
+    <name xml:lang="ro">Dezvoltare</name>
+    <name xml:lang="ru">Программирование</name>
+    <name xml:lang="si">ප්‍රවර්ධනය</name>
+    <name xml:lang="sk">Vývoj</name>
+    <name xml:lang="sl">Razvoj</name>
+    <name xml:lang="sq">Zhvillim</name>
+    <name xml:lang="sr">Развој</name>
+    <name xml:lang="sr@Latn">Razvoj</name>
+    <name xml:lang="sr@latin">Razvoj</name>
+    <name xml:lang="sv">Utveckling</name>
+    <name xml:lang="ta">உருவாக்கம்</name>
+    <name xml:lang="te">అభివృద్ధి</name>
+    <name xml:lang="tg">Барноманависӣ</name>
+    <name xml:lang="th">การพัฒนาซอฟต์แวร์</name>
+    <name xml:lang="tr">Geliştirme</name>
+    <name xml:lang="uk">Програмування</name>
+    <name xml:lang="ur">تمیرات</name>
+    <name xml:lang="vi">Phát triển</name>
+    <name xml:lang="zh">程式開發</name>
+    <name xml:lang="zh_CN">开发</name>
+    <name xml:lang="zh_TW">程式開發</name>
+    <name xml:lang="zu">Intuthuko</name>
+    <description>Packages which provide functionality for developing and building appl</description>
+    <description xml:lang="ar">تقدم الحزم امكانيات تطوير و بناء تطبيقات.</description>
+    <description xml:lang="bal">بستگانی که په پیشروگ و شرکنگ کارمرزی عمل آرنت.</description>
+    <description xml:lang="bg">Пакети предоставящи функционалност необходима за разраб</description>
+    <description xml:lang="bn">অ্যাপ্লিকেশন ডিভেলপমেন্ট ও বিল্ড করতে সহায়ক প্যাকেজ।</description>
+    <description xml:lang="bs">Paketi koji pružaju funkcionalnosti za razvoj i izgradn</description>
+    <description xml:lang="ca">Paquets que proporcionen funcionalitats per a desenvolu</description>
+    <description xml:lang="cs">Balíčky poskytující podporu pro vývoj a kompilaci aplik</description>
+    <description xml:lang="da">Pakker som giver funktionalitet for udvikling og bygnin</description>
+    <description xml:lang="de">Pakete, die Funktionalität für die Entwicklung und die </description>
+    <description xml:lang="de_CH">Pakete, die Funktionalität für die Entwicklung und d</description>
+    <description xml:lang="el">Πακέτα τα οποία προσφέρουν λειτουργικότητα για ανάπτυξη</description>
+    <description xml:lang="en_GB">Packages which provide functionality for developing </description>
+    <description xml:lang="es">Paquetes que proveen la funcionalidad para desarrollar </description>
+    <description xml:lang="et">Rakenduste arendamiseks ja kompileerimiseks vajalik fun</description>
+    <description xml:lang="fi">Paketit, jotka tarjoavat tuen sovellusten kehittämisell</description>
+    <description xml:lang="fr">Packages qui offrent des fonctions de développement et </description>
+    <description xml:lang="he">חבילות המאפשרות פיתוח ובניית תוכנה.</description>
+    <description xml:lang="hr">Paketi koji pružaju funkcionalnosti za razvoj i izgradn</description>
+    <description xml:lang="hu">Alkalmazások fejlesztésére szolgáló csomagok</description>
+    <description xml:lang="ia">Pacchettos que provide functionalitate pro disveloppar</description>
+    <description xml:lang="id">Paket yang menyediakan fungsionalitas untuk mengembangk</description>
+    <description xml:lang="is">Pakkar sem innihalda virkni til að þróa og smíða hugbún</description>
+    <description xml:lang="it">Pacchetti che forniscono funzionalità per sviluppare e </description>
+    <description xml:lang="ja">アプリケーションの開発および構築機能を提供するパッケージです。</description>
+    <description xml:lang="ko">이 패키지는 응용 프로그램을 개발하기 위한 기능을 제공합니다.</description>
+    <description xml:lang="lv">Pakotnes, kas nodrošina programmu izstrādes procesu.</description>
+    <description xml:lang="ms">Pakej yang menyediakan fungsi untuk membangun dan memb</description>
+    <description xml:lang="nb">Pakker som gir funksjonalitet for utvikling og bygging </description>
+    <description xml:lang="nl">Pakketten die functionaliteit bieden voor het ontwikkel</description>
+    <description xml:lang="pl">Pakiety dostarczające funkcjonalność tworzenia i budowa</description>
+    <description xml:lang="pt">Pacotes que oferecem funcionalidades para desenvolver e</description>
+    <description xml:lang="pt_BR">Pacotes que oferecem funcionalidades para desenvolve</description>
+    <description xml:lang="ro">Pachete care oferă funcţionalităţi pentru dezvoltarea ş</description>
+    <description xml:lang="ru">Пакеты, предоставляющие возможность разработки и сборки</description>
+    <description xml:lang="sk">Balíčky poskytujúce funkcionalitu pre vývoj a zostavova</description>
+    <description xml:lang="sl">Paketi za razvoj programja.</description>
+    <description xml:lang="sq">Paketa që ofrojnë funksione për zhvillim dhe ndërtim zb</description>
+    <description xml:lang="sr">Пакети који пружају функционалност за развој и изградњу</description>
+    <description xml:lang="sr@Latn">Paketi koji pružaju funkcionalnost za razvoj i i</description>
+    <description xml:lang="sr@latin">Paketi koji pružaju funkcionalnost za razvoj i i</description>
+    <description xml:lang="sv">Paket som tillhandahåller funktionalitet för utveckling</description>
+    <description xml:lang="tg">Барномаҳои барноманависӣ ва эҷодкунии худи барномаҳо</description>
+    <description xml:lang="th">ชุดแพกเกจที่ใช้สำหรับการพัฒนาและสร้างโปรแกรมประยุกต์</description>
+    <description xml:lang="tr">Uygulama geliştirmek ve oluşturmak için gerekli işlevle</description>
+    <description xml:lang="uk">Пакунки, що надають можливість розробляти та збирати пр</description>
+    <description xml:lang="zh">提供開發及建立應用程式功能的套件</description>
+    <description xml:lang="zh_CN">用于开发和构建应用程序的软件包。</description>
+    <description xml:lang="zh_TW">提供開發及建立應用程式功能的套件</description>
+    <display_order>90</display_order>
+    <grouplist>
+      <groupid>additional-devel</groupid>
+      <groupid>development</groupid>
+      <groupid>platform-devel</groupid>
+    </grouplist>
+  </category>
+  <category>
+    <id>servers</id>
+    <name>Servers</name>
+    <name xml:lang="af">Bedieners</name>
+    <name xml:lang="am">ሰርቨሮች</name>
+    <name xml:lang="ar">خوادم</name>
+    <name xml:lang="as">চাৰ্ভাৰসমূহ</name>
+    <name xml:lang="bal">سروران</name>
+    <name xml:lang="be">Паслужнікі</name>
+    <name xml:lang="bg">Сървъри</name>
+    <name xml:lang="bn">সার্ভার</name>
+    <name xml:lang="bs">Poslužitelji</name>
+    <name xml:lang="ca">Servidors</name>
+    <name xml:lang="cs">Servery</name>
+    <name xml:lang="cy">Gweinyddion</name>
+    <name xml:lang="da">Servere</name>
+    <name xml:lang="de">Server</name>
+    <name xml:lang="de_CH">Server</name>
+    <name xml:lang="el">Εξυπηρετητές</name>
+    <name xml:lang="en_GB">Servers</name>
+    <name xml:lang="es">Servidores</name>
+    <name xml:lang="et">Serverid</name>
+    <name xml:lang="eu">Zerbitzariak</name>
+    <name xml:lang="fa">کارگزارها</name>
+    <name xml:lang="fa_IR">کارگزارها</name>
+    <name xml:lang="fi">Palvelimet</name>
+    <name xml:lang="fr">Serveurs</name>
+    <name xml:lang="gl">Servidores</name>
+    <name xml:lang="gu">સર્વરો</name>
+    <name xml:lang="he">שרתים</name>
+    <name xml:lang="hi">सर्वर</name>
+    <name xml:lang="hr">Poslužitelji</name>
+    <name xml:lang="hu">Kiszolgálók</name>
+    <name xml:lang="hy">Սերվերներ</name>
+    <name xml:lang="ia">Servitores</name>
+    <name xml:lang="id">Server</name>
+    <name xml:lang="ilo">Serbidor</name>
+    <name xml:lang="is">Þjónar</name>
+    <name xml:lang="it">Servers</name>
+    <name xml:lang="ja">サーバー</name>
+    <name xml:lang="ka">სერვერები</name>
+    <name xml:lang="kn">ಪೂರೈಕೆಗಣಕಗಳು</name>
+    <name xml:lang="ko">서버</name>
+    <name xml:lang="lv">Serveri</name>
+    <name xml:lang="mai">सर्वर</name>
+    <name xml:lang="mk">Сервери</name>
+    <name xml:lang="ml">സര്‍വറുകള്‍</name>
+    <name xml:lang="mr">सेवक</name>
+    <name xml:lang="ms">Pelayan-Pelayan</name>
+    <name xml:lang="nb">Tjenere</name>
+    <name xml:lang="ne">सर्भर</name>
+    <name xml:lang="nl">Servers</name>
+    <name xml:lang="no">Tjenere</name>
+    <name xml:lang="nso">Baabi</name>
+    <name xml:lang="or">ସେବକ ମାନେ</name>
+    <name xml:lang="pa">ਸਰਵਰ</name>
+    <name xml:lang="pl">Serwery</name>
+    <name xml:lang="pt">Servidores</name>
+    <name xml:lang="pt_BR">Servidores</name>
+    <name xml:lang="ro">Servere</name>
+    <name xml:lang="ru">Серверы</name>
+    <name xml:lang="si">සේවා දායකයන්</name>
+    <name xml:lang="sk">Servery</name>
+    <name xml:lang="sl">Strežniki</name>
+    <name xml:lang="sq">Shërbyesa</name>
+    <name xml:lang="sr">Сервери</name>
+    <name xml:lang="sr@Latn">Serveri</name>
+    <name xml:lang="sr@latin">Serveri</name>
+    <name xml:lang="sv">Servrar</name>
+    <name xml:lang="ta">சேவையகங்கள்</name>
+    <name xml:lang="te">సేవికలు</name>
+    <name xml:lang="tg">Хидматгоҳҳо</name>
+    <name xml:lang="th">ตัวให้บริการ</name>
+    <name xml:lang="tr">Sunucular</name>
+    <name xml:lang="uk">Сервери</name>
+    <name xml:lang="ur">سرورز</name>
+    <name xml:lang="vi">Server</name>
+    <name xml:lang="zh">伺服器</name>
+    <name xml:lang="zh_CN">服务器</name>
+    <name xml:lang="zh_TW">伺服器</name>
+    <name xml:lang="zu">Abalekeleli</name>
+    <description>Software used for running network servers</description>
+    <description xml:lang="ar">يستخدم البرنامج لادارة خادمات الشبكة</description>
+    <description xml:lang="as">নেটৱাৰ্ক চাৰ্ভাৰ চলাব'লৈ চফ্টৱেৰ</description>
+    <description xml:lang="bal">برنامه ای که په اجرای سروران شبکه ای استفاده بیت.</description>
+    <description xml:lang="bg">Софтуер за пускане на мрежови услуги</description>
+    <description xml:lang="bn">নেটওয়ার্ক সার্ভার সঞ্চালনের উদ্দেশ্যে সফ্টওয়্যার</description>
+    <description xml:lang="bs">Softver koji se upotrebljava za pokretanje mrežnih posl</description>
+    <description xml:lang="ca">Programari emprat per executar servidors de xarxa</description>
+    <description xml:lang="cs">Software používaný pro běh síťových serverů</description>
+    <description xml:lang="da">Programmel til brug for at køre netværksservere</description>
+    <description xml:lang="de">Software, die für den Betrieb von Netzwerkservern verwe</description>
+    <description xml:lang="de_CH">Software, die für den Betrieb von Netzwerkservern ve</description>
+    <description xml:lang="el">Λογισμικό που χρησιμοποιείται για εκτέλεση δικτυακών εξ</description>
+    <description xml:lang="en_GB">Software used for running network servers</description>
+    <description xml:lang="es">Programas usados para correr servidores de red</description>
+    <description xml:lang="et">Võrguserverite töölepanemiseks vajalik tarkvara</description>
+    <description xml:lang="fi">Verkkopalvelimina käytettäviä ohjelmistoja</description>
+    <description xml:lang="fr">Logiciels utilisés pour serveurs de réseau actifs</description>
+    <description xml:lang="gu">નેટવર્ક સર્વરો ચલાવવા માટે વપરાતું સોફ્ટવેર</description>
+    <description xml:lang="he">תוכנה המשמשת להרצת שרתי רשת</description>
+    <description xml:lang="hi">संजाल सर्वर के लिये प्रयोग के लिये सॉफ्टवेयर</description>
+    <description xml:lang="hr">Softver koji se upotrebljava za pokretanje mrežnih posl</description>
+    <description xml:lang="hu">Hálózati kiszolgálók futtatásához szükséges szoftverek</description>
+    <description xml:lang="hy">Ծրագրեր՝ ցանցային սերվերներ աշխատեցնելու համար</description>
+    <description xml:lang="ia">Software usate pro exequer servitores de rete</description>
+    <description xml:lang="id">Perangkat lunak yang dipergunakan untuk menjalankan ser</description>
+    <description xml:lang="is">Hugbúnaður til að keyra netþjóna</description>
+    <description xml:lang="it">Software usato per eseguire server di rete</description>
+    <description xml:lang="ja">ネットワークサーバーの稼動に使用するソフトウェア</description>
+    <description xml:lang="kn">ಜಾಲ ಪೂರೈಕೆಗಣಕಗಳನ್ನು ಕಾರ್ಯಗತಗೊಳಿಸಲು ಬಳಸುವ ತಂತ್ರಾಂಶ</description>
+    <description xml:lang="ko">네트워크 서버를 실행하기 위해 사용되는 소프트웨어</description>
+    <description xml:lang="lv">Programmas, kas tiek izmantotas tīkla serveriem</description>
+    <description xml:lang="mai">संजाल सर्वर क' लेल प्रयोग क' लेल साफ्टवेयर</description>
+    <description xml:lang="mr">संजाळ सर्व्हर चालवण्यासाठी वापरले जाणारे सॉफ्टवेअर</description>
+    <description xml:lang="ms">Perisian digunakan untuk melaksanakan pelayan rangkaian</description>
+    <description xml:lang="nb">Programvare som brukes for å kjøre nettverkstjenere</description>
+    <description xml:lang="ne">सञ्जाल सर्भर चलाउनका लागि प्रयोग गरिने सफ्टवेयर</description>
+    <description xml:lang="nl">Software gebruikt voor het uitvoeren van netwerk-server</description>
+    <description xml:lang="or">ନେଟୱାର୍କ ସେବକକୁ ଚଳାଇବା ପାଇଁ ବ୍ଯବହୃତ ସଫଟୱେର</description>
+    <description xml:lang="pa">ਨੈੱਟਵਰਕ ਸਰਵਰ ਚਲਾਉਣ ਲਈ ਲੋੜੀਦੇ ਸਾਫਟਵੇਅਰ</description>
+    <description xml:lang="pl">Oprogramowanie używane do uruchamiania serwerów sieciow</description>
+    <description xml:lang="pt">Aplicações usadas para executar servidores de rede</description>
+    <description xml:lang="pt_BR">Aplicações usadas para executar servidores de rede</description>
+    <description xml:lang="ro">Programe folosite pentru a rula servere de reţea</description>
+    <description xml:lang="ru">Программы, используемые для запуска сетевых серверов</description>
+    <description xml:lang="sk">Softvér používaný na beh sieťových serverov</description>
+    <description xml:lang="sl">Programje za delo z omrežnimi strežniki</description>
+    <description xml:lang="sq">Programe të përdorur për xhirim shërbyesash rrjeti</description>
+    <description xml:lang="sr">Софтвер који се користи за извршавање мрежних сервера</description>
+    <description xml:lang="sr@Latn">Softver koji se koristi za izvršavanje mrežnih ser</description>
+    <description xml:lang="sr@latin">Softver koji se koristi za izvršavanje mrežnih se</description>
+    <description xml:lang="sv">Mjukvara som används för körande nätverksservrar</description>
+    <description xml:lang="ta">பிணைய சேவையகங்களை இயக்க பயன்படுத்தப்பட்ட மென்பொருள்</description>
+    <description xml:lang="te">నెట్వర్క్‍ సేవికలను నడుపుటకు ఉపయోగపడే సాఫ్ట్‍‌వేర్</description>
+    <description xml:lang="tg">Нармафзори истифодашудаи бо хидматгоҳҳои Интернет</description>
+    <description xml:lang="th">โปรแกรมสำหรับให้บริการในเครือข่าย</description>
+    <description xml:lang="tr">Ağ servislerini çalıştırmak için kullanılan yazılımlar</description>
+    <description xml:lang="uk">Програми, що використовуються для запуску мережних серв</description>
+    <description xml:lang="zh">用於運行網路伺服器的軟體</description>
+    <description xml:lang="zh_CN">用于运行网络服务器的软件</description>
+    <description xml:lang="zh_TW">用於運行網路伺服器的軟體</description>
+    <display_order>20</display_order>
+    <grouplist>
+      <groupid>file-server</groupid>
+      <groupid>mail-server</groupid>
+      <groupid>network-server</groupid>
+    </grouplist>
+  </category>
+  <category>
+    <id>base-system</id>
+    <name>System</name>
+    <name xml:lang="af">Rekenaar</name>
+    <name xml:lang="am">ሲስተም</name>
+    <name xml:lang="ar">نظام</name>
+    <name xml:lang="as">চিস্টেম</name>
+    <name xml:lang="be">Сытэма</name>
+    <name xml:lang="bn">সিস্টেম</name>
+    <name xml:lang="bs">Sustav</name>
+    <name xml:lang="ca">Sistema</name>
+    <name xml:lang="cs">Systém</name>
+    <name xml:lang="cy">System</name>
+    <name xml:lang="de">System</name>
+    <name xml:lang="de_CH">System</name>
+    <name xml:lang="en_GB">System</name>
+    <name xml:lang="es">Sistema</name>
+    <name xml:lang="eu">Sistema</name>
+    <name xml:lang="fa">سیستم</name>
+    <name xml:lang="fa_IR">سیستم</name>
+    <name xml:lang="fi">Järjestelmä</name>
+    <name xml:lang="fr">Système</name>
+    <name xml:lang="gl">Sistema</name>
+    <name xml:lang="gu">સિસ્ટમ</name>
+    <name xml:lang="hi">तंत्र</name>
+    <name xml:lang="hr">Sustav</name>
+    <name xml:lang="hu">Rendszer</name>
+    <name xml:lang="hy">Համակարգ</name>
+    <name xml:lang="id">Sistem</name>
+    <name xml:lang="ilo">Sistema</name>
+    <name xml:lang="it">Sistema</name>
+    <name xml:lang="ja">システム</name>
+    <name xml:lang="ka">სისტემა</name>
+    <name xml:lang="kn">ವ್ಯವಸ್ಥೆ</name>
+    <name xml:lang="ko">시스템</name>
+    <name xml:lang="lv">Sistēma</name>
+    <name xml:lang="mk">Систем</name>
+    <name xml:lang="ml">സിസ്റ്റം</name>
+    <name xml:lang="mr">प्रणाली</name>
+    <name xml:lang="no">System</name>
+    <name xml:lang="nso">Tshepedišo</name>
+    <name xml:lang="or">ତନ୍ତ୍ର</name>
+    <name xml:lang="pa">ਸਿਸਟਮ</name>
+    <name xml:lang="pl">System</name>
+    <name xml:lang="pt">Sistema </name>
+    <name xml:lang="pt_BR">Sistema </name>
+    <name xml:lang="ru">Система</name>
+    <name xml:lang="si">පද්ධතිය</name>
+    <name xml:lang="sl">Sistem</name>
+    <name xml:lang="sq">Sistem</name>
+    <name xml:lang="ta">கணினி</name>
+    <name xml:lang="te">వ్యవస్థ</name>
+    <name xml:lang="th">ระบบ</name>
+    <name xml:lang="tr">Sistem</name>
+    <name xml:lang="uk">Система</name>
+    <name xml:lang="ur">نظام</name>
+    <name xml:lang="vi">Hệ thống</name>
+    <name xml:lang="zh">系統</name>
+    <name xml:lang="zh_CN">系统</name>
+    <name xml:lang="zh_TW">系統</name>
+    <name xml:lang="zu">Isistimu</name>
+    <description>Core system components.</description>
+    <description xml:lang="as">চিস্টেমৰ মূখ্য উপাদানসমূহ।</description>
+    <description xml:lang="bn">সিস্টেমের কোর সামগ্রী।</description>
+    <description xml:lang="cs">Základní komponenty systému.</description>
+    <description xml:lang="de">Zentrale Systemkomponenten.</description>
+    <description xml:lang="de_CH">Zentrale Systemkomponenten.</description>
+    <description xml:lang="es">Componentes de sistema Core</description>
+    <description xml:lang="fr">Composants du système de base.</description>
+    <description xml:lang="gu">કોર સિસ્ટમ સાધનો.</description>
+    <description xml:lang="hi">प्रधान सिस्टम घटक</description>
+    <description xml:lang="it">Componenti di base del sistema.</description>
+    <description xml:lang="ja">コアシステムコンポーネント。</description>
+    <description xml:lang="kn">ಪ್ರಮುಖ ವ್ಯವಸ್ಥೆಯ ಘಟಕಗಳು.</description>
+    <description xml:lang="ko">핵심 시스템 콤포넌트.</description>
+    <description xml:lang="ml">കോര്‍ സിസ്റ്റം ഘടകങ്ങള്‍.</description>
+    <description xml:lang="mr">कोर प्रणाली घटके.</description>
+    <description xml:lang="or">ମୂଖ୍ୟ ତନ୍ତ୍ର ଉପାଦାନଗୁଡ଼ିକ।</description>
+    <description xml:lang="pa">ਮੁੱਖ ਸਿਸਟਮ ਹਿੱਸੇ।</description>
+    <description xml:lang="pl">Główne składniki systemu.</description>
+    <description xml:lang="pt">Componentes de sistema central</description>
+    <description xml:lang="pt_BR">Componentes de sistema central</description>
+    <description xml:lang="ru">Основные компоненты системы.</description>
+    <description xml:lang="sv">Grundläggande systemkomponenter.</description>
+    <description xml:lang="ta">உள்ளீடு கணினி ஆக்கக்கூறுகள்.</description>
+    <description xml:lang="te">కోర్ సిస్టమ్ మూలకములు.</description>
+    <description xml:lang="uk">Основні компонент систем.</description>
+    <description xml:lang="zh">核心系統元件。</description>
+    <description xml:lang="zh_CN">核新系统组件。</description>
+    <description xml:lang="zh_TW">核心系統元件。</description>
+    <display_order>10</display_order>
+    <grouplist>
+      <groupid>dial-up</groupid>
+      <groupid>hardware-monitoring</groupid>
+      <groupid>infiniband</groupid>
+      <groupid>large-systems</groupid>
+      <groupid>legacy-unix</groupid>
+      <groupid>mainframe-access</groupid>
+      <groupid>network-tools</groupid>
+      <groupid>performance</groupid>
+      <groupid>scientific</groupid>
+      <groupid>security-tools</groupid>
+      <groupid>smart-card</groupid>
+      <groupid>standard</groupid>
+    </grouplist>
+  </category>
+  <category>
+    <id>desktops</id>
+    <name>Desktops</name>
+    <name xml:lang="af">Werkskerms</name>
+    <name xml:lang="am">ዴስክቶፖች</name>
+    <name xml:lang="ar">أسطح المكتب</name>
+    <name xml:lang="as">ডেস্কটপ</name>
+    <name xml:lang="be">Стальцы</name>
+    <name xml:lang="bn">ডেস্কটপ</name>
+    <name xml:lang="bs">Radne površine</name>
+    <name xml:lang="ca">Escriptoris</name>
+    <name xml:lang="cs">Pracovní prostředí</name>
+    <name xml:lang="cy">Penbyrddau</name>
+    <name xml:lang="de">Desktops</name>
+    <name xml:lang="de_CH">Desktops</name>
+    <name xml:lang="en_GB">Desktops</name>
+    <name xml:lang="es">Escritorios</name>
+    <name xml:lang="eu">Mahaigainak</name>
+    <name xml:lang="fa">محیط‌های رومیزی</name>
+    <name xml:lang="fa_IR">محیط‌های رومیزی</name>
+    <name xml:lang="fi">Työpöydät</name>
+    <name xml:lang="fr">Bureaux</name>
+    <name xml:lang="gl">Escritorios</name>
+    <name xml:lang="gu">ડેસ્કટોપો</name>
+    <name xml:lang="hi">डेस्कटॉप</name>
+    <name xml:lang="hr">Radne površine</name>
+    <name xml:lang="hu">Munkaasztalok</name>
+    <name xml:lang="hy">Դեսքթոփներ</name>
+    <name xml:lang="ia">Scriptorios</name>
+    <name xml:lang="id">Desktop</name>
+    <name xml:lang="ilo">Eskritorio</name>
+    <name xml:lang="it">Desktop</name>
+    <name xml:lang="ja">デスクトップ</name>
+    <name xml:lang="ka">სამუშაო გარემოები</name>
+    <name xml:lang="kn">ಗಣಕತೆರೆಗಳು</name>
+    <name xml:lang="ko">데스크탑</name>
+    <name xml:lang="lv">Darbvirsmas</name>
+    <name xml:lang="mk">Графички работни околини</name>
+    <name xml:lang="ml">പണിയിടങ്ങള്‍</name>
+    <name xml:lang="mr">डेस्कटॉप्स्</name>
+    <name xml:lang="no">Skrivebord</name>
+    <name xml:lang="nso">Diteseke</name>
+    <name xml:lang="or">ଡେସ୍କଟପ୍ ମାନ</name>
+    <name xml:lang="pa">ਡੈਸਕਟਾਪ</name>
+    <name xml:lang="pl">Środowiska graficzne</name>
+    <name xml:lang="pt">Desktops</name>
+    <name xml:lang="pt_BR">Desktops</name>
+    <name xml:lang="ru">Рабочие столы</name>
+    <name xml:lang="si">Desktops</name>
+    <name xml:lang="sl">Namizja</name>
+    <name xml:lang="sq">Desktopë</name>
+    <name xml:lang="sv">Skrivbord</name>
+    <name xml:lang="ta">பணிமேடைகள்</name>
+    <name xml:lang="te">డెస్కుటాప్స్</name>
+    <name xml:lang="th">เดสก์ท็อป</name>
+    <name xml:lang="tr">Masaüstleri</name>
+    <name xml:lang="uk">Робочі середовища</name>
+    <name xml:lang="ur">ڈيسک ٹاپس</name>
+    <name xml:lang="vi">Desktop</name>
+    <name xml:lang="zh">桌面環境</name>
+    <name xml:lang="zh_CN">桌面</name>
+    <name xml:lang="zh_TW">桌面環境</name>
+    <name xml:lang="zu">Amadesktop</name>
+    <description>Desktops and thin clients.</description>
+    <description xml:lang="as">ডেস্কটপ আৰু ক্ষীণ ক্লাএন্ট।</description>
+    <description xml:lang="bn">ডেস্কটপ ও থিন ক্লায়েন্ট।</description>
+    <description xml:lang="cs">Pracovní prostředí a tencí klienti.</description>
+    <description xml:lang="de">Desktops und Thin-Clients.</description>
+    <description xml:lang="de_CH">Desktops und Thin-Clients.</description>
+    <description xml:lang="es">Escritorios y clientes livianos.</description>
+    <description xml:lang="fr">Bureaux et clients légers.</description>
+    <description xml:lang="gu">ડેસ્કટોપ અને પાતળા ક્લાયન્ટો.</description>
+    <description xml:lang="hi">डेस्कटॉप और थिन क्लाइंट</description>
+    <description xml:lang="ia">Scriptorios e clientes legier.</description>
+    <description xml:lang="it">Desktop e thin client.</description>
+    <description xml:lang="ja">デスクトップとシンクライアント。</description>
+    <description xml:lang="kn">ಗಣಕತೆರೆಗಳು ಹಾಗು ಥಿನ್‌ ಕ್ಲೈಂಟ್‌ಗಳು.</description>
+    <description xml:lang="ko">데스크탑과 씬 클라이언트.</description>
+    <description xml:lang="ml">ഡസ്ക്ടോപ്പുകളും ഥിന്‍ ക്ലയന്റുകളും്റുകള്‍</description>
+    <description xml:lang="mr">डेस्कटॉप्स् व थीन क्लाएंट्स्.</description>
+    <description xml:lang="or">ଡେସ୍କଟପ ଏବଂ ଥିନ କ୍ଲାଏଣ୍ଟମାନ।</description>
+    <description xml:lang="pa">ਡੈਸਕਟਾਪ ਅਤੇ ਥਿੰਨ ਕਲਾਈਂਟ</description>
+    <description xml:lang="pl">Środowiska graficzne i ciency klienci.</description>
+    <description xml:lang="pt">Ambientes de Trabalho e clientes finos</description>
+    <description xml:lang="pt_BR">Ambientes de Trabalho e clientes finos</description>
+    <description xml:lang="ru">Рабочие столы и ?тонкие? клиенты.</description>
+    <description xml:lang="sv">Skrivbord och tunna klienter.</description>
+    <description xml:lang="ta">பணிமேடை மற்றும் ஒல்லியான வாடிக்கையாளர்கள்.</description>
+    <description xml:lang="te">డెస్కుటాప్స్ మరియు తిన్ క్లైంట్లు.</description>
+    <description xml:lang="uk">Робочі станції та «тонкі» клієнти.</description>
+    <description xml:lang="zh">桌面環境與 thin clinet。</description>
+    <description xml:lang="zh_CN">桌面和瘦客户端。</description>
+    <description xml:lang="zh_TW">桌面環境與 thin clinet。</description>
+    <display_order>70</display_order>
+    <grouplist>
+      <groupid>fonts</groupid>
+      <groupid>gnome-desktop</groupid>
+    </grouplist>
+  </category>
+  <environment>
+    <id>custom-environment</id>
+    <name>Custom Operating System</name>
+    <name xml:lang="de">Benutzerdefiniertes Betriebssystem</name>
+    <name xml:lang="es">Sistema operativo personalizado</name>
+    <name xml:lang="fr">Custom Operating System</name>
+    <name xml:lang="it">Sistema operativo personalizzato</name>
+    <name xml:lang="ja">カスタムオペレーティングシステム</name>
+    <name xml:lang="ko">사용자 정의 운영 체제</name>
+    <name xml:lang="pt">Sistema Operacional Personalizado</name>
+    <name xml:lang="pt_BR">Sistema Operacional Personalizado</name>
+    <name xml:lang="ru">Пользовательская операционная система</name>
+    <name xml:lang="zh_CN">定制操作系统</name>
+    <name xml:lang="zh_TW">定制操作系統</name>
+    <description>Basic building block for a custom CentOS system.</description>
+    <display_order>99</display_order>
+    <grouplist>
+      <groupid>core</groupid>
+    </grouplist>
+    <optionlist>
+      <groupid>guest-agents</groupid>
+      <groupid>standard</groupid>
+    </optionlist>
+  </environment>
+  <environment>
+    <id>minimal-environment</id>
+    <name>Minimal Install</name>
+    <name xml:lang="as">নূন্যতম ইনস্টল</name>
+    <name xml:lang="cs">Minimální instalace</name>
+    <name xml:lang="de">Minimale Installation</name>
+    <name xml:lang="de_CH">Minimale Installation</name>
+    <name xml:lang="es">Instalación mínima</name>
+    <name xml:lang="fr">Installation minimale</name>
+    <name xml:lang="gu">ન્યૂનતમ સ્થાપન</name>
+    <name xml:lang="hi">न्यूनतम संस्थापन</name>
+    <name xml:lang="it">Installazione minima</name>
+    <name xml:lang="ja">最小限のインストール</name>
+    <name xml:lang="kn">ಕನಿಷ್ಟ ಅನುಸ್ಥಾಪನೆ</name>
+    <name xml:lang="ko">최소 설치</name>
+    <name xml:lang="ml">ഏറ്റവും കുറഞ്ഞ ഇന്‍സ്റ്റോള്‍</name>
+    <name xml:lang="mr">किमान इंस्टॉल</name>
+    <name xml:lang="or">ସର୍ବନିମ୍ନ ସ୍ଥାପନ</name>
+    <name xml:lang="pa">ਘੱਟ ਤੋਂ ਘੱਟ ਇੰਸਟਾਲ</name>
+    <name xml:lang="pl">Minimalna instalacja</name>
+    <name xml:lang="pt">Instalações Mínimas</name>
+    <name xml:lang="pt_BR">Instalações Mínimas</name>
+    <name xml:lang="ru">Минимальная установка</name>
+    <name xml:lang="ta">குறைந்தபட்ச நிறுவல்</name>
+    <name xml:lang="te">కనీసపు సంస్థాపన</name>
+    <name xml:lang="uk">Мінімальна система</name>
+    <name xml:lang="zh">最小型安裝</name>
+    <name xml:lang="zh_CN">最小安装</name>
+    <name xml:lang="zh_TW">最小型安裝</name>
+    <description>Basic functionality.</description>
+    <description xml:lang="as">মৌলি কাৰ্য্যকৰীতা।</description>
+    <description xml:lang="cs">Základní funkcionalita.</description>
+    <description xml:lang="de">Grundlegende Funktionalität.</description>
+    <description xml:lang="de_CH">Grundlegende Funktionalität.</description>
+    <description xml:lang="es">Funcionalidad básica.</description>
+    <description xml:lang="fr">Fonctionnalité de base.</description>
+    <description xml:lang="gu">મૂળભૂત વિધેય.</description>
+    <description xml:lang="hi">मौलिक प्रकार्यात्मकता.</description>
+    <description xml:lang="it">Funzione di base.</description>
+    <description xml:lang="ja">基本的な機能です。</description>
+    <description xml:lang="kn">ಮೂಲಭೂತ ಕ್ರಿಯಾಶೀಲತೆ.</description>
+    <description xml:lang="ko">기본적인 기능입니다.</description>
+    <description xml:lang="ml">അടിസ്ഥാന പ്രവൃത്തിവിശേഷണം.</description>
+    <description xml:lang="mr">मूळ कार्यक्षमता.</description>
+    <description xml:lang="or">ସାଧାରଣ କାର୍ଯ୍ୟକାରିତା।</description>
+    <description xml:lang="pa">ਮੁੱਢਲੀ ਕਾਰਜਸ਼ੀਲਤਾ।</description>
+    <description xml:lang="pl">Podstawowa funkcjonalność.</description>
+    <description xml:lang="pt">Função básica</description>
+    <description xml:lang="pt_BR">Função básica</description>
+    <description xml:lang="ru">Базовая функциональность.</description>
+    <description xml:lang="ta">அடிப்படை செயலம்சம்.</description>
+    <description xml:lang="te">ప్రాథమిక ఫంక్షనాలిటి.</description>
+    <description xml:lang="uk">Основні можливості.</description>
+    <description xml:lang="zh">基本功能。</description>
+    <description xml:lang="zh_CN">基本功能。</description>
+    <description xml:lang="zh_TW">基本功能。</description>
+    <display_order>3</display_order>
+    <grouplist>
+      <groupid>core</groupid>
+    </grouplist>
+    <optionlist>
+      <groupid>guest-agents</groupid>
+      <groupid>standard</groupid>
+    </optionlist>
+  </environment>
+  <environment>
+    <id>server-product-environment</id>
+    <name>Server</name>
+    <name xml:lang="fr">Serveurs</name>
+    <name xml:lang="ja">サーバー</name>
+    <name xml:lang="ko">서버</name>
+    <name xml:lang="zh_CN">服务器</name>
+    <description>An integrated, easy-to-manage server.</description>
+    <description xml:lang="de">Ein integrierter, einfach zu verwaltender Server.</description>
+    <description xml:lang="es">Un servidor integrado y fácil de administrar.</description>
+    <description xml:lang="fr">Un serveur intégré, facile à gérer.</description>
+    <description xml:lang="it">Un server integrato e facile da gestire.</description>
+    <description xml:lang="ja">統合された、管理が容易なサーバーです。</description>
+    <description xml:lang="ko">통합되고 관리가 쉬운 서버.</description>
+    <description xml:lang="pt">Um servidor integrado e fácil de gerir.</description>
+    <description xml:lang="pt_BR">Um servidor integrado e fácil de gerir.</description>
+    <description xml:lang="ru">Интегрированный, простой в управлении сервер.</description>
+    <description xml:lang="zh_CN">集成的易于管理的服务器。</description>
+    <description xml:lang="zh_TW">一個集成，易於管理的服務器。</description>
+    <display_order>2</display_order>
+    <grouplist>
+      <groupid>core</groupid>
+      <groupid>hardware-support</groupid>
+      <groupid>headless-management</groupid>
+      <groupid>server-product</groupid>
+      <groupid>standard</groupid>
+    </grouplist>
+    <optionlist>
+      <groupid>debugging</groupid>
+      <groupid>dns-server</groupid>
+      <groupid>file-server</groupid>
+      <groupid>ftp-server</groupid>
+      <groupid>gnome-desktop</groupid>
+      <groupid>guest-agents</groupid>
+      <groupid>hardware-monitoring</groupid>
+      <groupid>infiniband</groupid>
+      <groupid>mail-server</groupid>
+      <groupid>network-file-system-client</groupid>
+      <groupid>network-server</groupid>
+      <groupid>performance</groupid>
+      <groupid>remote-system-management</groupid>
+      <groupid>smb-server</groupid>
+      <groupid>virtualization-hypervisor</groupid>
+      <groupid>web-server</groupid>
+    </optionlist>
+  </environment>
+</comps>"""
+BIG_GROUPS = 3
+BIG_CATEGORY = 4
+BIG_LANGPACK = 0
+BIG_ENVIRONMENTS = 3
