@@ -3,7 +3,8 @@ import os
 from aiohttp_xmlrpc.client import ServerProxy
 from logging import getLogger
 from lxml import etree
-from urllib.parse import quote, unquote, urlparse, urlunparse
+from urllib.parse import quote, unquote, urlparse
+
 from pulpcore.plugin.download import FileDownloader, HttpDownloader
 from pulp_rpm.app.exceptions import UlnCredentialsError
 from pulp_rpm.app.shared_utils import urlpath_sanitize
@@ -66,12 +67,21 @@ class RpmDownloader(HttpDownloader):
         new_url = self.url
         if urlencode:
             # Some upstream-repos (eg, Amazon) require url-encoded paths for things like "libc++"
-            # Let's make them happy - while not urlencoding **anything else**
+            # Let's make them happy.
+            # We can't urlencode the whole url, because BasicAuth is still A Thing and we would
+            #   break username/passwords in the url.
+            # So we need to urlencode **only the path** and **nothing else** .
+            # We can't use _replace() and urlunparse(), because urlunparse() "helpfully" undoes
+            #   the urlencode we just did in the path.
+            # We can't use urljoin(), because urljoin() "helpfully" treats a number of schemes
+            #  (like, say, uln:) as "can't take relative paths", and throws away everything
+            #  **except** the path-portion
+            # So, we have a pretty ugly workaround.
             parsed = urlparse(self.url)
-            new_path = quote(unquote(parsed.path), safe=":/")
-            parsed._replace(path=new_path)
-            new_url = urlunparse(parsed)
-
+            # two pieces of the URL: pre- and post-path
+            (before_path, after_path) = self.url.split(parsed.path)
+            new_path = quote(unquote(parsed.path), safe=":/")  # fix the path
+            new_url = "{}{}{}".format(before_path, new_path, after_path)  # rebuild
         if self.sles_auth_token:
             auth_param = f"?{self.sles_auth_token}"
             self.url = urlpath_sanitize(new_url) + auth_param
@@ -154,6 +164,7 @@ class UlnDownloader(RpmDownloader):
         :meth:`~pulpcore.plugin.download.BaseDownloader._run`.
         """
         parsed = urlparse(self.url)
+
         if parsed.scheme == "uln":
             # get ULN Session-key
             SERVER_URL = os.path.join(self.uln_server_base_url, "rpc/api")
@@ -170,7 +181,6 @@ class UlnDownloader(RpmDownloader):
             channelLabel = parsed.netloc
             path = parsed.path.lstrip("/")
             url = os.path.join(self.uln_server_base_url, "XMLRPC/GET-REQ", channelLabel, path)
-
         async with self.session.get(
             url, proxy=self.proxy, auth=self.auth, headers=self.headers
         ) as response:
