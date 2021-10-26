@@ -64,7 +64,7 @@ release_user: pulpbot
 single_commit_check: true
 sync_ci: true
 tasking_allow_async_unsafe: true
-test_azure: false
+test_azure: true
 test_bindings: false
 test_cli: true
 test_fips_nightly: false
