@@ -1,0 +1,2 @@
+Fixed a bug that could result in incomplete repo metadata when "mirror_complete" sync policy is combined with the "optimize" option.
+(backported from #9535)
