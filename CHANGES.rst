@@ -13,6 +13,22 @@ Changelog
 
 .. towncrier release notes start
 
+3.14.8 (2021-10-27)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed a regression dealing with downloads of filenames containing special characters.
+  Specifically, synching Amazon linux repositories with RPMs like uuid-c++.
+  (backported from #9529)
+  `#9541 <https://pulp.plan.io/issues/9541>`_
+
+
+----
+
+
 3.14.7 (2021-10-18)
 ===================
 

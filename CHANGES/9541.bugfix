@@ -1,3 +1,0 @@
-Fixed a regression dealing with downloads of filenames containing special characters.
-Specifically, synching Amazon linux repositories with RPMs like uuid-c++.
-(backported from #9529)
