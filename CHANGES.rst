@@ -13,6 +13,25 @@ Changelog
 
 .. towncrier release notes start
 
+3.16.1 (2021-10-27)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed a bug that could result in incomplete repo metadata when "mirror_complete" sync policy is combined with the "optimize" option.
+  (backported from #9535)
+  `#9536 <https://pulp.plan.io/issues/9536>`_
+- Fixed a regression dealing with downloads of filenames containing special characters.
+  Specifically, synching Amazon linux repositories with RPMs like uuid-c++.
+  (backported from #9529)
+  `#9537 <https://pulp.plan.io/issues/9537>`_
+
+
+----
+
+
 3.16.0 (2021-10-20)
 ===================
 
