@@ -25,7 +25,7 @@ from pulp_rpm.tests.functional.constants import (
     CENTOS7_URL,
     CENTOS8_APPSTREAM_URL,
     CENTOS8_BASEOS_URL,
-    CENTOS8_KICKSTART_APP_URL,
+    CENTOS8_KICKSTART_APPSTREAM_URL,
     CENTOS8_KICKSTART_BASEOS_URL,
     EPEL7_URL,
 )
@@ -200,4 +200,4 @@ class PublishTestCase(unittest.TestCase):
 
     def test_centos8_kickstart_appstream(self):
         """Kickstart Publish CentOS 8 AppStream."""
-        self.rpm_publish(url=CENTOS8_KICKSTART_APP_URL)
+        self.rpm_publish(url=CENTOS8_KICKSTART_APPSTREAM_URL)

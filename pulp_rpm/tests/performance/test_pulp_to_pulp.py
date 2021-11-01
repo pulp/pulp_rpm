@@ -13,7 +13,7 @@ from pulp_rpm.tests.functional.constants import (
     CENTOS7_URL,
     CENTOS8_APPSTREAM_URL,
     CENTOS8_BASEOS_URL,
-    CENTOS8_KICKSTART_APP_URL,
+    CENTOS8_KICKSTART_APPSTREAM_URL,
     CENTOS8_KICKSTART_BASEOS_URL,
 )
 from pulp_rpm.tests.functional.utils import (
@@ -147,4 +147,4 @@ class SynctoSyncTestCase(unittest.TestCase):
 
     def test_centos8_kickstart_appstream_on_demand(self):
         """Kickstart Sync CentOS 8 AppStream."""
-        self.do_test(url=CENTOS8_KICKSTART_APP_URL)
+        self.do_test(url=CENTOS8_KICKSTART_APPSTREAM_URL)
