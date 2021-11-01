@@ -30,7 +30,7 @@ from pulp_rpm.plugins.importers.yum.parse.treeinfo import KEY_PACKAGEDIR
 
 from . import configuration
 from .metadata.filelists import FilelistsXMLFileContext
-from .metadata.metadata import REPO_DATA_DIR_NAME
+from .metadata.metadata import REPO_DATA_DIR_NAME, REPOMD_FILE_NAME
 from .metadata.modules import ModulesFileContext
 from .metadata.other import OtherXMLFileContext
 from .metadata.prestodelta import PrestodeltaXMLFileContext
@@ -71,8 +71,7 @@ class BaseYumRepoPublisher(platform_steps.PluginStep):
                                                    plugin_type=distributor_type, **kwargs)
         self.repomd_file_context = None
         self.checksum_type = None
-
-        self.add_child(InitRepoMetadataStep(config.get_boolean('gpg_sign_metadata')))
+        self.add_child(InitRepoMetadataStep())
         dist_step = PublishDistributionStep()
         self.add_child(dist_step)
         self.rpm_step = PublishRpmStep(dist_step, repo_content_unit_q=association_filters)
@@ -87,8 +86,10 @@ class BaseYumRepoPublisher(platform_steps.PluginStep):
         self.add_child(PublishCompsStep())
         self.add_child(PublishMetadataStep())
         self.add_child(CloseRepoMetadataStep())
-        self.add_child(GenerateSqliteForRepoStep(self.get_working_dir()))
         self.add_child(RemoveOldRepodataStep())
+        self.add_child(GenerateSqliteForRepoStep(self.get_working_dir()))
+        if config.get_boolean('gpg_sign_metadata'):
+            self.add_child(SignRepoMetadataStep(self.get_working_dir()))
 
     def get_checksum_type(self):
         if not self.checksum_type:
@@ -381,23 +382,16 @@ class GenerateListingFileStep(platform_steps.PluginStep):
 
 class InitRepoMetadataStep(platform_steps.PluginStep):
 
-    def __init__(self, gpg_sign=False, step=constants.PUBLISH_INIT_REPOMD_STEP):
+    def __init__(self, step=constants.PUBLISH_INIT_REPOMD_STEP):
         """
         Initialize and set the ID of the step
         """
         super(InitRepoMetadataStep, self).__init__(step)
         self.description = _("Initializing repo metadata")
-        self.gpg_sign = gpg_sign
-        self.sign_options = None
 
     def initialize(self):
-        if self.gpg_sign:
-            self.sign_options = configuration.get_gpg_sign_options(
-                self.get_repo(), self.get_config())
         self.parent.repomd_file_context = RepomdXMLFileContext(self.get_working_dir(),
-                                                               self.parent.get_checksum_type(),
-                                                               self.gpg_sign,
-                                                               sign_options=self.sign_options)
+                                                               self.parent.get_checksum_type())
         self.parent.repomd_file_context.initialize()
 
 
@@ -413,6 +407,24 @@ class CloseRepoMetadataStep(platform_steps.PluginStep):
     def finalize(self):
         if self.parent.repomd_file_context:
             self.parent.repomd_file_context.finalize()
+
+
+class SignRepoMetadataStep(platform_steps.PluginStep):
+    def __init__(self, working_dir, step=constants.PUBLISH_SIGN_REPO_METADATA_STEP):
+        """
+        Initialize and set the ID of the step
+        """
+        super(SignRepoMetadataStep, self).__init__(step)
+        self.description = _("Signing repo metadata")
+        self.repomd = os.path.join(working_dir, REPO_DATA_DIR_NAME, REPOMD_FILE_NAME)
+
+    def finalize(self):
+        sign_options = configuration.get_gpg_sign_options(
+            self.get_repo(), self.get_config()
+        )
+        assert sign_options
+        signer = util.Signer(options=sign_options)
+        signer.sign(self.repomd)
 
 
 class PublishRpmStep(platform_steps.UnitModelPluginStep):

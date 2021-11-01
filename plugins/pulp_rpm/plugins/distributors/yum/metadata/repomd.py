@@ -18,13 +18,11 @@ RPM_XML_NAME_SPACE = 'http://linux.duke.edu/metadata/rpm'
 
 
 class RepomdXMLFileContext(MetadataFileContext):
-    def __init__(self, working_dir, checksum_type=CONFIG_DEFAULT_CHECKSUM,
-                 gpg_sign=False, sign_options=None):
+    def __init__(self, working_dir, checksum_type=CONFIG_DEFAULT_CHECKSUM):
 
         metadata_file_path = os.path.join(working_dir, REPO_DATA_DIR_NAME, REPOMD_FILE_NAME)
         super(RepomdXMLFileContext, self).__init__(metadata_file_path, checksum_type)
-        self.gpg_sign = gpg_sign
-        self.sign_options = sign_options
+
         self.metadata_file_locations = []
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -43,11 +41,6 @@ class RepomdXMLFileContext(MetadataFileContext):
 
         repomd = os.path.basename(self.metadata_file_path)
         self.metadata_file_locations.append(repomd)
-        if self.gpg_sign:
-            assert self.sign_options
-            self.metadata_file_locations.append(repomd + '.asc')
-            signer = util.Signer(options=self.sign_options)
-            signer.sign(self.metadata_file_path)
 
     def _write_root_tag_open(self):
 
