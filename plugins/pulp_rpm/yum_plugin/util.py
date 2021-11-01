@@ -319,8 +319,8 @@ class Signer(object):
         stdout = tempfile.NamedTemporaryFile()
         stderr = tempfile.NamedTemporaryFile()
         pobj = subprocess.Popen(
-            cmd, env=self.options.as_environment(),
-            stdout=stdout, stderr=stderr)
+            cmd, env=self.options.as_environment(), stdout=stdout, stderr=stderr
+        )
         ret = pobj.wait()
         if ret != 0:
             raise SignerError("Return code: %d" % ret,
