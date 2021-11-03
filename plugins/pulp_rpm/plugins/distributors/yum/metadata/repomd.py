@@ -8,6 +8,7 @@ from pulp_rpm.plugins.distributors.yum.metadata.metadata import (
     MetadataFileContext, REPO_DATA_DIR_NAME, REPOMD_FILE_NAME)
 
 from pulp_rpm.yum_plugin import util
+from pulp.server.util import CHECKSUM_CHUNK_SIZE
 
 
 _LOG = util.getLogger(__name__)
@@ -107,8 +108,7 @@ class RepomdXMLFileContext(MetadataFileContext):
         # calculating it again.
         if precalculated_checksum is None:
             with open(file_path, 'rb') as file_handle:
-                content = file_handle.read()
-                checksum_element.text = self.checksum_constructor(content).hexdigest()
+                checksum_element.text = self.calculate_checksum(file_handle)
         else:
             checksum_element.text = precalculated_checksum
 
@@ -132,8 +132,7 @@ class RepomdXMLFileContext(MetadataFileContext):
                     open_size = 0
                     checksum_const = self.checksum_constructor()
                     while True:
-                        # Read 1MB each time to save memory
-                        content = file_handle.read(1048576)
+                        content = file_handle.read(CHECKSUM_CHUNK_SIZE)
                         if not content:
                             break
                         open_size += len(content)
