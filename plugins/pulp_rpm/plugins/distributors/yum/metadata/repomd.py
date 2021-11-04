@@ -130,7 +130,7 @@ class RepomdXMLFileContext(MetadataFileContext):
             else:
                 try:
                     open_size = 0
-                    checksum_const = self.checksum_constructor()
+                    checksum_const = self.checksum_constructor(usedforsecurity=False)
                     while True:
                         content = file_handle.read(CHECKSUM_CHUNK_SIZE)
                         if not content:
