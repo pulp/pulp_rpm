@@ -792,7 +792,8 @@ class RpmBase(NonMetadataPackage):
     DEFAULT_CHECKSUM_TYPES = (server_util.TYPE_MD5, server_util.TYPE_SHA1, server_util.TYPE_SHA256)
     ESCAPE_TEMPLATE_VARS_TAGS = {
         'primary': ('description', 'summary'),
-        'other': ('changelog',)}
+        'other': ('changelog',),
+        'filelist': ('file',)}
 
     def __init__(self, *args, **kwargs):
         super(RpmBase, self).__init__(*args, **kwargs)
@@ -865,6 +866,8 @@ class RpmBase(NonMetadataPackage):
         :rtype:     basestring
         """
         metadata = self.get_repodata('filelists')
+        for tag in self.ESCAPE_TEMPLATE_VARS_TAGS['filelist']:
+            metadata = self._escape_django_syntax_chars(metadata, tag)
         context = Context({'pkgid': self.get_or_calculate_and_save_checksum(checksumtype)})
         return self._render(metadata, context)
 
