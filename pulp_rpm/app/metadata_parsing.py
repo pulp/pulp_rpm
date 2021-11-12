@@ -57,34 +57,41 @@ def iterative_files_changelog_parser(file_extension, filelists_xml_path, other_x
             raise
 
         while True:
-            for event, filelists_element in filelists_xml_iterator:
+             filelists_element = None
+             for event, _filelists_element in filelists_xml_iterator:
                 # if we're not at a fully parsed package element, keep going
                 if event != "end":
                     continue
                 # make this work whether the file has namespace as part of the tag or not
                 if not (
-                    filelists_element.tag == "package"
-                    or re.sub(NS_STRIP_RE, "", filelists_element.tag) == "package"
+                    _filelists_element.tag == "package"
+                    or re.sub(NS_STRIP_RE, "", _filelists_element.tag) == "package"
                 ):
                     continue
 
+                filelists_element = _filelists_element
                 break
 
-            for event, other_element in other_xml_iterator:
+            other_element = None
+            for event, _other_element in other_xml_iterator:
                 # if we're not at a fully parsed package element, keep going
                 if event != "end":
                     continue
                 # make this work whether the file has namespace as part of the tag or not
                 if not (
-                    other_element.tag == "package"
-                    or re.sub(NS_STRIP_RE, "", other_element.tag) == "package"
+                    _other_element.tag == "package"
+                    or re.sub(NS_STRIP_RE, "", _other_element.tag) == "package"
                 ):
                     continue
 
+                other_element = _other_element
                 break
 
             (filelists_pkgid, files) = process_filelists_package_element(filelists_element)
             (other_pkgid, changelogs) = process_other_package_element(other_element)
+
+            if filelists_pkgid is None:
+                filelists_pkgid = other_pkgid
 
             filelists_root_element.clear()  # clear all previously parsed ancestors of the root
             other_root_element.clear()
@@ -100,6 +107,9 @@ def iterative_files_changelog_parser(file_extension, filelists_xml_path, other_x
 
 def process_filelists_package_element(element):
     """Parse one package element from the filelists.xml."""
+    if not element:
+        return None, []
+
     pkgid = element.attrib["pkgid"]
 
     files = []
@@ -115,6 +125,9 @@ def process_filelists_package_element(element):
 
 def process_other_package_element(element):
     """Parse package element from other.xml."""
+    if not element:
+        return None, []
+
     pkgid = element.attrib["pkgid"]
 
     changelogs = []
