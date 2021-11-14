@@ -526,6 +526,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
             # publication needs to contain exactly the same metadata at the same paths.
             if not mirror_metadata and optimize and repo_config["should_skip"]:
                 skipped_syncs += 1
+                repo_sync_results[directory] = repo.latest_version()
                 continue
 
             stage = RpmFirstStage(
