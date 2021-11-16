@@ -1,0 +1,9 @@
+Scenario:
+
+My primary pulp instance is hosting 2 distributions of the same repository (like staging and production) which are referencing different versions of the same repository. During my initial run, both distributions are point to version 1. So far so good.
+
+Now I have a secondary pulp instance which is mirroring the 2 primary distributions by creating separate remotes and repositories.
+
+The repository on the primary node contains now a subtree which is identically in version 1 for staging and production. Means it has the same hash.
+
+Now, during the sync process the metadata for this subtree are stored by createing a primary key like "{repodata}-{treeinfo['hash']}". This collides with staging and production, because contentwise and with the hash, the subtree is the same for both staging and production. The key should be something like "{repodata}-{treeinfo['hash']}-{repository_pk}"
