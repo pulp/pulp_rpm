@@ -1,0 +1,3 @@
+This fixes parsing metadata for repositories where the filelists does not contain package entries like for gitlab repos.
+
+Check https://packages.gitlab.com/gitlab/gitlab-ce/scientific/7/x86_64/repodata/repomd.xml
