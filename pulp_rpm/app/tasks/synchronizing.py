@@ -478,7 +478,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
                 if repodata == DIST_TREE_MAIN_REPO_PATH:
                     treeinfo["repositories"].update({repodata: None})
                     continue
-                name = f"{repodata}-{treeinfo['hash']}"
+                name = f"{repodata}-{treeinfo['hash']}-{repository_pk}"
                 sub_repo, created = RpmRepository.objects.get_or_create(name=name, user_hidden=True)
                 if created:
                     sub_repo.save()
