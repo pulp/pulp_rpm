@@ -1,0 +1,2 @@
+Fixed sync of repositories using 'sha' as an alias for the sha1 checksum-type.
+(backported from #9580)
