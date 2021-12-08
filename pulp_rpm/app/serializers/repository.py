@@ -24,6 +24,7 @@ from pulp_rpm.app.constants import (
     ALLOWED_CHECKSUM_ERROR_MSG,
     CHECKSUM_CHOICES,
     SKIP_TYPES,
+    SYNC_POLICY_CHOICES,
 )
 from pulp_rpm.app.models import (
     RpmDistribution,
@@ -308,6 +309,29 @@ class RpmRepositorySyncURLSerializer(RepositorySyncURLSerializer):
     Serializer for RPM Sync.
     """
 
+    mirror = serializers.BooleanField(
+        required=False,
+        allow_null=True,
+        help_text=_(
+            "DEPRECATED: If ``True``, ``sync_policy`` will default to 'mirror_complete' "
+            "instead of 'additive'."
+        ),
+    )
+    sync_policy = serializers.ChoiceField(
+        help_text=_(
+            "Options: 'additive', 'mirror_complete', 'mirror_content_only'. Default: 'additive'. "
+            "Modifies how the sync is performed. 'mirror_complete' will clone the original "
+            "metadata and create an automatic publication from it, but comes with some "
+            "limitations and does not work for certain repositories. 'mirror_content_only' will "
+            "change the repository contents to match the remote but the metadata will be "
+            "regenerated and will not be bit-for-bit identical. 'additive' will retain the "
+            "existing contents of the repository and add the contents of the repository being "
+            "synced."
+        ),
+        choices=SYNC_POLICY_CHOICES,
+        required=False,
+        allow_null=True,
+    )
     skip_types = serializers.ListField(
         help_text=_("List of content types to skip during sync."),
         required=False,
@@ -317,6 +341,22 @@ class RpmRepositorySyncURLSerializer(RepositorySyncURLSerializer):
     optimize = serializers.BooleanField(
         help_text=_("Whether or not to optimize sync."), required=False, default=True
     )
+
+    def validate(self, data):
+        """
+        Validate sync parameters.
+        """
+        data = super().validate(data)
+
+        if "mirror" in data and "sync_policy" in data:
+            raise serializers.ValidationError(
+                _(
+                    "Cannot use 'mirror' and 'sync_policy' options simultaneously. The 'mirror' "
+                    "option is deprecated, please use 'sync_policy' only."
+                )
+            )
+
+        return data
 
 
 class CopySerializer(serializers.Serializer):
