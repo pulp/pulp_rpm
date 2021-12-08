@@ -1248,43 +1248,52 @@ class InvalidSyncConfigTestCase(PulpTestCase):
             error,
         )
 
-    def test_mirror_with_xml_base_fails(self):
+    def test_complete_mirror_with_xml_base_fails(self):
         """Test that syncing a repository that uses xml:base in mirror mode fails."""
-        error = self.do_test(REPO_WITH_XML_BASE_URL, mirror=True)
+        error = self.do_test(REPO_WITH_XML_BASE_URL, sync_policy="mirror_complete")
 
         self.assertIn(
             "features which are incompatible with 'mirror' sync",
             error,
         )
 
-    def test_mirror_with_external_location_href_fails(self):
+    def test_complete_mirror_with_external_location_href_fails(self):
         """
         Test that syncing a repository that contains an external location_href fails in mirror mode.
 
         External location_href refers to a location_href that points outside of the repo,
         e.g. ../../Packages/blah.rpm
         """
-        error = self.do_test(REPO_WITH_EXTERNAL_LOCATION_HREF_URL, mirror=True)
+        error = self.do_test(REPO_WITH_EXTERNAL_LOCATION_HREF_URL, sync_policy="mirror_complete")
 
         self.assertIn(
             "features which are incompatible with 'mirror' sync",
             error,
         )
 
-    def test_mirror_with_delta_metadata_fails(self):
+    def test_complete_mirror_with_delta_metadata_fails(self):
         """
         Test that syncing a repository that contains prestodelta metadata fails in mirror mode.
 
         Otherwise we would be mirroring the metadata without mirroring the DRPM packages.
         """
-        error = self.do_test(DRPM_UNSIGNED_FIXTURE_URL, mirror=True)
+        error = self.do_test(DRPM_UNSIGNED_FIXTURE_URL, sync_policy="mirror_complete")
 
         self.assertIn(
             "features which are incompatible with 'mirror' sync",
             error,
         )
 
-    def do_test(self, url, mirror=False):
+    def test_mirror_and_sync_policy_provided_simultaneously_fails(self):
+        """
+        Test that syncing fails if both the "mirror" and "sync_policy" params are provided.
+        """
+        from pulpcore.client.pulp_rpm.exceptions import ApiException
+
+        with self.assertRaises(ApiException):
+            self.do_test(DRPM_UNSIGNED_FIXTURE_URL, sync_policy="mirror_complete", mirror=True)
+
+    def do_test(self, url, **sync_kwargs):
         """Sync a repository given ``url`` on the remote."""
         repo_api = RepositoriesRpmApi(self.client)
         remote_api = RemotesRpmApi(self.client)
@@ -1296,7 +1305,7 @@ class InvalidSyncConfigTestCase(PulpTestCase):
         remote = remote_api.create(body)
         self.addCleanup(remote_api.delete, remote.pulp_href)
 
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, mirror=mirror)
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, **sync_kwargs)
         sync_response = repo_api.sync(repo.pulp_href, repository_sync_data)
 
         with self.assertRaises(PulpTaskError) as ctx:
@@ -1441,7 +1450,7 @@ class AdditiveModeTestCase(PulpTestCase):
     """
 
     def test_all(self):
-        """Test of addtive mode."""
+        """Test of additive mode."""
         client = gen_rpm_client()
         repo_api = RepositoriesRpmApi(client)
         remote_api = RemotesRpmApi(client)
@@ -1463,7 +1472,7 @@ class AdditiveModeTestCase(PulpTestCase):
         remote = remote_api.create(body)
         self.addCleanup(remote_api.delete, remote.pulp_href)
 
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, sync_policy="additive")
         sync_response = repo_api.sync(repo.pulp_href, repository_sync_data)
         monitor_task(sync_response.task)
 
@@ -1482,7 +1491,15 @@ class AdditiveModeTestCase(PulpTestCase):
 class MirrorModeTestCase(PulpTestCase):
     """Test of sync with mirror mode."""
 
-    def test_all(self):
+    def test_mirror_complete(self):
+        """Test complete (metadata) mirroring."""
+        self.do_test("mirror_complete")
+
+    def test_mirror_content_only(self):
+        """Test content-only mirroring."""
+        self.do_test("mirror_content_only")
+
+    def do_test(self, sync_policy):
         """Test of mirror mode."""
         client = gen_rpm_client()
         repo_api = RepositoriesRpmApi(client)
@@ -1511,7 +1528,9 @@ class MirrorModeTestCase(PulpTestCase):
         remote = remote_api.create(body)
         self.addCleanup(remote_api.delete, remote.pulp_href)
 
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, mirror=True)
+        repository_sync_data = RpmRepositorySyncURL(
+            remote=remote.pulp_href, sync_policy=sync_policy
+        )
         sync_response = repo_api.sync(repo.pulp_href, repository_sync_data)
         task = monitor_task(sync_response.task)
 
@@ -1519,5 +1538,8 @@ class MirrorModeTestCase(PulpTestCase):
         # the new content is present
         repo = repo_api.read(repo.pulp_href)
         self.assertDictEqual(RPM_FIXTURE_SUMMARY, get_content_summary(repo.to_dict()))
-        self.assertEqual(len(task.created_resources), 2)
-        self.assertEqual(publications_api.list().count, 1)
+        if sync_policy == "mirror_complete":
+            self.assertEqual(publications_api.list().count, 1)
+            self.assertEqual(len(task.created_resources), 2)
+        else:
+            self.assertEqual(len(task.created_resources), 1)

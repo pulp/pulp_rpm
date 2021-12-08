@@ -52,6 +52,7 @@ from pulp_rpm.app.constants import (
     PACKAGE_REPODATA,
     PULP_MODULE_ATTR,
     PULP_MODULEDEFAULTS_ATTR,
+    SYNC_POLICIES,
     UPDATE_REPODATA,
 )
 from pulp_rpm.app.models import (
@@ -340,24 +341,26 @@ def is_optimized_sync(repository, remote, url):
     return is_optimized
 
 
-def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
+def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize):
     """
     Sync content from the remote repository.
 
     Create a new version of the repository that is synchronized with the remote.
 
-    If mirror=True, a publication will be created with a copy of the original metadata.
-    In this event, SRPMs and other types listed in "skip_types" will *not* be skipped.
+    If sync_policy=mirror_complete, a publication will be created with a copy of the original
+    metadata. This comes with some limitations, namely:
 
-    If mirror=True and the repository uses the xml:base / location_base feature, then
-    the sync will fail. This feature is incompatible with the intentions of most Pulp
-    users, as it will tell clients to look for metadata / packages from a source outside
-    of the repository.
+    * SRPMs and other types listed in "skip_types" will *not* be skipped.
+    * If the repository uses the xml:base / location_base feature, then the sync will fail.
+      This feature is incompatible with the intentions of most Pulp users, because the metadata
+      will tell clients to look for files at some source outside of the Pulp-hosted repo.
+    * If the repository uses Delta RPMs, the sync will fail, because Pulp does not support them,
+      and cannot change the repository metadata to remove them.
 
     Args:
         remote_pk (str): The remote PK.
         repository_pk (str): The repository PK.
-        mirror (bool): Mirror mode.
+        sync_policy (str): How to perform the sync.
         skip_types (list): List of content to skip.
         optimize(bool): Optimize mode.
 
@@ -435,6 +438,9 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
 
     sub_repos = []
 
+    mirror = sync_policy.startswith("mirror")
+    mirror_metadata = sync_policy == SYNC_POLICIES.MIRROR_COMPLETE
+
     if treeinfo:
         treeinfo["repositories"] = {}
         for repodata in set(treeinfo["download"]["repodatas"]):
@@ -464,12 +470,12 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
                     remote,
                     sub_repo,
                     deferred_download,
-                    mirror,
+                    mirror_metadata,
                     skip_types=skip_types,
                     new_url=new_url,
                     namespace=directory,
                 )
-                dv = RpmDeclarativeVersion(first_stage=stage, repository=sub_repo)
+                dv = RpmDeclarativeVersion(first_stage=stage, repository=sub_repo, mirror=mirror)
                 subrepo_version = dv.create()
                 if subrepo_version:
                     sub_repo.last_sync_remote = remote
@@ -481,7 +487,7 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
         remote,
         repository,
         deferred_download,
-        mirror,
+        mirror_metadata,
         skip_types=skip_types,
         treeinfo=treeinfo,
         new_url=remote_url,
@@ -492,7 +498,7 @@ def synchronize(remote_pk, repository_pk, mirror, skip_types, optimize):
         repository.last_sync_remote = remote
         repository.last_sync_repo_version = version.number
         repository.save()
-        if mirror:
+        if mirror_metadata:
             with RpmPublication.create(version, pass_through=False) as publication:
                 add_metadata_to_publication(publication, version)
                 for (name, subrepo_version) in sub_repos:
@@ -546,7 +552,7 @@ class RpmFirstStage(Stage):
         remote,
         repository,
         deferred_download,
-        mirror,
+        mirror_metadata,
         skip_types=None,
         new_url=None,
         treeinfo=None,
@@ -558,8 +564,10 @@ class RpmFirstStage(Stage):
         Args:
             remote (RpmRemote or UlnRemote): The remote data to be used when syncing
             repository (RpmRepository): The repository to be compared when optimizing sync
-            deferred_download (bool): if True the downloading will not happen now. If False, it will
+            deferred_download (bool): If True the downloading will not happen now. If False, it will
                 happen immediately.
+            mirror_metadata (bool): Influences which metadata files are downloaded and what
+                is done with them.
 
         Keyword Args:
             skip_types (list): List of content to skip
@@ -573,7 +581,7 @@ class RpmFirstStage(Stage):
         self.remote = remote
         self.repository = repository
         self.deferred_download = deferred_download
-        self.mirror = mirror
+        self.mirror_metadata = mirror_metadata
 
         # How many directories deep this repo is nested within another repo (if at all).
         # Backwards relative paths that are shallower than this depth are permitted (in mirror
@@ -655,14 +663,14 @@ class RpmFirstStage(Stage):
                     checksum_types[record.type] = record_checksum_type
                     record.checksum_type = record_checksum_type
 
-                    if self.mirror:
+                    if self.mirror_metadata:
                         uses_base_url = record.location_base
                         illegal_relative_path = self.is_illegal_relative_path(record.location_href)
 
                         if uses_base_url or illegal_relative_path or record.type == "prestodelta":
                             raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
 
-                    if not self.mirror and record.type not in types_to_download:
+                    if not self.mirror_metadata and record.type not in types_to_download:
                         continue
 
                     base_url = record.location_base or self.remote_url
@@ -688,7 +696,7 @@ class RpmFirstStage(Stage):
                 except FileNotFoundError:
                     raise
 
-                if self.mirror:
+                if self.mirror_metadata:
                     # optional signature and key files for repomd metadata
                     for file_href in ["repodata/repomd.xml.asc", "repodata/repomd.xml.key"]:
                         try:
@@ -1041,7 +1049,7 @@ class RpmFirstStage(Stage):
 
         with ProgressReport(**progress_data) as packages_pb:
             # skip SRPM if defined
-            skip_srpms = "srpm" in self.skip_types and not self.mirror
+            skip_srpms = "srpm" in self.skip_types and not self.mirror_metadata
 
             async def on_package(pkg):
                 """Callback when handling a completed package.
@@ -1049,7 +1057,7 @@ class RpmFirstStage(Stage):
                 Args:
                     pkg (createrepo_c.Package): A completed createrepo_c package.
                 """
-                if self.mirror:
+                if self.mirror_metadata:
                     uses_base_url = pkg.location_base
                     illegal_relative_path = self.is_illegal_relative_path(pkg.location_href)
 
