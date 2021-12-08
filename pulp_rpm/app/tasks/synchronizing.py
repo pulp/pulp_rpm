@@ -890,7 +890,8 @@ class RpmFirstStage(Stage):
                 if should_skip:
                     continue
 
-                file_data = {record.checksum_type: record.checksum, "size": record.size}
+                sanitized_checksum_type = getattr(CHECKSUM_TYPES, record.checksum_type.upper())
+                file_data = {sanitized_checksum_type: record.checksum, "size": record.size}
                 da = DeclarativeArtifact(
                     artifact=Artifact(**file_data),
                     url=urlpath_sanitize(self.remote_url, record.location_href),
@@ -900,7 +901,7 @@ class RpmFirstStage(Stage):
                 )
                 repo_metadata_file = RepoMetadataFile(
                     data_type=record.type,
-                    checksum_type=record.checksum_type,
+                    checksum_type=sanitized_checksum_type,
                     checksum=record.checksum,
                     relative_path=record.location_href,
                 )
