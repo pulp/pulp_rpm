@@ -68,6 +68,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_PACKAGE_COUNT,
     RPM_REFERENCES_UPDATEINFO_URL,
     RPM_RICH_WEAK_FIXTURE_URL,
+    RPM_SHA_FIXTURE_URL,
     RPM_SHA512_FIXTURE_URL,
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
@@ -1090,6 +1091,16 @@ class BasicSyncTestCase(PulpTestCase):
         present_advisory_count = len(get_content(repo.to_dict())[PULP_TYPE_ADVISORY])
         self.assertEqual(present_package_count, SRPM_UNSIGNED_FIXTURE_PACKAGE_COUNT)
         self.assertEqual(present_advisory_count, SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT)
+
+    def test_sha_checksum(self):
+        """Test that we can sync a repo using SHA as a checksum."""
+        body = gen_rpm_remote(RPM_SHA_FIXTURE_URL, policy="immediate")
+        remote = self.remote_api.create(body)
+        repo = self.repo_api.create(gen_repo())
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        self.do_test(repository=repo, remote=remote)
 
     def do_test(self, repository=None, remote=None, mirror=False):
         """Sync a repository.
