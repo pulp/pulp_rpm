@@ -204,7 +204,7 @@ class PublicationData:
             relative_path__in=[".treeinfo", "treeinfo"]
         )
         artifact_file = storage.open(original_treeinfo_content_artifact.artifact.file.name)
-        with tempfile.NamedTemporaryFile("wb") as temp_file:
+        with tempfile.NamedTemporaryFile("wb", dir=".") as temp_file:
             shutil.copyfileobj(artifact_file, temp_file)
             temp_file.flush()
             treeinfo = PulpTreeInfo()
@@ -219,9 +219,8 @@ class PublicationData:
             main_variant = treeinfo.original_parser._sections.get("general", {}).get(
                 "variant", None
             )
-            treeinfo_file = tempfile.NamedTemporaryFile()
+            treeinfo_file = tempfile.NamedTemporaryFile(dir=".")
             treeinfo.dump(treeinfo_file.name, main_variant=main_variant)
-
             PublishedMetadata.create_from_file(
                 relative_path=original_treeinfo_content_artifact.relative_path,
                 publication=self.publication,
