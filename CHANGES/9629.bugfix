@@ -1,0 +1,2 @@
+Ensured that RPM plugin uses only a worker working directory and not /tmp which could have caused the out-of-disc-space issue since it's not expected that Pulp uses /tmp.
+(backported from #9551)
