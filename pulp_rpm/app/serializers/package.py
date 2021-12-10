@@ -1,3 +1,6 @@
+import logging
+import traceback
+
 from gettext import gettext as _
 
 from rest_framework import serializers
@@ -10,6 +13,9 @@ from pulpcore.plugin.serializers import (
 
 from pulp_rpm.app.models import Package
 from pulp_rpm.app.shared_utils import _prepare_package
+
+
+log = logging.getLogger(__name__)
 
 
 class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSerializer):
@@ -237,7 +243,8 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         try:
             new_pkg = _prepare_package(data["artifact"], data["relative_path"])
         except OSError:
-            raise NotAcceptable(detail="RPM file cannot be parsed for metadata.")
+            log.info(traceback.format_exc())
+            raise NotAcceptable(detail="RPM file cannot be parsed for metadata")
 
         attrs = {key: new_pkg[key] for key in Package.natural_key_fields()}
         package = Package.objects.filter(**attrs)
