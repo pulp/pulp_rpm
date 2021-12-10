@@ -415,7 +415,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize):
             main_variant = treeinfo.original_parser._sections.get("general", {}).get(
                 "variant", None
             )
-            treeinfo_file = tempfile.NamedTemporaryFile(delete=False)
+            treeinfo_file = tempfile.NamedTemporaryFile(dir=".", delete=False)
             treeinfo.dump(treeinfo_file.name, main_variant=main_variant)
             store_metadata_for_mirroring(repository, treeinfo_file.name, namespace)
             break
