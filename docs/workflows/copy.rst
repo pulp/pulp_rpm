@@ -19,6 +19,13 @@ Like all Pulp repositories, you can use the ${repo_href}/modify/ endpoint to:
   regardless of what content was previously present in the repository. This can be combined with
   adding and removing content units in the same call. For worklows check the :ref:`Recipes section <copy-recipes>`.
 
+Using pulp-cli commands :
+
+.. literalinclude:: ../_scripts/copy_basic_cli.sh
+   :language: bash
+
+Using httpie to talk directly to the REST API :
+
 .. literalinclude:: ../_scripts/copy_basic.sh
    :language: bash
 

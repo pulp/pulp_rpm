@@ -12,6 +12,13 @@ Bulk Upload
 Upload artifacts
 ****************
 
+Using pulp-cli commands :
+
+.. literalinclude:: ../_scripts/artifact_cli.sh
+   :language: bash
+
+Using httpie to talk directly to the REST API :
+
 .. literalinclude:: ../_scripts/artifact.sh
    :language: bash
 
@@ -34,6 +41,13 @@ Artifact GET response:
 
 Create content from artifacts
 *****************************
+
+Using pulp-cli commands :
+
+.. literalinclude:: ../_scripts/package_cli.sh
+   :language: bash
+
+Using httpie to talk directly to the REST API :
 
 .. literalinclude:: ../_scripts/package.sh
    :language: bash
@@ -103,6 +117,13 @@ Package GET response (after task complete):
 Add content to repository ``foo``
 *********************************
 
+Using pulp-cli commands :
+
+.. literalinclude:: ../_scripts/add_remove_cli.sh
+   :language: bash
+
+Using httpie to talk directly to the REST API :
+
 .. literalinclude:: ../_scripts/add_remove.sh
    :language: bash
 
@@ -142,6 +163,13 @@ Advisory upload
 
 Advisory upload requires a file or an artifact containing advisory information in the JSON format.
 Repository is an optional argument to create new repository version with uploaded advisory.
+
+Using pulp-cli commands :
+
+.. literalinclude:: ../_scripts/advisory_cli.sh
+   :language: bash
+
+Using httpie to talk directly to the REST API :
 
 .. literalinclude:: ../_scripts/advisory.sh
    :language: bash

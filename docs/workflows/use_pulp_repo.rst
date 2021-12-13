@@ -9,6 +9,12 @@ client tools to a repo distributed by Pulp.
 
 Download ``foo.rpm`` from Pulp
 ------------------------------
+Using pulp-cli commands :
+
+.. literalinclude:: ../_scripts/download_cli.sh
+   :language: bash
+
+Using httpie to talk directly to the REST API :
 
 .. literalinclude:: ../_scripts/download.sh
    :language: bash
@@ -32,8 +38,6 @@ Download GET response:
     Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
     X-Fedora-AppServer: people02.fedoraproject.org
     X-GitProject: (null)
-
-
 
     +-----------------------------------------+
     | NOTE: binary data not shown in terminal |

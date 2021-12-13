@@ -9,6 +9,13 @@ available for users.
 Create an RPM repository ``foo``
 --------------------------------
 
+Using pulp-cli commands :
+
+.. literalinclude:: ../_scripts/repo_cli.sh
+   :language: bash
+
+Using httpie to talk directly to the REST API :
+
 .. literalinclude:: ../_scripts/repo.sh
    :language: bash
 
@@ -43,6 +50,20 @@ to download RPMs whenever they are requested by clients.
 
 Also, you can specify ``client_cert`` and ``client_key`` if your remote require authorization with a certificate.
 
+Using pulp-cli commands :
+
+.. code:: shell
+
+    pulp rpm remote create \
+        --name='bar' \
+        --url "${URL}" \
+        --policy on_demand \
+        --client-cert @./certificate.crt \
+        --client-key @./certificate.key \
+        --tls-validation False
+
+Using httpie to talk directly to the REST API :
+
 .. code:: shell
 
     http --form POST $BASE_ADDR/pulp/api/v3/remotes/rpm/rpm/ \
@@ -54,6 +75,13 @@ Also, you can specify ``client_cert`` and ``client_key`` if your remote require 
         tls_validation=False
 
 If you want to use TLS validation you have to provide ``ca_cert`` too.
+
+Using pulp-cli commands :
+
+.. literalinclude:: ../_scripts/remote_cli.sh
+   :language: bash
+
+Using httpie to talk directly to the REST API :
 
 .. literalinclude:: ../_scripts/remote.sh
    :language: bash
@@ -104,6 +132,18 @@ You can receive your token with script like this:
 
 Assuming your token is ``YourRepositoryToken``, create the remote with the ``sles_auth_token`` specified.
 
+Using pulp-cli commands :
+
+.. code:: shell
+
+    pulp rpm remote create \
+        --name 'SLESrepo' \
+        --url 'https://updates.suse.com/SUSE/Updates/SLE-SERVER/12/x86_64/update/' \
+        --policy on_demand \
+        --sles-auth-token 'YourRepositoryToken'
+
+Using httpie to talk directly to the REST API :
+
 .. code:: bash
 
     http POST :/pulp/api/v3/remotes/rpm/rpm/ \
@@ -121,10 +161,12 @@ ULN stands for "Unbreakable Linux Network" and refers to the way Oracle in parti
 You can use a ULN remote to synchronize repositories from a ULN server to Pulp.
 For ULN remotes you must provide your ULN login credentials via the ``username``, and ``password`` parameters, and the ``url`` is the ULN channel, e.g. ``uln://ovm2_2.1.1_i386_patch``:
 
+Using httpie to talk directly to the REST API :
+
 .. code:: shell
 
     http --form POST $BASE_ADDR/pulp/api/v3/remotes/rpm/uln/ \
-        name='foo' \
+        name='ULNRemote' \
         url='uln://ovm2_2.1.1_i386_patch' \
         username='example@example.com' \
         password='changeme'
@@ -142,6 +184,13 @@ You may also want to consult the `Oracle ULN documentation <https://docs.oracle.
 
 Sync repository ``foo`` using remote ``bar``
 --------------------------------------------
+
+Using pulp-cli commands :
+
+.. literalinclude:: ../_scripts/sync_cli.sh
+   :language: bash
+
+Using httpie to talk directly to the REST API :
 
 .. literalinclude:: ../_scripts/sync.sh
    :language: bash
@@ -240,6 +289,13 @@ A publication can only be created once a sync task completes. You can specify ch
   Because of on_demand sync, it is possible that the requested checksum is not available.
   In such case the one from the remote repo will be used.
 
+Using pulp-cli commands :
+
+.. literalinclude:: ../_scripts/publication_cli.sh
+   :language: bash
+
+Using httpie to talk directly to the REST API :
+
 .. literalinclude:: ../_scripts/publication.sh
    :language: bash
 
@@ -273,6 +329,12 @@ to see the default values for these options.
 
 Create a Distribution for the Publication
 -----------------------------------------
+Using pulp-cli commands :
+
+.. literalinclude:: ../_scripts/distribution_cli.sh
+   :language: bash
+
+Using httpie to talk directly to the REST API :
 
 .. literalinclude:: ../_scripts/distribution.sh
    :language: bash
