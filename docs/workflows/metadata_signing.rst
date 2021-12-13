@@ -16,6 +16,13 @@ Let us assume that a signing service is already supplied by an administrator and
 REST API in an ordinary way. The only thing that needs to be done by a user is to create a new
 repository with the associated signing service, like so:
 
+Using pulp-cli commands :
+
+.. literalinclude:: ../_scripts/repo_with_signing_service_cli.sh
+   :language: bash
+
+Using httpie to talk directly to the REST API :
+
 .. literalinclude:: ../_scripts/repo_with_signing_service.sh
    :language: bash
 
@@ -33,6 +40,13 @@ When a distribution with signed repodata is created, a user can install packages
 repository. But, at first, it is necessary to set up the configuration for the repository. One may
 initialize the configuration by leveraging the utility ``dnf config-manager`` like shown below.
 Afterwards, the user should be able to install the packages by running ``dnf install packages``.
+
+Using pulp-cli commands :
+
+.. literalinclude:: ../_scripts/install_from_signed_repository_cli.sh
+    :language: bash
+
+Using httpie to talk directly to the REST API :
 
 .. literalinclude:: ../_scripts/install_from_signed_repository.sh
     :language: bash
