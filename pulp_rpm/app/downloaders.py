@@ -1,6 +1,6 @@
 import os
 
-from aiohttp_xmlrpc.client import ServerProxy
+from aiohttp_xmlrpc.client import ServerProxy, _Method
 from logging import getLogger
 from lxml import etree
 from urllib.parse import quote, unquote, urlparse
@@ -174,7 +174,7 @@ class UlnDownloader(RpmDownloader):
                 SERVER_URL, proxy=self.proxy, proxy_auth=self.proxy_auth, auth=self.auth
             )
             if not self.session_key:
-                self.session_key = await client["auth.login"](self.username, self.password)
+                self.session_key = await client.auth.login(self.username, self.password)
                 if len(self.session_key) != 43:
                     raise UlnCredentialsError("No valid ULN credentials given.")
                 self.headers = {"X-ULN-API-User-Key": self.session_key}
@@ -209,9 +209,9 @@ class AllowProxyServerProxy(ServerProxy):
         """
         Initialisation with proxy.
         """
-        self.proxy = proxy
-        self.proxy_auth = proxy_auth
-        self.auth = auth
+        self.__proxy = proxy
+        self.__proxy_auth = proxy_auth
+        self.__auth = auth
         super().__init__(*args, **kwargs)
 
     async def __remote_call(self, method_name, *args, **kwargs):
@@ -226,20 +226,28 @@ class AllowProxyServerProxy(ServerProxy):
                 encoding=self.encoding,
             ),
             headers=self.headers,
-            proxy=self.proxy,
-            proxy_auth=self.proxy_auth,
-            auth=self.auth,
+            proxy=self.__proxy,
+            proxy_auth=self.__proxy_auth,
+            auth=self.__auth,
         ) as response:
             response.raise_for_status()
 
             return self._parse_response((await response.read()), method_name)
 
-    def __getitem__(self, method_name):
+    # we also have to overwrite this method, because '__'-method-names are only valid
+    # in the class they are defined in, therefore only overwriting __remote_call() does not work!
+    def __getattr__(self, method_name):
         """
-        Dynamically create method for item.
+        Dynamically create method for attribute.
+
+        Copied from aiohttp-xmlrpc/aiohttp_xmlrpc/client.py
         """
+        # Trick to keep the "close" method available
+        if method_name == "close":
+            return self.__close
+        else:
+            # Magic method dispatcher
+            return _Method(self.__remote_call, method_name)
 
-        def method(*args, **kwargs):
-            return self.__remote_call(method_name, *args, **kwargs)
-
-        return method
+    def __close(self):
+        return self.client.close()
