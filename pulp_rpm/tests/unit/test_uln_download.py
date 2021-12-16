@@ -1,8 +1,9 @@
+import aiohttp_xmlrpc
 import asyncio
 import asynctest
 import os
 
-from pulp_rpm.app.downloaders import UlnDownloader, UlnCredentialsError, AllowProxyServerProxy
+from pulp_rpm.app.downloaders import UlnDownloader, UlnCredentialsError
 
 
 class TestUlnDownloader(asynctest.TestCase):
@@ -84,13 +85,13 @@ class TestUlnDownloader(asynctest.TestCase):
         f.set_result(None)
         return f
 
-    @asynctest.patch.object(AllowProxyServerProxy, "__getitem__")
+    @asynctest.patch.object(aiohttp_xmlrpc.client._Method, "__getattr__")
     @asynctest.patch("aiohttp.ClientSession")
-    def test_valid_auth(self, mock_session, mock_getitem):
+    def test_valid_auth(self, mock_session, mock_getattr):
         """
         Test a valid authentification and download process for ULN.
         """
-        mock_getitem.return_value = self.mock_auth_login
+        mock_getattr.return_value = self.mock_auth_login
         mock_response = mock_session.get().__aenter__.return_value
         mock_response.content.read.side_effect = self.create_Future
         mock_response.release.side_effect = self.create_Future
@@ -111,7 +112,8 @@ class TestUlnDownloader(asynctest.TestCase):
             "https://linux-update.oracle.com/XMLRPC/GET-REQ/channelLabel/repodata/repomd.xml"
         )
         self.assertEqual(uln_auth_url, os.path.join(self.downloader.uln_server_base_url, "rpc/api"))
-        mock_getitem.assert_called_once_with("auth.login")
+        # what really happens is the _Method-instance 'auth' has it's method 'login' called.
+        mock_getattr.assert_called_once_with("login")
         self.assertEqual(
             self.downloader.headers,
             {"X-ULN-API-User-Key": "this_is_my_magic_key_with_exactly_43_digits"},
@@ -125,16 +127,16 @@ class TestUlnDownloader(asynctest.TestCase):
             headers=self.downloader.headers,
         )
 
-        @asynctest.patch.object(AllowProxyServerProxy, "__getitem__")
+        @asynctest.patch.object(aiohttp_xmlrpc.client._Method, "__getattr__")
         @asynctest.patch("aiohttp.ClientSession")
-        def test_invalid_auth(self, mock_session, mock_getitem):
+        def test_invalid_auth(self, mock_session, mock_getattr):
             """
             Test a invalid authentification for ULN.
 
             Authentification can fail for wrong credentials or for unsuccsessful
             authentification.
             """
-            mock_getitem.return_value = self.mock_failed_auth_login
+            mock_getattr.return_value = self.mock_failed_auth_login
 
             mock_response = mock_session.get().__aenter__.return_value
             mock_response.content.read.side_effect = self.create_Future
