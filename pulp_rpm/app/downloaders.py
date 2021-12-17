@@ -170,7 +170,9 @@ class UlnDownloader(RpmDownloader):
             SERVER_URL = os.path.join(self.uln_server_base_url, "rpc/api")
 
             # set proxy for authentification
-            client = AllowProxyServerProxy(SERVER_URL, proxy=self.proxy, auth=self.auth)
+            client = AllowProxyServerProxy(
+                SERVER_URL, proxy=self.proxy, proxy_auth=self.proxy_auth, auth=self.auth
+            )
             if not self.session_key:
                 self.session_key = await client["auth.login"](self.username, self.password)
                 if len(self.session_key) != 43:
@@ -182,7 +184,7 @@ class UlnDownloader(RpmDownloader):
             path = parsed.path.lstrip("/")
             url = os.path.join(self.uln_server_base_url, "XMLRPC/GET-REQ", channelLabel, path)
         async with self.session.get(
-            url, proxy=self.proxy, auth=self.auth, headers=self.headers
+            url, proxy=self.proxy, proxy_auth=self.proxy_auth, auth=self.auth, headers=self.headers
         ) as response:
             self.raise_for_status(response)
             to_return = await self._handle_response(response)
@@ -203,11 +205,12 @@ class AllowProxyServerProxy(ServerProxy):
     This only works for http connection to the proxy, https connections are not supported!
     """
 
-    def __init__(self, *args, proxy, auth, **kwargs):
+    def __init__(self, *args, proxy, proxy_auth, auth, **kwargs):
         """
         Initialisation with proxy.
         """
         self.proxy = proxy
+        self.proxy_auth = proxy_auth
         self.auth = auth
         super().__init__(*args, **kwargs)
 
@@ -224,8 +227,19 @@ class AllowProxyServerProxy(ServerProxy):
             ),
             headers=self.headers,
             proxy=self.proxy,
+            proxy_auth=self.proxy_auth,
             auth=self.auth,
         ) as response:
             response.raise_for_status()
 
             return self._parse_response((await response.read()), method_name)
+
+    def __getitem__(self, method_name):
+        """
+        Dynamically create method for item.
+        """
+
+        def method(*args, **kwargs):
+            return self.__remote_call(method_name, *args, **kwargs)
+
+        return method
