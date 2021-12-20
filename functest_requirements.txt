@@ -1,4 +1,4 @@
-git+https://github.com/pulp/pulp-smash.git#egg=pulp-smash
+pulp-smash==1!0.14.0  # git+https://github.com/pulp/pulp-smash.git@1d53d00b8cf142f02361c56b4e58cfd88ef63be6
 productmd>=1.25
 pytest
 dictdiffer
