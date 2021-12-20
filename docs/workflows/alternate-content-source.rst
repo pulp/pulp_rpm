@@ -17,7 +17,7 @@ To use an Alternate Content Source you need a ``RPMRemote`` with path of your AC
 
 .. code-block:: bash
 
-    pulp rpm remote create --name rpm_acs_remote --policy on_demand --url http://fixtures.pulpproject.org/rpm-unsigned/
+    http POST $BASE_ADDR/pulp/api/v3/remotes/rpm/rpm/ name="myRemoteAcs" policy="on_demand" url="http://fixtures.pulpproject.org/rpm-unsigned/"
 
 Create Alternate Content Source
 -------------------------------
@@ -26,7 +26,7 @@ Create an Alternate Content Source.
 
 .. code-block:: bash
 
-    pulp rpm acs create --name rpm_acs --remote rpm_acs_remote
+    http POST $BASE_ADDR/pulp/api/v3/acs/rpm/rpm/ name="myAcs" remote=$REMOTE_HREF
 
 Alternate Content Source Paths
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -36,8 +36,8 @@ by paths and all of them will be considered as a ACS.
 
 .. code-block:: bash
 
-    pulp rpm remote create --name rpm_acs_remote --policy on_demand --url http://fixtures.pulpproject.org/
-    pulp rpm acs create --name rpm_acs --remote rpm_acs_remote --path "rpm-unsigned/" --path "rpm-distribution-tree/"
+    http POST $BASE_ADDR/pulp/api/v3/remotes/rpm/rpm/ name="myRemoteACS" policy="on_demand" url="http://fixtures.pulpproject.org/"
+    http POST $BASE_ADDR/pulp/api/v3/acs/file/file/ name="myAcs" remote=$REMOTE_HREF paths:='["rpm-unsigned/", "rpm-distribution-tree/"]'
 
 Refresh Alternate Content Source
 --------------------------------
@@ -48,7 +48,7 @@ new content if found.
 
 .. code-block:: bash
 
-    pulp rpm acs refresh --name rpm_acs
+    http POST $BASE_ADDR/pulp/api/v3/acs/rpm/rpm/<ACS-UUID>/refresh/
 
 Alternate Content Source has a global scope so if any content is found in ACS it
 will be used in all future syncs.

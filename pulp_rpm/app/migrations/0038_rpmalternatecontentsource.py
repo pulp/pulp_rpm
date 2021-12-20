@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ("core", "0076_remove_reserved_resource"),
-        ("rpm", "0038_fix_sync_optimization"),
+        ("rpm", "0037_update_json_field"),
     ]
 
     operations = [
