@@ -823,6 +823,7 @@ class RpmFirstStage(Stage):
                 )
                 d_artifacts.append(da)
 
+            self.treeinfo["distribution_tree"]["digest"] = self.treeinfo["hash"]
             distribution_tree = DistributionTree(**self.treeinfo["distribution_tree"])
             dc = DeclarativeContent(content=distribution_tree, d_artifacts=d_artifacts)
             dc.extra_data = self.treeinfo
