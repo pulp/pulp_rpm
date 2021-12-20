@@ -62,6 +62,8 @@ class DistributionTree(Content):
             Disc number
         totaldiscs (Integer):
             Number of discs in media set
+        digest (Text):
+            sha256 digest of the [.]treeinfo file
 
     """
 
@@ -89,6 +91,8 @@ class DistributionTree(Content):
     # media
     discnum = models.IntegerField(null=True)
     totaldiscs = models.IntegerField(null=True)
+
+    digest = models.CharField(max_length=64, null=False)
 
     def repositories(self):
         """
@@ -130,14 +134,7 @@ class DistributionTree(Content):
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-        unique_together = (
-            "header_version",
-            "release_name",
-            "release_short",
-            "release_version",
-            "arch",
-            "build_timestamp",
-        )
+        unique_together = ("digest",)
 
 
 class Checksum(BaseModel):
