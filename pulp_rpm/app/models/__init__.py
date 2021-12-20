@@ -10,6 +10,3 @@ from .distribution import Addon, Checksum, DistributionTree, Image, Variant  # n
 from .modulemd import Modulemd, ModulemdDefaults  # noqa
 from .package import Package  # noqa
 from .repository import RpmDistribution, RpmPublication, RpmRemote, UlnRemote, RpmRepository  # noqa
-
-# at the end to avoid circular import as ACS needs import RpmRemote
-from .acs import RpmAlternateContentSource  # noqa

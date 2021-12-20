@@ -439,9 +439,6 @@ KICKSTART_CONTENT_PATH = urljoin(BASE_CONTENT_PATH, "rpm/distribution_trees/")
 """The location of RPM Distribution Trees on the content endpoint."""
 
 RPM_KICKSTART_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-distribution-tree/")
-RPM_KICKSTART_ONLY_META_FIXTURE_URL = urljoin(
-    PULP_FIXTURES_BASE_URL, "rpm-distribution-tree-metadata-only/"
-)
 RPM_DISTRIBUTION_TREE_CHANGED_ADDON_URL = urljoin(
     PULP_FIXTURES_BASE_URL, "rpm-distribution-tree-changed-addon/"
 )
@@ -605,8 +602,6 @@ RPM_CUSTOM_REPO_METADATA_CHANGED_FIXTURE_URL = urljoin(
 RPM_MD5_REPO_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-with-md5/")
 
 RPM_DIFF_NAME_SAME_CONTENT_URL = urljoin(PULP_FIXTURES_BASE_URL, "diff-name-same-content/")
-
-RPM_ONLY_METADATA_REPO_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-unsigned-meta-only")
 
 AMAZON_MIRROR = "http://amazonlinux.us-east-1.amazonaws.com/2/core/latest/x86_64/mirror.list"
 CENTOS6_URL = "http://mirror.centos.org/centos-6/6.10/os/x86_64/"
