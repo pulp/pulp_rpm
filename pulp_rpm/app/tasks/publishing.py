@@ -92,8 +92,12 @@ class PublicationData:
             path = content_artifact.relative_path.split("/")[-1]
             if repo_metadata_file.checksum in path:
                 # filenames can be checksum-xxxx.yyy - but can also be checksum-mmm-nnn-ooo.yyy
+                # Some old repos might have filename of checksum only so we need to take care
+                # of that too
                 # split off the checksum, keep the rest
-                path = "-".join(path.split("-")[1:])
+                filename = path.split("-")[1:]
+                if filename:
+                    path = "-".join(filename)
             if folder:
                 path = os.path.join(folder, path)
             with open(path, "wb") as new_file:
