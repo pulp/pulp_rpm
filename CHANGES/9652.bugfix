@@ -1,0 +1,2 @@
+Fix HTTP-proxy support for ULN-remotes
+(backported from #9647)
