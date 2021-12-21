@@ -1,9 +1,8 @@
-import aiohttp_xmlrpc
 import asyncio
 import asynctest
 import os
 
-from pulp_rpm.app.downloaders import UlnDownloader, UlnCredentialsError
+from pulp_rpm.app.downloaders import UlnDownloader, UlnCredentialsError, AllowProxyServerProxy
 
 
 class TestUlnDownloader(asynctest.TestCase):
@@ -85,7 +84,7 @@ class TestUlnDownloader(asynctest.TestCase):
         f.set_result(None)
         return f
 
-    @asynctest.patch.object(aiohttp_xmlrpc.client.ServerProxy, "__getitem__")
+    @asynctest.patch.object(AllowProxyServerProxy, "__getitem__")
     @asynctest.patch("aiohttp.ClientSession")
     def test_valid_auth(self, mock_session, mock_getitem):
         """
@@ -121,11 +120,12 @@ class TestUlnDownloader(asynctest.TestCase):
         mock_session.get.assert_called_with(
             repomd_url,
             proxy=self.downloader.proxy,
+            proxy_auth=self.downloader.proxy_auth,
             auth=self.downloader.auth,
             headers=self.downloader.headers,
         )
 
-        @asynctest.patch.object(aiohttp_xmlrpc.client.ServerProxy, "__getitem__")
+        @asynctest.patch.object(AllowProxyServerProxy, "__getitem__")
         @asynctest.patch("aiohttp.ClientSession")
         def test_invalid_auth(self, mock_session, mock_getitem):
             """
