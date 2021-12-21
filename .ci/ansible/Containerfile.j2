@@ -1,5 +1,7 @@
 FROM {{ ci_base | default("ghcr.io/pulp/pulp-ci-centos:" + pulp_container_tag) }}
 
+RUN yum install -y rustc cargo patchelf
+
 # Add source directories to container
 {% for item in plugins %}
 {% if item.source.startswith("./") %}

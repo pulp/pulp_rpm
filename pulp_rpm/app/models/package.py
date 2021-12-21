@@ -266,7 +266,7 @@ class Package(Content):
         readonly = ["evr"]
 
     @classmethod
-    def createrepo_to_dict(cls, package):
+    def rpmrepo_to_dict(cls, package):
         """
         Convert createrepo_c package object to dict for instantiating Package object.
 
@@ -278,6 +278,69 @@ class Package(Content):
 
         """
         changelogs = package.changelogs
+
+        # make sure the changelogs are sorted by date
+        changelogs.sort(key=lambda t: t[1])
+
+        if settings.KEEP_CHANGELOG_LIMIT is not None:
+            # always keep at least one changelog, even if the limit is set to 0
+            changelog_limit = settings.KEEP_CHANGELOG_LIMIT or 1
+            # changelogs are listed in chronological order, grab the last N changelogs from the list
+            changelogs = changelogs[-changelog_limit:]
+
+        return {
+            PULP_PACKAGE_ATTRS.ARCH: package.arch,
+            PULP_PACKAGE_ATTRS.CHANGELOGS: changelogs,
+            PULP_PACKAGE_ATTRS.CHECKSUM_TYPE: getattr(
+                CHECKSUM_TYPES, package.checksum_type.upper()
+            ),
+            PULP_PACKAGE_ATTRS.CONFLICTS: package.conflicts,
+            PULP_PACKAGE_ATTRS.DESCRIPTION: package.description,
+            PULP_PACKAGE_ATTRS.ENHANCES: package.enhances,
+            PULP_PACKAGE_ATTRS.EPOCH: package.epoch,
+            PULP_PACKAGE_ATTRS.FILES: package.files_split,
+            PULP_PACKAGE_ATTRS.LOCATION_BASE: "",  # TODO, delete this entirely
+            PULP_PACKAGE_ATTRS.LOCATION_HREF: package.location_href,
+            PULP_PACKAGE_ATTRS.NAME: package.name,
+            PULP_PACKAGE_ATTRS.OBSOLETES: package.obsoletes,
+            PULP_PACKAGE_ATTRS.PKGID: package.pkgid,
+            PULP_PACKAGE_ATTRS.PROVIDES: package.provides,
+            PULP_PACKAGE_ATTRS.RECOMMENDS: package.recommends,
+            PULP_PACKAGE_ATTRS.RELEASE: package.release,
+            PULP_PACKAGE_ATTRS.REQUIRES: package.requires,
+            PULP_PACKAGE_ATTRS.RPM_BUILDHOST: package.rpm_buildhost,
+            PULP_PACKAGE_ATTRS.RPM_GROUP: package.rpm_group,
+            PULP_PACKAGE_ATTRS.RPM_HEADER_END: package.rpm_header_range[1],
+            PULP_PACKAGE_ATTRS.RPM_HEADER_START: package.rpm_header_range[0],
+            PULP_PACKAGE_ATTRS.RPM_LICENSE: package.rpm_license,
+            PULP_PACKAGE_ATTRS.RPM_PACKAGER: package.packager,
+            PULP_PACKAGE_ATTRS.RPM_SOURCERPM: package.rpm_sourcerpm,
+            PULP_PACKAGE_ATTRS.RPM_VENDOR: package.rpm_vendor,
+            PULP_PACKAGE_ATTRS.SIZE_ARCHIVE: package.size_archive,
+            PULP_PACKAGE_ATTRS.SIZE_INSTALLED: package.size_installed,
+            PULP_PACKAGE_ATTRS.SIZE_PACKAGE: package.size_package,
+            PULP_PACKAGE_ATTRS.SUGGESTS: package.suggests,
+            PULP_PACKAGE_ATTRS.SUMMARY: package.summary,
+            PULP_PACKAGE_ATTRS.SUPPLEMENTS: package.supplements,
+            PULP_PACKAGE_ATTRS.TIME_BUILD: package.time_build,
+            PULP_PACKAGE_ATTRS.TIME_FILE: package.time_file,
+            PULP_PACKAGE_ATTRS.URL: package.url,
+            PULP_PACKAGE_ATTRS.VERSION: package.version,
+        }
+
+    @classmethod
+    def createrepo_to_dict(cls, package):
+        """
+        Convert createrepo_c package object to dict for instantiating Package object.
+
+        Args:
+            package(createrepo_c.Package): a RPM/SRPM package to convert
+
+        Returns:
+            dict: all data for RPM/SRPM content creation
+
+        """
+        changelogs = getattr(package, CR_PACKAGE_ATTRS.CHANGELOGS, [])
 
         # make sure the changelogs are sorted by date
         changelogs.sort(key=lambda t: t[1])

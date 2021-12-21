@@ -20,6 +20,7 @@ from aiohttp.client_exceptions import ClientResponseError
 from aiohttp.web_exceptions import HTTPNotFound
 
 import createrepo_c as cr
+import rpmrepo_metadata
 import libcomps
 
 from pulpcore.plugin.models import (
@@ -88,7 +89,6 @@ from pulp_rpm.app.kickstart.treeinfo import PulpTreeInfo, TreeinfoData
 
 from pulp_rpm.app.comps import strdict_to_dict, dict_digest
 from pulp_rpm.app.shared_utils import is_previous_version, get_sha256, urlpath_sanitize
-from pulp_rpm.app.metadata_parsing import MetadataParser
 
 import gi
 
@@ -1107,14 +1107,14 @@ class RpmFirstStage(Stage):
 
     async def parse_packages(self, primary_xml, filelists_xml, other_xml):
         """Parse packages from the remote repository."""
-        parser = MetadataParser.from_metadata_files(
+        package_parser = rpmrepo_metadata.PackageParser(
             primary_xml.path, filelists_xml.path, other_xml.path
         )
 
         progress_data = {
             "message": "Parsed Packages",
             "code": "sync.parsing.packages",
-            "total": parser.count_packages(),
+            "total": package_parser.total_packages,
         }
 
         async with ProgressReport(**progress_data) as packages_pb:
@@ -1140,10 +1140,8 @@ class RpmFirstStage(Stage):
                 "Please read https://github.com/pulp/pulp_rpm/issues/2402 for more details."
             )
 
-            pkg_iterator = parser.as_iterator()
-
-            for pkg in pkg_iterator:
-                if not pkgid_warning_triggered and pkg.pkgId in checksums:
+            for pkg in package_parser:
+                if not pkgid_warning_triggered and pkg.pkgid in checksums:
                     pkgid_warning_triggered = True
                     if self.mirror_metadata:
                         raise Exception(ERR_MSG.format("PKGIDs"))
@@ -1168,7 +1166,7 @@ class RpmFirstStage(Stage):
                     if uses_base_url or illegal_relative_path:
                         raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
 
-                package = Package(**Package.createrepo_to_dict(pkg))
+                package = Package(**Package.rpmrepo_to_dict(pkg))
                 base_url = pkg.location_base or self.remote_url
                 url = urlpath_sanitize(base_url, package.location_href)
                 del pkg  # delete it as soon as we're done with it
