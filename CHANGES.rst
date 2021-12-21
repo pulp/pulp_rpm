@@ -153,6 +153,37 @@ Misc
 ----
 
 
+3.14.9 (2021-12-21)
+===================
+
+Bugfixes
+--------
+
+- Added a `sync_policy` parameter to the `/sync/` endpoint which will replace the `mirror` parameter and provides options for how the sync should be carried out. The `mirror` parameter is deprecated but will retain its current function.
+  (backported from #9316)
+  `#9620 <https://pulp.plan.io/issues/9620>`_
+- Fixed sync of repositories using 'sha' as an alias for the sha1 checksum-type.
+  (backported from #9580)
+  `#9625 <https://pulp.plan.io/issues/9625>`_
+- Ensured that RPM plugin uses only a worker working directory and not /tmp which could have caused the out-of-disc-space issue since it's not expected that Pulp uses /tmp.
+  (backported from #9551)
+  `#9630 <https://pulp.plan.io/issues/9630>`_
+- Fixed `FileNotFoundError` during sync and Pulp 2 to Pulp 3 migration when a custom repo metadata has its checksum as a filename.
+  (backported from #9636)
+  `#9649 <https://pulp.plan.io/issues/9649>`_
+- Fix HTTP-proxy support for ULN-remotes
+  (backported from #9647)
+  `#9652 <https://pulp.plan.io/issues/9652>`_
+
+Misc
+----
+
+- `#9626 <https://pulp.plan.io/issues/9626>`_
+
+
+----
+
+
 3.14.8 (2021-10-27)
 ===================
 
