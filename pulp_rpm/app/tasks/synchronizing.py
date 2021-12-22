@@ -2,15 +2,18 @@ import asyncio
 import collections
 import logging
 import os
+import random
 import re
 
 from collections import defaultdict
 from gettext import gettext as _  # noqa:F401
 
+from django.db.models import Q
 from django.db import transaction
 
 from aiohttp.client_exceptions import ClientResponseError
 from aiohttp.web_exceptions import HTTPNotFound
+
 import createrepo_c as cr
 import libcomps
 
@@ -29,7 +32,6 @@ from pulpcore.plugin.stages import (
     RemoteArtifactSaver,
     Stage,
     QueryExistingArtifacts,
-    QueryExistingContents,
 )
 from pulpcore.plugin.tasking import WorkingDirectory
 
@@ -296,7 +298,7 @@ class RpmDeclarativeVersion(DeclarativeVersion):
             QueryExistingArtifacts(),
             ArtifactDownloader(),
             ArtifactSaver(),
-            QueryExistingContents(),
+            RpmQueryExistingContents(),
             RpmContentSaver(),
             RpmInterrelateContent(),
             RemoteArtifactSaver(fix_mismatched_remote_artifacts=True),
@@ -1093,4 +1095,102 @@ class RpmContentSaver(ContentSaver):
             UpdateCollectionPackage.objects.bulk_create(update_collection_packages_to_save)
 
         if update_references_to_save:
-            UpdateReference.objects.bulk_create(update_references_to_save)
+            UpdateReference.objects.bulk_create(update_references_to_save, ignore_conflicts=True)
+
+
+class RpmQueryExistingContents(Stage):
+    """
+    A Stages API stage that saves :attr:`DeclarativeContent.content` objects.
+
+    It saves its related :class:`~pulpcore.plugin.models.ContentArtifact` objects too.
+
+    This stage expects :class:`~pulpcore.plugin.stages.DeclarativeContent` units from `self._in_q`
+    and inspects their associated :class:`~pulpcore.plugin.stages.DeclarativeArtifact` objects. Each
+    :class:`~pulpcore.plugin.stages.DeclarativeArtifact` object stores one
+    :class:`~pulpcore.plugin.models.Artifact`.
+
+    This stage inspects any "unsaved" Content unit objects and searches for existing saved Content
+    units inside Pulp with the same unit key. Any existing Content objects found, replace their
+    "unsaved" counterpart in the :class:`~pulpcore.plugin.stages.DeclarativeContent` object.
+
+    Each :class:`~pulpcore.plugin.stages.DeclarativeContent` is sent to `self._out_q` after it has
+    been handled.
+
+    This stage drains all available items from `self._in_q` and batches everything into one large
+    call to the db for efficiency.
+
+    NOTE: It's an exact copy of the pulpcore stage, jsut with a special check for distribution tree.
+    Needed to fix https://pulp.plan.io/issues/9583 for releases older than pulp_rpm 3.18.
+    """
+
+    async def run(self):
+        """
+        The coroutine for this stage.
+
+        Returns:
+            The coroutine for this stage.
+        """
+
+        def _is_same_disttree(existing_disttree, incoming_treeinfo):
+            incoming_addons = {v["addon_id"] for v in incoming_treeinfo["addons"].values()}
+            incoming_variants = {v["variant_id"] for v in incoming_treeinfo["variants"].values()}
+            existing_addons = {a.addon_id for a in existing_disttree.addons.all()}
+            existing_variants = {v.variant_id for v in existing_disttree.variants.all()}
+            same_addons = incoming_addons == existing_addons
+            same_variants = incoming_variants == existing_variants
+            return same_addons and same_variants
+
+        async for batch in self.batches():
+            content_q_by_type = defaultdict(lambda: Q(pk__in=[]))
+            d_content_by_nat_key = defaultdict(list)
+            for d_content in batch:
+                if d_content.content._state.adding:
+                    model_type = type(d_content.content)
+                    unit_q = d_content.content.q()
+                    content_q_by_type[model_type] = content_q_by_type[model_type] | unit_q
+                    if model_type == DistributionTree:
+                        if d_content.content.natural_key() in d_content_by_nat_key:
+                            processed_timestamp = d_content.content.build_timestamp
+                            new_build_timestamp = float(random.randint(0, processed_timestamp))
+                            d_content.content.build_timestamp = new_build_timestamp
+                    d_content_by_nat_key[d_content.content.natural_key()].append(d_content)
+
+            for model_type, content_q in content_q_by_type.items():
+                for result in model_type.objects.filter(content_q).iterator():
+                    for d_content in d_content_by_nat_key[result.natural_key()]:
+                        # Check variants and addons to be sure that it's the same dist tree.
+                        if model_type == DistributionTree:
+                            # A hack for releases older than pulp_rpm 3.18 to distinguish between
+                            # distribution trees which have the same key metadata and have been
+                            # built at the same time.
+                            incoming_treeinfo = d_content.extra_data
+                            ignore_timestamp_q = Q(
+                                header_version=result.header_version,
+                                release_name=result.release_name,
+                                release_short=result.release_short,
+                                release_version=result.release_version,
+                                arch=result.arch,
+                            )
+                            disttrees = DistributionTree.objects.filter(
+                                ignore_timestamp_q
+                            ).order_by("-build_timestamp")
+                            for disttree in disttrees.iterator():
+                                if _is_same_disttree(disttree, incoming_treeinfo):
+                                    # It's indeed the same distribution tree as the existing one.
+                                    d_content.content = disttree
+                                    break
+                            else:
+                                # No same dist tree found.
+                                # Tweak the timestamp, so it's recognized as a separate dist tree.
+                                build_timestamp = (
+                                    incoming_treeinfo["distribution_tree"]["build_timestamp"] or 0
+                                )
+                                new_build_timestamp = float(random.randint(0, build_timestamp))
+                                d_content.content.build_timestamp = new_build_timestamp
+                        else:
+                            # It's not a dist tree, no special handling needed, just use the
+                            # content unit form the database.
+                            d_content.content = result
+
+            for d_content in batch:
+                await self.put(d_content)

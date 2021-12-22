@@ -128,13 +128,13 @@ class PulpTreeInfo(TreeInfo):
             if "general" not in parser._sections:
                 parser._sections["general"] = general
 
-            if "." in str(general.get("timestamp")):
+            if general.get("timestamp"):
                 build_timestamp = float(general["timestamp"])
 
         tree = self.original_parser._sections.get("tree", {})
 
-        if "." in str(tree.get("build_timestamp")):
-            build_timestamp = float(tree.get["build_timestamp"])
+        if tree.get("build_timestamp"):
+            build_timestamp = float(tree.get("build_timestamp"))
 
         if build_timestamp and parser._sections.get("general", {}).get("timestamp"):
             parser._sections["general"]["timestamp"] = build_timestamp
