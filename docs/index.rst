@@ -47,8 +47,8 @@ workflows<workflows/index>`.
 Community contributions are encouraged.
 
 * Send us pull requests on `our GitHub repository <https://github.com/pulp/pulp_rpm>`_.
-* View and file issues in the `Redmine Tracker
-  <https://pulp.plan.io/projects/pulp_rpm/issues>`_.
+* View and file issues in the `Github Tracker
+  <https://github.com/pulp/pulp_rpm/issues>`_.
 
 
 Table of Contents
