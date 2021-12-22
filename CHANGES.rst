@@ -13,6 +13,39 @@ Changelog
 
 .. towncrier release notes start
 
+3.16.2 (2021-12-22)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed sync of repositories using 'sha' as an alias for the sha1 checksum-type.
+  (backported from #9580)
+  `#9624 <https://pulp.plan.io/issues/9624>`_
+- In case that only a subtree is synced, it can happen that the PRIMARY_REPO key does not exists in repo_sync_results and the sync failed with accessing a not existing key at the end.
+  (backported from #9565)
+  `#9628 <https://pulp.plan.io/issues/9628>`_
+- Ensured that RPM plugin uses only a worker working directory and not /tmp which could have caused the out-of-disc-space issue since it's not expected that Pulp uses /tmp.
+  (backported from #9551)
+  `#9629 <https://pulp.plan.io/issues/9629>`_
+- Fixed `FileNotFoundError` during sync and Pulp 2 to Pulp 3 migration when a custom repo metadata has its checksum as a filename.
+  (backported from #9636)
+  `#9650 <https://pulp.plan.io/issues/9650>`_
+- Fix HTTP-proxy support for ULN-remotes
+  (backported from #9647)
+  `#9653 <https://pulp.plan.io/issues/9653>`_
+
+
+Misc
+----
+
+- `#9626 <https://pulp.plan.io/issues/9626>`_
+
+
+----
+
+
 3.16.1 (2021-10-27)
 ===================
 

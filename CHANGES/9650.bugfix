@@ -1,2 +1,0 @@
-Fixed `FileNotFoundError` during sync and Pulp 2 to Pulp 3 migration when a custom repo metadata has its checksum as a filename.
-(backported from #9636)
