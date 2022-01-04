@@ -25,7 +25,7 @@ disabled_redis_runners: []
 docker_fixtures: true
 docs_test: true
 flake8: true
-issue_tracker: redmine
+issue_tracker: github
 noissue_marker: '[noissue]'
 plugin_app_label: rpm
 plugin_camel: PulpRpm
@@ -59,7 +59,7 @@ pulpprojectdotorg_key_id: aa499d7938ed
 pydocstyle: true
 pypi_username: pulp
 python_version: '3.6'
-redmine_project: pulp_rpm
+redmine_project: null
 release_email: pulp-infra@redhat.com
 release_user: pulpbot
 single_commit_check: true
@@ -75,6 +75,6 @@ test_performance:
 - pulp_to_pulp
 test_released_plugin_with_next_pulpcore_release: false
 test_s3: true
-update_redmine: true
+update_redmine: false
 upgrade_range: []
 
