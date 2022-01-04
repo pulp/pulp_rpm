@@ -31,6 +31,7 @@ def _prepare_package(artifact, filename):
     package = Package.createrepo_to_dict(cr_pkginfo)
 
     package["location_href"] = filename
+    artifact_file.close()
     return package
 
 
