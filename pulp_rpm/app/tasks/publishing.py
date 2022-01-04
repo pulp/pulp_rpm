@@ -226,6 +226,7 @@ class PublicationData:
                 publication=self.publication,
                 file=File(open(treeinfo_file.name, "rb")),
             )
+        artifact_file.close()
         relations = ["addon", "variant"]
         for relation in relations:
             addons_or_variants = getattr(distribution_tree, f"{relation}s").all()
@@ -513,10 +514,14 @@ def create_repomd_xml(
     # Process modulemd and modulemd_defaults
     with open(mod_yml_path, "ab") as mod_yml:
         for modulemd in Modulemd.objects.filter(pk__in=content).iterator():
-            mod_yml.write(modulemd._artifacts.get().file.read())
+            a = modulemd._artifacts.get()
+            mod_yml.write(a.file.read())
+            a.file.close()
             has_modules = True
         for default in ModulemdDefaults.objects.filter(pk__in=content).iterator():
-            mod_yml.write(default._artifacts.get().file.read())
+            a = default._artifacts.get()
+            mod_yml.write(a.file.read())
+            a.file.close()
             has_modules = True
 
     # Process comps
