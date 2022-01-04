@@ -21,6 +21,7 @@ chmod 644 /home/runner/.ssh/known_hosts
 
 pip3 install -r doc_requirements.txt
 pip3 install "mistune<2.0.0"
+pip3 install packaging
 
 export PYTHONUNBUFFERED=1
 export DJANGO_SETTINGS_MODULE=pulpcore.app.settings
