@@ -211,7 +211,6 @@ jobs:
         with:
           name: ruby-client.tar
           path: ruby-client.tar
-
       - name: Upload built docs
         if: ${{ env.TEST == 'docs' }}
         uses: actions/upload-artifact@v2
@@ -319,8 +318,7 @@ jobs:
       - name: Publish client to rubygems
         run: bash .github/workflows/scripts/publish_client_gem.sh
 
-      - name: Update Redmine
-        run: bash .ci/scripts/update_redmine.sh
+      
 
       - name: Create release on GitHub
         run: bash .github/workflows/scripts/create_release_from_tag.sh ${{ github.event.inputs.release }}
