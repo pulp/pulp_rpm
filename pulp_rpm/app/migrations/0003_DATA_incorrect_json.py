@@ -32,7 +32,9 @@ def unflatten_json(apps, schema_editor):
         Modulemd = apps.get_model('rpm', 'Modulemd')
         for module in Modulemd.objects.all().only('artifacts', 'dependencies', '_artifacts'):
             modulemd_index = mmdlib.ModuleIndex.new()
-            modulemd_index.update_from_string(module._artifacts.first().file.read().decode(), True)
+            a = module._artifacts.first()
+            modulemd_index.update_from_string(a.file.read().decode(), True)
+            a.file.close()
             dependencies = get_modulemd_dependencies(modulemd_index)
             module.artifacts = json.loads(module.artifacts)
             module.dependencies = dependencies
