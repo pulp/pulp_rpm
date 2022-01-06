@@ -16,7 +16,6 @@ set -euv
 source .github/workflows/scripts/utils.sh
 
 if [[ "$TEST" = "docs" || "$TEST" = "publish" ]]; then
-  pip install "mistune<2.0.0"
   pip install -r ../pulpcore/doc_requirements.txt
   pip install -r doc_requirements.txt
 fi
