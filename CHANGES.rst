@@ -13,6 +13,23 @@ Changelog
 
 .. towncrier release notes start
 
+3.11.3 (2022-01-06)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed `FileNotFoundError` during sync and Pulp 2 to Pulp 3 migration when a custom repo metadata has its checksum as a filename.
+  (backported from #2321)
+  `#2310 <https://github.com/pulp/pulp_rpm/issues/2310>`_
+- Fixed distribution tree sync for repositories with partial .treeinfo (e.g. most of CentOS 8 repositories).
+  `#2326 <https://github.com/pulp/pulp_rpm/issues/2326>`_
+
+
+----
+
+
 3.11.2 (2021-08-24)
 ===================
 
