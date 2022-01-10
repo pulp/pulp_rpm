@@ -4,6 +4,8 @@ import solv
 
 from pulp_rpm.app import models
 
+from django.conf import settings
+
 
 logger = logging.getLogger(__name__)
 
@@ -779,28 +781,6 @@ class Solver:
         self._pool.createwhatprovides()
         flags = solv.Job.SOLVER_INSTALL | solv.Job.SOLVER_SOLVABLE
 
-        def run_solver_jobs(jobs):
-            """Execute the libsolv jobs, return results.
-
-            Take a list of jobs, get a solution, return the set of solvables that needed to
-            be installed.
-            """
-            solver = self._pool.Solver()
-            raw_problems = solver.solve(jobs)
-            # The solver is simply ignoring the problems encountered and proceeds associating
-            # any new solvables/units. This might be reported back to the user one day over
-            # the REST API. For now, log only "real" dependency issues (typically some variant
-            # of "can't find the package"
-            dependency_warnings = self._build_warnings(raw_problems)
-            if dependency_warnings:
-                logger.warning(
-                    "Encountered problems solving dependencies, "
-                    "copy may be incomplete: {}".format(", ".join(dependency_warnings))
-                )
-
-            transaction = solver.transaction()
-            return set(transaction.newsolvables())
-
         solvables_to_copy = set(solvables)
         result_solvables = set()
         install_jobs = []
@@ -830,12 +810,245 @@ class Solver:
                 unit_install_job = self._pool.Job(flags, solvable.id)
                 install_jobs.append(unit_install_job)
 
-        # Depsolve using the list of unit install jobs, add them to the results
-        solvables_copied = run_solver_jobs(install_jobs)
-        result_solvables.update(solvables_copied)
+        # Take a list of jobs, get a solution, return the set of solvables that needed to
+        # be installed.
+        solver = self._pool.Solver()
+        solver.set_flag(solv.Solver.SOLVER_FLAG_FOCUS_INSTALLED, 1)
+
+        raw_problems = solver.solve(install_jobs)
+        # The solver is simply ignoring the problems encountered and proceeds associating
+        # any new solvables/units. This might be reported back to the user one day over
+        # the REST API. For now, log only "real" dependency issues (typically some variant
+        # of "can't find the package"
+        dependency_warnings = self._build_warnings(raw_problems)
+        if dependency_warnings:
+            logger.warning(
+                "Encountered problems solving dependencies, "
+                "copy may be incomplete: {}".format(", ".join(dependency_warnings))
+            )
+
+        transaction = solver.transaction()
+        if settings.SOLVER_DEBUG_LOGS:
+            write_solver_debug_data(solver, raw_problems, self.mapping, full=False)
+        result_solvables.update(set(transaction.newsolvables()))
 
         solved_units = self.mapping.get_units_from_solvables(result_solvables)
         for k in unit_repo_map.keys():
             solved_units[k] |= passthrough[k]
 
         return solved_units
+
+
+# Descriptions copied from the libsolv documentation
+# https://github.com/openSUSE/libsolv/blob/master/doc/libsolv-bindings.txt
+def write_solver_debug_data(solver, problems, mapping, full=False):
+    """Dump the state of the solver including actions decided upon and problems encountered."""
+    from pulpcore.plugin.models import Task
+    from pathlib import Path
+
+    debugdata_dir = Path("/var/tmp/pulp") / str(Task.current().pulp_id)
+    debugdata_dir.mkdir(parents=True, exist_ok=True)
+    logger.info("Writing solver debug data to {}".format(debugdata_dir))
+
+    transaction = solver.transaction()
+    summary_path = debugdata_dir / "depsolving_summary.txt"
+
+    reason_desc_map = {
+        solv.Solver.SOLVER_REASON_UNRELATED: (
+            "SOLVER_REASON_UNRELATED",
+            "The package status did not change as it was not related to any job.",
+        ),
+        solv.Solver.SOLVER_REASON_UNIT_RULE: (
+            "SOLVER_REASON_UNIT_RULE",
+            "The package was installed/erased/kept because of a unit rule, "
+            "i.e. a rule where all literals but one were false.",
+        ),
+        solv.Solver.SOLVER_REASON_KEEP_INSTALLED: (
+            "SOLVER_REASON_KEEP_INSTALLED",
+            "The package was chosen when trying to keep as many packages installed as possible.",
+        ),
+        solv.Solver.SOLVER_REASON_RESOLVE_JOB: (
+            "SOLVER_REASON_RESOLVE_JOB",
+            "The decision happened to fulfill a job rule.",
+        ),
+        solv.Solver.SOLVER_REASON_UPDATE_INSTALLED: (
+            "SOLVER_REASON_UPDATE_INSTALLED",
+            "The decision happened to fulfill a package update request.",
+        ),
+        solv.Solver.SOLVER_REASON_RESOLVE: (
+            "SOLVER_REASON_RESOLVE",
+            "The package was installed to fulfill package dependencies.",
+        ),
+        solv.Solver.SOLVER_REASON_WEAKDEP: (
+            "SOLVER_REASON_WEAKDEP",
+            "The package was installed because of a weak dependency (Recommends or Supplements).",
+        ),
+        solv.Solver.SOLVER_REASON_RECOMMENDED: (
+            "SOLVER_REASON_RECOMMENDED",
+            "The package was installed because of a weak dependency (Recommends or Supplements).",
+        ),
+        solv.Solver.SOLVER_REASON_SUPPLEMENTED: (
+            "SOLVER_REASON_SUPPLEMENTED",
+            "The package was installed because of a weak dependency (Recommends or Supplements).",
+        ),
+    }
+
+    rule_desc_map = {
+        solv.Solver.SOLVER_RULE_UNKNOWN: (
+            "SOLVER_RULE_UNKNOWN",
+            "A rule of an unknown class. You should never encounter those.",
+        ),
+        solv.Solver.SOLVER_RULE_PKG: ("SOLVER_RULE_PKG", "A package dependency rule."),
+        solv.Solver.SOLVER_RULE_UPDATE: (
+            "SOLVER_RULE_UPDATE",
+            "A rule to implement the update policy of installed packages. Every installed "
+            "package has an update rule that consists of the packages that may replace the "
+            "installed package.",
+        ),
+        solv.Solver.SOLVER_RULE_FEATURE: (
+            "SOLVER_RULE_FEATURE",
+            "Feature rules are fallback rules used when an update rule is disabled. They "
+            "include all packages that may replace the installed package ignoring the update "
+            "policy, i.e. they contain downgrades, arch changes and so on. Without them, the "
+            "solver would simply erase installed packages if their update rule gets disabled.",
+        ),
+        solv.Solver.SOLVER_RULE_JOB: (
+            "SOLVER_RULE_JOB",
+            "Job rules implement the job given to the solver.",
+        ),
+        solv.Solver.SOLVER_RULE_DISTUPGRADE: (
+            "SOLVER_RULE_DISTUPGRADE",
+            "These are simple negative assertions that make sure that only packages are kept "
+            "that are also available in one of the repositories.",
+        ),
+        solv.Solver.SOLVER_RULE_INFARCH: (
+            "SOLVER_RULE_INFARCH",
+            "Infarch rules are also negative assertions, they disallow the installation of "
+            "packages when there are packages of the same name but with a better architecture.",
+        ),
+        solv.Solver.SOLVER_RULE_CHOICE: (
+            "SOLVER_RULE_CHOICE",
+            "Choice rules are used to make sure that the solver prefers updating to installing "
+            "different packages when some dependency is provided by multiple packages with "
+            "different names. The solver may always break choice rules, so you will not see them "
+            "when a problem is found.",
+        ),
+        solv.Solver.SOLVER_RULE_LEARNT: (
+            "SOLVER_RULE_LEARNT",
+            "These rules are generated by the solver to keep it from running into the same "
+            "problem multiple times when it has to backtrack. They are the main reason why "
+            "a sat solver is faster than other dependency solver implementations.",
+        ),
+        # Special dependency rule types:
+        solv.Solver.SOLVER_RULE_PKG_NOT_INSTALLABLE: (
+            "SOLVER_RULE_PKG_NOT_INSTALLABLE",
+            "This rule was added to prevent the installation of a package of an architecture "
+            "that does not work on the system.",
+        ),
+        solv.Solver.SOLVER_RULE_PKG_NOTHING_PROVIDES_DEP: (
+            "SOLVER_RULE_PKG_NOTHING_PROVIDES_DEP",
+            "The package contains a required dependency which was not provided by any package.",
+        ),
+        solv.Solver.SOLVER_RULE_PKG_REQUIRES: (
+            "SOLVER_RULE_PKG_REQUIRES",
+            "Similar to SOLVER_RULE_PKG_NOTHING_PROVIDES_DEP, but in this case some packages "
+            "provided the dependency but none of them could be installed due to other "
+            "dependency issues.",
+        ),
+        solv.Solver.SOLVER_RULE_PKG_SELF_CONFLICT: (
+            "SOLVER_RULE_PKG_SELF_CONFLICT",
+            "The package conflicts with itself. This is not allowed by older rpm versions.",
+        ),
+        solv.Solver.SOLVER_RULE_PKG_CONFLICTS: (
+            "SOLVER_RULE_PKG_CONFLICTS",
+            "To fulfill the dependencies two packages need to be installed, but one of the "
+            "packages contains a conflict with the other one.",
+        ),
+        solv.Solver.SOLVER_RULE_PKG_SAME_NAME: (
+            "SOLVER_RULE_PKG_SAME_NAME",
+            "The dependencies can only be fulfilled by multiple versions of a package, but "
+            "installing multiple versions of the same package is not allowed.",
+        ),
+        solv.Solver.SOLVER_RULE_PKG_OBSOLETES: (
+            "SOLVER_RULE_PKG_OBSOLETES",
+            "To fulfill the dependencies two packages need to be installed, but one of the "
+            "packages obsoletes the other one.",
+        ),
+        solv.Solver.SOLVER_RULE_PKG_IMPLICIT_OBSOLETES: (
+            "SOLVER_RULE_PKG_IMPLICIT_OBSOLETES",
+            "To fulfill the dependencies two packages need to be installed, but one of the "
+            "packages has provides a dependency that is obsoleted by the other one. See the "
+            "POOL_FLAG_IMPLICITOBSOLETEUSESPROVIDES flag.",
+        ),
+        solv.Solver.SOLVER_RULE_PKG_INSTALLED_OBSOLETES: (
+            "SOLVER_RULE_PKG_INSTALLED_OBSOLETES",
+            "To fulfill the dependencies a package needs to be installed that is obsoleted "
+            "by an installed package. See the POOL_FLAG_NOINSTALLEDOBSOLETES flag.",
+        ),
+        solv.Solver.SOLVER_RULE_JOB_NOTHING_PROVIDES_DEP: (
+            "SOLVER_RULE_JOB_NOTHING_PROVIDES_DEP",
+            "The user asked for installation of a package providing a specific dependency, but "
+            "no available package provides it.",
+        ),
+        solv.Solver.SOLVER_RULE_JOB_UNKNOWN_PACKAGE: (
+            "SOLVER_RULE_JOB_UNKNOWN_PACKAGE",
+            "The user asked for installation of a package with a specific name, but no available "
+            "package has that name.",
+        ),
+        solv.Solver.SOLVER_RULE_JOB_PROVIDED_BY_SYSTEM: (
+            "SOLVER_RULE_JOB_PROVIDED_BY_SYSTEM",
+            "The user asked for the erasure of a dependency that is provided by the system "
+            "(i.e. for special hardware or language dependencies), this cannot be done with "
+            "a job.",
+        ),
+        solv.Solver.SOLVER_RULE_JOB_UNSUPPORTED: (
+            "SOLVER_RULE_JOB_UNSUPPORTED",
+            "The user asked for something that is not yet implemented, e.g. the installation "
+            "of all packages at once.",
+        ),
+    }
+
+    with summary_path.open("wt") as summary:
+
+        print("Problems Encountered:", file=summary)
+        print("=====================", file=summary)
+        for problem in problems:
+            print(str(problem), file=summary)
+        print(file=summary)
+
+        print("Packages transferred:", file=summary)
+        print("=====================", file=summary)
+        print(file=summary)
+
+        for solvable in transaction.newsolvables():
+            (reason, rule) = solver.describe_decision(solvable)
+
+            print(
+                "{name}-{evr}.{arch}".format(
+                    name=solvable.name, evr=solvable.evr, arch=solvable.arch
+                ),
+                file=summary,
+            )
+
+            (reason_name, reason_description) = reason_desc_map[reason]
+            (unit_id, from_repo) = mapping.get_unit_id(solvable)
+            print(
+                "    Pulp Content unit '{}' from repo '{}'".format(unit_id, from_repo), file=summary
+            )
+            print("    Reason: {} - {}".format(reason_name, reason_description), file=summary)
+            print("    Rules:", file=summary)
+            for info in rule.allinfos():
+                (rule_name, rule_description) = rule_desc_map[info.type]
+                print("        {} - {}".format(rule_name, rule_description), file=summary)
+                if info.solvable:
+                    pkg = str(info.solvable)
+                    dep = str(info.dep)
+                    print(
+                        "            Because package '{}' requires '{}'".format(pkg, dep),
+                        file=summary,
+                    )
+
+            print(file=summary)
+
+    if full:
+        solver.write_testcase(str(debugdata_dir))
