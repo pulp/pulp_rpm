@@ -114,6 +114,10 @@ def copy_content(config, dependency_solving):
     Copy content from one repo to another.
 
     Args:
+        config: Details of how the copy should be performed.
+        dependency_solving: Use dependency solving to find additional content units to copy.
+
+    Config format details:
         source_repo_version_pk: repository version primary key to copy units from
         dest_repo_pk: repository primary key to copy units into
         criteria: a dict that maps type to a list of criteria to filter content by. Note that this
