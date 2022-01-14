@@ -4,6 +4,7 @@ import shutil
 
 from hashlib import sha256
 
+from django.conf import settings
 from django.core.files.storage import default_storage as storage
 
 from pulp_rpm.app.models import Package
@@ -26,7 +27,9 @@ def _prepare_package(artifact, filename):
     with tempfile.NamedTemporaryFile("wb", dir=".", suffix=filename) as temp_file:
         shutil.copyfileobj(artifact_file, temp_file)
         temp_file.flush()
-        cr_pkginfo = createrepo_c.package_from_rpm(temp_file.name)
+        cr_pkginfo = createrepo_c.package_from_rpm(
+            temp_file.name, changelog_limit=settings.KEEP_CHANGELOG_LIMIT
+        )
 
     package = Package.createrepo_to_dict(cr_pkginfo)
 

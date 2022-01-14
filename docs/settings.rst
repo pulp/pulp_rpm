@@ -5,6 +5,26 @@ Settings
 
 pulp_rpm adds configuration options to the those offered by pulpcore.
 
+KEEP_CHANGELOG_LIMIT
+^^^^^^^^^^^^^^^^^^^^
+
+   This setting controls how many changelog entries (from the most recent ones) should
+   be kept for each RPM package synced or uploaded into Pulp. The limit is enacted to
+   avoid metadata bloat, as it can _significantly_ reduce the amount of space needed
+   to store metadata, the amount of bandwidth needed to download it, and the amount of
+   time needed to create it.
+
+   The changelog metadata is used for the `dnf changelog` command, which can display the
+   changelogs of a package even if it is not installed on the system. This setting
+   therefore controls the maximum number of changelogs that can be viewed on clients
+   using Pulp-hosted repositories using this command. Note, however, that for installed
+   packages the `rpm -qa --changelog` command can show all available changelogs for that
+   package without limitation.
+
+   10 was selected as the default because it is a good compromise between utility and
+   efficiency - and because it is the value used by Fedora, CentOS, OpenSUSE, and others.
+
+
 ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

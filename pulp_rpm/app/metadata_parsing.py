@@ -5,6 +5,7 @@ import logging
 import lzma
 import os
 import re
+from django.conf import settings
 
 import createrepo_c as cr
 from xml.etree.cElementTree import iterparse
@@ -118,6 +119,10 @@ def process_other_package_element(element):
     pkgid = element.attrib["pkgid"]
 
     changelogs = []
+    # [-0:] returns all elements, so we need to have a separate path
+    if settings.KEEP_CHANGELOG_LIMIT == 0:
+        return pkgid, changelogs
+
     for subelement in element:
         if subelement.tag == "changelog" or re.sub(NS_STRIP_RE, "", subelement.tag) == "changelog":
             author = subelement.attrib["author"]
@@ -125,6 +130,10 @@ def process_other_package_element(element):
             text = subelement.text
             changelogs.append((author, date, text))
 
+    # changelogs are listed in chronological order, grab the last N changelogs from the list, unless
+    # the limit is None
+    if settings.KEEP_CHANGELOG_LIMIT:
+        changelogs = changelogs[-settings.KEEP_CHANGELOG_LIMIT :]
     return pkgid, changelogs
 
 
