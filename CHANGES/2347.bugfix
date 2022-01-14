@@ -1,0 +1,2 @@
+Fixed file descriptor leak during repo metadata publish.
+(backported from #2331)
