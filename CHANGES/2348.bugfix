@@ -1,0 +1,2 @@
+Added a per-package changelog entry limit with a default value of 10, which is controlled by a setting named `KEEP_CHANGELOG_LIMIT`. This only impacts the output of `dnf changelog $package` - it is always possible to get the full list of changelogs using `rpm -qa --changelog $package` if the package is installed on the system. This limit can yield very substantial savings time and resources for some repositories.
+(backported from #2332)
