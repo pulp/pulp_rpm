@@ -13,6 +13,61 @@ Changelog
 
 .. towncrier release notes start
 
+
+3.17.0 (2022-01-17)
+===================
+
+
+Features
+--------
+
+- Added API to allow uploading of a comps.xml file.
+  `#2313 <https://github.com/pulp/pulp_rpm/issues/2313>`_
+- Added a per-package changelog entry limit with a default value of 10, which is controlled by a setting named `KEEP_CHANGELOG_LIMIT`. This only impacts the output of `dnf changelog $package` - it is always possible to get the full list of changelogs using `rpm -qa --changelog $package` if the package is installed on the system. This limit can yield very substantial savings time and resources for some repositories.
+  `#2332 <https://github.com/pulp/pulp_rpm/issues/2332>`_
+- Added support for Alternate Content Sources.
+  `#2340 <https://github.com/pulp/pulp_rpm/issues/2340>`_
+
+
+Bugfixes
+--------
+
+- Fixed distribution tree sync for repositories with partial .treeinfo (e.g. most of CentOS 8 repositories).
+  `#2305 <https://github.com/pulp/pulp_rpm/issues/2305>`_
+- Fixed a regression dealing with downloads of filenames containing special characters.
+  Specifically, synching Amazon linux repositories with RPMs like uuid-c++.
+  `#2315 <https://github.com/pulp/pulp_rpm/issues/2315>`_
+- Fixed a bug that could result in incomplete repo metadata when "mirror_complete" sync policy is combined with the "optimize" option.
+  `#2316 <https://github.com/pulp/pulp_rpm/issues/2316>`_
+- Ensured that RPM plugin uses only a worker working directory and not /tmp which could have caused the out-of-disc-space issue since it's not expected that Pulp uses /tmp.
+  `#2317 <https://github.com/pulp/pulp_rpm/issues/2317>`_
+- In case that only a subtree is synced, it can happen that the PRIMARY_REPO key does not exists in repo_sync_results and the sync failed with accessing a not existing key at the end.
+  `#2318 <https://github.com/pulp/pulp_rpm/issues/2318>`_
+- Fixed sync of repositories using 'sha' as an alias for the sha1 checksum-type.
+  `#2319 <https://github.com/pulp/pulp_rpm/issues/2319>`_
+- Fixed `FileNotFoundError` during sync and Pulp 2 to Pulp 3 migration when a custom repo metadata has its checksum as a filename.
+  `#2321 <https://github.com/pulp/pulp_rpm/issues/2321>`_
+- Fix HTTP-proxy support for ULN-remotes
+  `#2322 <https://github.com/pulp/pulp_rpm/issues/2322>`_
+- Fixed file descriptor leak during repo metadata publish.
+  `#2331 <https://github.com/pulp/pulp_rpm/issues/2331>`_
+
+
+Improved Documentation
+----------------------
+
+- Expanded the documentation to include examples using pulp-cli.
+  `#2314 <https://github.com/pulp/pulp_rpm/issues/2314>`_
+
+
+Misc
+----
+
+- `#2320 <https://github.com/pulp/pulp_rpm/issues/2320>`_, `#2323 <https://github.com/pulp/pulp_rpm/issues/2323>`_
+
+
+----
+
 3.16.2 (2021-12-22)
 ===================
 
@@ -185,6 +240,24 @@ Misc
 
 ----
 
+3.14.10 (2022-01-17)
+====================
+
+
+Bugfixes
+--------
+
+- Fixed distribution tree sync for repositories with partial .treeinfo (e.g. most of CentOS 8 repositories).
+  `#2327 <https://github.com/pulp/pulp_rpm/issues/2327>`_
+- Fixed file descriptor leak during repo metadata publish.
+  (backported from #2331)
+  `#2347 <https://github.com/pulp/pulp_rpm/issues/2347>`_
+- Added a per-package changelog entry limit with a default value of 10, which is controlled by a setting named `KEEP_CHANGELOG_LIMIT`. This only impacts the output of `dnf changelog $package` - it is always possible to get the full list of changelogs using `rpm -qa --changelog $package` if the package is installed on the system. This limit can yield very substantial savings time and resources for some repositories.
+  (backported from #2332)
+  `#2348 <https://github.com/pulp/pulp_rpm/issues/2348>`_
+
+
+----
 
 3.14.9 (2021-12-21)
 ===================
