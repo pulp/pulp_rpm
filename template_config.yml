@@ -54,7 +54,7 @@ pulp_settings:
   - /tmp
   orphan_protection_time: 0
 pulpcore_branch: main
-pulpcore_pip_version_specifier: null
+pulpcore_pip_version_specifier: ">=3.16,<3.20"
 pulpcore_revision: null
 pulpprojectdotorg_key_id: aa499d7938ed
 pydocstyle: true
