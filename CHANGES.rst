@@ -13,6 +13,26 @@ Changelog
 
 .. towncrier release notes start
 
+3.14.10 (2022-01-17)
+====================
+
+
+Bugfixes
+--------
+
+- Fixed distribution tree sync for repositories with partial .treeinfo (e.g. most of CentOS 8 repositories).
+  `#2327 <https://github.com/pulp/pulp_rpm/issues/2327>`_
+- Fixed file descriptor leak during repo metadata publish.
+  (backported from #2331)
+  `#2347 <https://github.com/pulp/pulp_rpm/issues/2347>`_
+- Added a per-package changelog entry limit with a default value of 10, which is controlled by a setting named `KEEP_CHANGELOG_LIMIT`. This only impacts the output of `dnf changelog $package` - it is always possible to get the full list of changelogs using `rpm -qa --changelog $package` if the package is installed on the system. This limit can yield very substantial savings time and resources for some repositories.
+  (backported from #2332)
+  `#2348 <https://github.com/pulp/pulp_rpm/issues/2348>`_
+
+
+----
+
+
 3.14.9 (2021-12-21)
 ===================
 
