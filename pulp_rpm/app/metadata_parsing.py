@@ -117,11 +117,7 @@ def process_filelists_package_element(element):
 def process_other_package_element(element):
     """Parse package element from other.xml."""
     pkgid = element.attrib["pkgid"]
-
     changelogs = []
-    # [-0:] returns all elements, so we need to have a separate path
-    if settings.KEEP_CHANGELOG_LIMIT == 0:
-        return pkgid, changelogs
 
     for subelement in element:
         if subelement.tag == "changelog" or re.sub(NS_STRIP_RE, "", subelement.tag) == "changelog":
@@ -130,10 +126,11 @@ def process_other_package_element(element):
             text = subelement.text
             changelogs.append((author, date, text))
 
-    # changelogs are listed in chronological order, grab the last N changelogs from the list, unless
-    # the limit is None
-    if settings.KEEP_CHANGELOG_LIMIT:
-        changelogs = changelogs[-settings.KEEP_CHANGELOG_LIMIT :]
+    if settings.KEEP_CHANGELOG_LIMIT is not None:
+        # always keep at least one changelog, even if the limit is set to 0
+        changelog_limit = settings.KEEP_CHANGELOG_LIMIT or 1
+        # changelogs are listed in chronological order, grab the last N changelogs from the list
+        changelogs = changelogs[-changelog_limit:]
     return pkgid, changelogs
 
 
