@@ -3,6 +3,21 @@
 from django.db import migrations, models
 
 
+def generate_fake_digest(apps, schema_editor):
+    """
+    Generate a temporary digest for a dist tree
+
+    This is needed so the dist tree is fixed by a subsequent sync.
+    We can't use digest from .treeinfo file because a dist tree object is potentially wrong and
+    we need to let a subsequent [force] sync to fix it.
+    """
+    DistributionTree = apps.get_model('rpm', 'DistributionTree')
+    dist_trees = DistributionTree.objects.all()
+    for idx, dist_tree in enumerate(dist_trees):
+        dist_tree.digest = 'temp str {0:032d}, to be removed at sync'.format(idx)
+    DistributionTree.objects.bulk_update(dist_trees, fields=['digest'], batch_size=500)
+
+
 class Migration(migrations.Migration):
 
     dependencies = [
@@ -13,8 +28,11 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='distributiontree',
             name='digest',
-            field=models.CharField(default='should be removed from a repo version with a sync', max_length=64),
+            field=models.CharField(default='', max_length=64),
             preserve_default=False,
+        ),
+        migrations.RunPython(
+            generate_fake_digest
         ),
         migrations.AlterUniqueTogether(
             name='distributiontree',
