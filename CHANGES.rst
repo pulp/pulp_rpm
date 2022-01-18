@@ -13,6 +13,20 @@ Changelog
 
 .. towncrier release notes start
 
+3.17.1 (2022-01-18)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed a migration to be able to upgrade to pulp_rpm 3.17.
+  `#2356 <https://github.com/pulp/pulp_rpm/issues/2356>`_
+
+
+----
+
+
 3.17.0 (2022-01-17)
 ===================
 
