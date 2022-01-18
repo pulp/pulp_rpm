@@ -162,7 +162,10 @@ fi
 if [ -f $FUNC_TEST_SCRIPT ]; then
   source $FUNC_TEST_SCRIPT
 else
-    pytest -v -r sx --color=yes --pyargs pulp_rpm.tests.functional
+
+    pytest -v -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -m parallel -n 8
+    pytest -v -r sx --color=yes --pyargs pulp_rpm.tests.functional -m "not parallel"
+
 fi
 export PULP_FIXTURES_URL="http://pulp-fixtures:8080"
 pushd ../pulp-cli
