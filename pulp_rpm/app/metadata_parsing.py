@@ -126,6 +126,9 @@ def process_other_package_element(element):
             text = subelement.text
             changelogs.append((author, date, text))
 
+    # make sure the changelogs are sorted by date
+    changelogs.sort(key=lambda t: t[1])
+
     if settings.KEEP_CHANGELOG_LIMIT is not None:
         # always keep at least one changelog, even if the limit is set to 0
         changelog_limit = settings.KEEP_CHANGELOG_LIMIT or 1
