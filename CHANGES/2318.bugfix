@@ -1,1 +1,0 @@
-In case that only a subtree is synced, it can happen that the PRIMARY_REPO key does not exists in repo_sync_results and the sync failed with accessing a not existing key at the end.
