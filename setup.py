@@ -34,6 +34,6 @@ setup(
     entry_points={
         "pulpcore.plugin": [
             "pulp_rpm = pulp_rpm:default_app_config",
-        ]
+        ],
     },
 )
