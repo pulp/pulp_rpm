@@ -1,1 +1,0 @@
-Fixed distribution tree sync for repositories with partial .treeinfo (e.g. most of CentOS 8 repositories).
