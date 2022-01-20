@@ -121,13 +121,24 @@ class PulpTreeInfo(TreeInfo):
         return parser._sections
 
     def rewrite_subrepo_paths(self, treeinfo_data):
-        """Rewrite the variant repository paths to be local.
+        """Rewrite the variant/addon repository paths to be local.
 
-        Ensure that the variant / sub-repo path is in a sub-directory.
+        Ensure that the sub-repo path is in a sub-directory.
+
+        Variants that Pulp supports can be of type "variant" or "addon". A "variant" type is a
+        parent variant, while an "addon" is a child variant. So we need to request variants
+        recursively to fix all the paths.
         """
-        for variant in self.variants.get_variants():
-            variant.paths.repository = treeinfo_data.variants[variant.id]["repository"]
-            variant.paths.packages = treeinfo_data.variants[variant.id]["packages"]
+        for variant in self.variants.get_variants(recursive=True):
+            if variant.type == "variant":
+                variant.paths.repository = treeinfo_data.variants[variant.id]["repository"]
+                variant.paths.packages = treeinfo_data.variants[variant.id]["packages"]
+            elif variant.type == "addon":
+                variant.paths.repository = treeinfo_data.addons[variant.id]["repository"]
+                variant.paths.packages = treeinfo_data.addons[variant.id]["packages"]
+            else:
+                # unsupported type, e.g. "optional"
+                pass
 
 
 class TreeinfoData:
@@ -142,9 +153,18 @@ class TreeinfoData:
 
         """
         self._data = data
-        self._addon_uids = []
-        self._repodata_paths = []
+
+        self._addon_uids = set()
+        self._addons = {}
+        self._checksums = []
+        self._distribution_tree = {}
+        self._images = []
+        self._image_paths = {}
+        self._image_checksum_map = {}
+        self._repodata_paths = set()
+        self._repomd_xmls = set()
         self._repository_map = {}
+        self._variants = {}
 
     @property
     def distribution_tree(self):
@@ -155,6 +175,9 @@ class TreeinfoData:
             dict: distribution tree data
 
         """
+        if self._distribution_tree:
+            return self._distribution_tree
+
         distribution_tree = {}
 
         if self._data.get("general"):
@@ -211,7 +234,8 @@ class TreeinfoData:
         if self._data.get("media"):
             distribution_tree.update(self._data.get("media"))
 
-        return distribution_tree
+        self._distribution_tree = distribution_tree
+        return self._distribution_tree
 
     @property
     def checksums(self):
@@ -222,8 +246,9 @@ class TreeinfoData:
             list: List of checksum data
 
         """
-        self._repodatas = []
-        self._images = {}
+        if self._checksums:
+            return self._checksums
+
         checksums = []
 
         for key, value in self._data.get("checksums", {}).items():
@@ -233,14 +258,15 @@ class TreeinfoData:
 
             _key, _value = value.split(":")
 
-            if "repodata" in key:
-                self._repodatas.append(key)
+            if "repodata/repomd.xml" in key:
+                self._repomd_xmls.add(key)
             else:
-                self._images.update({key: {_key: _value}})
+                self._image_checksum_map.update({key: {_key: _value}})
 
             checksums.append(checksum)
 
-        return checksums
+        self._checksums = checksums
+        return self._checksums
 
     @property
     def images(self):
@@ -251,10 +277,12 @@ class TreeinfoData:
             list: List of image data
 
         """
-        images = []
-        self._image_paths = {}
+        if self._images:
+            return self._images
 
+        images = []
         temp = {}
+
         for key in self._data.keys():
             if key.startswith("images"):
                 image_key = key
@@ -284,7 +312,8 @@ class TreeinfoData:
             if value:
                 self._image_paths[value] = {}
 
-        return images
+        self._images = images
+        return self._images
 
     @property
     def variants(self):
@@ -295,11 +324,12 @@ class TreeinfoData:
             dict: Dictionary where each key is the id and value is a dictionary of variant data
 
         """
+        if self._variants:
+            return self._variants
+
         variant_uids = self._data.get("tree", {}).get("variants")
         variant_uids = variant_uids.split(",") if variant_uids else []
         variants = {}
-
-        self._addon_uids = []
 
         for variant_uid in variant_uids:
             variant_key = "variant-" + variant_uid
@@ -319,7 +349,7 @@ class TreeinfoData:
                 "packages": packages,
                 "repository": repository,
             }
-            keys = [
+            optional_variant_data_keys = [
                 "source_packages",
                 "source_repository",
                 "debug_packages",
@@ -327,19 +357,20 @@ class TreeinfoData:
                 "identity",
             ]
 
-            self._repodata_paths.append(self._data[variant_key]["repository"])
+            self._repodata_paths.add(self._data[variant_key]["repository"])
             self._repository_map[self._data[variant_key]["repository"]] = repository
 
-            for key in keys:
-                if key in self._data[variant_key].keys():
-                    variant.update({key: self._data[variant_key][key]})
+            for optional_key in optional_variant_data_keys:
+                if optional_key in self._data[variant_key]:
+                    variant[optional_key] = self._data[variant_key][optional_key]
 
             addons = self._data[variant_key].get("addons")
             if addons:
-                self._addon_uids.extend(addons.split(","))
+                self._addon_uids |= set(addons.split(","))
             variants[variant["variant_id"]] = variant
 
-        return variants
+        self._variants = variants
+        return self._variants
 
     @property
     def addons(self):
@@ -350,8 +381,13 @@ class TreeinfoData:
             dict: Dictionary where each key is the id and value is a dictionary of addon data
 
         """
+        if self._addons:
+            return self._addons
+
         addons = {}
 
+        # Make sure variants are processed before addons, since addons are being discovered
+        # through the variants.
         if not self._addon_uids:
             self.variants
 
@@ -369,12 +405,13 @@ class TreeinfoData:
                 "repository": repository,
             }
 
-            self._repodata_paths.append(self._data[addon_key]["repository"])
+            self._repodata_paths.add(self._data[addon_key]["repository"])
             self._repository_map[self._data[addon_key]["repository"]] = repository
 
             addons[addon["addon_id"]] = addon
 
-        return addons
+        self._addons = addons
+        return self._addons
 
     def to_dict(self, **kwargs):
         """
@@ -394,8 +431,8 @@ class TreeinfoData:
             addons=self.addons,
         )
 
-        self._image_paths.update(self._images)
-        data["download"] = dict(repodatas=self._repodata_paths, images=self._image_paths)
+        self._image_paths.update(self._image_checksum_map)
+        data["download"] = dict(repodatas=list(self._repodata_paths), images=self._image_paths)
         data["repo_map"] = self._repository_map
 
         return data
