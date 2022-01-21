@@ -3,8 +3,12 @@ from itertools import chain
 from import_export import fields
 from import_export.widgets import ForeignKeyWidget
 
-from pulpcore.plugin.importexport import BaseContentResource, QueryModelResource
-from pulpcore.plugin.models import Content
+from pulpcore.plugin.importexport import (
+    BaseContentResource,
+    QueryModelResource,
+)
+from pulpcore.plugin.models import Artifact, Content, ContentArtifact
+
 from pulp_rpm.app.models import (
     Addon,
     Checksum,
@@ -490,7 +494,77 @@ class UpdateCollectionPackageResource(QueryModelResource):
         )
 
 
+class DistributionTreeContentArtifactResource(QueryModelResource):
+    """
+    Handles import/export of the ContentArtifact models associated with a DistributionTree.
+
+    The base ContentArtifactModelResource may not find all associated contentartifacts due to the
+    existence of subrepos in distribution-trees.
+
+    NOTE: the bulk of this code is a copy of the ContentArtifactResource:
+
+    https://github.com/pulp/pulpcore/blob/main/pulpcore/app/modelresource.py#L62
+
+    Once that modelresource is exposed to plugin authors, this class can be simplified to
+    a ContentArtifactResource subclass that overrides only set_up_queryset().
+    """
+
+    artifact = fields.Field(
+        column_name="artifact", attribute="artifact", widget=ForeignKeyWidget(Artifact, "sha256")
+    )
+
+    def before_import_row(self, row, **kwargs):
+        """
+        Fixes the content-ptr of an incoming content-artifact row at import time.
+
+        Finds the 'original uuid' of the Content for this row, looks it up as the
+        'upstream_id' of imported Content, and then replaces the Content-pk with its
+        (new) uuid.
+
+        Args:
+            row (tablib.Dataset row): incoming import-row representing a single ContentArtifact.
+            kwargs: args passed along from the import() call.
+
+        Returns:
+            (tablib.Dataset row): row that now points to the new downstream uuid for its content.
+        """
+        linked_content = Content.objects.get(upstream_id=row["content"])
+        row["content"] = str(linked_content.pulp_id)
+
+    def set_up_queryset(self):
+        """
+        Set up a queryset for DistTree ContentArtifact entries.
+
+        Returns:
+            ContentArtifact entries specific to a DistTree tied to a specified
+            repo-version.
+        """
+        dtree = self.repo_version.get_content(content_qs=DistributionTree.objects).first()
+        if dtree:
+            dtree_cas = (
+                ContentArtifact.objects.filter(content__in=dtree.content())
+                .exclude(content__in=self.repo_version.content)
+                .order_by("content", "relative_path")
+            )
+            return dtree_cas
+        return None
+
+    class Meta:
+        model = ContentArtifact
+        import_id_fields = (
+            "content",
+            "relative_path",
+        )
+        exclude = (
+            "pulp_created",
+            "pulp_last_updated",
+            "_artifacts",
+            "pulp_id",
+        )
+
+
 IMPORT_ORDER = [
+    DistributionTreeRepositoryResource,  # MUST COME FIRST IN EXPORT/IMPORT ORDER!
     PackageResource,
     ModulemdResource,
     ModulemdDefaultsResource,
@@ -501,7 +575,6 @@ IMPORT_ORDER = [
     UpdateRecordResource,
     RepoMetadataFileResource,
     DistributionTreeResource,
-    DistributionTreeRepositoryResource,
     ChecksumResource,
     ImageResource,
     AddonResource,
@@ -509,4 +582,5 @@ IMPORT_ORDER = [
     UpdateReferenceResource,
     UpdateCollectionResource,
     UpdateCollectionPackageResource,
+    DistributionTreeContentArtifactResource,  # MUST COME LAST!
 ]

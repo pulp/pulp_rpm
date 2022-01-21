@@ -29,9 +29,11 @@ from pulpcore.client.pulpcore import (
 )
 from pulpcore.client.pulp_rpm import (
     ContentDistributionTreesApi,
+    PublicationsRpmApi,
+    RemotesRpmApi,
     RepositoriesRpmApi,
     RpmRepositorySyncURL,
-    RemotesRpmApi,
+    RpmRpmPublication,
 )
 
 NUM_REPOS = 2
@@ -63,6 +65,7 @@ class PulpImportTestBase(PulpTestCase):
             sync_response = cls.repo_api.sync(export_repo.pulp_href, repository_sync_data)
             monitor_task(sync_response.task)
             # remember it
+            export_repo = cls.repo_api.read(export_repo.pulp_href)
             export_repos.append(export_repo)
             import_repos.append(import_repo)
             remotes.append(remote)
@@ -233,6 +236,7 @@ class DistributionTreePulpImportTestCase(PulpImportTestBase):
         cls.exports_api = ExportersPulpExportsApi(cls.core_client)
         cls.importer_api = ImportersPulpApi(cls.core_client)
         cls.imports_api = ImportersPulpImportsApi(cls.core_client)
+        cls.publication_api = PublicationsRpmApi(cls.core_client)
         cls.dist_tree_api = ContentDistributionTreesApi(cls.rpm_client)
 
         cls.import_repos, cls.export_repos, cls.remotes = cls._setup_repositories(
@@ -246,11 +250,15 @@ class DistributionTreePulpImportTestCase(PulpImportTestBase):
         importer = self._create_importer()
         task_group = self._perform_import(importer)
         self.assertEqual(len(self.import_repos) + 1, task_group.completed)
+
         for repo in self.import_repos:
             repo = self.repo_api.read(repo.pulp_href)
             self.assertEqual(f"{repo.pulp_href}versions/1/", repo.latest_version_href)
             trees = self.dist_tree_api.list(repository_version=repo.latest_version_href)
             self.assertEqual(trees.count, 1)
+            # publication-failure is the symptom of issue #2371 - attempt to publish imported repos
+            publish_data = RpmRpmPublication(repository=repo.pulp_href)
+            self.publication_api.create(publish_data)
 
 
 class ParallelImportTestCase(PulpImportTestBase):
