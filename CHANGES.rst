@@ -13,6 +13,22 @@ Changelog
 
 .. towncrier release notes start
 
+3.14.11 (2022-01-22)
+====================
+
+
+Bugfixes
+--------
+
+- Fixed an edge case with the changelog limit.
+  `#2363 <https://github.com/pulp/pulp_rpm/issues/2363>`_
+- Fixed downloading from addon repositories provided as a part of a distribution/kickstart tree.
+  `#2373 <https://github.com/pulp/pulp_rpm/issues/2373>`_
+
+
+----
+
+
 3.14.10 (2022-01-17)
 ====================
 
