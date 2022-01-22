@@ -13,6 +13,35 @@ Changelog
 
 .. towncrier release notes start
 
+3.17.2 (2022-01-22)
+===================
+
+
+Features
+--------
+
+- Added a debug option for greater visibility into dependency solving.
+  `#2343 <https://github.com/pulp/pulp_rpm/issues/2343>`_
+
+
+Bugfixes
+--------
+
+- Fixed an edge case with the changelog limit.
+  `#2363 <https://github.com/pulp/pulp_rpm/issues/2363>`_
+- Fixed downloading from addon repositories provided as a part of a distribution/kickstart tree.
+  `#2373 <https://github.com/pulp/pulp_rpm/issues/2373>`_
+
+
+Misc
+----
+
+- `#2361 <https://github.com/pulp/pulp_rpm/issues/2361>`_
+
+
+----
+
+
 3.17.1 (2022-01-18)
 ===================
 
