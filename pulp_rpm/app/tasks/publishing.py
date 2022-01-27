@@ -221,11 +221,12 @@ class PublicationData:
                 variant.paths.packages = treeinfodata.variants[variant.id]["packages"]
             treeinfo_file = NamedTemporaryFile()
             treeinfo.dump(treeinfo_file.name)
-            PublishedMetadata.create_from_file(
-                relative_path=original_treeinfo_content_artifact.relative_path,
-                publication=self.publication,
-                file=File(open(treeinfo_file.name, "rb")),
-            )
+            with open(treeinfo_file.name, "rb") as treeinfo_fd:
+                PublishedMetadata.create_from_file(
+                    relative_path=original_treeinfo_content_artifact.relative_path,
+                    publication=self.publication,
+                    file=File(treeinfo_fd),
+                )
         artifact_file.close()
         relations = ["addon", "variant"]
         for relation in relations:
@@ -608,11 +609,12 @@ def create_repomd_xml(
         if sub_folder:
             path = os.path.join(sub_folder, path)
 
-        PublishedMetadata.create_from_file(
-            relative_path=os.path.join(repodata_path, os.path.basename(path)),
-            publication=publication,
-            file=File(open(path, "rb")),
-        )
+        with open(path, "rb") as repodata_fd:
+            PublishedMetadata.create_from_file(
+                relative_path=os.path.join(repodata_path, os.path.basename(path)),
+                publication=publication,
+                file=File(repodata_fd),
+            )
 
     with open(repomd_path, "w") as repomd_f:
         repomd_f.write(repomd.xml_dump())
@@ -624,18 +626,22 @@ def create_repomd_xml(
         sign_results = signing_service.sign(repomd_path)
 
         # publish a signed file
-        PublishedMetadata.create_from_file(
-            relative_path=os.path.join(repodata_path, os.path.basename(sign_results["file"])),
-            publication=publication,
-            file=File(open(sign_results["file"], "rb")),
-        )
+        with open(sign_results["file"], "rb") as signed_file_fd:
+            PublishedMetadata.create_from_file(
+                relative_path=os.path.join(repodata_path, os.path.basename(sign_results["file"])),
+                publication=publication,
+                file=File(signed_file_fd),
+            )
 
         # publish a detached signature
-        PublishedMetadata.create_from_file(
-            relative_path=os.path.join(repodata_path, os.path.basename(sign_results["signature"])),
-            publication=publication,
-            file=File(open(sign_results["signature"], "rb")),
-        )
+        with open(sign_results["signature"], "rb") as signature_fd:
+            PublishedMetadata.create_from_file(
+                relative_path=os.path.join(
+                    repodata_path, os.path.basename(sign_results["signature"])
+                ),
+                publication=publication,
+                file=File(signature_fd),
+            )
 
         # publish a public key required for further verification
         PublishedMetadata.create_from_file(
@@ -644,8 +650,9 @@ def create_repomd_xml(
             file=File(open(sign_results["key"], "rb")),
         )
     else:
-        PublishedMetadata.create_from_file(
-            relative_path=os.path.join(repodata_path, os.path.basename(repomd_path)),
-            publication=publication,
-            file=File(open(repomd_path, "rb")),
-        )
+        with open(repomd_path, "rb") as repomd_fd:
+            PublishedMetadata.create_from_file(
+                relative_path=os.path.join(repodata_path, os.path.basename(repomd_path)),
+                publication=publication,
+                file=File(repomd_fd),
+            )
