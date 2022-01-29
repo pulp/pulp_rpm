@@ -599,6 +599,7 @@ Misc
 
 
 3.13.2 (2021-06-23)
+===================
 
 Bugfixes
 --------
@@ -612,6 +613,7 @@ Bugfixes
 
 
 3.13.1 (2021-06-23)
+===================
 
 Bugfixes
 --------
@@ -628,6 +630,7 @@ Bugfixes
 
 
 3.13.0 (2021-06-17)
+===================
 
 Features
 --------
@@ -713,6 +716,35 @@ Misc
 ----
 
 - `#8509 <https://pulp.plan.io/issues/8509>`_, `#8616 <https://pulp.plan.io/issues/8616>`_, `#8764 <https://pulp.plan.io/issues/8764>`_
+
+
+----
+
+
+3.11.4 (2022-01-29)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed file descriptor leak during repo metadata publish.
+  `#2331 <https://github.com/pulp/pulp_rpm/issues/2331>`_
+- Fixed a `Directory not empty` error during publication creation. Usually observed on NFS and during pulp-2to3-migration but any publication creation can be affected.
+  `#2379 <https://github.com/pulp/pulp_rpm/issues/2379>`_
+
+
+3.11.3 (2022-01-06)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed `FileNotFoundError` during sync and Pulp 2 to Pulp 3 migration when a custom repo metadata has its checksum as a filename.
+  (backported from #2321) `#2310 <https://github.com/pulp/pulp_rpm/issues/2310>`_
+- Fixed distribution tree sync for repositories with partial .treeinfo (e.g. most of CentOS 8
+repositories) `#2326 <https://github.com/pulp/pulp_rpm/issues/2326>`_
 
 
 ----
