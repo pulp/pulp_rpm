@@ -13,6 +13,19 @@ Changelog
 
 .. towncrier release notes start
 
+3.17.3 (2022-01-29)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed a `Directory not empty` error during publication creation. Usually observed on NFS and during pulp-2to3-migration but any publication creation can be affected.
+  `#2379 <https://github.com/pulp/pulp_rpm/issues/2379>`_
+
+
+----
+
 
 3.17.2 (2022-01-22)
 ===================
@@ -762,8 +775,8 @@ Bugfixes
 
 - Fixed `FileNotFoundError` during sync and Pulp 2 to Pulp 3 migration when a custom repo metadata has its checksum as a filename.
   (backported from #2321) `#2310 <https://github.com/pulp/pulp_rpm/issues/2310>`_
-- Fixed distribution tree sync for repositories with partial .treeinfo (e.g. most of CentOS 8
-repositories) `#2326 <https://github.com/pulp/pulp_rpm/issues/2326>`_
+- Fixed distribution tree sync for repositories with partial .treeinfo (e.g. most of CentOS 8 repositories)
+  `#2326 <https://github.com/pulp/pulp_rpm/issues/2326>`_
 
 
 ----
