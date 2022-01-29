@@ -13,6 +13,22 @@ Changelog
 
 .. towncrier release notes start
 
+3.11.4 (2022-01-29)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed file descriptor leak during repo metadata publish.
+  `#2331 <https://github.com/pulp/pulp_rpm/issues/2331>`_
+- Fixed a `Directory not empty` error during publication creation. Usually observed on NFS and during pulp-2to3-migration but any publication creation can be affected.
+  `#2379 <https://github.com/pulp/pulp_rpm/issues/2379>`_
+
+
+----
+
+
 3.11.3 (2022-01-06)
 ===================
 
