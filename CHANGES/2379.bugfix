@@ -1,1 +1,0 @@
-Fixed a `Directory not empty` error during publication creation. Usually observed on NFS and during pulp-2to3-migration but any publication creation can be affected.
