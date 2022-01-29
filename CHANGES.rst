@@ -283,6 +283,21 @@ Misc
 
 ----
 
+
+3.14.12 (2022-01-29)
+====================
+
+
+Bugfixes
+--------
+
+- Fixed a `Directory not empty` error during publication creation. Usually observed on NFS and during pulp-2to3-migration but any publication creation can be affected.
+  `#2379 <https://github.com/pulp/pulp_rpm/issues/2379>`_
+
+
+----
+
+
 3.14.11 (2022-01-22)
 ====================
 
@@ -297,6 +312,7 @@ Bugfixes
 
 
 ----
+
 
 3.14.10 (2022-01-17)
 ====================
@@ -732,6 +748,9 @@ Bugfixes
   `#2331 <https://github.com/pulp/pulp_rpm/issues/2331>`_
 - Fixed a `Directory not empty` error during publication creation. Usually observed on NFS and during pulp-2to3-migration but any publication creation can be affected.
   `#2379 <https://github.com/pulp/pulp_rpm/issues/2379>`_
+
+
+----
 
 
 3.11.3 (2022-01-06)
