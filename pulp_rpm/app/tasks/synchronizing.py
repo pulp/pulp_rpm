@@ -681,11 +681,18 @@ class RpmFirstStage(Stage):
 
         # the list of possible repo roots
         self.urls = urls or [self.remote.url]
-        # TODO: fix this
-        self.remote_url = urls[0]
 
         self.nevra_to_module = defaultdict(dict)
         self.pkgname_to_groups = defaultdict(list)
+
+    async def try_get_file_from_repo(self, href, *args, **kwargs):
+        for url in self.urls:
+            downloader = self.remote.get_downloader(
+                url=urlpath_sanitize(url, "repodata/repomd.xml"),
+                *args,
+                **kwargs,
+            )
+            return await downloader.run()
 
     def is_illegal_relative_path(self, path):
         """Whether a relative path points outside the repository being synced."""
@@ -717,10 +724,7 @@ class RpmFirstStage(Stage):
             )
             async with ProgressReport(**progress_data) as metadata_pb:
                 # download repomd.xml
-                downloader = self.remote.get_downloader(
-                    url=urlpath_sanitize(self.remote_url, "repodata/repomd.xml")
-                )
-                result = await downloader.run()
+                result = await self.try_get_file_from_repo("repomd/repomd.xml")
                 store_metadata_for_mirroring(self.repository, result.path, "repodata/repomd.xml")
                 await metadata_pb.aincrement()
 
@@ -788,11 +792,9 @@ class RpmFirstStage(Stage):
                     # optional signature and key files for repomd metadata
                     for file_href in ["repodata/repomd.xml.asc", "repodata/repomd.xml.key"]:
                         try:
-                            downloader = self.remote.get_downloader(
-                                url=urlpath_sanitize(self.remote_url, file_href),
-                                silence_errors_for_response_status_codes={403, 404},
+                            result = await self.try_get_file_from_repo(
+                                file_href, silence_errors_for_response_status_codes={403, 404}
                             )
-                            result = await downloader.run()
                             store_metadata_for_mirroring(self.repository, result.path, file_href)
                             await metadata_pb.aincrement()
                         except (ClientResponseError, FileNotFoundError):
@@ -800,11 +802,10 @@ class RpmFirstStage(Stage):
 
                     # extra files to copy, e.g. EULA, LICENSE
                     try:
-                        downloader = self.remote.get_downloader(
-                            url=urlpath_sanitize(self.remote_url, "extra_files.json"),
+                        result = await self.try_get_file_from_repo(
+                            "extra_files.json",
                             silence_errors_for_response_status_codes={403, 404},
                         )
-                        result = await downloader.run()
                         store_metadata_for_mirroring(
                             self.repository, result.path, "extra_files.json"
                         )
@@ -821,12 +822,11 @@ class RpmFirstStage(Stage):
                                         for digest, value in data["checksums"].items()
                                         if digest in settings.ALLOWED_CONTENT_CHECKSUMS
                                     }
-                                    downloader = self.remote.get_downloader(
-                                        url=urlpath_sanitize(self.remote_url, data["file"]),
+                                    result = await self.try_get_file_from_repo(
+                                        data["file"],
                                         expected_size=data["size"],
                                         expected_digests=filtered_checksums,
                                     )
-                                    result = await downloader.run()
                                     store_metadata_for_mirroring(
                                         self.repository, result.path, data["file"]
                                     )
