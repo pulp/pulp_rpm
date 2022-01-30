@@ -241,7 +241,7 @@ def get_repomd_file(remote, url):
     return downloader.fetch()
 
 
-def fetch_mirror(remote):
+def fetch_mirrorlist_urls(remote):
     """Fetch the first valid mirror from a list of all available mirrors from a mirror list feed.
 
     URLs which are commented out or have any punctuations in front of them are being ignored.
@@ -250,6 +250,7 @@ def fetch_mirror(remote):
     result = downloader.fetch()
 
     url_pattern = re.compile(r"(^|^[\w\s=]+\s)((http(s)?)://.*)")
+    mirrors = []
     with open(result.path) as mirror_list_file:
         for mirror in mirror_list_file:
             match = re.match(url_pattern, mirror)
@@ -257,57 +258,9 @@ def fetch_mirror(remote):
                 continue
 
             mirror_url = match.group(2)
-            try:
-                get_repomd_file(remote, mirror_url)
-                # just check if the metadata exists
-                return mirror_url
-            except Exception as exc:
-                log.warning(
-                    "Url '{}' from mirrorlist was tried and failed with error: {}".format(
-                        mirror_url, exc
-                    )
-                )
-                continue
+            mirrors.append(mirror_url)
 
-    return None
-
-
-def fetch_remote_url(remote, custom_url=None):
-    """Fetch a single remote from which can be content synced."""
-
-    def normalize_url(url_to_normalize):
-        return url_to_normalize.rstrip("/") + "/"
-
-    url = custom_url or remote.url
-
-    try:
-        normalized_remote_url = normalize_url(url)
-        get_repomd_file(remote, normalized_remote_url)
-        # just check if the metadata exists
-        return normalized_remote_url
-    except ClientResponseError as exc:
-        # If 'custom_url' is passed it is a call from ACS refresh
-        # which doesn't support mirror lists.
-        if custom_url:
-            raise ValueError(
-                _("Remote URL {} for Alternate Content Source is invalid").format(custom_url)
-            )
-        log.info(
-            _("Attempting to resolve a true url from potential mirrolist url '{}'").format(url)
-        )
-        remote_url = fetch_mirror(remote)
-        if remote_url:
-            log.info(
-                _("Using url '{}' from mirrorlist in place of the provided url {}").format(
-                    remote_url, url
-                )
-            )
-            return normalize_url(remote_url)
-
-        if exc.status == 404:
-            raise ValueError(_("An invalid remote URL was provided: {}").format(url))
-
-        raise exc
+    return mirrors
 
 
 def should_optimize_sync(sync_details, last_sync_details):
@@ -457,8 +410,69 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
     def is_subrepo(directory):
         return directory != PRIMARY_REPO
 
+    urls = []
     with tempfile.TemporaryDirectory("."):
-        remote_url = fetch_remote_url(remote, url)
+
+        def normalize_url(url_to_normalize):
+            return url_to_normalize.rstrip("/") + "/"
+
+        custom_url = url
+        url = url or remote.url
+        normalized_remote_url = normalized_remote_url = normalize_url(url)
+
+        try:
+            # we don't know if it's a mirrorlist / metalink URL or not yet, let's try it as a
+            # normal repo URL first
+            get_repomd_file(remote, normalized_remote_url)
+            # it works
+            urls = [normalized_remote_url]
+            remote_url = normalized_remote_url
+        except ClientResponseError as exc:
+            # It must be either a mirrorlist / metalink URL, or invalid
+
+            # If 'custom_url' is passed it is a call from ACS refresh which doesn't support
+            # mirror lists
+            if custom_url:
+                raise ValueError(
+                    _("Remote URL {} for Alternate Content Source is invalid").format(custom_url)
+                )
+
+            log.info(_("Attempting to use url '{}' as a mirrorlist URL").format(url))
+            # TODO: should we be passing in "url" instead?
+            urls = fetch_mirrorlist_urls(remote)
+
+            if urls:
+                # It was a mirrorlist URL, find one URL from the list which works
+                # (to download metadata from)
+                last_error = None
+                for url in urls:
+                    try:
+                        get_repomd_file(remote, url)
+                        remote_url = url
+                        log.info(
+                            _(
+                                "Using url '{}' from mirrorlist in place of the provided url {}"
+                            ).format(normalized_remote_url, url)
+                        )
+                        break
+                    except ClientResponseError as exc:
+                        last_error = exc
+                        continue
+                else:
+                    raise ValueError(
+                        _("None of the mirrorlist URLs found worked. Last error: {}").format(
+                            last_error
+                        )
+                    )
+            else:
+                # if it wasn't a mirrorlist URL and it 404'd (as opposed to an error like 403 Forbidden)
+                # then it was proably invalid.
+                if exc.status == 404:
+                    raise ValueError(_("An invalid remote URL was provided: {}").format(url))
+
+                # if it was some other kind of error, then raise
+                raise exc
+
         sync_details = get_sync_details(
             remote, remote_url, sync_policy, repository.latest_version()
         )
