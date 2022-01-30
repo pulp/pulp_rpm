@@ -549,7 +549,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
                 deferred_download,
                 mirror_metadata,
                 skip_types=skip_types,
-                new_url=repo_config["url"],
+                urls=[repo_config["url"]],
                 treeinfo=(treeinfo if not is_subrepo(directory) else None),
                 namespace=directory,
             )
@@ -642,7 +642,7 @@ class RpmFirstStage(Stage):
         deferred_download,
         mirror_metadata,
         skip_types=None,
-        new_url=None,
+        urls=None,
         treeinfo=None,
         namespace="",
     ):
@@ -659,7 +659,7 @@ class RpmFirstStage(Stage):
 
         Keyword Args:
             skip_types (list): List of content to skip
-            new_url(str): URL to replace remote url
+            urls(str): A list of URLs to potential repo sources (mirrors)
             treeinfo(dict): Treeinfo data
             namespace(str): Path where this repo is located relative to some parent repo.
 
@@ -679,7 +679,10 @@ class RpmFirstStage(Stage):
         self.treeinfo = treeinfo
         self.skip_types = [] if skip_types is None else skip_types
 
-        self.remote_url = new_url or self.remote.url
+        # the list of possible repo roots
+        self.urls = urls or [self.remote.url]
+        # TODO: fix this
+        self.remote_url = urls[0]
 
         self.nevra_to_module = defaultdict(dict)
         self.pkgname_to_groups = defaultdict(list)
@@ -840,6 +843,7 @@ class RpmFirstStage(Stage):
     async def parse_distribution_tree(self):
         """Parse content from the file treeinfo if present."""
         if self.treeinfo:
+            # TODO: mirror urls
             d_artifacts = [
                 DeclarativeArtifact(
                     artifact=Artifact(),
@@ -1151,8 +1155,7 @@ class RpmFirstStage(Stage):
                         raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
 
                 package = Package(**Package.createrepo_to_dict(pkg))
-                base_url = pkg.location_base or self.remote_url
-                url = urlpath_sanitize(base_url, package.location_href)
+                location_base = pkg.location_base
                 del pkg  # delete it as soon as we're done with it
 
                 store_package_for_mirroring(self.repository, package.pkgId, package.location_href)
