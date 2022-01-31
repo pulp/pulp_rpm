@@ -11,15 +11,8 @@ from pulp_smash.pulp3.utils import (
 
 from pulp_rpm.tests.functional.constants import (
     CENTOS7_URL,
-<<<<<<< HEAD
-    CENTOS8_APPSTREAM_URL,
-    CENTOS8_BASEOS_URL,
-    CENTOS8_KICKSTART_APPSTREAM_URL,
-    CENTOS8_KICKSTART_BASEOS_URL,
-=======
     CENTOS8_STREAM_BASEOS_URL,
     CENTOS8_STREAM_APPSTREAM_URL,
->>>>>>> d4495c52 (Improved error reporting when repomd.xml is not valid)
 )
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
