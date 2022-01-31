@@ -28,7 +28,7 @@ from pulp_smash.utils import get_pulp_setting
 from pulp_rpm.tests.functional.constants import (
     AMAZON_MIRROR,
     DRPM_UNSIGNED_FIXTURE_URL,
-    CENTOS7_OPSTOOLS,
+    CENTOS7_OPSTOOLS_URL,
     PULP_TYPE_ADVISORY,
     PULP_TYPE_MODULEMD,
     PULP_TYPE_PACKAGE,
@@ -1096,7 +1096,7 @@ class BasicSyncTestCase(PulpTestCase):
         repo = self.repo_api.create(gen_repo())
         self.addCleanup(self.repo_api.delete, repo.pulp_href)
 
-        body = gen_rpm_remote(url=CENTOS7_OPSTOOLS, policy="on_demand")
+        body = gen_rpm_remote(url=CENTOS7_OPSTOOLS_URL, policy="on_demand")
         remote = self.remote_api.create(body)
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
