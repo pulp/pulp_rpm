@@ -2,7 +2,7 @@
 name: Feature request
 about: Suggest an idea for this project
 title: ''
-labels: Story, Triage-Needed
+labels: Feature, Triage-Needed
 assignees: ''
 
 ---
