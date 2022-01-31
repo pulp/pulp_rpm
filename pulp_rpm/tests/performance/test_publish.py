@@ -23,10 +23,8 @@ from pulp_rpm.tests.functional.constants import (
     RPM_REMOTE_PATH,
     RPM_REPO_PATH,
     CENTOS7_URL,
-    CENTOS8_APPSTREAM_URL,
-    CENTOS8_BASEOS_URL,
-    CENTOS8_KICKSTART_APP_URL,
-    CENTOS8_KICKSTART_BASEOS_URL,
+    CENTOS8_STREAM_APPSTREAM_URL,
+    CENTOS8_STREAM_BASEOS_URL,
     EPEL7_URL,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_remote
@@ -157,9 +155,9 @@ class PublishTestCase(unittest.TestCase):
         """Publish CentOS 7."""
         self.rpm_publish(url=CENTOS7_URL)
 
-    def test_centos8_baseos(self):
+    def test_centos_8stream_baseos(self):
         """Publish CentOS 8 BaseOS."""
-        publication_href = self.rpm_publish(url=CENTOS8_BASEOS_URL)
+        publication_href = self.rpm_publish(url=CENTOS8_STREAM_BASEOS_URL)
         # Test that the .treeinfo file is available and AppStream sub-repo is published correctly
         body = {"publication": publication_href, "name": "centos8", "base_path": "centos8"}
         response = self.client.using_handler(api.json_handler).post(RPM_DISTRIBUTION_PATH, body)
@@ -192,12 +190,8 @@ class PublishTestCase(unittest.TestCase):
 
     def test_centos8_appstream(self):
         """Publish CentOS 8 AppStream."""
-        self.rpm_publish(url=CENTOS8_APPSTREAM_URL)
+        self.rpm_publish(url=CENTOS8_STREAM_APPSTREAM_URL)
 
-    def test_centos8_kickstart_baseos(self):
-        """Kickstart Publish CentOS 8 BaseOS."""
-        self.rpm_publish(url=CENTOS8_KICKSTART_BASEOS_URL)
-
-    def test_centos8_kickstart_appstream(self):
-        """Kickstart Publish CentOS 8 AppStream."""
-        self.rpm_publish(url=CENTOS8_KICKSTART_APP_URL)
+    def test_centos8_baseos(self):
+        """Publish CentOS 8 BaseOS."""
+        self.rpm_publish(url=CENTOS8_STREAM_BASEOS_URL)
