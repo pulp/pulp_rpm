@@ -22,10 +22,8 @@ from pulp_rpm.tests.functional.constants import (
     RPM_REMOTE_PATH,
     RPM_REPO_PATH,
     CENTOS7_URL,
-    CENTOS8_APPSTREAM_URL,
-    CENTOS8_BASEOS_URL,
-    CENTOS8_KICKSTART_APPSTREAM_URL,
-    CENTOS8_KICKSTART_BASEOS_URL,
+    CENTOS8_STREAM_APPSTREAM_URL,
+    CENTOS8_STREAM_BASEOS_URL,
     EPEL8_MIRRORLIST_URL,
     EPEL8_PLAYGROUND_KICKSTART_URL,
 )
@@ -155,19 +153,11 @@ class SyncTestCase(unittest.TestCase):
 
     def test_centos8_baseos_on_demand(self):
         """Sync CentOS 8 BaseOS."""
-        self.rpm_sync(url=CENTOS8_BASEOS_URL)
+        self.rpm_sync(url=CENTOS8_STREAM_BASEOS_URL)
 
     def test_centos8_appstream_on_demand(self):
         """Sync CentOS 8 AppStream."""
-        self.rpm_sync(url=CENTOS8_APPSTREAM_URL)
-
-    def test_centos8_kickstart_baseos_on_demand(self):
-        """Kickstart Sync CentOS 8 BaseOS."""
-        self.rpm_sync(url=CENTOS8_KICKSTART_BASEOS_URL)
-
-    def test_centos8_kickstart_appstream_on_demand(self):
-        """Kickstart Sync CentOS 8 AppStream."""
-        self.rpm_sync(url=CENTOS8_KICKSTART_APPSTREAM_URL)
+        self.rpm_sync(url=CENTOS8_STREAM_APPSTREAM_URL)
 
     def test_epel8_mirrorlist_with_comment(self):
         """Kickstart Sync EPEL 8 (which includes a comment line)."""
