@@ -6,6 +6,7 @@ import lzma
 import os
 import re
 from django.conf import settings
+from gettext import gettext as _
 
 import createrepo_c as cr
 from xml.etree.cElementTree import iterparse
@@ -148,7 +149,9 @@ def warningcb(warning_type, message):
     return True  # continue parsing
 
 
-def parse_repodata(primary_xml_path, filelists_xml_path, other_xml_path, only_primary=False):
+def parse_repodata(
+    primary_xml_path, filelists_xml_path, other_xml_path, only_primary=False, mirror=False
+):
     """
     Parse repodata to extract package info.
 
@@ -162,8 +165,12 @@ def parse_repodata(primary_xml_path, filelists_xml_path, other_xml_path, only_pr
 
     Returns:
         dict: createrepo_c package objects with the pkgId as a key
-
     """
+    packages = collections.OrderedDict()
+
+    nevras = set()
+    pkgid_warning_triggered = False
+    nevra_warning_triggered = False
 
     def pkgcb(pkg):
         """
@@ -173,7 +180,37 @@ def parse_repodata(primary_xml_path, filelists_xml_path, other_xml_path, only_pr
             pkg(preaterepo_c.Package): a parsed metadata for a package
 
         """
+        nonlocal pkgid_warning_triggered
+        nonlocal nevra_warning_triggered
+
+        ERR_MSG = _(
+            "The repository metadata being synced into Pulp is erroneous in a way that "
+            "makes it ambiguous (duplicate {}), and therefore we do not allow it to be synced in "
+            "'mirror_complete' mode. Please choose a sync policy which does not mirror "
+            "repository metadata.\n\n"
+            "Please read https://github.com/pulp/pulp_rpm/issues/2402 for more details."
+        )
+        WARN_MSG = _(
+            "The repository metadata being synced into Pulp is erroneous in a way that "
+            "makes it ambiguous (duplicate {}). Yum, DNF and Pulp try to handle these problems, "
+            "but unexpected things may happen.\n\n"
+            "Please read https://github.com/pulp/pulp_rpm/issues/2402 for more details."
+        )
+
+        if not pkgid_warning_triggered and pkg.pkgId in packages:
+            pkgid_warning_triggered = True
+            if mirror:
+                raise Exception(ERR_MSG.format("PKGIDs"))
+            else:
+                log.warn(WARN_MSG.format("PKGIDs"))
+        if not nevra_warning_triggered and pkg.nevra() in nevras:
+            nevra_warning_triggered = True
+            if mirror:
+                raise Exception(ERR_MSG.format("NEVRAs"))
+            else:
+                log.warn(WARN_MSG.format("NEVRAs"))
         packages[pkg.pkgId] = pkg
+        nevras.add(pkg.nevra())
 
     def newpkgcb(pkgId, name, arch):
         """
@@ -198,8 +235,6 @@ def parse_repodata(primary_xml_path, filelists_xml_path, other_xml_path, only_pr
 
         """
         return packages.get(pkgId, None)
-
-    packages = collections.OrderedDict()
 
     cr.xml_parse_primary(primary_xml_path, pkgcb=pkgcb, warningcb=warningcb, do_files=False)
     if not only_primary:
@@ -240,7 +275,7 @@ class MetadataParser:
             )
         )
 
-    def parse_packages_iterative(self, file_extension, skip_srpms=False):
+    def parse_packages_iterative(self, file_extension, skip_srpms=False, mirror=False):
         """Parse packages iteratively using the hybrid parser."""
         extra_repodata_parser = iterative_files_changelog_parser(
             file_extension, self.filelists_xml_path, self.other_xml_path
@@ -249,7 +284,7 @@ class MetadataParser:
         # We *do not* want to skip srpms when parsing primary because otherwise we run into
         # trouble when we encounter them again on the iterative side of the parser. Just skip
         # them at the end.
-        for pkg in self.parse_packages(only_primary=True):
+        for pkg in self.parse_packages(only_primary=True, mirror=mirror):
             pkgid = pkg.pkgId
             while True:
                 pkgid_extra, files, changelogs = next(extra_repodata_parser)
@@ -277,13 +312,14 @@ class MetadataParser:
             pkg.changelogs = changelogs
             yield pkg
 
-    def parse_packages(self, only_primary=False, skip_srpms=False):
+    def parse_packages(self, only_primary=False, skip_srpms=False, mirror=False):
         """Parse packages using the traditional createrepo_c parser."""
         packages = parse_repodata(
             self.primary_xml_path,
             self.filelists_xml_path,
             self.other_xml_path,
             only_primary=only_primary,
+            mirror=mirror,
         )
         while True:
             try:
