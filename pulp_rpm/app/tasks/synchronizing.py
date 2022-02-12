@@ -356,6 +356,9 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize):
       will tell clients to look for files at some source outside of the Pulp-hosted repo.
     * If the repository uses Delta RPMs, the sync will fail, because Pulp does not support them,
       and cannot change the repository metadata to remove them.
+    * If the repository metadata is invalid in specific ways, the sync will fail. These repos
+      may "work" with Yum / DNF but the results could be unexpected. Pulp is less tolerant of
+      metadata with these ambiguities.
 
     Args:
         remote_pk (str): The remote PK.
@@ -1095,10 +1098,14 @@ class RpmFirstStage(Stage):
                 await self.put(dc)
 
             if settings.RPM_ITERATIVE_PARSING:
-                for pkg in parser.parse_packages_iterative(file_extension, skip_srpms=skip_srpms):
+                for pkg in parser.parse_packages_iterative(
+                    file_extension, skip_srpms=skip_srpms, mirror=self.mirror_metadata
+                ):
                     await on_package(pkg)
             else:
-                for pkg in parser.parse_packages(skip_srpms=skip_srpms):
+                for pkg in parser.parse_packages(
+                    skip_srpms=skip_srpms, mirror=self.mirror_metadata
+                ):
                     await on_package(pkg)
 
     async def parse_advisories(self, result):
