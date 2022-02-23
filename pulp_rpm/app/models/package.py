@@ -3,6 +3,7 @@ from logging import getLogger
 import createrepo_c as cr
 
 from django.contrib.postgres.fields import JSONField
+from django.conf import settings
 from django.db import models
 from django.db.models import Window, F
 from django.db.models.functions import RowNumber
@@ -275,9 +276,20 @@ class Package(Content):
             dict: all data for RPM/SRPM content creation
 
         """
+        changelogs = package.changelogs
+
+        # make sure the changelogs are sorted by date
+        changelogs.sort(key=lambda t: t[1])
+
+        if settings.KEEP_CHANGELOG_LIMIT is not None:
+            # always keep at least one changelog, even if the limit is set to 0
+            changelog_limit = settings.KEEP_CHANGELOG_LIMIT or 1
+            # changelogs are listed in chronological order, grab the last N changelogs from the list
+            changelogs = changelogs[-changelog_limit:]
+
         return {
             PULP_PACKAGE_ATTRS.ARCH: getattr(package, CR_PACKAGE_ATTRS.ARCH),
-            PULP_PACKAGE_ATTRS.CHANGELOGS: getattr(package, CR_PACKAGE_ATTRS.CHANGELOGS, []),
+            PULP_PACKAGE_ATTRS.CHANGELOGS: changelogs,
             PULP_PACKAGE_ATTRS.CHECKSUM_TYPE: getattr(
                 CHECKSUM_TYPES, getattr(package, CR_PACKAGE_ATTRS.CHECKSUM_TYPE).upper()
             ),

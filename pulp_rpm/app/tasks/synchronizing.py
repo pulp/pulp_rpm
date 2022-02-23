@@ -653,10 +653,6 @@ class RpmFirstStage(Stage):
                     result = await downloader.run()
                     return name, location_href, result
 
-                file_extension = [
-                    record.location_href for record in repomd.records if record.type == "primary"
-                ][0].split(".")[-1]
-
                 for record in repomd.records:
                     record_checksum_type = getattr(CHECKSUM_TYPES, record.checksum_type.upper())
                     checksum_types[record.type] = record_checksum_type
@@ -749,7 +745,7 @@ class RpmFirstStage(Stage):
                         except FileNotFoundError:
                             raise
 
-            await self.parse_repository_metadata(repomd, repomd_files, file_extension)
+            await self.parse_repository_metadata(repomd, repomd_files)
 
     async def parse_distribution_tree(self):
         """Parse content from the file treeinfo if present."""
@@ -779,7 +775,7 @@ class RpmFirstStage(Stage):
             dc.extra_data = self.treeinfo
             await self.put(dc)
 
-    async def parse_repository_metadata(self, repomd, metadata_results, file_extension):
+    async def parse_repository_metadata(self, repomd, metadata_results):
         """Parse repository metadata."""
         needed_metadata = set(PACKAGE_REPODATA) - set(metadata_results.keys())
 
@@ -803,7 +799,6 @@ class RpmFirstStage(Stage):
             metadata_results["primary"],
             metadata_results["filelists"],
             metadata_results["other"],
-            file_extension=file_extension,
         )
 
         groups_list = []
@@ -1034,7 +1029,7 @@ class RpmFirstStage(Stage):
 
         return dc_groups
 
-    async def parse_packages(self, primary_xml, filelists_xml, other_xml, file_extension="gz"):
+    async def parse_packages(self, primary_xml, filelists_xml, other_xml):
         """Parse packages from the remote repository."""
         parser = MetadataParser.from_metadata_files(
             primary_xml.path, filelists_xml.path, other_xml.path
@@ -1050,12 +1045,46 @@ class RpmFirstStage(Stage):
             # skip SRPM if defined
             skip_srpms = "srpm" in self.skip_types and not self.mirror_metadata
 
-            async def on_package(pkg):
-                """Callback when handling a completed package.
+            nevras = set()
+            checksums = set()
+            pkgid_warning_triggered = False
+            nevra_warning_triggered = False
 
-                Args:
-                    pkg (createrepo_c.Package): A completed createrepo_c package.
-                """
+            ERR_MSG = _(
+                "The repository metadata being synced into Pulp is erroneous in a way that "
+                "makes it ambiguous (duplicate {}), and therefore we do not allow it to be "
+                "synced in 'mirror_complete' mode. Please choose a sync policy which does "
+                "not mirror repository metadata.\n\n"
+                "Please read https://github.com/pulp/pulp_rpm/issues/2402 for more details."
+            )
+            WARN_MSG = _(
+                "The repository metadata being synced into Pulp is erroneous in a way that "
+                "makes it ambiguous (duplicate {}). Yum, DNF and Pulp try to handle these "
+                "problems, but unexpected things may happen.\n\n"
+                "Please read https://github.com/pulp/pulp_rpm/issues/2402 for more details."
+            )
+
+            pkg_iterator = parser.as_iterator()
+
+            for pkg in pkg_iterator:
+                if not pkgid_warning_triggered and pkg.pkgId in checksums:
+                    pkgid_warning_triggered = True
+                    if self.mirror_metadata:
+                        raise Exception(ERR_MSG.format("PKGIDs"))
+                    else:
+                        log.warn(WARN_MSG.format("PKGIDs"))
+                if not nevra_warning_triggered and pkg.nevra() in nevras:
+                    nevra_warning_triggered = True
+                    if self.mirror_metadata:
+                        raise Exception(ERR_MSG.format("NEVRAs"))
+                    else:
+                        log.warn(WARN_MSG.format("NEVRAs"))
+                nevras.add(pkg.nevra())
+                checksums.add(pkg.pkgId)
+
+                if skip_srpms and pkg.arch == "src":
+                    continue
+
                 if self.mirror_metadata:
                     uses_base_url = pkg.location_base
                     illegal_relative_path = self.is_illegal_relative_path(pkg.location_href)
@@ -1097,17 +1126,6 @@ class RpmFirstStage(Stage):
 
                 packages_pb.increment()
                 await self.put(dc)
-
-            if settings.RPM_ITERATIVE_PARSING:
-                for pkg in parser.parse_packages_iterative(
-                    file_extension, skip_srpms=skip_srpms, mirror=self.mirror_metadata
-                ):
-                    await on_package(pkg)
-            else:
-                for pkg in parser.parse_packages(
-                    skip_srpms=skip_srpms, mirror=self.mirror_metadata
-                ):
-                    await on_package(pkg)
 
     async def parse_advisories(self, result):
         """Parse advisories from the remote repository."""
