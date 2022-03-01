@@ -1,6 +1,7 @@
 """Verify whether package manager, yum/dnf, can consume content from Pulp."""
 import unittest
 import itertools
+import os
 
 from pulpcore.client.pulpcore import ArtifactsApi, ApiClient as CoreApiClient
 from pulpcore.client.pulp_rpm import (
@@ -200,8 +201,10 @@ class ConsumeSignedRepomdTestCase(PulpTestCase):
         cls.pkg_mgr = cli.PackageManager(cls.cfg)
         cls.api_client = api.Client(cls.cfg, api.json_handler)
 
+        api_root = os.environ.get("PULP_API_ROOT", "/pulp/").lstrip("/")
+
         signing_services = cls.api_client.using_handler(api.page_handler).get(
-            "pulp/api/v3/signing-services/", params={"name": "sign-metadata"}
+            f"{api_root}api/v3/signing-services/", params={"name": "sign-metadata"}
         )
         # NOTE: This is not used by the CI, only by local tests. The CI uses a separate
         # environment for API tests and Pulp, so the API tests don't have direct access
@@ -212,7 +215,7 @@ class ConsumeSignedRepomdTestCase(PulpTestCase):
             init_signed_repo_configuration()
 
             signing_services = cls.api_client.using_handler(api.page_handler).get(
-                "pulp/api/v3/signing-services/", params={"name": "sign-metadata"}
+                f"{api_root}api/v3/signing-services/", params={"name": "sign-metadata"}
             )
 
         cls.metadata_signing_service = signing_services[0]
