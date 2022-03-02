@@ -5,5 +5,5 @@ libcomps~=0.1.15
 productmd~=1.33.0
 pulpcore>=3.17.0
 PyGObject~=3.22
-solv~=0.7.17
+solv~=0.7.21
 aiohttp_xmlrpc>1.3.2
