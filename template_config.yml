@@ -61,12 +61,10 @@ pulpprojectdotorg_key_id: aa499d7938ed
 pydocstyle: true
 pypi_username: pulp
 python_version: '3.8'
-redmine_project: pulp_rpm
 release_email: pulp-infra@redhat.com
 release_user: pulpbot
 single_commit_check: true
 sync_ci: true
-tasking_allow_async_unsafe: true
 test_azure: true
 test_bindings: false
 test_cli: true
@@ -79,7 +77,6 @@ test_performance:
 test_released_plugin_with_next_pulpcore_release: false
 test_s3: true
 update_github: true
-update_redmine: false
 upgrade_range:
 - pulp_rpm_branch: '3.10'
   pulpcore_branch: 3.11
