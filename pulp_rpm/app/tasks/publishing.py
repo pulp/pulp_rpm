@@ -347,15 +347,7 @@ def publish(
     )
     with tempfile.TemporaryDirectory("."):
         with RpmPublication.create(repository_version) as publication:
-            kwargs = {}
-            first_package = repository_version.content.filter(
-                pulp_type=Package.get_pulp_type()
-            ).first()
-            if first_package:
-                kwargs["default"] = first_package.cast().checksum_type
-            publication.metadata_checksum_type = get_checksum_type(
-                "primary", checksum_types, **kwargs
-            )
+            publication.metadata_checksum_type = get_checksum_type("primary", checksum_types)
             publication.package_checksum_type = (
                 checksum_types.get("package") or publication.metadata_checksum_type
             )
