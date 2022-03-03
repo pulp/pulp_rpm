@@ -25,8 +25,6 @@ from pulp_rpm.tests.functional.constants import (
     CENTOS7_URL,
     CENTOS8_STREAM_APPSTREAM_URL,
     CENTOS8_STREAM_BASEOS_URL,
-    CENTOS8_STREAM_KICKSTART_APPSTREAM_URL,
-    CENTOS8_STREAM_KICKSTART_BASEOS_URL,
     EPEL7_URL,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_remote
