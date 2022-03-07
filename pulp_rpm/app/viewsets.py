@@ -19,16 +19,17 @@ from pulpcore.plugin.serializers import (
 )
 from pulpcore.plugin.viewsets import (
     AlternateContentSourceViewSet,
-    DistributionViewSet,
     ContentFilter,
-    NoArtifactContentUploadViewSet,
+    DistributionViewSet,
     NamedModelViewSet,
+    NoArtifactContentUploadViewSet,
     OperationPostponedResponse,
     PublicationViewSet,
     ReadOnlyContentViewSet,
     RemoteViewSet,
-    RepositoryViewSet,
     RepositoryVersionViewSet,
+    RepositoryViewSet,
+    RolesMixin,
     SingleArtifactContentUploadViewSet,
     TaskGroupOperationResponse,
 )
@@ -36,7 +37,6 @@ from pulpcore.plugin.viewsets import (
 from pulp_rpm.app import tasks
 from pulp_rpm.app.constants import SYNC_POLICIES
 from pulp_rpm.app.models import (
-    RpmAlternateContentSource,
     DistributionTree,
     Modulemd,
     ModulemdDefaults,
@@ -46,34 +46,35 @@ from pulp_rpm.app.models import (
     PackageGroup,
     PackageLangpacks,
     RepoMetadataFile,
+    RpmAlternateContentSource,
     RpmDistribution,
-    RpmRemote,
-    UlnRemote,
-    RpmRepository,
     RpmPublication,
+    RpmRemote,
+    RpmRepository,
+    UlnRemote,
     UpdateRecord,
 )
 from pulp_rpm.app.serializers import (
-    RpmAlternateContentSourceSerializer,
-    CopySerializer,
     CompsXmlSerializer,
+    CopySerializer,
     DistributionTreeSerializer,
     MinimalPackageSerializer,
     MinimalUpdateRecordSerializer,
     ModulemdDefaultsSerializer,
     ModulemdSerializer,
-    PackageSerializer,
     PackageCategorySerializer,
     PackageEnvironmentSerializer,
     PackageGroupSerializer,
     PackageLangpacksSerializer,
+    PackageSerializer,
     RepoMetadataFileSerializer,
+    RpmAlternateContentSourceSerializer,
     RpmDistributionSerializer,
+    RpmPublicationSerializer,
     RpmRemoteSerializer,
-    UlnRemoteSerializer,
     RpmRepositorySerializer,
     RpmRepositorySyncURLSerializer,
-    RpmPublicationSerializer,
+    UlnRemoteSerializer,
     UpdateRecordSerializer,
 )
 
@@ -115,8 +116,23 @@ class PackageViewSet(SingleArtifactContentUploadViewSet):
     minimal_serializer_class = MinimalPackageSerializer
     filterset_class = PackageFilter
 
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+            {
+                "action": ["create"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+        ],
+    }
 
-class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin):
+
+class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin, RolesMixin):
     """
     A ViewSet for RpmRepository.
     """
@@ -124,6 +140,146 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin):
     endpoint_name = "rpm"
     queryset = RpmRepository.objects.exclude(user_hidden=True)
     serializer_class = RpmRepositorySerializer
+    queryset_filtering_required_permission = "rpm.view_rpmrepository"
+
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "my_permissions"],
+                "principal": ["authenticated"],
+                "effect": "allow",
+            },
+            {
+                "action": ["retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": "has_model_or_obj_perms:rpm.view_rpmrepository",
+            },
+            {
+                "action": ["create"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_remote_param_model_or_obj_perms:rpm.view_rpmremote",
+                    "has_model_perms:rpm.add_rpmrepository",
+                ],
+            },
+            {
+                "action": ["update", "partial_update"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_obj_perms:rpm.change_rpmrepository",
+                    "has_model_or_obj_perms:rpm.view_rpmrepository",
+                    "has_remote_param_model_or_obj_perms:rpm.view_rpmremote",
+                ],
+            },
+            {
+                "action": ["modify"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_obj_perms:rpm.modify_content_rpmrepository",
+                    "has_model_or_obj_perms:rpm.view_rpmrepository",
+                ],
+            },
+            {
+                "action": ["destroy"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_obj_perms:rpm.delete_rpmrepository",
+                    "has_model_or_obj_perms:rpm.view_rpmrepository",
+                ],
+            },
+            {
+                "action": ["sync"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_obj_perms:rpm.sync_rpmrepository",
+                    "has_model_or_obj_perms:rpm.view_rpmrepository",
+                    "has_remote_param_model_or_obj_perms:rpm.view_rpmremote",
+                ],
+            },
+            {
+                "action": ["list_roles", "add_role", "remove_role"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": "has_model_or_obj_perms:rpm.manage_roles_rpmrepository",
+            },
+        ],
+        "creation_hooks": [
+            {
+                "function": "add_roles_for_object_creator",
+                "parameters": {"roles": "rpm.rpmrepository_owner"},
+            }
+        ],
+    }
+
+    LOCKED_ROLES = {
+        "rpm.rpmrepository_owner": [
+            "rpm.change_rpmrepository",
+            "rpm.delete_rpmrepository",
+            "rpm.delete_rpmrepository_version",
+            "rpm.manage_roles_rpmrepository",
+            "rpm.modify_content_rpmrepository",
+            "rpm.repair_rpmrepository",
+            "rpm.sync_rpmrepository",
+            "rpm.view_rpmrepository",
+        ],
+        "rpm.rpmrepository_creator": [
+            "rpm.add_rpmrepository",
+        ],
+        "rpm.rpmrepository_viewer": [
+            "rpm.view_rpmrepository",
+        ],
+        # Here are defined plugin-wide `LOCKED_ROLES`
+        "rpm.admin": [
+            "rpm.add_rpmalternatecontentsource",
+            "rpm.add_rpmdistribution",
+            "rpm.add_rpmpublication",
+            "rpm.add_rpmremote",
+            "rpm.add_rpmrepository",
+            "rpm.add_ulnremote",
+            "rpm.change_rpmalternatecontentsource",
+            "rpm.change_rpmdistribution",
+            "rpm.change_rpmremote",
+            "rpm.change_rpmrepository",
+            "rpm.change_ulnremote",
+            "rpm.delete_rpmalternatecontentsource",
+            "rpm.delete_rpmdistribution",
+            "rpm.delete_rpmpublication",
+            "rpm.delete_rpmremote",
+            "rpm.delete_rpmrepository",
+            "rpm.delete_rpmrepository_version",
+            "rpm.delete_ulnremote",
+            "rpm.manage_roles_rpmalternatecontentsource",
+            "rpm.manage_roles_rpmdistribution",
+            "rpm.manage_roles_rpmpublication",
+            "rpm.manage_roles_rpmremote",
+            "rpm.manage_roles_rpmrepository",
+            "rpm.manage_roles_ulnremote",
+            "rpm.modify_content_rpmrepository",
+            "rpm.refresh_rpmalternatecontentsource",
+            "rpm.repair_rpmrepository",
+            "rpm.sync_rpmrepository",
+            "rpm.view_rpmalternatecontentsource",
+            "rpm.view_rpmdistribution",
+            "rpm.view_rpmpublication",
+            "rpm.view_rpmremote",
+            "rpm.view_rpmrepository",
+            "rpm.view_ulnremote",
+        ],
+        "rpm.viewer": [
+            "rpm.view_rpmalternatecontentsource",
+            "rpm.view_rpmdistribution",
+            "rpm.view_rpmpublication",
+            "rpm.view_rpmremote",
+            "rpm.view_rpmrepository",
+            "rpm.view_ulnremote",
+        ],
+    }
 
     @extend_schema(
         description="Trigger an asynchronous task to sync RPM content.",
@@ -184,8 +340,46 @@ class RpmRepositoryVersionViewSet(RepositoryVersionViewSet):
 
     parent_viewset = RpmRepositoryViewSet
 
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": "has_repository_model_or_obj_perms:rpm.view_rpmrepository",
+            },
+            {
+                "action": ["destroy"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_repository_model_or_obj_perms:rpm.delete_rpmrepository",
+                    "has_repository_model_or_obj_perms:rpm.view_rpmrepository",
+                ],
+            },
+            {
+                "action": ["destroy"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_repository_model_or_obj_perms:rpm.delete_rpmrepository_version",
+                    "has_repository_model_or_obj_perms:rpm.view_rpmrepository",
+                ],
+            },
+            {
+                "action": ["repair"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_repository_model_or_obj_perms:rpm.repair_rpmrepository",
+                    "has_repository_model_or_obj_perms:rpm.view_rpmrepository",
+                ],
+            },
+        ],
+    }
 
-class RpmRemoteViewSet(RemoteViewSet):
+
+class RpmRemoteViewSet(RemoteViewSet, RolesMixin):
     """
     A ViewSet for RpmRemote.
     """
@@ -193,9 +387,77 @@ class RpmRemoteViewSet(RemoteViewSet):
     endpoint_name = "rpm"
     queryset = RpmRemote.objects.all()
     serializer_class = RpmRemoteSerializer
+    queryset_filtering_required_permission = "rpm.view_rpmremote"
+
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "my_permissions"],
+                "principal": ["authenticated"],
+                "effect": "allow",
+            },
+            {
+                "action": ["retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": "has_model_or_obj_perms:rpm.view_rpmremote",
+            },
+            {
+                "action": ["create"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": "has_model_perms:rpm.add_rpmremote",
+            },
+            {
+                "action": ["update", "partial_update"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_obj_perms:rpm.change_rpmremote",
+                    "has_model_or_obj_perms:rpm.view_rpmremote",
+                ],
+            },
+            {
+                "action": ["destroy"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_obj_perms:rpm.delete_rpmremote",
+                    "has_model_or_obj_perms:rpm.view_rpmremote",
+                ],
+            },
+            {
+                "action": ["list_roles", "add_role", "remove_role"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": "has_model_or_obj_perms:rpm.manage_roles_rpmremote",
+            },
+        ],
+        "creation_hooks": [
+            {
+                "function": "add_roles_for_object_creator",
+                "parameters": {"roles": "rpm.rpmremote_owner"},
+            }
+        ],
+    }
+
+    LOCKED_ROLES = {
+        "rpm.rpmremote_owner": [
+            "rpm.change_rpmremote",
+            "rpm.delete_rpmremote",
+            "rpm.manage_roles_rpmremote",
+            "rpm.view_rpmremote",
+        ],
+        "rpm.rpmremote_creator": [
+            "rpm.add_rpmremote",
+        ],
+        "rpm.rpmremote_viewer": [
+            "rpm.view_rpmremote",
+        ],
+    }
 
 
-class UlnRemoteViewSet(RemoteViewSet):
+class UlnRemoteViewSet(RemoteViewSet, RolesMixin):
     """
     A ViewSet for UlnRemote.
     """
@@ -203,6 +465,74 @@ class UlnRemoteViewSet(RemoteViewSet):
     endpoint_name = "uln"
     queryset = UlnRemote.objects.all()
     serializer_class = UlnRemoteSerializer
+    queryset_filtering_required_permission = "rpm.view_ulnremote"
+
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "my_permissions"],
+                "principal": ["authenticated"],
+                "effect": "allow",
+            },
+            {
+                "action": ["retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": "has_model_or_obj_perms:rpm.view_ulnremote",
+            },
+            {
+                "action": ["create"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": "has_model_perms:rpm.add_ulnremote",
+            },
+            {
+                "action": ["update", "partial_update"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_obj_perms:rpm.change_ulnremote",
+                    "has_model_or_obj_perms:rpm.view_ulnremote",
+                ],
+            },
+            {
+                "action": ["destroy"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_obj_perms:rpm.delete_ulnremote",
+                    "has_model_or_obj_perms:rpm.view_ulnremote",
+                ],
+            },
+            {
+                "action": ["list_roles", "add_role", "remove_role"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": "has_model_or_obj_perms:rpm.manage_roles_ulnremote",
+            },
+        ],
+        "creation_hooks": [
+            {
+                "function": "add_roles_for_object_creator",
+                "parameters": {"roles": "rpm.ulnremote_owner"},
+            }
+        ],
+    }
+
+    LOCKED_ROLES = {
+        "rpm.ulnremote_owner": [
+            "rpm.change_ulnremote",
+            "rpm.delete_ulnremote",
+            "rpm.manage_roles_ulnremote",
+            "rpm.view_ulnremote",
+        ],
+        "rpm.ulnremote_creator": [
+            "rpm.add_ulnremote",
+        ],
+        "rpm.ulnremote_viewer": [
+            "rpm.view_ulnremote",
+        ],
+    }
 
 
 class UpdateRecordFilter(ContentFilter):
@@ -237,8 +567,24 @@ class UpdateRecordViewSet(NoArtifactContentUploadViewSet):
     minimal_serializer_class = MinimalUpdateRecordSerializer
     filterset_class = UpdateRecordFilter
 
+    # TODO: adjust this policy after upload access policy design done and in place
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+            {
+                "action": ["create"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+        ],
+    }
 
-class RpmPublicationViewSet(PublicationViewSet):
+
+class RpmPublicationViewSet(PublicationViewSet, RolesMixin):
     """
     ViewSet for Rpm Publications.
     """
@@ -246,6 +592,67 @@ class RpmPublicationViewSet(PublicationViewSet):
     endpoint_name = "rpm"
     queryset = RpmPublication.objects.exclude(complete=False)
     serializer_class = RpmPublicationSerializer
+    queryset_filtering_required_permission = "rpm.view_rpmpublication"
+
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "my_permissions"],
+                "principal": ["authenticated"],
+                "effect": "allow",
+            },
+            {
+                "action": ["retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": "has_model_or_obj_perms:rpm.view_rpmpublication",
+            },
+            {
+                "action": ["create"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_perms:rpm.add_rpmpublication",
+                    "has_repo_attr_model_or_obj_perms:rpm.view_rpmrepository",
+                ],
+            },
+            {
+                "action": ["destroy"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_obj_perms:rpm.delete_rpmpublication",
+                    "has_model_or_obj_perms:rpm.view_rpmpublication",
+                ],
+            },
+            {
+                "action": ["list_roles", "add_role", "remove_role"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": "has_model_or_obj_perms:rpm.manage_roles_rpmpublication",
+            },
+        ],
+        "creation_hooks": [
+            {
+                "function": "add_roles_for_object_creator",
+                "parameters": {"roles": "rpm.rpmpublication_owner"},
+            }
+        ],
+    }
+
+    LOCKED_ROLES = {
+        "rpm.rpmpublication_owner": [
+            "rpm.delete_rpmpublication",
+            "rpm.manage_roles_rpmpublication",
+            "rpm.view_rpmpublication",
+        ],
+        "rpm.rpmpublication_creator": [
+            "rpm.add_rpmpublication",
+        ],
+        "rpm.rpmpublication_viewer": [
+            "rpm.view_rpmpublication",
+        ],
+    }
 
     @extend_schema(
         description="Trigger an asynchronous task to create a new RPM " "content publication.",
@@ -302,7 +709,7 @@ class RpmPublicationViewSet(PublicationViewSet):
         return OperationPostponedResponse(result, request)
 
 
-class RpmDistributionViewSet(DistributionViewSet):
+class RpmDistributionViewSet(DistributionViewSet, RolesMixin):
     """
     ViewSet for RPM Distributions.
     """
@@ -310,6 +717,80 @@ class RpmDistributionViewSet(DistributionViewSet):
     endpoint_name = "rpm"
     queryset = RpmDistribution.objects.all()
     serializer_class = RpmDistributionSerializer
+    queryset_filtering_required_permission = "rpm.view_rpmdistribution"
+
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "my_permissions"],
+                "principal": ["authenticated"],
+                "effect": "allow",
+            },
+            {
+                "action": ["retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": "has_model_or_obj_perms:rpm.view_rpmdistribution",
+            },
+            {
+                "action": ["create"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_perms:rpm.add_rpmdistribution",
+                    "has_publication_param_model_or_obj_perms:rpm.view_rpmpublication",
+                    "has_repo_attr_model_or_obj_perms:rpm.view_rpmrepository",
+                ],
+            },
+            {
+                "action": ["update", "partial_update"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_obj_perms:rpm.change_rpmdistribution",
+                    "has_model_or_obj_perms:rpm.view_rpmdistribution",
+                    "has_publication_param_model_or_obj_perms:rpm.view_rpmpublication",
+                    "has_repo_attr_model_or_obj_perms:rpm.view_rpmrepository",
+                ],
+            },
+            {
+                "action": ["destroy"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_obj_perms:rpm.delete_rpmdistribution",
+                    "has_model_or_obj_perms:rpm.view_rpmdistribution",
+                ],
+            },
+            {
+                "action": ["list_roles", "add_role", "remove_role"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": "has_model_or_obj_perms:rpm.manage_roles_rpmdistribution",
+            },
+        ],
+        "creation_hooks": [
+            {
+                "function": "add_roles_for_object_creator",
+                "parameters": {"roles": "rpm.rpmdistribution_owner"},
+            }
+        ],
+    }
+
+    LOCKED_ROLES = {
+        "rpm.rpmdistribution_owner": [
+            "rpm.change_rpmdistribution",
+            "rpm.delete_rpmdistribution",
+            "rpm.manage_roles_rpmdistribution",
+            "rpm.view_rpmdistribution",
+        ],
+        "rpm.rpmdistribution_creator": [
+            "rpm.add_rpmdistribution",
+        ],
+        "rpm.rpmdistribution_viewer": [
+            "rpm.view_rpmdistribution",
+        ],
+    }
 
 
 class CopyViewSet(viewsets.ViewSet):
@@ -318,6 +799,19 @@ class CopyViewSet(viewsets.ViewSet):
     """
 
     serializer_class = CopySerializer
+
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["create"],
+                "principal": ["authenticated"],
+                "effect": "allow",
+                "condition": [
+                    "has_perms_to_copy",
+                ],
+            },
+        ],
+    }
 
     @extend_schema(
         description="Trigger an asynchronous task to copy RPM content"
@@ -401,6 +895,16 @@ class PackageGroupViewSet(ReadOnlyContentViewSet):
     queryset = PackageGroup.objects.all()
     serializer_class = PackageGroupSerializer
 
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+        ],
+    }
+
 
 class PackageCategoryViewSet(ReadOnlyContentViewSet):
     """
@@ -410,6 +914,16 @@ class PackageCategoryViewSet(ReadOnlyContentViewSet):
     endpoint_name = "packagecategories"
     queryset = PackageCategory.objects.all()
     serializer_class = PackageCategorySerializer
+
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+        ],
+    }
 
 
 class PackageEnvironmentViewSet(ReadOnlyContentViewSet):
@@ -421,6 +935,16 @@ class PackageEnvironmentViewSet(ReadOnlyContentViewSet):
     queryset = PackageEnvironment.objects.all()
     serializer_class = PackageEnvironmentSerializer
 
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+        ],
+    }
+
 
 class PackageLangpacksViewSet(ReadOnlyContentViewSet):
     """
@@ -430,6 +954,16 @@ class PackageLangpacksViewSet(ReadOnlyContentViewSet):
     endpoint_name = "packagelangpacks"
     queryset = PackageLangpacks.objects.all()
     serializer_class = PackageLangpacksSerializer
+
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+        ],
+    }
 
 
 class DistributionTreeViewSet(ReadOnlyContentViewSet):
@@ -442,6 +976,16 @@ class DistributionTreeViewSet(ReadOnlyContentViewSet):
     queryset = DistributionTree.objects.all()
     serializer_class = DistributionTreeSerializer
 
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+        ],
+    }
+
 
 class RepoMetadataFileViewSet(ReadOnlyContentViewSet):
     """
@@ -452,6 +996,16 @@ class RepoMetadataFileViewSet(ReadOnlyContentViewSet):
     endpoint_name = "repo_metadata_files"
     queryset = RepoMetadataFile.objects.all()
     serializer_class = RepoMetadataFileSerializer
+
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+        ],
+    }
 
 
 class ModulemdFilter(ContentFilter):
@@ -479,6 +1033,16 @@ class ModulemdViewSet(SingleArtifactContentUploadViewSet):
     serializer_class = ModulemdSerializer
     filterset_class = ModulemdFilter
 
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+        ],
+    }
+
 
 class ModulemdDefaultsFilter(ContentFilter):
     """
@@ -505,11 +1069,34 @@ class ModulemdDefaultsViewSet(SingleArtifactContentUploadViewSet):
     serializer_class = ModulemdDefaultsSerializer
     filterset_class = ModulemdDefaultsFilter
 
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+        ],
+    }
+
 
 class CompsXmlViewSet(viewsets.ViewSet):
     """
     ViewSet for comps.xml Upload.
     """
+
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["create"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_repo_attr_model_or_obj_perms:rpm.modify_content_rpmrepository",
+                ],
+            },
+        ],
+    }
 
     @extend_schema(
         description="Trigger an asynchronous task to upload a comps.xml file.",
@@ -544,7 +1131,7 @@ class CompsXmlViewSet(viewsets.ViewSet):
         return OperationPostponedResponse(task, request)
 
 
-class RpmAlternateContentSourceViewSet(AlternateContentSourceViewSet):
+class RpmAlternateContentSourceViewSet(AlternateContentSourceViewSet, RolesMixin):
     """
     ViewSet for ACS.
     """
@@ -552,6 +1139,88 @@ class RpmAlternateContentSourceViewSet(AlternateContentSourceViewSet):
     endpoint_name = "rpm"
     queryset = RpmAlternateContentSource.objects.all()
     serializer_class = RpmAlternateContentSourceSerializer
+    queryset_filtering_required_permission = "rpm.view_rpmalternatecontentsource"
+
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list"],
+                "principal": ["authenticated"],
+                "effect": "allow",
+            },
+            {
+                "action": ["retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": "has_model_or_obj_perms:rpm.view_rpmalternatecontentsource",
+            },
+            {
+                "action": ["create"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_remote_param_model_or_obj_perms:rpm.view_rpmremote",
+                    "has_model_perms:rpm.add_rpmalternatecontentsource",
+                ],
+            },
+            {
+                "action": ["refresh"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_obj_perms:rpm.view_rpmalternatecontentsource",
+                    "has_model_perms:rpm.refresh_rpmalternatecontentsource",
+                ],
+            },
+            {
+                "action": ["update", "partial_update"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_obj_perms:rpm.change_rpmalternatecontentsource",
+                    "has_model_or_obj_perms:rpm.view_rpmalternatecontentsource",
+                    "has_remote_param_model_or_obj_perms:rpm.view_rpmremote",
+                ],
+            },
+            {
+                "action": ["destroy"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_obj_perms:rpm.delete_rpmalternatecontentsource",
+                    "has_model_or_obj_perms:rpm.view_rpmalternatecontentsource",
+                ],
+            },
+            {
+                "action": ["list_roles", "add_role", "remove_role"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": "has_model_or_obj_perms:rpm.manage_roles_rpmalternatecontentsource",
+            },
+        ],
+        "creation_hooks": [
+            {
+                "function": "add_roles_for_object_creator",
+                "parameters": {"roles": "rpm.rpmalternatecontentsource_owner"},
+            }
+        ],
+    }
+
+    LOCKED_ROLES = {
+        "rpm.rpmalternatecontentsource_owner": [
+            "rpm.change_rpmalternatecontentsource",
+            "rpm.delete_rpmalternatecontentsource",
+            "rpm.manage_roles_rpmalternatecontentsource",
+            "rpm.refresh_rpmalternatecontentsource",
+            "rpm.view_rpmalternatecontentsource",
+        ],
+        "rpm.rpmalternatecontentsource_creator": [
+            "rpm.add_rpmalternatecontentsource",
+        ],
+        "rpm.rpmalternatecontentsource_viewer": [
+            "rpm.view_rpmalternatecontentsource",
+        ],
+    }
 
     @extend_schema(
         description="Trigger an asynchronous task to create Alternate Content Source content.",
