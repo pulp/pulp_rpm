@@ -13,6 +13,20 @@ Changelog
 
 .. towncrier release notes start
 
+3.14.13 (2022-03-08)
+====================
+
+
+Bugfixes
+--------
+
+- Added an exception for a case where repository metadata is incorrect in such a way that it should not be "mirrored", and a warning in other cases. If these warnings / errors are encountered, the party which manages the repo should be contacted. If it is a public repo, an issue can be filed in our tracker, and we will follow up with that party following confirmation of the issue.
+  `#2398 <https://github.com/pulp/pulp_rpm/issues/2398>`_
+
+
+----
+
+
 3.14.12 (2022-01-29)
 ====================
 
