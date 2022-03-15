@@ -167,13 +167,18 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
      1. If updated_dates and update_version are the same and pkglist intersection is empty
      (e.g. base repo merged with debuginfo repo) -> new UpdateRecord content unit with combined
      pkglist is created.
+
      2. If updated_dates or update_version differ and pkglist intersection is non-empty
      (update/re-sync/upload-new case) -> UpdateRecord with newer updated_date or update_version
      is added.
-     3. If updated_dates differ and pkglist intersection is empty: ERROR CONDITION
-     (e.g. base and-debuginfo repos are from different versions, not at same date)
+
+     3. If updated_dates differ and pkglist intersection is empty:
+       3.a If pklists differ only IN EVR (ie, name-intersection is Not Empty) -> use-newer
+       3.b else -> ERROR CONDITION
+         (e.g. base and-debuginfo repos are from different versions, not at same date)
+
      4. If update_dates and update_version are the same, pkglist intersection is non-empty
-     and not equal to either pkglist - ERROR CONDITION!
+     and not a proper subset of to either pkglist - ERROR CONDITION!
      (never-happen case - "something is Terribly Wrong Here")
 
      Args:
@@ -215,6 +220,11 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
         to_remove.append(previous_advisory_pk)
         to_exclude.append(added_advisory.pk)
 
+    def _name_intersect(prev_pkgs, new_pkgs):
+        prev_names = set([x[0] for x in prev_pkgs])
+        new_names = set([x[0] for x in new_pkgs])
+        return prev_names.intersection(new_names)
+
     to_add, to_remove, to_exclude = [], [], []
 
     previous_updated_date = _datetime_heuristics(
@@ -232,6 +242,7 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
     same_dates = previous_updated_date == added_updated_date
     same_version = previous_updated_version == added_updated_version
     pkgs_intersection = previous_pkglist.intersection(added_pkglist)
+    names_intersection = _name_intersect(previous_pkglist, added_pkglist)
 
     if same_dates and same_version and pkgs_intersection:
         if previous_pkglist != added_pkglist:
@@ -264,8 +275,18 @@ def resolve_advisory_conflict(previous_advisory, added_advisory):
             # so we are choosing the incoming advisory.
             to_remove.append(previous_advisory.pk)
     elif (not same_dates or (same_dates and not same_version)) and not pkgs_intersection:
-        if settings.ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION:
-            to_remove.append(previous_advisory.pk)
+        if names_intersection or settings.ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION:
+            # Keep "newer" advisory
+            if not same_dates:
+                if previous_updated_date < added_updated_date:
+                    to_remove.append(previous_advisory.pk)
+                else:
+                    to_exclude.append(added_advisory.pk)
+            elif not same_version:
+                if is_previous_version(previous_updated_version, added_updated_version):
+                    to_remove.append(previous_advisory.pk)
+                else:
+                    to_exclude.append(added_advisory.pk)
         else:
             raise AdvisoryConflict(
                 _(
