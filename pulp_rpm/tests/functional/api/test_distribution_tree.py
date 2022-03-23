@@ -253,6 +253,7 @@ class DistributionTreeTest(PulpTestCase):
         """Sync repository with distribution tree and remove the repository."""
         body = gen_rpm_remote(RPM_KICKSTART_FIXTURE_URL)
         remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
         repo, _ = self.do_test(remote=remote)
 
