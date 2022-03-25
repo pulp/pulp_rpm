@@ -219,7 +219,6 @@ class RpmPublicationSerializer(PublicationSerializer):
     gpgcheck = serializers.IntegerField(
         max_value=1,
         min_value=0,
-        default=0,
         required=False,
         help_text=_(
             "An option specifying whether a client should perform "
@@ -229,7 +228,6 @@ class RpmPublicationSerializer(PublicationSerializer):
     repo_gpgcheck = serializers.IntegerField(
         max_value=1,
         min_value=0,
-        default=0,
         required=False,
         help_text=_(
             "An option specifying whether a client should perform "
