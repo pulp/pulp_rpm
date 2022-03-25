@@ -170,11 +170,13 @@ class UlnRemoteSerializer(RpmBaseRemoteSerializer):
     username = serializers.CharField(
         help_text=_("Your ULN account username."),
         required=True,
+        write_only=True,
     )
-
     password = serializers.CharField(
         help_text=_("Your ULN account password."),
         required=True,
+        write_only=True,
+        style={"input_type": "password"},
     )
 
     url = serializers.CharField(
