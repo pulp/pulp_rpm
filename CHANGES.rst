@@ -312,6 +312,24 @@ Misc
 ----
 
 
+3.14.14 (2022-03-25)
+====================
+
+
+Bugfixes
+--------
+
+- Taught advisory-conflict-resolution to handle just-EVR-differences in incoming advisory's
+  package-list. This solves the case of repositories that update advisories to always have
+  the newest versions of RPMs (looking at you, EPEL...).
+  `#2422 <https://github.com/pulp/pulp_rpm/issues/2422>`_
+- Fix the behavior of `gpgcheck` and `repo_gpgcheck` options when specified on the repository.
+  `#2430 <https://github.com/pulp/pulp_rpm/issues/2430>`_
+
+
+----
+
+
 3.14.13 (2022-03-08)
 ====================
 
