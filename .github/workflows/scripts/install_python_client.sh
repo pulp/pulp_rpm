@@ -41,6 +41,13 @@ rm -rf pulp_rpm-client
 ./generate.sh pulp_rpm python $VERSION
 cd pulp_rpm-client
 python setup.py sdist bdist_wheel --python-tag py3
-pip install dist/pulp_rpm_client-$VERSION-py3-none-any.whl
+find . -name "*.whl" -exec pip install {} \;
 tar cvf ../../pulp_rpm/python-client.tar ./dist
+
+find ./docs/* -exec sed -i 's/Back to README/Back to HOME/g' {} \;
+find ./docs/* -exec sed -i 's/README//g' {} \;
+cp README.md docs/index.md
+sed -i 's/docs\///g' docs/index.md
+find ./docs/* -exec sed -i 's/\.md//g' {} \;
+tar cvf ../../pulp_rpm/python-client-docs.tar ./docs
 exit $?
