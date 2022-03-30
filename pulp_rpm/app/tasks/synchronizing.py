@@ -635,6 +635,17 @@ class RpmFirstStage(Stage):
                 repomd_path = result.path
                 repomd = cr.Repomd(repomd_path)
 
+                if repomd.warnings:
+                    for warn_type, warn_msg in repomd.warnings:
+                        log.warn(warn_msg)
+                    msg = (
+                        "Problems encountered parsing repomd.xml - proxy used: {}, url: {}".format(
+                            self.remote.proxy_url,
+                            result.url,
+                        )
+                    )
+                    raise Exception(msg)
+
                 self.repository.last_sync_revision_number = repomd.revision
                 self.repository.last_sync_repomd_checksum = get_sha256(repomd_path)
 
