@@ -1,0 +1,1 @@
+Fix an issue where package requirements containing an ampersand character in the name might have their data parsed incorrectly, and added a data repair script (`pulpcore-manager rpm-datarepair 2460`).
