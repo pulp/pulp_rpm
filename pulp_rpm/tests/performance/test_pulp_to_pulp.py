@@ -11,10 +11,15 @@ from pulp_smash.pulp3.utils import (
 
 from pulp_rpm.tests.functional.constants import (
     CENTOS7_URL,
+<<<<<<< HEAD
     CENTOS8_APPSTREAM_URL,
     CENTOS8_BASEOS_URL,
     CENTOS8_KICKSTART_APPSTREAM_URL,
     CENTOS8_KICKSTART_BASEOS_URL,
+=======
+    CENTOS8_STREAM_BASEOS_URL,
+    CENTOS8_STREAM_APPSTREAM_URL,
+>>>>>>> d4495c52 (Improved error reporting when repomd.xml is not valid)
 )
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_client,
@@ -135,16 +140,8 @@ class SynctoSyncTestCase(unittest.TestCase):
 
     def test_centos8_baseos_on_demand(self):
         """Sync CentOS 8 BaseOS."""
-        self.do_test(url=CENTOS8_BASEOS_URL)
+        self.do_test(url=CENTOS8_STREAM_BASEOS_URL)
 
     def test_centos8_appstream_on_demand(self):
         """Sync CentOS 8 AppStream."""
-        self.do_test(url=CENTOS8_APPSTREAM_URL)
-
-    def test_centos8_kickstart_baseos_on_demand(self):
-        """Kickstart Sync CentOS 8 BaseOS."""
-        self.do_test(url=CENTOS8_KICKSTART_BASEOS_URL)
-
-    def test_centos8_kickstart_appstream_on_demand(self):
-        """Kickstart Sync CentOS 8 AppStream."""
-        self.do_test(url=CENTOS8_KICKSTART_APPSTREAM_URL)
+        self.do_test(url=CENTOS8_STREAM_APPSTREAM_URL)
