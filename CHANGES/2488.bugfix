@@ -1,0 +1,1 @@
+Changed the naming of the `trim_rpm_changelogs` management command to `rpm-trim-changelogs` to better match with other command names.
