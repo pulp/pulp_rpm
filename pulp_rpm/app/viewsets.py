@@ -1,7 +1,8 @@
 import os
-from django_filters import CharFilter
 from gettext import gettext as _
+import logging
 
+from django_filters import CharFilter
 from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -276,6 +277,11 @@ class RpmPublicationViewSet(PublicationViewSet):
         sqlite_metadata = serializer.validated_data.get(
             "sqlite_metadata", repository.sqlite_metadata
         )
+        if sqlite_metadata:
+            logging.getLogger("pulp_rpm.deprecation").info(
+                "Support for sqlite metadata generation will be removed from a future release "
+                "of pulp_rpm. See https://tinyurl.com/sqlite-removal for more details"
+            )
 
         if repository.metadata_signing_service:
             signing_service_pk = repository.metadata_signing_service.pk

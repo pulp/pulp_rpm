@@ -101,7 +101,9 @@ class RpmRepositorySerializer(RepositorySerializer):
     sqlite_metadata = serializers.BooleanField(
         default=False,
         required=False,
-        help_text=_("An option specifying whether Pulp should generate SQLite metadata."),
+        help_text=_(
+            "DEPRECATED: An option specifying whether Pulp should generate SQLite metadata."
+        ),
     )
 
     def validate(self, data):
@@ -237,7 +239,9 @@ class RpmPublicationSerializer(PublicationSerializer):
     sqlite_metadata = serializers.BooleanField(
         default=False,
         required=False,
-        help_text=_("An option specifying whether Pulp should generate SQLite metadata."),
+        help_text=_(
+            "DEPRECATED: An option specifying whether Pulp should generate SQLite metadata."
+        ),
     )
 
     def validate(self, data):
