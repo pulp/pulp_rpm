@@ -1,0 +1,1 @@
+sqlite metadata support is being deprecated. See `this discourse thread <https://discourse.pulpproject.org/t/planning-to-remove-a-feature-from-the-rpm-plugin-sqlite-metadata/418>`_ for additional details, or to advocate for the continued support of the feature.

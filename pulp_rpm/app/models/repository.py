@@ -238,6 +238,12 @@ class RpmRepository(Repository):
         # avoid circular import issues
         from pulp_rpm.app import tasks
 
+        if self.sqlite_metadata:
+            getLogger("pulp_rpm.deprecation").info(
+                "Support for sqlite metadata generation will be removed from a future release "
+                "of pulp_rpm. See https://tinyurl.com/sqlite-removal for more details"
+            )
+
         if self.autopublish:
             tasks.publish(
                 repository_version_pk=version.pk,
