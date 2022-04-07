@@ -345,7 +345,7 @@ def publish(
             version=repository_version.number,
         )
     )
-    with tempfile.TemporaryDirectory("."):
+    with tempfile.TemporaryDirectory(dir="."):
         with RpmPublication.create(repository_version) as publication:
             kwargs = {}
             first_package = repository_version.content.filter(
