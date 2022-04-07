@@ -320,7 +320,7 @@ def is_optimized_sync(repository, remote, url):
         bool: True, if sync is optimized; False, otherwise.
 
     """
-    with tempfile.TemporaryDirectory("."):
+    with tempfile.TemporaryDirectory(dir="."):
         try:
             result = get_repomd_file(remote, url)
             repomd_path = result.path
@@ -422,7 +422,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize):
 
         return treeinfo_serialized
 
-    with tempfile.TemporaryDirectory("."):
+    with tempfile.TemporaryDirectory(dir="."):
         remote_url = fetch_remote_url(remote)
 
         if optimize and is_optimized_sync(repository, remote, remote_url):
@@ -455,7 +455,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize):
             new_url = urlpath_sanitize(remote_url, path)
 
             try:
-                with tempfile.TemporaryDirectory("."):
+                with tempfile.TemporaryDirectory(dir="."):
                     get_repomd_file(remote, new_url)
             except ClientResponseError as exc:
                 if exc.status == 404:
@@ -618,7 +618,7 @@ class RpmFirstStage(Stage):
 
     async def run(self):
         """Build `DeclarativeContent` from the repodata."""
-        with tempfile.TemporaryDirectory("."):
+        with tempfile.TemporaryDirectory(dir="."):
             progress_data = dict(
                 message="Downloading Metadata Files", code="sync.downloading.metadata"
             )
