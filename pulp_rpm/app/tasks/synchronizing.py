@@ -434,7 +434,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
         return treeinfo_serialized
 
     def get_sync_details(remote, url, sync_policy, version):
-        with tempfile.TemporaryDirectory("."):
+        with tempfile.TemporaryDirectory(dir="."):
             result = get_repomd_file(remote, url)
             repomd_path = result.path
             repomd = cr.Repomd(repomd_path)
@@ -460,7 +460,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
     def is_subrepo(directory):
         return directory != PRIMARY_REPO
 
-    with tempfile.TemporaryDirectory("."):
+    with tempfile.TemporaryDirectory(dir="."):
         remote_url = fetch_remote_url(remote, url)
         sync_details = get_sync_details(
             remote, remote_url, sync_policy, repository.latest_version()
@@ -697,7 +697,7 @@ class RpmFirstStage(Stage):
 
     async def run(self):
         """Build `DeclarativeContent` from the repodata."""
-        with tempfile.TemporaryDirectory("."):
+        with tempfile.TemporaryDirectory(dir="."):
             progress_data = dict(
                 message="Downloading Metadata Files", code="sync.downloading.metadata"
             )
