@@ -345,7 +345,7 @@ def publish(
             version=repository_version.number,
         )
     )
-    with tempfile.TemporaryDirectory("."):
+    with tempfile.TemporaryDirectory(dir="."):
         with RpmPublication.create(repository_version) as publication:
             publication.metadata_checksum_type = get_checksum_type("primary", checksum_types)
             publication.package_checksum_type = (
