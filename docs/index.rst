@@ -62,6 +62,7 @@ Table of Contents
    quickstart
    workflows/index
    bindings
+   rbac
    restapi
    changes
    tech-preview
