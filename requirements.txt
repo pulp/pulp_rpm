@@ -1,4 +1,4 @@
-createrepo_c~=0.17.6
+createrepo_c~=0.20.0
 django_readonly_field
 jsonschema>=3.0
 libcomps~=0.1.15
