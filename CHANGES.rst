@@ -13,6 +13,34 @@ Changelog
 
 .. towncrier release notes start
 
+3.17.5 (2022-04-12)
+===================
+
+
+Bugfixes
+--------
+
+- Substantial improvements to the memory consumption of syncs, with a modest improvement in time required to sync.
+  `#2296 <https://github.com/pulp/pulp_rpm/issues/2296>`__
+- Taught advisory-conflict-resolution to handle just-EVR-differences in incoming advisory's
+  package-list. This solves the case of repositories that update advisories to always have
+  the newest versions of RPMs (looking at you, EPEL...).
+  `#2422 <https://github.com/pulp/pulp_rpm/issues/2422>`__
+- Fix ULN remote `username` and `password` fields which ought to have been write-only and hidden.
+  `#2428 <https://github.com/pulp/pulp_rpm/issues/2428>`__
+- Fix the behavior of `gpgcheck` and `repo_gpgcheck` options when specified on the repository.
+  `#2430 <https://github.com/pulp/pulp_rpm/issues/2430>`__
+- Fix an issue where package requirements containing an ampersand character in the name might have their data parsed incorrectly, and added a data repair script (`pulpcore-manager rpm-datarepair 2460`).
+  `#2460 <https://github.com/pulp/pulp_rpm/issues/2460>`__
+- Fixed instances of /tmp/ being used instead of the worker's working directory.
+  `#2475 <https://github.com/pulp/pulp_rpm/issues/2475>`__
+- Changed the naming of the `trim_rpm_changelogs` management command to `rpm-trim-changelogs` to better match with other command names.
+  `#2488 <https://github.com/pulp/pulp_rpm/issues/2488>`__
+
+
+----
+
+
 3.17.4 (2022-02-24)
 ===================
 
