@@ -340,6 +340,22 @@ Misc
 ----
 
 
+3.14.15 (2022-04-12)
+====================
+
+
+Bugfixes
+--------
+
+- Fix an issue where package requirements containing an ampersand character in the name might have their data parsed incorrectly, and added a data repair script (`pulpcore-manager rpm-datarepair 2460`).
+  `#2460 <https://github.com/pulp/pulp_rpm/issues/2460>`__
+- Fixed instances of /tmp/ being used instead of the worker's working directory.
+  `#2475 <https://github.com/pulp/pulp_rpm/issues/2475>`__
+
+
+----
+
+
 3.14.14 (2022-03-25)
 ====================
 
