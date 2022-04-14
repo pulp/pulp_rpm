@@ -253,13 +253,14 @@ class DistributionTreeTest(PulpTestCase):
         """Sync repository with distribution tree and remove the repository."""
         body = gen_rpm_remote(RPM_KICKSTART_FIXTURE_URL)
         remote = self.remote_api.create(body)
+        num_repos_start = self.repo_api.list().count
+        num_disttrees_start = self.dist_tree_api.list().count
 
         repo, _ = self.do_test(remote=remote)
-
         task = self.repo_api.delete(repo.pulp_href)
         monitor_task(task.task)
 
-        self.assertEqual(self.repo_api.list().count, 0)
+        self.assertEqual(self.repo_api.list().count, num_repos_start)
         # Remove orphans and check if distribution tree was removed.
         delete_orphans()
-        self.assertEqual(self.dist_tree_api.list().count, 0)
+        self.assertEqual(self.dist_tree_api.list().count, num_disttrees_start)
