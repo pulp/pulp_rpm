@@ -1,4 +1,5 @@
 import json
+from collections import defaultdict
 from gettext import gettext as _
 from configparser import MissingSectionHeaderError
 
@@ -275,42 +276,39 @@ class TreeinfoData:
 
         Returns:
             list: List of image data
-
         """
         if self._images:
             return self._images
 
-        images = []
-        temp = {}
+        # self._image_paths is {path: [platform-list]
+        images = []  # list-of {name: str, path: str, platforms: [platform-list]}
+        temp = defaultdict(set)  # {stanza: set(paths)}
 
         for key in self._data.keys():
-            if key.startswith("images"):
-                image_key = key
-                platform = image_key.split("-")[1]
-                for key, value in self._data.get(image_key, {}).items():
-                    temp.update({key: value})
+            if key.startswith("images"):  # e.g. images-xen or images-x86_64
+                platform = key.split("-")[1]  # e.g. xen or x86_64
+                for stanza, path in self._data.get(key).items():
+                    # A given stanza can have multiple paths - add to set here
+                    temp[stanza].add(path)
 
-                    _platform = platform
-                    if value in self._image_paths.keys():
-                        _platform = f"{self._image_paths[value]}, {platform}"
+                    # A path can be associated with multiple platforms - add to list here
+                    if path in self._image_paths:
+                        _platform = f"{self._image_paths[path]}, {platform}"
+                    else:
+                        _platform = platform
+                    self._image_paths.update({path: _platform})
 
-                    self._image_paths.update({value: _platform})
-
-        for key, value in temp.items():
-            image = {}
-            image["name"] = key
-            image["path"] = value
-            image["platforms"] = self._image_paths[value]
-
-            self._image_paths[value] = {}
-
-            images.append(image)
+        for stanza, paths in temp.items():
+            for path in paths:
+                image = {"name": stanza, "path": path, "platforms": self._image_paths[path]}
+                self._image_paths[path] = {}
+                images.append(image)
 
         extra_images = ["mainimage", "instimage"]
         for extra in extra_images:
-            value = self._data.get("stage2", {}).get(extra)
-            if value:
-                self._image_paths[value] = {}
+            stage2_path = self._data.get("stage2", {}).get(extra)
+            if stage2_path:
+                self._image_paths[stage2_path] = {}
 
         self._images = images
         return self._images
