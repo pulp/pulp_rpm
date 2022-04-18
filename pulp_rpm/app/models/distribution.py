@@ -340,4 +340,6 @@ def cleanup_subrepos(sender, instance, **kwargs):
     """
     subrepo = instance.repository
     if subrepo:
+        Variant.objects.filter(repository=subrepo).delete()
+        Addon.objects.filter(repository=subrepo).delete()
         subrepo.delete()
