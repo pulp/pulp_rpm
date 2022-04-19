@@ -4,6 +4,7 @@ include COPYRIGHT
 include coverage.md
 include functest_requirements.txt
 include LICENSE
+include pulp_rpm/app/management/commands/*
 include pulp_rpm/app/schema/*
 include pulp_rpm/tests/functional/sign-metadata.sh
 include pyproject.toml
