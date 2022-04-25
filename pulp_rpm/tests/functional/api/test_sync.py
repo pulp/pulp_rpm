@@ -1166,7 +1166,7 @@ class InvalidSyncConfigTestCase(PulpTestCase):
         error = self.do_test(RPM_MD5_REPO_FIXTURE_URL)
 
         self.assertIn(
-            "does not contain at least one trusted hasher which is specified in "
+            "does not contain at least one trusted hasher which is specified in the "
             "'ALLOWED_CONTENT_CHECKSUMS'",
             error,
         )
