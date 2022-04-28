@@ -23,7 +23,7 @@ class RepoMetadataFile(Content):
 
     TYPE = "repo_metadata_file"
 
-    data_type = models.CharField(max_length=20)
+    data_type = models.TextField()
     checksum_type = models.CharField(max_length=6)
     checksum = models.CharField(max_length=128)
     relative_path = models.TextField()
