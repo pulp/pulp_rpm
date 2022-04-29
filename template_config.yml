@@ -1,7 +1,7 @@
 # This config represents the latest values used when running the plugin-template. Any settings that
 # were not present before running plugin-template have been added with their default values.
 
-# generated with plugin_template@2021.08.26-105-gfdf4c45
+# generated with plugin_template@2021.08.26-121-gf49381d
 
 additional_plugins: []
 additional_repos: []
@@ -80,6 +80,7 @@ test_performance:
 test_released_plugin_with_next_pulpcore_release: false
 test_reroute: true
 test_s3: true
+test_stream: false
 update_github: true
 upgrade_range:
 - pulp_rpm_branch: '3.10'
