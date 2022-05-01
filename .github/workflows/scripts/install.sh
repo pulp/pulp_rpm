@@ -20,6 +20,7 @@ if [[ "$TEST" = "docs" || "$TEST" = "publish" ]]; then
   pip install -r doc_requirements.txt
 fi
 
+pip install -e ../pulpcore
 pip install -r functest_requirements.txt
 
 cd .ci/ansible/
@@ -44,11 +45,6 @@ plugins:
     source: pulpcore>=3.14.2,<3.15.0
   - name: pulp_rpm
     source:  "${PLUGIN_NAME}"
-services:
-  - name: pulp
-    image: "pulp:${TAG}"
-    volumes:
-      - ./settings:/etc/pulp
 VARSYAML
 else
   cat >> vars/main.yaml << VARSYAML
@@ -60,13 +56,17 @@ plugins:
     source: "${PLUGIN_NAME}"
   - name: pulpcore
     source: ./pulpcore
+VARSYAML
+fi
+
+cat >> vars/main.yaml << VARSYAML
 services:
   - name: pulp
     image: "pulp:${TAG}"
     volumes:
       - ./settings:/etc/pulp
+      - ./ssh:/keys/
 VARSYAML
-fi
 
 cat >> vars/main.yaml << VARSYAML
 pulp_settings: {"allowed_content_checksums": ["sha1", "sha224", "sha256", "sha384", "sha512"], "allowed_export_paths": ["/tmp"], "allowed_import_paths": ["/tmp"]}
@@ -80,7 +80,8 @@ if [ "$TEST" = "upgrade" ]; then
   sed -i "/^pulp_container_tag:.*/s//pulp_container_tag: upgrade/" vars/main.yaml
 fi
 
-if [[ "$TEST" == "pulp" || "$TEST" == "performance" || "$TEST" == "upgrade" || "$TEST" == "azure" || "$TEST" == "s3" || "$TEST" == "plugin-from-pypi" || "$TEST" == "generate-bindings" ]]; then
+SCENARIOS=("pulp" "performance" "upgrade" "azure" "s3" "stream" "plugin-from-pypi" "generate-bindings")
+if [[ " ${SCENARIOS[*]} " =~ " ${TEST} " ]]; then
   sed -i -e '/^services:/a \
   - name: pulp-fixtures\
     image: docker.io/pulp/pulp-fixtures:latest\
@@ -109,7 +110,7 @@ fi
 ansible-playbook build_container.yaml
 ansible-playbook start_container.yaml
 
-if [ "$TEST" = "azure" ]; then
+if [[ "$TEST" = "azure" ]]; then
   AZURE_STORAGE_CONNECTION_STRING='DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://ci-azurite:10000/devstoreaccount1;'
   az storage container create --name pulp-test --connection-string $AZURE_STORAGE_CONNECTION_STRING
 fi
