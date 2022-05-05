@@ -3,6 +3,7 @@ from gettext import gettext as _
 import logging
 
 from django_filters import CharFilter
+from django.utils.timezone import now
 from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.decorators import action
@@ -1273,4 +1274,8 @@ class RpmAlternateContentSourceViewSet(AlternateContentSourceViewSet, RolesMixin
 
         # Update TaskGroup that all child task are dispatched
         task_group.finish()
+
+        acs.last_refreshed = now()
+        acs.save()
+
         return TaskGroupOperationResponse(task_group, request)
