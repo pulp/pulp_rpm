@@ -1,10 +1,14 @@
 # This config represents the latest values used when running the plugin-template. Any settings that
 # were not present before running plugin-template have been added with their default values.
 
-# generated with plugin_template@2021.08.26-121-gf49381d
+# generated with plugin_template@2021.08.26-125-g1923e98
 
 additional_plugins: []
-additional_repos: []
+additional_repos:
+- branch: 1.8
+  name: pulp_file
+- branch: 1.4
+  name: pulp-certguard
 aiohttp_fixtures_origin: 172.18.0.1
 black: true
 check_commit_message: true
@@ -66,6 +70,7 @@ python_version: '3.6'
 redmine_project: null
 release_email: pulp-infra@redhat.com
 release_user: pulpbot
+run_pulpcore_tests_for_plugins: true
 single_commit_check: true
 sync_ci: true
 tasking_allow_async_unsafe: true
