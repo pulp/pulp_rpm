@@ -69,30 +69,30 @@ class DistributionTree(Content):
 
     TYPE = "distribution_tree"
 
-    header_version = models.CharField(max_length=10)
+    header_version = models.TextField()
 
-    release_name = models.CharField(max_length=50)
-    release_short = models.CharField(max_length=50)
-    release_version = models.CharField(max_length=10)
+    release_name = models.TextField()
+    release_short = models.TextField()
+    release_version = models.TextField()
     release_is_layered = models.BooleanField(default=False)
 
-    base_product_name = models.CharField(max_length=50, null=True)
-    base_product_short = models.CharField(max_length=50, null=True)
-    base_product_version = models.CharField(max_length=10, null=True)
+    base_product_name = models.TextField(null=True)
+    base_product_short = models.TextField(null=True)
+    base_product_version = models.TextField(null=True)
 
     # tree
-    arch = models.CharField(max_length=30)
+    arch = models.TextField()
     build_timestamp = models.FloatField()
 
     # stage2
-    instimage = models.CharField(max_length=50, null=True)
-    mainimage = models.CharField(max_length=50, null=True)
+    instimage = models.TextField(null=True)
+    mainimage = models.TextField(null=True)
 
     # media
     discnum = models.IntegerField(null=True)
     totaldiscs = models.IntegerField(null=True)
 
-    digest = models.CharField(max_length=64, null=False)
+    digest = models.TextField(null=False)
 
     def repositories(self):
         """
@@ -155,8 +155,8 @@ class Checksum(BaseModel):
 
     """
 
-    path = models.CharField(max_length=128)
-    checksum = models.CharField(max_length=128)
+    path = models.TextField()
+    checksum = models.TextField()
     distribution_tree = models.ForeignKey(
         DistributionTree, on_delete=models.CASCADE, related_name="checksums"
     )
@@ -189,9 +189,9 @@ class Image(BaseModel):
 
     """
 
-    name = models.CharField(max_length=50)
-    path = models.CharField(max_length=128)
-    platforms = models.CharField(max_length=20)
+    name = models.TextField()
+    path = models.TextField()
+    platforms = models.TextField()
     distribution_tree = models.ForeignKey(
         DistributionTree, on_delete=models.CASCADE, related_name="images"
     )
@@ -244,11 +244,11 @@ class Addon(BaseModel):
 
     """
 
-    addon_id = models.CharField(max_length=50)
-    uid = models.CharField(max_length=50)
-    name = models.CharField(max_length=50)
-    type = models.CharField(max_length=20)
-    packages = models.CharField(max_length=50)
+    addon_id = models.TextField()
+    uid = models.TextField()
+    name = models.TextField()
+    type = models.TextField()
+    packages = models.TextField()
     distribution_tree = models.ForeignKey(
         DistributionTree, on_delete=models.CASCADE, related_name="addons"
     )
@@ -300,16 +300,16 @@ class Variant(BaseModel):
 
     """
 
-    variant_id = models.CharField(max_length=50)
-    uid = models.CharField(max_length=50)
-    name = models.CharField(max_length=50)
-    type = models.CharField(max_length=20)
-    packages = models.CharField(max_length=50)
-    source_packages = models.CharField(max_length=50, null=True)
-    source_repository = models.CharField(max_length=50, null=True)
-    debug_packages = models.CharField(max_length=50, null=True)
-    debug_repository = models.CharField(max_length=50, null=True)
-    identity = models.CharField(max_length=50, null=True)
+    variant_id = models.TextField()
+    uid = models.TextField()
+    name = models.TextField()
+    type = models.TextField()
+    packages = models.TextField()
+    source_packages = models.TextField(null=True)
+    source_repository = models.TextField(null=True)
+    debug_packages = models.TextField(null=True)
+    debug_repository = models.TextField(null=True)
+    identity = models.TextField(null=True)
     distribution_tree = models.ForeignKey(
         DistributionTree, on_delete=models.CASCADE, related_name="variants"
     )

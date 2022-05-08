@@ -3,6 +3,7 @@ from logging import getLogger
 from django.db import models
 
 from pulpcore.plugin.models import Content
+from pulp_rpm.app.constants import CHECKSUM_CHOICES
 
 log = getLogger(__name__)
 
@@ -24,8 +25,8 @@ class RepoMetadataFile(Content):
     TYPE = "repo_metadata_file"
 
     data_type = models.TextField()
-    checksum_type = models.CharField(max_length=6)
-    checksum = models.CharField(max_length=128)
+    checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
+    checksum = models.TextField()
     relative_path = models.TextField()
 
     repo_key_fields = ("data_type",)

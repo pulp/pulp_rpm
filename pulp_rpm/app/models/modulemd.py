@@ -42,11 +42,11 @@ class Modulemd(Content):
     TYPE = "modulemd"
 
     # required metadata
-    name = models.CharField(max_length=255)
-    stream = models.CharField(max_length=255)
-    version = models.CharField(max_length=255)
-    context = models.CharField(max_length=255)
-    arch = models.CharField(max_length=255)
+    name = models.TextField()
+    stream = models.TextField()
+    version = models.TextField()
+    context = models.TextField()
+    arch = models.TextField()
 
     static_context = models.BooleanField(null=True)
     dependencies = models.JSONField(default=list)
@@ -75,11 +75,11 @@ class ModulemdDefaults(Content):
 
     TYPE = "modulemd_defaults"
 
-    module = models.CharField(max_length=255)
-    stream = models.CharField(max_length=255)
+    module = models.TextField()
+    stream = models.TextField()
     profiles = models.JSONField(default=list)
 
-    digest = models.CharField(unique=True, max_length=64)
+    digest = models.TextField(unique=True)
 
     repo_key_fields = ("module",)
 

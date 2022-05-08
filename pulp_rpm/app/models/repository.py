@@ -52,7 +52,7 @@ class RpmRemote(Remote, AutoAddObjPermsMixin):
     """
 
     TYPE = "rpm"
-    sles_auth_token = models.CharField(max_length=512, null=True)
+    sles_auth_token = models.TextField(null=True)
 
     DEFAULT_DOWNLOAD_CONCURRENCY = 7
     DEFAULT_MAX_RETRIES = 4
@@ -117,7 +117,7 @@ class UlnRemote(Remote, AutoAddObjPermsMixin):
     """
 
     TYPE = "uln"
-    uln_server_base_url = models.CharField(max_length=512, null=True)
+    uln_server_base_url = models.TextField(null=True)
 
     @property
     def download_factory(self):
@@ -227,8 +227,8 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
     retain_package_versions = models.PositiveIntegerField(default=0)
 
     autopublish = models.BooleanField(default=False)
-    metadata_checksum_type = models.CharField(null=True, choices=CHECKSUM_CHOICES, max_length=10)
-    package_checksum_type = models.CharField(null=True, choices=CHECKSUM_CHOICES, max_length=10)
+    metadata_checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
+    package_checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
     gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
     repo_gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
     sqlite_metadata = models.BooleanField(default=False)
@@ -422,8 +422,8 @@ class RpmPublication(Publication, AutoAddObjPermsMixin):
     GPGCHECK_CHOICES = [(0, 0), (1, 1)]
 
     TYPE = "rpm"
-    metadata_checksum_type = models.CharField(choices=CHECKSUM_CHOICES, max_length=10)
-    package_checksum_type = models.CharField(choices=CHECKSUM_CHOICES, max_length=10)
+    metadata_checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
+    package_checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
     gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
     repo_gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
     sqlite_metadata = models.BooleanField(default=False)
