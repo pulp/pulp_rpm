@@ -58,13 +58,13 @@ class PackageGroup(Content):
     TYPE = "packagegroup"
 
     # Required metadata
-    id = models.CharField(max_length=255)
+    id = models.TextField()
 
     default = models.BooleanField(default=False)
     user_visible = models.BooleanField(default=False)
 
     display_order = models.IntegerField(null=True)
-    name = models.CharField(max_length=255)
+    name = models.TextField()
     description = models.TextField(default="")
     packages = models.JSONField(default=list)
 
@@ -73,7 +73,7 @@ class PackageGroup(Content):
     desc_by_lang = models.JSONField(default=dict)
     name_by_lang = models.JSONField(default=dict)
 
-    digest = models.CharField(unique=True, max_length=64)
+    digest = models.TextField(unique=True)
 
     repo_key_fields = ("id",)
 
@@ -219,9 +219,9 @@ class PackageCategory(Content):
     TYPE = "packagecategory"
 
     # Required metadata
-    id = models.CharField(max_length=255)
+    id = models.TextField()
 
-    name = models.CharField(max_length=255)
+    name = models.TextField()
     description = models.TextField(default="")
     display_order = models.IntegerField(null=True)
 
@@ -230,7 +230,7 @@ class PackageCategory(Content):
     desc_by_lang = models.JSONField(default=dict)
     name_by_lang = models.JSONField(default=dict)
 
-    digest = models.CharField(unique=True, max_length=64)
+    digest = models.TextField(unique=True)
 
     repo_key_fields = ("id",)
 
@@ -345,9 +345,9 @@ class PackageEnvironment(Content):
     TYPE = "packageenvironment"
 
     # Required metadata
-    id = models.CharField(max_length=255)
+    id = models.TextField()
 
-    name = models.CharField(max_length=255)
+    name = models.TextField()
     description = models.TextField(default="")
     display_order = models.IntegerField(null=True)
 
@@ -357,7 +357,7 @@ class PackageEnvironment(Content):
     desc_by_lang = models.JSONField(default=dict)
     name_by_lang = models.JSONField(default=dict)
 
-    digest = models.CharField(unique=True, max_length=64)
+    digest = models.TextField(unique=True)
 
     repo_key_fields = ("id",)
 
@@ -463,7 +463,7 @@ class PackageLangpacks(Content):
 
     matches = models.JSONField(default=dict)
 
-    digest = models.CharField(unique=True, max_length=64)
+    digest = models.TextField(unique=True)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"

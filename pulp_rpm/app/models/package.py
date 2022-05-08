@@ -166,8 +166,8 @@ class Package(Content):
     # Currently filled by a database trigger - consider eventually switching to generated column
     evr = RpmVersionField()
 
-    pkgId = models.CharField(unique=True, max_length=128)  # formerly "checksum" in Pulp 2
-    checksum_type = models.CharField(choices=CHECKSUM_CHOICES, max_length=10)
+    pkgId = models.TextField(unique=True)  # formerly "checksum" in Pulp 2
+    checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
 
     # Optional metadata
     summary = models.TextField()

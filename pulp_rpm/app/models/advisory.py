@@ -75,7 +75,7 @@ class UpdateRecord(Content):
     TYPE = "advisory"
 
     # Required metadata
-    id = models.CharField(max_length=255, db_index=True)
+    id = models.TextField(db_index=True)
     updated_date = models.TextField(null=True)
 
     # Optional metadata
@@ -100,7 +100,7 @@ class UpdateRecord(Content):
     # A field that represents the hash digest of the update record. Used to track differences
     # between two UpdateRecord objects without having to examine the associations like
     # UpdateCollection or UpdateCollectionPackage.
-    digest = models.CharField(unique=True, max_length=64)
+    digest = models.TextField(unique=True)
 
     @classmethod
     def natural_key_fields(cls):
