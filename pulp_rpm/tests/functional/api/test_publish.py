@@ -443,8 +443,12 @@ class CoreMetadataTestCase(PulpTestCase):
         subsection = metadata_block_names[meta_type]
 
         # First extract the package entries
-        original_metadata = xmltodict.parse(original_metadata_text)[subsection]["package"]
-        generated_metadata = xmltodict.parse(generated_metadata_text)[subsection]["package"]
+        original_metadata = xmltodict.parse(
+            original_metadata_text, dict_constructor=collections.OrderedDict
+        )[subsection]["package"]
+        generated_metadata = xmltodict.parse(
+            generated_metadata_text, dict_constructor=collections.OrderedDict
+        )[subsection]["package"]
 
         # The other transformations are inside the package nodes - they differ by type of metadata
         if meta_type == "primary":
