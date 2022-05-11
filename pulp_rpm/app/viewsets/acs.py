@@ -122,6 +122,7 @@ class RpmAlternateContentSourceViewSet(AlternateContentSourceViewSet, RolesMixin
     @extend_schema(
         description="Trigger an asynchronous task to create Alternate Content Source content.",
         responses={202: TaskGroupOperationResponseSerializer},
+        request=None,
     )
     @action(methods=["post"], detail=True)
     def refresh(self, request, pk):
