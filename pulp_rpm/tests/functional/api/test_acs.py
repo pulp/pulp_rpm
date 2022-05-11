@@ -80,7 +80,7 @@ class AlternateContentSourceSyncTestCase(PulpTestCase):
         self.assertIn("404, message='Not Found'", ctx.exception.task.error["description"])
 
         # ACS refresh
-        acs_refresh = self.acs_api.refresh(acs.pulp_href, acs)
+        acs_refresh = self.acs_api.refresh(acs.pulp_href)
         monitor_task_group(acs_refresh.task_group)
 
         # Sync repository with metadata only
