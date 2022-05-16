@@ -3,7 +3,6 @@ from logging import getLogger
 import createrepo_c as cr
 
 from django.db import models
-from django.utils.dateparse import parse_datetime
 
 from pulpcore.plugin.models import (
     BaseModel,
@@ -23,6 +22,8 @@ from pulp_rpm.app.constants import (
     PULP_UPDATE_REFERENCE_ATTRS,
     ADVISORY_SUM_TYPE_TO_NAME,
 )
+
+from pulp_rpm.app.shared_utils import parse_time
 
 log = getLogger(__name__)
 
@@ -164,9 +165,9 @@ class UpdateRecord(Content):
         """
         rec = cr.UpdateRecord()
         rec.id = self.id
-        rec.updated_date = parse_datetime(self.updated_date) if self.updated_date else None
+        rec.updated_date = parse_time(self.updated_date) if self.updated_date else None
         rec.description = self.description
-        rec.issued_date = parse_datetime(self.issued_date)
+        rec.issued_date = parse_time(self.issued_date)
         rec.fromstr = self.fromstr
         rec.status = self.status
         rec.title = self.title
