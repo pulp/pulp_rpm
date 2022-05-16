@@ -1,5 +1,6 @@
 from unittest import TestCase
-from pulp_rpm.app.shared_utils import is_previous_version, urlpath_sanitize
+from datetime import datetime
+from pulp_rpm.app.shared_utils import is_previous_version, urlpath_sanitize, parse_time
 
 
 class TestSharedUtils(TestCase):
@@ -66,3 +67,18 @@ class TestSharedUtils(TestCase):
         self.assertEqual(abc_expected, urlpath_sanitize("a", "b", "c"))
         self.assertEqual(abc_expected, urlpath_sanitize("a", "/b/", "/c"))
         self.assertEqual(abc_expected, urlpath_sanitize("/a/", "/b/", "/c/"))
+
+    def test_parse_time(self):
+        """Test parse_time."""
+        ts_input = "1626714399"
+        ts_expected = 1626714399
+        iso_input = "2012-01-27 16:08:06"
+        iso_expected = datetime(2012, 1, 27, 16, 8, 6)
+
+        self.assertEqual(ts_expected, parse_time(ts_input))
+        self.assertNotEqual(ts_input, parse_time(ts_input))
+
+        self.assertEqual(iso_expected, parse_time(iso_input))
+        self.assertNotEqual(iso_input, parse_time(iso_input))
+
+        self.assertIsNone(parse_time("abcd"))
