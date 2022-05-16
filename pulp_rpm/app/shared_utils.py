@@ -6,8 +6,9 @@ from hashlib import sha256
 
 from django.conf import settings
 from django.core.files.storage import default_storage as storage
+from django.utils.dateparse import parse_datetime
 
-from pulp_rpm.app.models import Package
+from pulp_rpm.app.models.package import Package
 
 
 def _prepare_package(artifact, filename):
@@ -126,3 +127,18 @@ def is_previous_version(version, target_version):
             return int(comp_a) == int(comp_b)
     # len wasn't equal
     return False
+
+
+def parse_time(value):
+    """
+    Parse datetime values from a string.
+
+    Able to distinguish between timestamp and iso format.
+
+    Args:
+        value(str): unformatted time value
+
+    Returns:
+        int | datetime | None: formatted time value
+    """
+    return int(value) if value.isdigit() else parse_datetime(value)
