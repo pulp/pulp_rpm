@@ -286,15 +286,15 @@ def process_remote_url(remote, custom_url=None):
             result = get_repomd_file(remote, url)
             repomd_path = result.path
             repomd = cr.Repomd(repomd_path)
-        return {"revision": repomd.revision, "sha256": get_sha256(repomd_path)}
+        return (repomd.revision, get_sha256(repomd_path))
 
     try:
         normalized_remote_url = normalize_url(url)
-        details = get_repo_details(remote, normalized_remote_url)
+        revision, checksum = get_repo_details(remote, normalized_remote_url)
         return {
             "urls": [normalized_remote_url],
-            "revision": details["revision"],
-            "sha256": details["sha256"],
+            "revision": revision,
+            "sha256": checksum,
         }
     except ClientResponseError as exc:
         # If 'custom_url' is passed it is a call from ACS refresh
@@ -329,13 +329,18 @@ def process_remote_url(remote, custom_url=None):
             #     url: details for url, details in valid_mirrors
             #     if details["revision"] == latest_revision
             # }
-            assert len(set(details["revision"] for details in valid_mirrors.values())) == 1
-            assert len(set(details["sha256"] for details in valid_mirrors.values())) == 1
+            revisions = set()
+            checksums = set()
+            for details in valid_mirrors.values():
+                revisions.add(details[0])
+                checksums.add(details[1])
+            assert len(revisions) == 1
+            assert len(checksums) == 1
 
             mirror_config = {
                 "urls": list(valid_mirrors.keys()),
-                "revision": next(valid_mirrors.values()["revision"]),
-                "sha256": next(valid_mirrors.values()["sha256"]),
+                "revision": next(valid_mirrors.values()[0]),
+                "sha256": next(valid_mirrors.values()[1]),
             }
 
             return mirror_config
@@ -527,7 +532,10 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
 
                 try:
                     subrepo_sync_details = get_sync_details(
-                        remote, new_url, sync_policy, sub_repo.latest_version()
+                        remote,
+                        new_url,
+                        sync_policy,
+                        sub_repo.latest_version(),
                     )
                 except ClientResponseError as exc:
                     if is_subrepo(directory) and exc.status == 404:
