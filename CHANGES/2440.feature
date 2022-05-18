@@ -1,0 +1,1 @@
+Make ``relative_path`` optional when uploading a package.

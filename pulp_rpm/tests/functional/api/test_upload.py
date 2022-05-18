@@ -82,5 +82,5 @@ class ContentUnitTestCase(PulpTestCase):
         """Upload a Package and return Task of upload."""
         with NamedTemporaryFile() as file_to_upload:
             file_to_upload.write(http_get(remote_path))
-            upload_attrs = {"file": file_to_upload.name, "relative_path": RPM_PACKAGE_FILENAME}
+            upload_attrs = {"file": file_to_upload.name}
             return self.content_api.create(**upload_attrs)
