@@ -241,7 +241,7 @@ def get_repomd_file(remote, url):
     return downloader.fetch()
 
 
-def fetch_mirror(remote):
+def fetch_mirrors_from_mirrorlist(remote):
     """Fetch the first valid mirror from a list of all available mirrors from a mirror list feed.
 
     URLs which are commented out or have any punctuations in front of them are being ignored.
@@ -250,6 +250,7 @@ def fetch_mirror(remote):
     result = downloader.fetch()
 
     url_pattern = re.compile(r"(^|^[\w\s=]+\s)((http(s)?)://.*)")
+    mirrors = []
     with open(result.path) as mirror_list_file:
         for mirror in mirror_list_file:
             match = re.match(url_pattern, mirror)
@@ -257,34 +258,44 @@ def fetch_mirror(remote):
                 continue
 
             mirror_url = match.group(2)
-            try:
-                get_repomd_file(remote, mirror_url)
-                # just check if the metadata exists
-                return mirror_url
-            except Exception as exc:
-                log.warning(
-                    "Url '{}' from mirrorlist was tried and failed with error: {}".format(
-                        mirror_url, exc
-                    )
-                )
-                continue
+            mirrors.append(mirror_url)
 
-    return None
+    return mirrors
 
 
-def fetch_remote_url(remote, custom_url=None):
-    """Fetch a single remote from which can be content synced."""
+def normalize_url(url_to_normalize):
+    """Normalize the URL."""
+    return url_to_normalize.rstrip("/") + "/"
 
-    def normalize_url(url_to_normalize):
-        return url_to_normalize.rstrip("/") + "/"
 
+def process_remote_url(remote, custom_url=None):
+    """
+    Takes a single URL and return the details about the repo(s) at that URL.
+
+    If the URL is a mirrorlist URL that expands to multiple repos, test all repos, filter out
+    any mirrors which fail, and return the list of mirrors along with the revision and checksum
+    of repomd.xml.
+
+    If the URL resolves to a repo, test that repo and return the normalized URL along with
+    the revision and checksum of repomd.xml.
+    """
     url = custom_url or remote.url
+
+    def get_repo_details(remote, url):
+        with tempfile.TemporaryDirectory(dir="."):
+            result = get_repomd_file(remote, url)
+            repomd_path = result.path
+            repomd = cr.Repomd(repomd_path)
+        return {"revision": repomd.revision, "sha256": get_sha256(repomd_path)}
 
     try:
         normalized_remote_url = normalize_url(url)
-        get_repomd_file(remote, normalized_remote_url)
-        # just check if the metadata exists
-        return normalized_remote_url
+        details = get_repo_details(remote, normalized_remote_url)
+        return {
+            "urls": [normalized_remote_url],
+            "revision": details["revision"],
+            "sha256": details["sha256"],
+        }
     except ClientResponseError as exc:
         # If 'custom_url' is passed it is a call from ACS refresh
         # which doesn't support mirror lists.
@@ -295,14 +306,39 @@ def fetch_remote_url(remote, custom_url=None):
         log.info(
             _("Attempting to resolve a true url from potential mirrolist url '{}'").format(url)
         )
-        remote_url = fetch_mirror(remote)
-        if remote_url:
-            log.info(
-                _("Using url '{}' from mirrorlist in place of the provided url {}").format(
-                    remote_url, url
-                )
-            )
-            return normalize_url(remote_url)
+        mirrors = [normalize_url(url) for url in fetch_mirrors_from_mirrorlist(remote)]
+        valid_mirrors = {}
+        if mirrors:
+            for mirror_url in mirrors:
+                try:
+                    valid_mirrors[mirror_url] = get_repo_details(remote, mirror_url)
+                except Exception as exc:
+                    log.warning(
+                        "Url '{}' from mirrorlist was tried and failed with error: {}".format(
+                            mirror_url, exc
+                        )
+                    )
+                    continue
+
+            if not valid_mirrors:
+                raise Exception("All mirrors were tried and failed.")  # TODO: better exception
+
+            # # It's possible for not all mirrors listed to be in sync.
+            # latest_revision = max(details["revision"] for details in valid_mirrors.values())
+            # valid_mirrors = {
+            #     url: details for url, details in valid_mirrors
+            #     if details["revision"] == latest_revision
+            # }
+            assert len(set(details["revision"] for details in valid_mirrors.values())) == 1
+            assert len(set(details["sha256"] for details in valid_mirrors.values())) == 1
+
+            mirror_config = {
+                "urls": list(valid_mirrors.keys()),
+                "revision": next(valid_mirrors.values()["revision"]),
+                "sha256": next(valid_mirrors.values()["sha256"]),
+            }
+
+            return mirror_config
 
         if exc.status == 404:
             raise ValueError(_("An invalid remote URL was provided: {}").format(url))
@@ -433,20 +469,14 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
 
         return treeinfo_serialized
 
-    def get_sync_details(remote, url, sync_policy, version):
-        with tempfile.TemporaryDirectory(dir="."):
-            result = get_repomd_file(remote, url)
-            repomd_path = result.path
-            repomd = cr.Repomd(repomd_path)
-            repomd_checksum = get_sha256(repomd_path)
-
+    def get_sync_details(remote, mirror_details, sync_policy, version):
         return {
             "url": remote.url,  # use the original remote url so that mirrorlists are optimizable
             "download_policy": remote.policy,
             "sync_policy": sync_policy,
             "most_recent_version": version.number,
-            "revision": repomd.revision,
-            "repomd_checksum": repomd_checksum,
+            "revision": mirror_details["revision"],
+            "repomd_checksum": mirror_details["sha256"],
         }
 
     mirror = sync_policy.startswith("mirror")
@@ -461,10 +491,15 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
         return directory != PRIMARY_REPO
 
     with tempfile.TemporaryDirectory(dir="."):
-        remote_url = fetch_remote_url(remote, url)
+        remote_url = normalize_url(url or remote.url)
+        mirror_details = process_remote_url(remote, remote_url)
+
         sync_details = get_sync_details(
-            remote, remote_url, sync_policy, repository.latest_version()
+            remote, mirror_details, sync_policy, repository.latest_version()
         )
+
+        mirror_urls = mirror_details["urls"]
+        remote_url = mirror_urls[0]  # TODO
 
         repo_sync_config[PRIMARY_REPO] = {
             "should_skip": should_optimize_sync(sync_details, repository.last_sync_details),
