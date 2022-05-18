@@ -12,7 +12,7 @@ from pulpcore.plugin.serializers import (
 )
 
 from pulp_rpm.app.models import Package
-from pulp_rpm.app.shared_utils import _prepare_package
+from pulp_rpm.app.shared_utils import _generate_package_nevra, _prepare_package
 
 
 log = logging.getLogger(__name__)
@@ -227,6 +227,12 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         read_only=True,
     )
 
+    def __init__(self, *args, **kwargs):
+        """Initializer for RpmPackageSerializer."""
+        super().__init__(*args, **kwargs)
+        if "relative_path" in self.fields:
+            self.fields["relative_path"].required = False
+
     def deferred_validate(self, data):
         """
         Validate the rpm package data.
@@ -241,7 +247,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         data = super().deferred_validate(data)
         # export META from rpm and prepare dict as saveable format
         try:
-            new_pkg = _prepare_package(data["artifact"], data["relative_path"])
+            new_pkg = _prepare_package(data["artifact"])
         except OSError:
             log.info(traceback.format_exc())
             raise NotAcceptable(detail="RPM file cannot be parsed for metadata")
@@ -267,6 +273,9 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
             raise serializers.ValidationError(
                 _("There is already a package with: {values}.").format(values=error_data)
             )
+
+        if not data.get("relative_path"):
+            data["relative_path"] = _generate_package_nevra(new_pkg)
 
         data.update(new_pkg)
         return data

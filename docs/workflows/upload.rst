@@ -117,6 +117,19 @@ Package GET response (after task complete):
 Add content to repository ``foo``
 *********************************
 
+.. note::
+
+   It is recommended to omit the ``relative_path`` and have Pulp generate a common pool location.
+   This will be ``/repo/Packages/s/squirrel-0.1-1.noarch.rpm`` as shown below.
+
+   When specifying a ``relative_path``, make sure to add the exact name of the package
+   including its name, version, release and arch as in ``squirrel-0.1-1.noarch.rpm``.
+   It is composed of the ``name-version-release.arch.rpm``.
+
+   .. code-block:: none
+
+      relative_path="squirrel-0.1-1.noarch.rpm"
+
 Using pulp-cli commands :
 
 .. literalinclude:: ../_scripts/add_remove_cli.sh

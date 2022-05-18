@@ -4,7 +4,6 @@
 echo "Create RPM content from artifact."
 PACKAGE_HREF=$(pulp rpm content create \
                --sha256 "${ARTIFACT_SHA256}" \
-               --relative-path "${PKG}" \
                | jq -r '.pulp_href')
 export PACKAGE_HREF
 

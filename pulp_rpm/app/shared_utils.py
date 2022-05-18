@@ -11,19 +11,18 @@ from django.utils.dateparse import parse_datetime
 from pulp_rpm.app.models.package import Package
 
 
-def _prepare_package(artifact, filename):
+def _prepare_package(artifact):
     """
     Helper function for creating package.
 
-    Copy file to a temp directory under
-    the user provided filename.
+    Copy file to a temp directory and parse it.
 
-    Returns: artifact model as dict
+    Returns: package model as dict
 
     Args:
         artifact: inited and validated artifact to save
-        filename: name of file uploaded by user
     """
+    filename = f"{artifact.pulp_id}.rpm"
     artifact_file = storage.open(artifact.file.name)
     with tempfile.NamedTemporaryFile("wb", dir=".", suffix=filename) as temp_file:
         shutil.copyfileobj(artifact_file, temp_file)
@@ -33,10 +32,24 @@ def _prepare_package(artifact, filename):
         )
 
     package = Package.createrepo_to_dict(cr_pkginfo)
-
     package["location_href"] = filename
+
     artifact_file.close()
     return package
+
+
+def _generate_package_nevra(pkg):
+    """
+    Helper function to generate NEVRA.
+
+    Args:
+        pkg(dict): package metadata
+
+    Returns: NEVRA or NVRA as a string
+    """
+    if int(pkg["epoch"]) > 0:
+        return f"{pkg['name']}-{pkg['epoch']}:{pkg['version']}-{pkg['release']}.{pkg['arch']}.rpm"
+    return f"{pkg['name']}-{pkg['version']}-{pkg['release']}.{pkg['arch']}.rpm"
 
 
 def urlpath_sanitize(*args):
