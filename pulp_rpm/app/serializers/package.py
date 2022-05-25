@@ -12,7 +12,7 @@ from pulpcore.plugin.serializers import (
 )
 
 from pulp_rpm.app.models import Package
-from pulp_rpm.app.shared_utils import _generate_package_nevra, _prepare_package
+from pulp_rpm.app.shared_utils import _prepare_package
 
 
 log = logging.getLogger(__name__)
@@ -274,8 +274,9 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
                 _("There is already a package with: {values}.").format(values=error_data)
             )
 
+        new_pkg["location_href"] = Package.short_nevra(new_pkg)
         if not data.get("relative_path"):
-            data["relative_path"] = _generate_package_nevra(new_pkg)
+            data["relative_path"] = new_pkg["location_href"]
 
         data.update(new_pkg)
         return data
