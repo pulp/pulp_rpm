@@ -332,6 +332,44 @@ class Package(Content):
             PULP_PACKAGE_ATTRS.VERSION: getattr(package, CR_PACKAGE_ATTRS.VERSION),
         }
 
+    @staticmethod
+    def to_nevra(pkg):
+        """
+        Generate NEVRA from a package metadata.
+
+        Args:
+            pkg(dict): package metadata
+
+        Returns: NEVRA as a string
+        """
+        return f"{pkg['name']}-{pkg['epoch']}:{pkg['version']}-{pkg['release']}.{pkg['arch']}.rpm"
+
+    @staticmethod
+    def to_nvra(pkg):
+        """
+        Generate NEVRA from a package metadata.
+
+        Args:
+            pkg(dict): package metadata
+
+        Returns: NVRA as a string
+        """
+        return f"{pkg['name']}-{pkg['version']}-{pkg['release']}.{pkg['arch']}.rpm"
+
+    @classmethod
+    def short_nevra(cls, pkg):
+        """
+        Returns NEVRA or NVRA based on epoch.
+
+        Args:
+            pkg(dict): package metadata
+
+        Returns: NEVRA or NVRA based on epoch.
+        """
+        if int(pkg["epoch"]) > 0:
+            return cls.to_nevra(pkg)
+        return cls.to_nvra(pkg)
+
     def to_createrepo_c(self):
         """
         Convert Package object to a createrepo_c package object.

@@ -32,24 +32,9 @@ def _prepare_package(artifact):
         )
 
     package = Package.createrepo_to_dict(cr_pkginfo)
-    package["location_href"] = filename
 
     artifact_file.close()
     return package
-
-
-def _generate_package_nevra(pkg):
-    """
-    Helper function to generate NEVRA.
-
-    Args:
-        pkg(dict): package metadata
-
-    Returns: NEVRA or NVRA as a string
-    """
-    if int(pkg["epoch"]) > 0:
-        return f"{pkg['name']}-{pkg['epoch']}:{pkg['version']}-{pkg['release']}.{pkg['arch']}.rpm"
-    return f"{pkg['name']}-{pkg['version']}-{pkg['release']}.{pkg['arch']}.rpm"
 
 
 def urlpath_sanitize(*args):
