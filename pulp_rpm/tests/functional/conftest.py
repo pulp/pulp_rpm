@@ -3,6 +3,11 @@ import pytest
 from pulpcore.client.pulp_rpm import (
     AcsRpmApi,
     ApiClient as RpmApiClient,
+    ContentAdvisoriesApi,
+    ContentPackagecategoriesApi,
+    ContentPackagegroupsApi,
+    ContentPackagelangpacksApi,
+    ContentPackagesApi,
     DistributionsRpmApi,
     PublicationsRpmApi,
     RemotesRpmApi,
@@ -51,3 +56,33 @@ def rpm_publication_api(rpm_client):
 def rpm_distribution_api(rpm_client):
     """Fixture for RPM distribution API."""
     return DistributionsRpmApi(rpm_client)
+
+
+@pytest.fixture(scope="session")
+def rpm_package_api(rpm_client):
+    """Fixture for RPM distribution API."""
+    return ContentPackagesApi(rpm_client)
+
+
+@pytest.fixture(scope="session")
+def rpm_advisory_api(rpm_client):
+    """Fixture for RPM distribution API."""
+    return ContentAdvisoriesApi(rpm_client)
+
+
+@pytest.fixture(scope="session")
+def rpm_package_category_api(rpm_client):
+    """Fixture for RPM distribution API."""
+    return ContentPackagecategoriesApi(rpm_client)
+
+
+@pytest.fixture(scope="session")
+def rpm_package_groups_api(rpm_client):
+    """Fixture for RPM distribution API."""
+    return ContentPackagegroupsApi(rpm_client)
+
+
+@pytest.fixture(scope="session")
+def rpm_package_lang_packs_api(rpm_client):
+    """Fixture for RPM distribution API."""
+    return ContentPackagelangpacksApi(rpm_client)
