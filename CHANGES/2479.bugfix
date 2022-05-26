@@ -1,0 +1,1 @@
+Using `retain_package_versions` (with the required "additive" `sync_policy`) will now avoid downloading the older packages when synced with download_policy "on_demand", resulting in much faster and more efficient syncs.
