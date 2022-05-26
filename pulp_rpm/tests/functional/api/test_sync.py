@@ -193,12 +193,7 @@ class BasicSyncTestCase(PulpTestCase):
             self.fail("A task was completed without a failure.")
 
     def test_sync_modular(self):
-        """Sync RPM modular content.
-
-        This test targets the following issue:
-
-        * `Pulp #5408 <https://pulp.plan.io/issues/5408>`_
-        """
+        """Sync RPM modular content."""
         body = gen_rpm_remote(RPM_MODULAR_FIXTURE_URL)
         remote = self.remote_api.create(body)
 
@@ -206,6 +201,7 @@ class BasicSyncTestCase(PulpTestCase):
 
         self.addCleanup(self.repo_api.delete, repo.pulp_href)
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
+        self.addCleanup(delete_orphans)  # TODO: #2587
 
         self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_MODULAR_FIXTURE_SUMMARY)
         self.assertDictEqual(get_added_content_summary(repo.to_dict()), RPM_MODULAR_FIXTURE_SUMMARY)
@@ -332,6 +328,8 @@ class BasicSyncTestCase(PulpTestCase):
         body = gen_rpm_remote(RPM_SIGNED_FIXTURE_URL)
         remote = self.remote_api.create(body)
 
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
         # sync again
         repo, remote = self.do_test(repo, remote)
 
@@ -388,6 +386,8 @@ class BasicSyncTestCase(PulpTestCase):
         """
         body = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL, policy="on_demand")
         remote = self.remote_api.create(body)
+
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
         # sync with SHA256
         repo, remote = self.do_test(remote=remote)
@@ -954,6 +954,7 @@ class BasicSyncTestCase(PulpTestCase):
 
         self.addCleanup(self.repo_api.delete, repo.pulp_href)
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
+        self.addCleanup(delete_orphans)  # TODO: #2587
 
         summary = get_content_summary(repo.to_dict())
         added = get_added_content_summary(repo.to_dict())
