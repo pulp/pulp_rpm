@@ -48,6 +48,7 @@ class ModulemdViewSet(SingleArtifactContentUploadViewSet):
                 "effect": "allow",
             },
         ],
+        "queryset_scoping": {"function": "scope_queryset"},
     }
 
 
@@ -84,4 +85,5 @@ class ModulemdDefaultsViewSet(SingleArtifactContentUploadViewSet):
                 "effect": "allow",
             },
         ],
+        "queryset_scoping": {"function": "scope_queryset"},
     }

@@ -43,6 +43,7 @@ class CompsXmlViewSet(viewsets.ViewSet):
                 ],
             },
         ],
+        "queryset_scoping": {"function": "scope_queryset"},
     }
 
     @extend_schema(
@@ -95,6 +96,7 @@ class PackageGroupViewSet(ReadOnlyContentViewSet):
                 "effect": "allow",
             },
         ],
+        "queryset_scoping": {"function": "scope_queryset"},
     }
 
 
@@ -115,6 +117,7 @@ class PackageCategoryViewSet(ReadOnlyContentViewSet):
                 "effect": "allow",
             },
         ],
+        "queryset_scoping": {"function": "scope_queryset"},
     }
 
 
@@ -135,6 +138,7 @@ class PackageEnvironmentViewSet(ReadOnlyContentViewSet):
                 "effect": "allow",
             },
         ],
+        "queryset_scoping": {"function": "scope_queryset"},
     }
 
 
@@ -155,4 +159,5 @@ class PackageLangpacksViewSet(ReadOnlyContentViewSet):
                 "effect": "allow",
             },
         ],
+        "queryset_scoping": {"function": "scope_queryset"},
     }

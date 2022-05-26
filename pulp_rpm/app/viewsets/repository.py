@@ -120,6 +120,7 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin, Roles
                 "condition": "has_model_or_obj_perms:rpm.manage_roles_rpmrepository",
             },
         ],
+        "queryset_scoping": {"function": "scope_queryset"},
         "creation_hooks": [
             {
                 "function": "add_roles_for_object_creator",
