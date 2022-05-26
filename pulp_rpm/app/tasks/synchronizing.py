@@ -84,11 +84,12 @@ from pulp_rpm.app.modulemd import (
     parse_defaults,
     parse_modulemd,
 )
-from pulp_rpm.app.kickstart.treeinfo import PulpTreeInfo, TreeinfoData
 
 from pulp_rpm.app.comps import strdict_to_dict, dict_digest
-from pulp_rpm.app.shared_utils import is_previous_version, get_sha256, urlpath_sanitize
+from pulp_rpm.app.kickstart.treeinfo import PulpTreeInfo, TreeinfoData
 from pulp_rpm.app.metadata_parsing import MetadataParser
+from pulp_rpm.app.shared_utils import is_previous_version, get_sha256, urlpath_sanitize
+from pulp_rpm.app.rpm_version import RpmVersion
 
 import gi
 
@@ -877,16 +878,18 @@ class RpmFirstStage(Stage):
         # modularity-parsing MUST COME BEFORE package-parsing!
         # The only way to know if a package is 'modular' in a repo, is to
         # know that it is referenced in modulemd.
-        modulemd_list = []
+        modulemd_dcs = []
         modulemd_result = metadata_results.get("modules", None)
+        modulemd_list = []
         if modulemd_result:
-            modulemd_list = await self.parse_modules_metadata(modulemd_result)
+            (modulemd_dcs, modulemd_list) = await self.parse_modules_metadata(modulemd_result)
 
         # **Now** we can successfully parse package-metadata
         await self.parse_packages(
             metadata_results["primary"],
             metadata_results["filelists"],
             metadata_results["other"],
+            modulemd_list=modulemd_list,
         )
 
         groups_list = []
@@ -899,7 +902,7 @@ class RpmFirstStage(Stage):
             await self.parse_advisories(updateinfo_result)
 
         # now send modules and groups down the pipeline since all relations have been set up
-        for modulemd_dc in modulemd_list:
+        for modulemd_dc in modulemd_dcs:
             await self.put(modulemd_dc)
 
         for group_dc in groups_list:
@@ -950,7 +953,7 @@ class RpmFirstStage(Stage):
 
         modulemd_names = modulemd_index.get_module_names() or []
         modulemd_all = parse_modulemd(modulemd_names, modulemd_index)
-        modulemd_list = []
+        modulemd_dcs = []
 
         # Parsing modules happens all at one time, and from here on no useful work happens.
         # So just report that it finished this stage.
@@ -979,7 +982,7 @@ class RpmFirstStage(Stage):
             # dc.content.artifacts are Modulemd artifacts
             for artifact in dc.content.artifacts:
                 self.nevra_to_module.setdefault(artifact, set()).add(dc)
-            modulemd_list.append(dc)
+            modulemd_dcs.append(dc)
 
         # Parse modulemd default names
         modulemd_default_names = parse_defaults(modulemd_index)
@@ -1013,7 +1016,7 @@ class RpmFirstStage(Stage):
             for default_content_dc in default_content_dcs:
                 await self.put(default_content_dc)
 
-        return modulemd_list
+        return (modulemd_dcs, modulemd_all)
 
     async def parse_packages_components(self, comps_result):
         """Parse packages' components that define how are the packages bundled."""
@@ -1117,26 +1120,38 @@ class RpmFirstStage(Stage):
 
         return dc_groups
 
-    async def parse_packages(self, primary_xml, filelists_xml, other_xml):
+    async def parse_packages(self, primary_xml, filelists_xml, other_xml, modulemd_list=None):
         """Parse packages from the remote repository."""
         parser = MetadataParser.from_metadata_files(
             primary_xml.path, filelists_xml.path, other_xml.path
         )
 
-        progress_data = {
-            "message": "Parsed Packages",
-            "code": "sync.parsing.packages",
-            "total": parser.count_packages(),
-        }
+        # skip SRPM if defined
+        skip_srpms = "srpm" in self.skip_types
+        nevras = set()
+        checksums = set()
+        modular_artifact_nevras = set()
+        pkgid_warning_triggered = False
+        nevra_warning_triggered = False
+        num_packages = 0
 
-        async with ProgressReport(**progress_data) as packages_pb:
-            # skip SRPM if defined
-            skip_srpms = "srpm" in self.skip_types
+        for modulemd in modulemd_list:
+            modular_artifact_nevras |= set(modulemd[PULP_MODULE_ATTR.ARTIFACTS])
 
-            nevras = set()
-            checksums = set()
-            pkgid_warning_triggered = False
-            nevra_warning_triggered = False
+        package_skip_nevras = set()
+        # The repository can contain packages of arbitrary arches, and they are not comparable.
+        # {"x86_64": {"glibc": [...]}, "i686": {"glibc": [...], "src": {"glibc": [...]}}
+        latest_packages_by_arch_and_name = defaultdict(lambda: defaultdict(list))
+
+        # Perform various checks and potentially filter out unwanted packages
+        # We parse all of primary.xml first and fail fast if something is wrong.
+        # Collect a list of any package nevras() we don't want to include.
+        def verification_and_skip_callback(pkg):
+            nonlocal pkgid_warning_triggered
+            nonlocal nevra_warning_triggered
+            nonlocal package_skip_nevras
+            nonlocal latest_packages_by_arch_and_name
+            nonlocal num_packages
 
             ERR_MSG = _(
                 "The repository metadata being synced into Pulp is erroneous in a way that "
@@ -1152,34 +1167,79 @@ class RpmFirstStage(Stage):
                 "Please read https://github.com/pulp/pulp_rpm/issues/2402 for more details."
             )
 
-            pkg_iterator = parser.as_iterator()
+            num_packages += 1
 
-            for pkg in pkg_iterator:
-                if not pkgid_warning_triggered and pkg.pkgId in checksums:
-                    pkgid_warning_triggered = True
-                    if self.mirror_metadata:
-                        raise Exception(ERR_MSG.format("PKGIDs"))
-                    else:
-                        log.warn(WARN_MSG.format("PKGIDs"))
-                if not nevra_warning_triggered and pkg.nevra() in nevras:
-                    nevra_warning_triggered = True
-                    if self.mirror_metadata:
-                        raise Exception(ERR_MSG.format("NEVRAs"))
-                    else:
-                        log.warn(WARN_MSG.format("NEVRAs"))
-                nevras.add(pkg.nevra())
-                checksums.add(pkg.pkgId)
-
-                if skip_srpms and pkg.arch == "src":
-                    continue
-
+            # Check for packages with duplicate pkgids
+            if not pkgid_warning_triggered and pkg.pkgId in checksums:
+                pkgid_warning_triggered = True
                 if self.mirror_metadata:
-                    uses_base_url = pkg.location_base
-                    illegal_relative_path = self.is_illegal_relative_path(pkg.location_href)
+                    raise Exception(ERR_MSG.format("PKGIDs"))
+                else:
+                    log.warn(WARN_MSG.format("PKGIDs"))
+            # Check for packages with duplicate NEVRAs
+            if not nevra_warning_triggered and pkg.nevra() in nevras:
+                nevra_warning_triggered = True
+                if self.mirror_metadata:
+                    raise Exception(ERR_MSG.format("NEVRAs"))
+                else:
+                    log.warn(WARN_MSG.format("NEVRAs"))
 
-                    if uses_base_url or illegal_relative_path:
-                        raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
+            pkg_nevra = pkg.nevra()
 
+            nevras.add(pkg_nevra)
+            checksums.add(pkg.pkgId)
+
+            # Check that all packages are within the root of the repo (if in mirror_complete mode)
+            if self.mirror_metadata:
+                uses_base_url = pkg.location_base
+                illegal_relative_path = self.is_illegal_relative_path(pkg.location_href)
+
+                if uses_base_url or illegal_relative_path:
+                    raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
+
+            # Add any srpms to the skip set
+            if skip_srpms and pkg.arch == "src":
+                package_skip_nevras.add(pkg_nevra)
+
+            # Collect the N highest-version packages, kick out the older ones and add those
+            # to the skip list. Don't include any modular packages in the EVR comparisons
+            # since they may be older and we don't want to skip them, or newer and we don't want to
+            # exclude any nonmodular packages on the basis of the modular package existing.
+            if self.repository.retain_package_versions and pkg_nevra not in modular_artifact_nevras:
+                pkg_evr = RpmVersion(pkg.epoch, pkg.version, pkg.release)
+                latest_packages_by_arch_and_name[pkg.arch][pkg.name].append((pkg_evr, pkg_nevra))
+
+        # Ew, callback-based API, gross. The streaming API doesn't support optionally
+        # specifying particular files yet so we have to use the old way.
+        parser.for_each_pkg_primary(verification_and_skip_callback)
+
+        # Go through the package lists, sort them descending by EVR, ignore the first N and then
+        # add the remaining ones to the skip list.
+        for arch, packages in latest_packages_by_arch_and_name.items():
+            for name, versions in packages.items():
+                versions.sort(key=lambda p: p[0], reverse=True)
+                for pkg in versions[self.repository.retain_package_versions :]:
+                    (evr, nevra) = pkg
+                    package_skip_nevras.add(nevra)
+
+        del latest_packages_by_arch_and_name
+
+        log.debug(
+            "Skipping {} packages due to retain_package_versions".format(len(package_skip_nevras))
+        )
+
+        # the progress bar message is slightly misleading here because we're potentially parsing
+        # more packages than this.
+        num_pkgs_to_sync = num_packages - len(package_skip_nevras)
+        progress_data = {
+            "message": "Parsed Packages",
+            "code": "sync.parsing.packages",
+            "total": num_pkgs_to_sync,
+        }
+        async with ProgressReport(**progress_data) as packages_pb:
+            for pkg in parser.as_iterator():
+                if package_skip_nevras and pkg.nevra() in package_skip_nevras:
+                    continue
                 package = Package(**Package.createrepo_to_dict(pkg))
                 base_url = pkg.location_base or self.remote_url
                 url = urlpath_sanitize(base_url, package.location_href)
