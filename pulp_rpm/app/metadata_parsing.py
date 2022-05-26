@@ -34,19 +34,12 @@ class MetadataParser:
         parser.other_xml_path = other_xml_path
         return parser
 
-    def count_packages(self):
-        """Count the total number of packages."""
-        # It would be much faster to just read the number in the header of the metadata.
-        # But there's no way to do that, and also we can't necessarily rely on that number because
-        # of duplicates.
-        packages = 0
+    def for_each_pkg_primary(self, pkgcb):
+        """Execute a callback for each package, parsed from only primary package metadata.
 
-        def pkgcb(pkg):
-            nonlocal packages
-            packages += 1
-
+        Only primary metadata means no files or changelogs.
+        """
         cr.xml_parse_primary(self.primary_xml_path, pkgcb=pkgcb, do_files=False)
-        return packages
 
     def as_iterator(self):
         """Return a package iterator."""
