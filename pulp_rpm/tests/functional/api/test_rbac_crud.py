@@ -7,6 +7,7 @@ from pulp_rpm.tests.functional.utils import gen_rpm_remote
 from pulp_rpm.tests.functional.constants import (
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
+    RPM_FIXTURE_SUMMARY,
 )
 
 from pulp_smash.pulp3.bindings import monitor_task
@@ -418,3 +419,80 @@ def test_rbac_distribution(
         assert rpm_distribution_api.list().count == 0
         assert rpm_repository_api.list().count == 0
         assert rpm_rpmremote_api.list().count == 0
+
+
+def test_rbac_content_scoping(
+    gen_user,
+    rpm_advisory_api,
+    rpm_package_api,
+    rpm_package_category_api,
+    rpm_package_groups_api,
+    rpm_package_lang_packs_api,
+    rpm_repository_api,
+    rpm_rpmremote_api,
+):
+    """
+    Test creation of remotes with user with permissions and without.
+
+    Then to test sync of one of those remote.
+    """
+    user_creator = gen_user(
+        model_roles=[
+            "rpm.rpmremote_creator",
+            "rpm.rpmrepository_creator",
+        ]
+    )
+    user_viewer = gen_user(model_roles=["rpm.viewer"])
+    user_no = gen_user(model_roles=["rpm.rpmrepository_creator"])
+
+    remote = None
+    remote_data = gen_rpm_remote(RPM_SIGNED_FIXTURE_URL)
+
+    # Create
+    with user_creator:
+        remote = rpm_rpmremote_api.create(remote_data)
+        assert rpm_rpmremote_api.list().count == 1
+
+    # Sync the remote
+    with user_creator:
+        repo = rpm_repository_api.create(gen_repo(remote=remote.pulp_href))
+        sync_url = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_res = rpm_repository_api.sync(repo.pulp_href, sync_url)
+        monitor_task(sync_res.task)
+        repo = rpm_repository_api.read(repo.pulp_href)
+        assert repo.latest_version_href.endswith("/1/")
+
+    # Test content visibility
+    with user_creator:
+        assert RPM_FIXTURE_SUMMARY["rpm.package"] == rpm_package_api.list().count
+        assert RPM_FIXTURE_SUMMARY["rpm.advisory"] == rpm_advisory_api.list().count
+        assert RPM_FIXTURE_SUMMARY["rpm.packagecategory"] == rpm_package_category_api.list().count
+        assert RPM_FIXTURE_SUMMARY["rpm.packagegroup"] == rpm_package_groups_api.list().count
+        assert (
+            RPM_FIXTURE_SUMMARY["rpm.packagelangpacks"] == rpm_package_lang_packs_api.list().count
+        )
+
+    with user_viewer:
+        assert RPM_FIXTURE_SUMMARY["rpm.package"] == rpm_package_api.list().count
+        assert RPM_FIXTURE_SUMMARY["rpm.advisory"] == rpm_advisory_api.list().count
+        assert RPM_FIXTURE_SUMMARY["rpm.packagecategory"] == rpm_package_category_api.list().count
+        assert RPM_FIXTURE_SUMMARY["rpm.packagegroup"] == rpm_package_groups_api.list().count
+        assert (
+            RPM_FIXTURE_SUMMARY["rpm.packagelangpacks"] == rpm_package_lang_packs_api.list().count
+        )
+
+    with user_no:
+        assert 0 == rpm_package_api.list().count
+        assert 0 == rpm_advisory_api.list().count
+        assert 0 == rpm_package_category_api.list().count
+        assert 0 == rpm_package_groups_api.list().count
+        assert 0 == rpm_package_lang_packs_api.list().count
+
+    # Remove
+    with user_creator:
+        response = rpm_rpmremote_api.delete(remote.pulp_href)
+        monitor_task(response.task)
+        response = rpm_repository_api.delete(repo.pulp_href)
+        monitor_task(response.task)
+        assert rpm_rpmremote_api.list().count == 0
+        assert rpm_repository_api.list().count == 0
