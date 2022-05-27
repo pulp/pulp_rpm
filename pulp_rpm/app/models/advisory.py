@@ -171,7 +171,7 @@ class UpdateRecord(Content):
         rec.fromstr = self.fromstr
         rec.status = self.status
         rec.title = self.title
-        rec.summary = self.summary
+        rec.summary = self.summary if self.summary else None
         rec.version = self.version
 
         rec.type = self.type
