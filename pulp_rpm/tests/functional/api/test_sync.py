@@ -90,6 +90,7 @@ from pulpcore.client.pulp_rpm import (
     RemotesRpmApi,
     PublicationsRpmApi,
 )
+from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 
 class BasicSyncTestCase(PulpTestCase):
@@ -985,12 +986,14 @@ class BasicSyncTestCase(PulpTestCase):
         self.assertEqual(present_package_count, 0)
         self.assertEqual(present_advisory_count, SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT)
 
-    def test_sync_skip_srpm_ignored_on_mirror(self):
-        """SRPMs are not skipped if the repo is synced in mirror mode."""  # noqa
+    def test_sync_skip_srpm_on_mirror(self):
+        """In mirror_content_only mode, skip_types is allowed."""
         body = gen_rpm_remote(SRPM_UNSIGNED_FIXTURE_URL)
         remote = self.remote_api.create(body)
         repo = self.repo_api.create(gen_repo())
-        self.sync(repository=repo, remote=remote, skip_types=["srpm"], mirror=True)
+        self.sync(
+            repository=repo, remote=remote, skip_types=["srpm"], sync_policy="mirror_content_only"
+        )
 
         self.addCleanup(self.repo_api.delete, repo.pulp_href)
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
@@ -998,7 +1001,7 @@ class BasicSyncTestCase(PulpTestCase):
         repo = self.repo_api.read(repo.pulp_href)
         present_package_count = len(get_content(repo.to_dict())[PULP_TYPE_PACKAGE])
         present_advisory_count = len(get_content(repo.to_dict())[PULP_TYPE_ADVISORY])
-        self.assertEqual(present_package_count, SRPM_UNSIGNED_FIXTURE_PACKAGE_COUNT)
+        self.assertEqual(present_package_count, 0)
         self.assertEqual(present_advisory_count, SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT)
 
     def test_sha_checksum(self):
@@ -1120,8 +1123,9 @@ class InvalidSyncConfigTestCase(PulpTestCase):
 
         Test that we get a task failure. See :meth:`do_test`.
         """
-        error = self.do_test("http://i-am-an-invalid-url.com/invalid/")
-        self.assertIsNotNone(error)
+        with self.assertRaises(PulpTaskError) as ctx:
+            self.do_test("http://i-am-an-invalid-url.com/invalid/")
+        self.assertIsNotNone(ctx.exception.task.error["description"])
 
     def test_invalid_rpm_content(self):
         """Sync a repository using an invalid plugin_content repository.
@@ -1129,9 +1133,10 @@ class InvalidSyncConfigTestCase(PulpTestCase):
         Assert that an exception is raised, and that error message has
         keywords related to the reason of the failure. See :meth:`do_test`.
         """
-        error = self.do_test(RPM_INVALID_FIXTURE_URL)
+        with self.assertRaises(PulpTaskError) as ctx:
+            self.do_test(RPM_INVALID_FIXTURE_URL)
         for key in ("missing", "filelists.xml"):
-            self.assertIn(key, error)
+            self.assertIn(key, ctx.exception.task.error["description"])
 
     @skip_if(bool, "md5_allowed", True)
     def test_sync_metadata_with_unsupported_checksum_type(self):
@@ -1140,12 +1145,13 @@ class InvalidSyncConfigTestCase(PulpTestCase):
 
         This test require disallowed 'MD5' checksum type from ALLOWED_CONTENT_CHECKSUMS settings.
         """
-        error = self.do_test(RPM_MD5_REPO_FIXTURE_URL)
+        with self.assertRaises(PulpTaskError) as ctx:
+            self.do_test(RPM_MD5_REPO_FIXTURE_URL)
 
         self.assertIn(
             "does not contain at least one trusted hasher which is specified in the "
             "'ALLOWED_CONTENT_CHECKSUMS'",
-            error,
+            ctx.exception.task.error["description"],
         )
 
     @unittest.skip(
@@ -1158,20 +1164,22 @@ class InvalidSyncConfigTestCase(PulpTestCase):
 
         This test require disallowed 'MD5' checksum type from ALLOWED_CONTENT_CHECKSUMS settings.
         """
-        error = self.do_test(RPM_MD5_REPO_FIXTURE_URL)
+        with self.assertRaises(PulpTaskError) as ctx:
+            self.do_test(RPM_MD5_REPO_FIXTURE_URL)
 
         self.assertIn(
             "rpm-with-md5/bear-4.1-1.noarch.rpm contains forbidden checksum type",
-            error,
+            ctx.exception.task.error["description"],
         )
 
     def test_complete_mirror_with_xml_base_fails(self):
         """Test that syncing a repository that uses xml:base in mirror mode fails."""
-        error = self.do_test(REPO_WITH_XML_BASE_URL, sync_policy="mirror_complete")
+        with self.assertRaises(PulpTaskError) as ctx:
+            self.do_test(REPO_WITH_XML_BASE_URL, sync_policy="mirror_complete")
 
         self.assertIn(
             "features which are incompatible with 'mirror' sync",
-            error,
+            ctx.exception.task.error["description"],
         )
 
     def test_complete_mirror_with_external_location_href_fails(self):
@@ -1181,11 +1189,12 @@ class InvalidSyncConfigTestCase(PulpTestCase):
         External location_href refers to a location_href that points outside of the repo,
         e.g. ../../Packages/blah.rpm
         """
-        error = self.do_test(REPO_WITH_EXTERNAL_LOCATION_HREF_URL, sync_policy="mirror_complete")
+        with self.assertRaises(PulpTaskError) as ctx:
+            self.do_test(REPO_WITH_EXTERNAL_LOCATION_HREF_URL, sync_policy="mirror_complete")
 
         self.assertIn(
             "features which are incompatible with 'mirror' sync",
-            error,
+            ctx.exception.task.error["description"],
         )
 
     def test_complete_mirror_with_delta_metadata_fails(self):
@@ -1194,21 +1203,27 @@ class InvalidSyncConfigTestCase(PulpTestCase):
 
         Otherwise we would be mirroring the metadata without mirroring the DRPM packages.
         """
-        error = self.do_test(DRPM_UNSIGNED_FIXTURE_URL, sync_policy="mirror_complete")
+        with self.assertRaises(PulpTaskError) as ctx:
+            self.do_test(DRPM_UNSIGNED_FIXTURE_URL, sync_policy="mirror_complete")
 
         self.assertIn(
             "features which are incompatible with 'mirror' sync",
-            error,
+            ctx.exception.task.error["description"],
         )
 
     def test_mirror_and_sync_policy_provided_simultaneously_fails(self):
         """
         Test that syncing fails if both the "mirror" and "sync_policy" params are provided.
         """
-        from pulpcore.client.pulp_rpm.exceptions import ApiException
-
         with self.assertRaises(ApiException):
-            self.do_test(DRPM_UNSIGNED_FIXTURE_URL, sync_policy="mirror_complete", mirror=True)
+            self.do_test(RPM_UNSIGNED_FIXTURE_URL, sync_policy="mirror_complete", mirror=True)
+
+    def test_sync_skip_srpm_fails_mirror_complete(self):
+        """Test that sync is rejected if both skip_types and mirror_complete are configured."""
+        with self.assertRaises(ApiException):
+            self.do_test(
+                SRPM_UNSIGNED_FIXTURE_URL, skip_types=["srpm"], sync_policy="mirror_complete"
+            )
 
     def do_test(self, url, **sync_kwargs):
         """Sync a repository given ``url`` on the remote."""
@@ -1225,10 +1240,7 @@ class InvalidSyncConfigTestCase(PulpTestCase):
         repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, **sync_kwargs)
         sync_response = repo_api.sync(repo.pulp_href, repository_sync_data)
 
-        with self.assertRaises(PulpTaskError) as ctx:
-            monitor_task(sync_response.task)
-
-        return ctx.exception.task.error["description"]
+        monitor_task(sync_response.task)
 
 
 class SyncedMetadataTestCase(PulpTestCase):
