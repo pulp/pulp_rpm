@@ -1130,7 +1130,7 @@ class RpmFirstStage(Stage):
 
         async with ProgressReport(**progress_data) as packages_pb:
             # skip SRPM if defined
-            skip_srpms = "srpm" in self.skip_types and not self.mirror_metadata
+            skip_srpms = "srpm" in self.skip_types
 
             nevras = set()
             checksums = set()
