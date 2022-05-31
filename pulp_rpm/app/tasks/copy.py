@@ -21,7 +21,7 @@ def find_children_of_content(content, src_repo_version):
     Finds RPMs referenced by Advisory/Errata content.
 
     Args:
-        content (iterable): Content for which to resolve children
+        content (Queryset): Content for which to resolve children
         src_repo_version (pulpcore.models.RepositoryVersion): Source repo version
 
     Returns: Queryset of Content objects that are children of the intial set of content
@@ -45,7 +45,7 @@ def find_children_of_content(content, src_repo_version):
 
     children = set()
 
-    for advisory in advisories:
+    for advisory in advisories.iterator():
         # Find rpms referenced by Advisories/Errata
         package_nevras = advisory.get_pkglist()
         advisory_package_q = Q(pk__in=[])
@@ -66,44 +66,49 @@ def find_children_of_content(content, src_repo_version):
         children.update(modules.filter(advisory_module_q).values_list("pk", flat=True))
 
     # PackageCategories & PackageEnvironments resolution must go before PackageGroups
-    # TODO: refactor to be more effecient (lower number of queries)
+    packagegroup_names = set()
     for packagecategory in packagecategories.iterator():
-        for category_package_group in packagecategory.group_ids:
-            category_package_groups = PackageGroup.objects.filter(
-                name=category_package_group["name"], pk__in=src_repo_version.content
-            )
-            children.update([pkggroup.pk for pkggroup in category_package_groups])
-            packagegroups = packagegroups.union(category_package_groups)
+        for group_id in packagecategory.group_ids:
+            packagegroup_names.add(group_id["name"])
 
     for packageenvironment in packageenvironments.iterator():
-        for env_package_group in packageenvironment.group_ids:
-            env_package_groups = PackageGroup.objects.filter(
-                name=env_package_group["name"], pk__in=src_repo_version.content
-            )
-            children.update([envgroup.pk for envgroup in env_package_groups])
-            packagegroups = packagegroups.union(env_package_groups)
-        for optional_env_package_group in packageenvironment.option_ids:
-            opt_env_package_groups = PackageGroup.objects.filter(
-                name=optional_env_package_group["name"], pk__in=src_repo_version.content
-            )
-            children.update([optpkggroup.pk for optpkggroup in opt_env_package_groups])
-            packagegroups = packagegroups.union(opt_env_package_groups)
+        for group_id in packageenvironment.group_ids:
+            packagegroup_names.add(group_id["name"])
+        for group_id in packageenvironment.option_ids:
+            packagegroup_names.add(group_id["name"])
+
+    child_package_groups = PackageGroup.objects.filter(
+        name__in=packagegroup_names, pk__in=src_repo_version.content
+    )
+    children.update([pkggroup.pk for pkggroup in child_package_groups])
+    packagegroups = packagegroups.union(child_package_groups)
 
     # Find rpms referenced by PackageGroups
+    packagegroup_package_names = set()
     for packagegroup in packagegroups.iterator():
-        group_package_names = [pkg["name"] for pkg in packagegroup.packages]
-        for pkg in group_package_names:
-            packages_by_name = Package.objects.filter(name=pkg, pk__in=content)
-            if not packages_by_name.exists():
-                packages_by_name = [
-                    pkg
-                    for pkg in Package.objects.with_age().filter(
-                        name=pkg, pk__in=src_repo_version.content
-                    )
-                    if pkg.age == 1
-                ]
-            for pkg in packages_by_name:
-                children.add(pkg.pk)
+        packagegroup_package_names |= set(pkg["name"] for pkg in packagegroup.packages)
+
+    # TODO: do modular/nonmodular need to be taken into account?
+    existing_package_names = (
+        Package.objects.filter(
+            name__in=packagegroup_package_names,
+            pk__in=content,
+        )
+        .values_list("name", flat=True)
+        .distinct()
+    )
+
+    missing_package_names = packagegroup_package_names - set(existing_package_names)
+
+    needed_packages = Package.objects.with_age().filter(
+        name__in=missing_package_names, pk__in=src_repo_version.content
+    )
+
+    # Pick the latest version of each package available which isn't already present
+    # in the content set.
+    for pkg in needed_packages.iterator():
+        if pkg.age == 1:
+            children.add(pkg.pk)
 
     return Content.objects.filter(pk__in=children)
 
