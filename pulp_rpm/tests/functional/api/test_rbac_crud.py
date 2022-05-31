@@ -124,11 +124,10 @@ def test_rbac_remotes_and_sync(gen_user, rpm_rpmremote_api, rpm_repository_api):
 
     with user_no, pytest.raises(ApiException) as exc:
         rpm_rpmremote_api.update(remote.pulp_href, remote_data_update)
-    assert exc.value.status == 404
+    assert exc.value.status == 403
 
     with user_viewer, pytest.raises(ApiException) as exc:
         rpm_rpmremote_api.update(remote.pulp_href, remote_data_update)
-    # 403 as user can view content but not update
     assert exc.value.status == 403
 
     with user_creator:
@@ -161,7 +160,7 @@ def test_rbac_remotes_and_sync(gen_user, rpm_rpmremote_api, rpm_repository_api):
     # Remove
     with user_no, pytest.raises(ApiException) as exc:
         rpm_repository_api.delete(remote.pulp_href)
-    assert exc.value.status == 404
+    assert exc.value.status == 403
 
     with user_viewer, pytest.raises(ApiException) as exc:
         rpm_repository_api.delete(remote.pulp_href)
@@ -221,7 +220,7 @@ def test_rbac_acs(gen_user, rpm_acs_api, rpm_rpmremote_api):
     # Update & Read
     with user_no, pytest.raises(ApiException) as exc:
         rpm_acs_api.read(acs.pulp_href)
-    assert exc.value.status == 404
+    assert exc.value.status == 403
 
     with user_viewer, pytest.raises(ApiException) as exc:
         acs_to_update = rpm_acs_api.read(acs.pulp_href)
@@ -240,7 +239,7 @@ def test_rbac_acs(gen_user, rpm_acs_api, rpm_rpmremote_api):
     # Remove
     with user_no, pytest.raises(ApiException) as exc:
         rpm_acs_api.delete(acs.pulp_href)
-    assert exc.value.status == 404
+    assert exc.value.status == 403
 
     with user_viewer, pytest.raises(ApiException) as exc:
         rpm_acs_api.delete(acs.pulp_href)
@@ -305,7 +304,7 @@ def test_rbac_publication(gen_user, rpm_rpmremote_api, rpm_repository_api, rpm_p
     # Remove
     with user_no, pytest.raises(ApiException) as exc:
         rpm_publication_api.delete(publication.pulp_href)
-    assert exc.value.status == 404
+    assert exc.value.status == 403
 
     with user_viewer, pytest.raises(ApiException) as exc:
         rpm_publication_api.delete(publication.pulp_href)
@@ -384,7 +383,7 @@ def test_rbac_distribution(
 
     with user_no, pytest.raises(ApiException) as exc:
         rpm_distribution_api.update(distribution.pulp_href, dist_data_to_update)
-    assert exc.value.status == 404
+    assert exc.value.status == 403
 
     with user_viewer, pytest.raises(ApiException) as exc:
         rpm_distribution_api.update(distribution.pulp_href, dist_data_to_update)
@@ -399,7 +398,7 @@ def test_rbac_distribution(
     # Remove
     with user_no, pytest.raises(ApiException) as exc:
         rpm_distribution_api.delete(distribution.pulp_href)
-    assert exc.value.status == 404
+    assert exc.value.status == 403
 
     with user_viewer, pytest.raises(ApiException) as exc:
         rpm_distribution_api.delete(distribution.pulp_href)
