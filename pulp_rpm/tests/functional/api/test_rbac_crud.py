@@ -463,6 +463,7 @@ def test_rbac_content_scoping(
         assert repo.latest_version_href.endswith("/1/")
 
     # Test content visibility
+    # TODO: modules
     with user_creator:
         assert RPM_FIXTURE_SUMMARY["rpm.package"] == rpm_package_api.list().count
         assert RPM_FIXTURE_SUMMARY["rpm.advisory"] == rpm_advisory_api.list().count

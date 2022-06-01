@@ -1,5 +1,4 @@
 """Tests that sync rpm plugin repositories."""
-import os
 import unittest
 from random import choice
 
@@ -48,7 +47,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_ADVISORY_UPDATED_VERSION_URL,
     RPM_CUSTOM_REPO_METADATA_CHANGED_FIXTURE_URL,
     RPM_CUSTOM_REPO_METADATA_FIXTURE_URL,
-    RPM_EPEL_URL,
     RPM_EPEL_MIRROR_URL,
     RPM_COMPLEX_FIXTURE_URL,
     RPM_COMPLEX_PACKAGE_DATA,
@@ -147,7 +145,7 @@ class BasicSyncTestCase(PulpTestCase):
         wget_download_on_host(RPM_UNSIGNED_FIXTURE_URL, "/tmp")
         remote = self.remote_api.create(gen_rpm_remote(url="file:///tmp/rpm-unsigned/"))
 
-        repo, remote = self.do_test(remote=remote, mirror=True)
+        repo, remote = self.do_test(remote=remote, sync_policy="mirror_complete")
 
         self.addCleanup(self.repo_api.delete, repo.pulp_href)
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
@@ -222,11 +220,6 @@ class BasicSyncTestCase(PulpTestCase):
            url=RPM_UNSIGNED_FIXTURE_URL.
            Those urls have RPM packages with the same name.
         3. Assert that the task succeed.
-
-        This test targets the following issue:
-
-        * `Pulp #4170 <https://pulp.plan.io/issues/4170>`_
-        * `Pulp #4255 <https://pulp.plan.io/issues/4255>`_
         """
         for repository in [RPM_REFERENCES_UPDATEINFO_URL, RPM_UNSIGNED_FIXTURE_URL]:
             body = gen_rpm_remote(repository)
@@ -239,22 +232,6 @@ class BasicSyncTestCase(PulpTestCase):
 
             self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
             self.assertDictEqual(get_added_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
-
-    def test_sync_epel_repo(self):
-        """Sync large EPEL repository."""
-        if "JENKINS_HOME" not in os.environ:
-            raise unittest.SkipTest("Slow test. It should only run on Jenkins")
-
-        body = gen_rpm_remote(RPM_EPEL_URL)
-        remote = self.remote_api.create(body)
-
-        repo, remote = self.do_test(remote=remote)
-
-        self.addCleanup(self.repo_api.delete, repo.pulp_href)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
-
-        content_summary = get_content_summary(repo.to_dict())
-        self.assertGreater(content_summary[RPM_PACKAGE_CONTENT_NAME], 0)
 
     def test_kickstart_immediate(self):
         """Test syncing kickstart repositories."""
@@ -570,7 +547,7 @@ class BasicSyncTestCase(PulpTestCase):
         second_sync_repo_version = repo.latest_version_href
         self.assertEqual(first_sync_repo_version, second_sync_repo_version)
 
-        # sync again with mirror=True, assert optimized
+        # sync again with sync_policy='mirror_complete', assert optimized
         sync_task = self.sync(repository=repo, remote=new_remote, sync_policy="mirror_complete")
         self.assertTrue(self.task_was_optimized(sync_task))
 
@@ -784,7 +761,7 @@ class BasicSyncTestCase(PulpTestCase):
         except Exception as e:
             self.fail("Unexpected exception {}".format(e.message))
 
-    @unittest.skip("skip until issue #8335 addressed")
+    @unittest.skip("skip until issue #2268 addressed")
     def test_sync_advisory_incomplete_pgk_list(self):
         """Test failure sync advisories.
 
@@ -825,7 +802,7 @@ class BasicSyncTestCase(PulpTestCase):
 
         self.assertIn(error_msg, task_result["error"]["description"])
 
-    @unittest.skip("FIXME: Enable this test after https://pulp.plan.io/issues/6605 is fixed")
+    @unittest.skip("FIXME: Enable this test after #2245 is fixed")
     def test_sync_advisory_no_updated_date(self):
         """Test sync advisory with no update.
 
@@ -968,7 +945,6 @@ class BasicSyncTestCase(PulpTestCase):
         self.assertEqual(repo.latest_version_href.rstrip("/")[-1], "2")
         self.assertTrue(PULP_TYPE_REPOMETADATA in get_added_content(repo.to_dict()))
 
-    @unittest.skip("Skip until we can get libmodulemd-2.12 on CentOS-8")
     def test_sync_modular_static_context(self):
         """Sync RPM modular content that includes the new static_context_field.
 
@@ -1011,7 +987,6 @@ class BasicSyncTestCase(PulpTestCase):
 
     def test_sync_skip_srpm_ignored_on_mirror(self):
         """SRPMs are not skipped if the repo is synced in mirror mode."""  # noqa
-        # TODO: This might change with https://pulp.plan.io/issues/9231
         body = gen_rpm_remote(SRPM_UNSIGNED_FIXTURE_URL)
         remote = self.remote_api.create(body)
         repo = self.repo_api.create(gen_repo())
@@ -1036,7 +1011,7 @@ class BasicSyncTestCase(PulpTestCase):
 
         self.do_test(repository=repo, remote=remote)
 
-    def do_test(self, repository=None, remote=None, mirror=False):
+    def do_test(self, repository=None, remote=None, sync_policy="additive"):
         """Sync a repository.
 
         Args:
@@ -1061,7 +1036,9 @@ class BasicSyncTestCase(PulpTestCase):
         else:
             remote = self.remote_api.read(remote.pulp_href)
 
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, mirror=mirror)
+        repository_sync_data = RpmRepositorySyncURL(
+            remote=remote.pulp_href, sync_policy=sync_policy
+        )
         sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
         monitor_task(sync_response.task)
         return self.repo_api.read(repo.pulp_href), self.remote_api.read(remote.pulp_href)
@@ -1123,7 +1100,7 @@ class BasicSyncTestCase(PulpTestCase):
         remote = self.remote_api.create(body)
         self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, mirror=False)
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, sync_policy="additive")
         sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
         monitor_task(sync_response.task)
 
@@ -1350,7 +1327,7 @@ class SyncedMetadataTestCase(PulpTestCase):
         diff = dictdiffer.diff(distribution_tree, RPM_KICKSTART_DATA)
         self.assertListEqual(list(diff), [], list(diff))
 
-    def do_setup(self, repository=None, remote=None, mirror=False):
+    def do_setup(self, repository=None, remote=None):
         """Sync a repository.
 
         Args:
@@ -1375,7 +1352,7 @@ class SyncedMetadataTestCase(PulpTestCase):
         else:
             remote = self.remote_api.read(remote.pulp_href)
 
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, mirror=mirror)
+        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
         sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
         monitor_task(sync_response.task)
         return self.repo_api.read(repo.pulp_href), self.remote_api.read(remote.pulp_href)
