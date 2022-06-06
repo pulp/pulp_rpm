@@ -18,7 +18,7 @@ from pulp_rpm.plugins import error_codes
 _LOGGER = logging.getLogger(__name__)
 
 
-def get_package_xml(pkg_path, sumtype=util.TYPE_SHA256):
+def get_package_xml(pkg_path, sumtype=util.TYPE_SHA256, changelog_limit=None):
     """
     Method to generate repo xmls - primary, filelists and other
     for a given rpm.
@@ -28,6 +28,9 @@ def get_package_xml(pkg_path, sumtype=util.TYPE_SHA256):
 
     :param sumtype: The type of checksum to use for creating the package xml
     :type  sumtype: basestring
+
+    :param changelog_limit: number of changelogs to include in package xml
+    :type changelog_limit: int
 
     :return:    rpm metadata dictionary or empty if rpm path doesnt exist
     :rtype:     dict
@@ -51,7 +54,7 @@ def get_package_xml(pkg_path, sumtype=util.TYPE_SHA256):
     metadata = {
         'primary': primary_xml_snippet.encode('utf-8'),
         'filelists': po.xml_dump_filelists_metadata(),
-        'other': po.xml_dump_other_metadata(),
+        'other': po.xml_dump_other_metadata(clog_limit=changelog_limit),
     }
     return metadata
 

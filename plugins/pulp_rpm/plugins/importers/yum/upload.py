@@ -401,7 +401,9 @@ def _handle_package(repo, type_id, unit_key, metadata, file_path, conduit, confi
         if type_id == models.DRPM._content_type_id.default:
             unit = models.DRPM(**_extract_drpm_data(file_path))
         else:
-            repodata = rpm_parse.get_package_xml(file_path, sumtype=util.TYPE_SHA256)
+            repodata = rpm_parse.get_package_xml(file_path,
+                                                 sumtype=util.TYPE_SHA256,
+                                                 changelog_limit=config.get('changelog_limit', 10))
             package_xml = (utils.fake_xml_element(repodata['primary'], constants.COMMON_NAMESPACE)
                                 .find(primary.PACKAGE_TAG))
             unit = primary.process_package_element(package_xml)
