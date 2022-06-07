@@ -247,16 +247,14 @@ class Package(Content):
         """
         Package NEVRA string (Name-Epoch-Version-Release-Architecture).
         """
-        return "{n}-{e}:{v}-{r}.{a}".format(
-            n=self.name, e=self.epoch, v=self.version, r=self.release, a=self.arch
-        )
+        return self.to_nevra(self.createrepo_to_dict(self))
 
     @property
     def nvra(self):
         """
         Package NVRA string (Name-Version-Release-Architecture).
         """
-        return "{n}-{v}-{r}.{a}".format(n=self.name, v=self.version, r=self.release, a=self.arch)
+        return self.to_nvra(self.createrepo_to_dict(self))
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
