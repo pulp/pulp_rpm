@@ -47,6 +47,11 @@ class ModulemdViewSet(SingleArtifactContentUploadViewSet):
                 "principal": "authenticated",
                 "effect": "allow",
             },
+            {
+                "action": ["create"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
         ],
         "queryset_scoping": {"function": "scope_queryset"},
     }
@@ -81,6 +86,11 @@ class ModulemdDefaultsViewSet(SingleArtifactContentUploadViewSet):
         "statements": [
             {
                 "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+            {
+                "action": ["create"],
                 "principal": "authenticated",
                 "effect": "allow",
             },
