@@ -1,5 +1,4 @@
 """Tests that sync rpm plugin repositories."""
-import unittest
 
 from random import choice
 from requests.exceptions import HTTPError
@@ -87,7 +86,6 @@ class BaseCopy(PulpTestCase):
         return source_repo, dest_repo
 
 
-@unittest.skip("Skip until we can get libmodulemd-2.12 on CentOS-8")
 class StaticContextModuleTestCase(BaseCopy):
     """Copy one repo with static-context-modular content to another."""
 
