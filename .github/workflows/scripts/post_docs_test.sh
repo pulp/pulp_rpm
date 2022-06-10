@@ -7,3 +7,4 @@ cd docs/_scripts/
 bash docs_check_upload.sh
 bash docs_check_sync.sh
 bash docs_check_copy.sh
+bash docs_check_delete.sh
