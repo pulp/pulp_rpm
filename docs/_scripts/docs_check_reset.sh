@@ -30,6 +30,9 @@ DIST_NAME="upload-dist"
 pulp rpm repository destroy --name "${REPO_NAME}"
 pulp rpm distribution destroy --name "${DIST_NAME}"
 
+REPO_NAME="delete-repo"
+pulp rpm repository destroy --name "${REPO_NAME}"
+
 echo "Sleep 60 for orphan-cleanup..."
 sleep 60
 pulp orphan cleanup --protection-time 1

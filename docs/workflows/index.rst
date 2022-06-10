@@ -43,6 +43,7 @@ Workflows
    create_sync_publish
    upload
    use_pulp_repo
+   remove_content
    manage
    copy
    metadata_signing
