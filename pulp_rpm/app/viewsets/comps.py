@@ -39,7 +39,8 @@ class CompsXmlViewSet(viewsets.ViewSet):
                 "principal": "authenticated",
                 "effect": "allow",
                 "condition": [
-                    "has_repo_attr_model_or_obj_perms:rpm.modify_content_rpmrepository",
+                    "has_required_repo_perms_on_upload:rpm.modify_content_rpmrepository",
+                    "has_required_repo_perms_on_upload:rpm.view_rpmrepository",
                 ],
             },
         ],

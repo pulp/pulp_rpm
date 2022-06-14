@@ -62,6 +62,10 @@ class PackageViewSet(SingleArtifactContentUploadViewSet):
                 "action": ["create"],
                 "principal": "authenticated",
                 "effect": "allow",
+                "condition": [
+                    "has_required_repo_perms_on_upload:rpm.modify_content_rpmrepository",
+                    "has_required_repo_perms_on_upload:rpm.view_rpmrepository",
+                ],
             },
         ],
         "queryset_scoping": {"function": "scope_queryset"},
