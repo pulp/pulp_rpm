@@ -513,7 +513,7 @@ def generate_repo_metadata(
         pkg_to_hash[ca.content_id] = (package_checksum_type, pkgid)
 
     # Process all packages
-    for package in packages.iterator():
+    for package in packages.order_by("name", "evr").iterator():
         pkg = package.to_createrepo_c()
 
         # rewrite the checksum and checksum type with the desired ones
