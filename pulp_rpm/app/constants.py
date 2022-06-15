@@ -47,6 +47,7 @@ CR_PACKAGE_ATTRS = SimpleNamespace(
     ENHANCES="enhances",
     EPOCH="epoch",
     FILES="files",
+    FILENAME="filename",
     LOCATION_BASE="location_base",
     LOCATION_HREF="location_href",
     NAME="name",

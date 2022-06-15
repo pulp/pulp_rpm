@@ -141,15 +141,21 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         read_only=True,
     )
 
+    filename = serializers.CharField(
+        help_text=_("The original filename of the package - "),
+        read_only=True,
+    )
     location_base = serializers.CharField(
-        help_text=_("Base location of this package"),
+        help_text=_("DEPRECATED: Base location of this package"),
         allow_blank=True,
         required=False,
         read_only=True,
+        default="",
     )
     location_href = serializers.CharField(
-        help_text=_("Relative location of package to the repodata"),
+        help_text=_("DEPRECATED: Relative location of package to the repodata"),
         read_only=True,
+        source="filename",
     )
 
     rpm_buildhost = serializers.CharField(
@@ -306,8 +312,9 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
                 "enhances",
                 "recommends",
                 "supplements",
-                "location_base",
-                "location_href",
+                "filename",
+                "location_base",  # Deprecated
+                "location_href",  # Deprecated
                 "rpm_buildhost",
                 "rpm_group",
                 "rpm_license",

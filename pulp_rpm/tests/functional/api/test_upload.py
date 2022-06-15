@@ -58,7 +58,7 @@ class ContentUnitTestCase(PulpTestCase):
         upload = self.do_test(self.file_to_use)
         content = monitor_task(upload.task).created_resources[0]
         package = self.content_api.read(content)
-        self.assertTrue(package.location_href == RPM_PACKAGE_FILENAME)
+        self.assertTrue(package.filename == RPM_PACKAGE_FILENAME)
 
         # Duplicate unit
         upload = self.do_test(self.file_to_use)

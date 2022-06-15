@@ -1181,18 +1181,16 @@ class RpmFirstStage(Stage):
 
                 package = Package(**Package.createrepo_to_dict(pkg))
                 base_url = pkg.location_base or self.remote_url
-                url = urlpath_sanitize(base_url, package.location_href)
+                url = urlpath_sanitize(base_url, pkg.location_href)
+                store_package_for_mirroring(self.repository, package.pkgId, pkg.location_href)
                 del pkg  # delete it as soon as we're done with it
-
-                store_package_for_mirroring(self.repository, package.pkgId, package.location_href)
                 artifact = Artifact(size=package.size_package)
                 checksum_type = getattr(CHECKSUM_TYPES, package.checksum_type.upper())
                 setattr(artifact, checksum_type, package.pkgId)
-                filename = os.path.basename(package.location_href)
                 da = DeclarativeArtifact(
                     artifact=artifact,
                     url=url,
-                    relative_path=filename,
+                    relative_path=package.filename,
                     remote=self.remote,
                     deferred_download=self.deferred_download,
                 )

@@ -1,3 +1,4 @@
+import os
 from logging import getLogger
 
 import createrepo_c as cr
@@ -27,6 +28,30 @@ class RpmVersionField(models.Field):
     def db_type(self, connection):
         """Returns the database column type."""
         return "pulp_evr_t"
+
+
+def format_nevra(name=None, epoch=0, version=None, release=None, arch=None):
+    """Generate Name-Epoch-Version-Release-Arch string."""
+    return "{name}-{epoch}:{version}-{release}.{arch}.rpm".format(
+        name=name, epoch=epoch, version=version, release=release, arch=arch
+    )
+
+
+def format_nvra(name=None, version=None, release=None, arch=None):
+    """Generate Name-Version-Release-Arch from a package metadata."""
+    return "{name}-{version}-{release}.{arch}.rpm".format(
+        name=name,
+        version=version,
+        release=release,
+        arch=arch,
+    )
+
+
+def format_nevra_short(name=None, epoch=0, version=None, release=None, arch=None):
+    """Returns NEVRA or NVRA based on epoch."""
+    if int(epoch) > 0:
+        return format_nevra(name, epoch, version, release, arch)
+    return format_nvra(name, version, release, arch)
 
 
 class PackageManager(ContentManager):
@@ -95,6 +120,9 @@ class Package(Content):
         files (JSON):
             Files that package contains - see comments below
 
+        filename (Text):
+            Name of the file - see comments below.
+
         requires (JSON):
             Capabilities the package requires - see comments below
         provides (JSON):
@@ -111,11 +139,6 @@ class Package(Content):
             Capabilities the package recommends - see comments below
         supplements (JSON):
             Capabilities the package supplements - see comments below
-
-        location_base (Text):
-            Base location of this package
-        location_href (Text):
-            Relative location of package to the repodata
 
         rpm_buildhost (Text):
             Hostname of the system that built the package
@@ -208,8 +231,7 @@ class Package(Content):
     recommends = models.JSONField(default=list)
     supplements = models.JSONField(default=list)
 
-    location_base = models.TextField()
-    location_href = models.TextField()
+    filename = models.TextField()
 
     rpm_buildhost = models.TextField()
     rpm_group = models.TextField()
@@ -231,30 +253,34 @@ class Package(Content):
     is_modular = models.BooleanField(default=False)
 
     # createrepo_c treats 'nosrc' arch (opensuse specific use) as 'src' so it can seem that two
-    # packages are the same when they are not. By adding 'location_href' here we can recognize this.
+    # packages are the same when they are not. By adding 'filename' here we can recognize this.
     # E.g. glibc-2.26.11.3.2.nosrc.rpm vs glibc-2.26.11.3.2.src.rpm
-    repo_key_fields = ("name", "epoch", "version", "release", "arch", "location_href")
-
-    @property
-    def filename(self):
-        """
-        Create a filename for an RPM based upon its NEVRA information.
-        """
-        return self.nvra + ".rpm"
+    repo_key_fields = ("name", "epoch", "version", "release", "arch", "filename")
 
     @property
     def nevra(self):
         """
         Package NEVRA string (Name-Epoch-Version-Release-Architecture).
         """
-        return self.to_nevra(self.createrepo_to_dict(self))
+        return format_nevra(
+            name=self.name,
+            epoch=self.epoch,
+            version=self.version,
+            release=self.release,
+            arch=self.arch,
+        )
 
     @property
     def nvra(self):
         """
         Package NVRA string (Name-Version-Release-Architecture).
         """
-        return self.to_nvra(self.createrepo_to_dict(self))
+        return format_nvra(
+            name=self.name,
+            version=self.version,
+            release=self.release,
+            arch=self.arch,
+        )
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
@@ -297,8 +323,9 @@ class Package(Content):
             PULP_PACKAGE_ATTRS.ENHANCES: getattr(package, CR_PACKAGE_ATTRS.ENHANCES, []),
             PULP_PACKAGE_ATTRS.EPOCH: getattr(package, CR_PACKAGE_ATTRS.EPOCH) or "",
             PULP_PACKAGE_ATTRS.FILES: getattr(package, CR_PACKAGE_ATTRS.FILES, []),
-            PULP_PACKAGE_ATTRS.LOCATION_BASE: "",  # TODO, delete this entirely
-            PULP_PACKAGE_ATTRS.LOCATION_HREF: getattr(package, CR_PACKAGE_ATTRS.LOCATION_HREF),
+            PULP_PACKAGE_ATTRS.FILENAME: os.path.basename(
+                getattr(package, CR_PACKAGE_ATTRS.LOCATION_HREF)
+            ),
             PULP_PACKAGE_ATTRS.NAME: getattr(package, CR_PACKAGE_ATTRS.NAME),
             PULP_PACKAGE_ATTRS.OBSOLETES: getattr(package, CR_PACKAGE_ATTRS.OBSOLETES, []),
             PULP_PACKAGE_ATTRS.PKGID: getattr(package, CR_PACKAGE_ATTRS.PKGID),
@@ -329,44 +356,6 @@ class Package(Content):
             PULP_PACKAGE_ATTRS.URL: getattr(package, CR_PACKAGE_ATTRS.URL) or "",
             PULP_PACKAGE_ATTRS.VERSION: getattr(package, CR_PACKAGE_ATTRS.VERSION),
         }
-
-    @staticmethod
-    def to_nevra(pkg):
-        """
-        Generate NEVRA from a package metadata.
-
-        Args:
-            pkg(dict): package metadata
-
-        Returns: NEVRA as a string
-        """
-        return f"{pkg['name']}-{pkg['epoch']}:{pkg['version']}-{pkg['release']}.{pkg['arch']}.rpm"
-
-    @staticmethod
-    def to_nvra(pkg):
-        """
-        Generate NEVRA from a package metadata.
-
-        Args:
-            pkg(dict): package metadata
-
-        Returns: NVRA as a string
-        """
-        return f"{pkg['name']}-{pkg['version']}-{pkg['release']}.{pkg['arch']}.rpm"
-
-    @classmethod
-    def short_nevra(cls, pkg):
-        """
-        Returns NEVRA or NVRA based on epoch.
-
-        Args:
-            pkg(dict): package metadata
-
-        Returns: NEVRA or NVRA based on epoch.
-        """
-        if int(pkg["epoch"]) > 0:
-            return cls.to_nevra(pkg)
-        return cls.to_nvra(pkg)
 
     def to_createrepo_c(self):
         """
@@ -415,8 +404,6 @@ class Package(Content):
         package.enhances = list_to_createrepo_c(getattr(self, PULP_PACKAGE_ATTRS.ENHANCES))
         package.epoch = getattr(self, PULP_PACKAGE_ATTRS.EPOCH)
         package.files = list_to_createrepo_c(getattr(self, PULP_PACKAGE_ATTRS.FILES))
-        package.location_base = ""  # TODO: delete this entirely
-        package.location_href = getattr(self, PULP_PACKAGE_ATTRS.LOCATION_HREF)
         package.name = getattr(self, PULP_PACKAGE_ATTRS.NAME)
         package.obsoletes = list_to_createrepo_c(getattr(self, PULP_PACKAGE_ATTRS.OBSOLETES))
         package.pkgId = getattr(self, PULP_PACKAGE_ATTRS.PKGID)

@@ -1,0 +1,1 @@
+Removed "location_href" and "location_base" from the stored package metadata, replaced by "filename". For compatibility reasons, the fields are left present in the REST API schema, with "location_href" now based on this "filename" value. After upgrading, this value may be different than it was before.
