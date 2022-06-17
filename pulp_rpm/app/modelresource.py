@@ -4,6 +4,7 @@ from import_export import fields
 from import_export.widgets import ForeignKeyWidget
 
 from pulpcore.plugin.importexport import BaseContentResource, QueryModelResource
+from pulpcore.plugin.modelresources import RepositoryResource
 from pulpcore.plugin.models import Content
 from pulp_rpm.app.models import (
     Addon,
@@ -515,7 +516,27 @@ class UpdateCollectionPackageResource(QueryModelResource):
         )
 
 
+class RpmRepositoryResource(RepositoryResource):
+    """
+    A resource for importing/exporting RPM repository entities.
+    """
+
+    def set_up_queryset(self):
+        """
+        Set up a queryset for RpmRepositories.
+
+        Returns:
+            A queryset containing one repository that will be exported.
+        """
+        return RpmRepository.objects.filter(pk=self.repo_version.repository)
+
+    class Meta:
+        model = RpmRepository
+        exclude = RepositoryResource.Meta.exclude + ("most_recent_version",)
+
+
 IMPORT_ORDER = [
+    RpmRepositoryResource,
     PackageResource,
     ModulemdResource,
     ModulemdDefaultsResource,
