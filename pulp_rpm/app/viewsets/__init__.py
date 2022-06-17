@@ -9,7 +9,7 @@ from .comps import (  # noqa
 )
 from .custom_metadata import RepoMetadataFileViewSet  # noqa
 from .distribution import DistributionTreeViewSet  # noqa
-from .modulemd import ModulemdViewSet, ModulemdDefaultsViewSet  # noqa
+from .modulemd import ModulemdViewSet, ModulemdDefaultsViewSet, ModulemdObsoleteViewSet  # noqa
 from .package import PackageViewSet  # noqa
 from .repository import (  # noqa
     RpmRepositoryViewSet,

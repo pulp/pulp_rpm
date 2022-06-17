@@ -21,7 +21,11 @@ from .distribution import (  # noqa
     ImageSerializer,
     VariantSerializer,
 )
-from .modulemd import ModulemdSerializer, ModulemdDefaultsSerializer  # noqa
+from .modulemd import (  # noqa
+    ModulemdSerializer,
+    ModulemdDefaultsSerializer,
+    ModulemdObsoleteSerializer,
+)
 from .package import PackageSerializer, MinimalPackageSerializer  # noqa
 from .repository import (  # noqa
     CopySerializer,

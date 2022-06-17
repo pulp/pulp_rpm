@@ -11,6 +11,7 @@ from pulpcore.plugin.serializers import (
 from pulp_rpm.app.models import (
     Modulemd,
     ModulemdDefaults,
+    ModulemdObsolete,
     Package,
 )
 
@@ -92,3 +93,43 @@ class ModulemdDefaultsSerializer(SingleArtifactContentUploadSerializer, ContentC
             )
         )
         model = ModulemdDefaults
+
+
+class ModulemdObsoleteSerializer(SingleArtifactContentUploadSerializer):
+    """
+    ModulemdObsolete serializer.
+    """
+
+    modified = serializers.DateTimeField(help_text=_("Obsolete modified time."))
+    module_name = serializers.CharField(help_text=_("Modulemd name."))
+    module_stream = serializers.CharField(help_text=_("Modulemd's stream."))
+    message = serializers.CharField(help_text=_("Obsolete description."))
+
+    override_previous = serializers.CharField(
+        help_text=_("Reset previous obsoletes."), allow_null=True
+    )
+    module_context = serializers.CharField(help_text=_("Modulemd's context."), allow_null=True)
+    eol_date = serializers.DateTimeField(help_text=_("End of Life date."), allow_null=True)
+    obsoleted_by_module_name = serializers.CharField(
+        help_text=_("Obsolete by module name."), allow_null=True
+    )
+    obsoleted_by_module_stream = serializers.CharField(
+        help_text=_("Obsolete by module stream."), allow_null=True
+    )
+
+    snippet = serializers.CharField(help_text=_("Module Obsolete snippet."), write_only=True)
+
+    class Meta:
+        fields = SingleArtifactContentUploadSerializer.Meta.fields + (
+            "modified",
+            "module_name",
+            "module_stream",
+            "message",
+            "override_previous",
+            "module_context",
+            "eol_date",
+            "obsoleted_by_module_name",
+            "obsoleted_by_module_stream",
+            "snippet",
+        )
+        model = ModulemdObsolete

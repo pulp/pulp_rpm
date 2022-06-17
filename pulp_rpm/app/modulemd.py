@@ -1,6 +1,8 @@
 import os
 import tempfile
 
+from datetime import datetime
+
 from pulpcore.plugin.models import Artifact
 from pulp_rpm.app.models import Modulemd, Package
 from pulp_rpm.app.constants import PULP_MODULE_ATTR, PULP_MODULEDEFAULTS_ATTR
@@ -79,6 +81,9 @@ def parse_modulemd(module_names, module_index):
         module_index (mmdlib.ModuleIndex):
             libmodulemd index object
 
+    Returns:
+        list of modulemd as dict
+
     """
     ret = list()
     for module in module_names:
@@ -143,4 +148,48 @@ def parse_defaults(module_index):
                     "artifact": artifact,
                 }
             )
+    return ret
+
+
+def parse_obsoletes(module_names, module_index):
+    """
+    Get modulemd obsoletes.
+
+    Args:
+        module_names (list):
+            list of modulemd names
+        module_index (mmdlib.ModuleIndex):
+            libmodulemd index object
+
+    Returns:
+        list of modulemd obsoletes as dict
+
+    """
+    ret = list()
+    for module in module_names:
+        modulemd = module_index.get_module(module)
+        for obsolete in modulemd.get_obsoletes():
+            new_obsolete = dict()
+            # parsed as in documentation
+            # https://fedora-modularity.github.io/libmodulemd/latest/modulemd-2.0-Modulemd.Obsoletes.html#ModulemdObsoletes--modified
+            new_obsolete["modified"] = datetime.strptime(str(obsolete.props.modified), "%Y%m%d%H%M")
+            new_obsolete["module_name"] = obsolete.props.module_name
+            new_obsolete["module_stream"] = obsolete.props.module_stream
+            new_obsolete["message"] = obsolete.props.message
+            new_obsolete["override_previous"] = obsolete.props.override_previous
+            new_obsolete["module_context"] = obsolete.props.module_context
+            # EOL date is '0' if not specified instead None
+            try:
+                new_obsolete["eol_date"] = datetime.strptime(
+                    str(obsolete.props.eol_date), "%Y%m%d%H%M"
+                )
+            except ValueError:
+                new_obsolete["eol_date"] = None
+            new_obsolete["obsoleted_by_module_name"] = obsolete.props.obsoleted_by_module_name
+            new_obsolete["obsoleted_by_module_stream"] = obsolete.props.obsoleted_by_module_stream
+            # Create a snippet
+            temp_module_index = mmdlib.ModuleIndex.new()
+            temp_module_index.add_obsoletes(obsolete)
+            new_obsolete["snippet"] = temp_module_index.dump_to_string()
+            ret.append(new_obsolete)
     return ret
