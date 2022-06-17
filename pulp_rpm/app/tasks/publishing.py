@@ -28,6 +28,7 @@ from pulp_rpm.app.models import (
     DistributionTree,
     Modulemd,
     ModulemdDefaults,
+    ModulemdObsolete,
     Package,
     PackageCategory,
     PackageEnvironment,
@@ -537,7 +538,7 @@ def generate_repo_metadata(
     for update_record in UpdateRecord.objects.filter(pk__in=content).iterator():
         upd_xml.add_chunk(cr.xml_dump_updaterecord(update_record.to_createrepo_c()))
 
-    # Process modulemd and modulemd_defaults
+    # Process modulemd, modulemd_defaults and obsoletes
     with open(mod_yml_path, "ab") as mod_yml:
         for modulemd in Modulemd.objects.filter(pk__in=content).iterator():
             a = modulemd._artifacts.get()
@@ -548,6 +549,9 @@ def generate_repo_metadata(
             a = default._artifacts.get()
             mod_yml.write(a.file.read())
             a.file.close()
+            has_modules = True
+        for obsolete in ModulemdObsolete.objects.filter(pk__in=content).iterator():
+            mod_yml.write(obsolete.snippet.encode())
             has_modules = True
 
     # Process comps

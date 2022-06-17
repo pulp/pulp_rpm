@@ -6,6 +6,7 @@ from pulpcore.plugin.models import Content
 
 from pulp_rpm.app.models.package import Package
 
+
 log = getLogger(__name__)
 
 
@@ -92,3 +93,50 @@ class ModulemdDefaults(Content):
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
+
+
+class ModulemdObsolete(Content):
+    """
+    The "Modulemd Obsoletes" content type.
+
+    Fields:
+        modified (models.DateTimeField):
+            A DateTime field representing last modification of modulemd obsolete.
+        reset (Bool):
+            A boolean option to reset all previously specified obsoletes
+        module (String):
+            A string representing a Name of a module that is EOLed
+        stream (String):
+            A string representing a Stream of a module that is EOLed
+        context (String):
+            A string representing a Context of a module that is EOLed
+        eol_date (models.DateTimeField):
+            A DateTime field representing end of life date.
+        message (String):
+            A string describing the change, reason, etc.
+        obsolete_by (JSON):
+            A dict to provide details about the obsoleting module and stream
+        module_snippet (String):
+            A string to hold modulemd-obsolete snippet
+    """
+
+    TYPE = "modulemd_obsolete"
+
+    # Mandatory fields
+    modified = models.DateTimeField()
+    module_name = models.TextField()
+    module_stream = models.TextField()
+    message = models.TextField()
+
+    # Optional fields
+    override_previous = models.BooleanField(null=True)
+    module_context = models.TextField(null=True)
+    eol_date = models.DateTimeField(null=True)
+    obsoleted_by_module_name = models.TextField(null=True)
+    obsoleted_by_module_stream = models.TextField(null=True)
+
+    snippet = models.TextField()
+
+    class Meta:
+        default_related_name = "%(app_label)s_%(model_name)s"
+        unique_together = ("modified", "module_name", "module_stream")

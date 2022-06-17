@@ -8,10 +8,12 @@ from pulpcore.plugin.viewsets import (
 from pulp_rpm.app.models import (
     Modulemd,
     ModulemdDefaults,
+    ModulemdObsolete,
 )
 from pulp_rpm.app.serializers import (
     ModulemdDefaultsSerializer,
     ModulemdSerializer,
+    ModulemdObsoleteSerializer,
 )
 
 
@@ -101,6 +103,32 @@ class ModulemdDefaultsViewSet(SingleArtifactContentUploadViewSet):
                     "has_required_repo_perms_on_upload:rpm.modify_content_rpmrepository",
                     "has_required_repo_perms_on_upload:rpm.view_rpmrepository",
                 ],
+            },
+        ],
+        "queryset_scoping": {"function": "scope_queryset"},
+    }
+
+
+class ModulemdObsoleteViewSet(SingleArtifactContentUploadViewSet):
+    """
+    ViewSet for Modulemd.
+    """
+
+    endpoint_name = "modulemd_obsoletes"
+    queryset = ModulemdObsolete.objects.all()
+    serializer_class = ModulemdObsoleteSerializer
+
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+            {
+                "action": ["create"],
+                "principal": "authenticated",
+                "effect": "allow",
             },
         ],
         "queryset_scoping": {"function": "scope_queryset"},

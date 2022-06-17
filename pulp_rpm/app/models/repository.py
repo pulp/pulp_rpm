@@ -36,6 +36,7 @@ from pulp_rpm.app.models import (
     RepoMetadataFile,
     Modulemd,
     ModulemdDefaults,
+    ModulemdObsolete,
     UpdateRecord,
 )
 
@@ -215,6 +216,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
         DistributionTree,
         Modulemd,
         ModulemdDefaults,
+        ModulemdObsolete,
     ]
     REMOTE_TYPES = [RpmRemote, UlnRemote]
     GPGCHECK_CHOICES = [(0, 0), (1, 1)]

@@ -65,6 +65,7 @@ from pulp_rpm.app.models import (
     Variant,
     Modulemd,
     ModulemdDefaults,
+    ModulemdObsolete,
     Package,
     RepoMetadataFile,
     PackageGroup,
@@ -83,6 +84,7 @@ from pulp_rpm.app.models import (
 from pulp_rpm.app.modulemd import (
     parse_defaults,
     parse_modulemd,
+    parse_obsoletes,
 )
 
 from pulp_rpm.app.comps import strdict_to_dict, dict_digest
@@ -1015,6 +1017,29 @@ class RpmFirstStage(Stage):
         if default_content_dcs:
             for default_content_dc in default_content_dcs:
                 await self.put(default_content_dc)
+
+        # Parse modulemd obsoletes
+        modulemd_obsoletes = parse_obsoletes(modulemd_names, modulemd_index)
+
+        # Parsing module obsoletes happens all at one time, and from here on no useful
+        # work happens. So just report that it finished this stage.
+        modulemd_obsoletes_pb_data = {
+            "message": "Parsed Modulemd Obsolete",
+            "code": "sync.parsing.modulemd_obsoletes",
+        }
+        async with ProgressReport(**modulemd_obsoletes_pb_data) as modulemd_obsoletes_pb:
+            modulemd_obsoletes_total = len(modulemd_default_names)
+            modulemd_obsoletes_pb.total = modulemd_obsoletes_total
+            modulemd_obsoletes_pb.done = modulemd_obsoletes_total
+
+        obsolete_content_dcs = []
+        for obsolete in modulemd_obsoletes:
+            obsolete_content = ModulemdObsolete(**obsolete)
+            obsolete_content_dcs.append(DeclarativeContent(content=obsolete_content))
+
+        if obsolete_content_dcs:
+            for obsolete_content_dc in obsolete_content_dcs:
+                await self.put(obsolete_content_dc)
 
         return (modulemd_dcs, modulemd_all)
 
