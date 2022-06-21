@@ -13,6 +13,27 @@ Changelog
 
 .. towncrier release notes start
 
+3.17.6 (2022-06-21)
+===================
+
+
+Features
+--------
+
+- RPM metadata is now sorted by package name and version information, which slightly improves compression efficiency.
+  `#2274 <https://github.com/pulp/pulp_rpm/issues/2274>`__
+
+
+Bugfixes
+--------
+
+- Fixed treeinfo processing to handle some very old treeinfo formats.
+  `#2243 <https://github.com/pulp/pulp_rpm/issues/2243>`__
+
+
+----
+
+
 3.17.5 (2022-04-12)
 ===================
 
