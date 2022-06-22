@@ -1,5 +1,6 @@
-from unittest import TestCase
+from django.test import TestCase
 from datetime import datetime
+
 from pulp_rpm.app.shared_utils import is_previous_version, urlpath_sanitize, parse_time
 
 
