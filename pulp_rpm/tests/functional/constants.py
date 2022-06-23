@@ -615,7 +615,7 @@ CENTOS8_KICKSTART_APPSTREAM_URL = "http://mirror.centos.org/centos-8/8/AppStream
 CENTOS8_KICKSTART_BASEOS_URL = "http://mirror.centos.org/centos-8/8/BaseOS/x86_64/kickstart/"
 CENTOS8_APPSTREAM_URL = "http://mirror.centos.org/centos-8/8/AppStream/x86_64/os/"
 CENTOS8_BASEOS_URL = "http://mirror.centos.org/centos-8/8/BaseOS/x86_64/os/"
-CENTOS7_OPSTOOLS = "http://ftp.cs.stanford.edu/centos/7/opstools/x86_64/"
+CENTOS7_OPSTOOLS = "http://mirror.centos.org/centos/7/opstools/x86_64/"
 EPEL7_URL = "https://dl.fedoraproject.org/pub/epel/7/x86_64/"
 EPEL8_MIRRORLIST_URL = "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-8&arch=x86_64"
 EPEL8_PLAYGROUND_KICKSTART_URL = "http://mirrors.sonic.net/epel/playground/8/Everything/x86_64/os/"
