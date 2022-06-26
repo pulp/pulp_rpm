@@ -274,7 +274,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
                 _("There is already a package with: {values}.").format(values=error_data)
             )
 
-        new_pkg["location_href"] = Package.short_nevra(new_pkg)
+        new_pkg["location_href"] = Package.short_nevra(new_pkg) + ".rpm"
         if not data.get("relative_path"):
             data["relative_path"] = new_pkg["location_href"]
 

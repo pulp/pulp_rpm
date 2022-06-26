@@ -340,7 +340,7 @@ class Package(Content):
 
         Returns: NEVRA as a string
         """
-        return f"{pkg['name']}-{pkg['epoch']}:{pkg['version']}-{pkg['release']}.{pkg['arch']}.rpm"
+        return f"{pkg['name']}-{pkg['epoch']}:{pkg['version']}-{pkg['release']}.{pkg['arch']}"
 
     @staticmethod
     def to_nvra(pkg):
@@ -352,7 +352,7 @@ class Package(Content):
 
         Returns: NVRA as a string
         """
-        return f"{pkg['name']}-{pkg['version']}-{pkg['release']}.{pkg['arch']}.rpm"
+        return f"{pkg['name']}-{pkg['version']}-{pkg['release']}.{pkg['arch']}"
 
     @classmethod
     def short_nevra(cls, pkg):
