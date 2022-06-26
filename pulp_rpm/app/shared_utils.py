@@ -8,10 +8,32 @@ from django.conf import settings
 from django.core.files.storage import default_storage as storage
 from django.utils.dateparse import parse_datetime
 
-from pulp_rpm.app.models.package import Package
+
+def format_nevra(name=None, epoch=0, version=None, release=None, arch=None):
+    """Generate Name-Epoch-Version-Release-Arch string."""
+    return "{name}-{epoch}:{version}-{release}.{arch}".format(
+        name=name, epoch=epoch, version=version, release=release, arch=arch
+    )
 
 
-def _prepare_package(artifact):
+def format_nvra(name=None, version=None, release=None, arch=None):
+    """Generate Name-Version-Release-Arch from a package metadata."""
+    return "{name}-{version}-{release}.{arch}".format(
+        name=name,
+        version=version,
+        release=release,
+        arch=arch,
+    )
+
+
+def format_nevra_short(name=None, epoch=0, version=None, release=None, arch=None):
+    """Returns NEVRA or NVRA based on epoch."""
+    if int(epoch) > 0:
+        return format_nevra(name, epoch, version, release, arch)
+    return format_nvra(name, version, release, arch)
+
+
+def read_crpackage_from_artifact(artifact):
     """
     Helper function for creating package.
 
@@ -31,10 +53,8 @@ def _prepare_package(artifact):
             temp_file.name, changelog_limit=settings.KEEP_CHANGELOG_LIMIT
         )
 
-    package = Package.createrepo_to_dict(cr_pkginfo)
-
     artifact_file.close()
-    return package
+    return cr_pkginfo
 
 
 def urlpath_sanitize(*args):

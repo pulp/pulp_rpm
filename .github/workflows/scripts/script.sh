@@ -128,6 +128,7 @@ else
 fi
 export PULP_FIXTURES_URL="http://pulp-fixtures:8080"
 pushd ../pulp-cli
+pip install -r test_requirements.txt
 pytest -v -m pulp_rpm
 popd
 

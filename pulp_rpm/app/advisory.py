@@ -50,23 +50,21 @@ def resolve_advisories(version, previous_version):
                                                                    the current incomplete one
 
     """
-    content_pks_to_add = set()
-    content_pks_to_remove = set()
-    content_pks_to_exclude = set()  # exclude from the set of content which is being added
-
     # identify conflicting advisories
     advisory_pulp_type = UpdateRecord.get_pulp_type()
     current_advisories = UpdateRecord.objects.filter(
         pk__in=version.content.filter(pulp_type=advisory_pulp_type)
     )
-    added_advisories = current_advisories
-    previous_advisory_ids = set()
 
     # check for any conflict
     unique_advisory_ids = {adv.id for adv in current_advisories}
     if len(current_advisories) == len(unique_advisory_ids):
         # no conflicts
         return
+
+    current_advisories_by_id = defaultdict(list)
+    for advisory in current_advisories:
+        current_advisories_by_id[advisory.id].append(advisory)
 
     if previous_version:
         previous_advisories = UpdateRecord.objects.filter(
@@ -77,16 +75,13 @@ def resolve_advisories(version, previous_version):
         # diff for querysets works fine but the result is not fully functional queryset,
         # e.g. filtering doesn't work
         added_advisories = current_advisories.difference(previous_advisories)
-
-    current_advisories_by_id = defaultdict(list)
-    for advisory in current_advisories:
-        current_advisories_by_id[advisory.id].append(advisory)
-
-    added_advisories_by_id = current_advisories_by_id
-    if current_advisories != added_advisories:
         added_advisories_by_id = defaultdict(list)
         for advisory in added_advisories:
             added_advisories_by_id[advisory.id].append(advisory)
+    else:
+        previous_advisory_ids = set()
+        added_advisories = current_advisories
+        added_advisories_by_id = current_advisories_by_id
 
     # Conflicts can be in different places and behaviour differs based on that.
     # `in_added`, when conflict happens in the added advisories, this is not allowed and
@@ -118,6 +113,10 @@ def resolve_advisories(version, previous_version):
                 )
             )
         )
+
+    content_pks_to_add = set()
+    content_pks_to_remove = set()
+    content_pks_to_exclude = set()  # exclude from the set of content which is being added
 
     if advisory_id_conflicts["added_vs_previous"]:
         for advisory_id in advisory_id_conflicts["added_vs_previous"]:
