@@ -524,7 +524,7 @@ class RpmPublicationViewSet(PublicationViewSet, RolesMixin):
     }
 
     @extend_schema(
-        description="Trigger an asynchronous task to create a new RPM " "content publication.",
+        description="Trigger an asynchronous task to create a new RPM content publication.",
         responses={202: AsyncOperationResponseSerializer},
     )
     def create(self, request):

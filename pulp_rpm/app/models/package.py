@@ -15,6 +15,7 @@ from pulp_rpm.app.constants import (
     CR_PACKAGE_ATTRS,
     PULP_PACKAGE_ATTRS,
 )
+from pulp_rpm.app.shared_utils import format_nevra, format_nevra_short, format_nvra
 
 
 log = getLogger(__name__)
@@ -247,14 +248,38 @@ class Package(Content):
         """
         Package NEVRA string (Name-Epoch-Version-Release-Architecture).
         """
-        return self.to_nevra(self.createrepo_to_dict(self))
+        return format_nevra(
+            name=self.name,
+            epoch=self.epoch,
+            version=self.version,
+            release=self.release,
+            arch=self.arch,
+        )
 
     @property
     def nvra(self):
         """
         Package NVRA string (Name-Version-Release-Architecture).
         """
-        return self.to_nvra(self.createrepo_to_dict(self))
+        return format_nvra(
+            name=self.name,
+            version=self.version,
+            release=self.release,
+            arch=self.arch,
+        )
+
+    @property
+    def nevra_short(self):
+        """
+        Package NEVRA in filename shortened format (epoch omitted if 0).
+        """
+        return format_nevra_short(
+            name=self.name,
+            epoch=self.epoch,
+            version=self.version,
+            release=self.release,
+            arch=self.arch,
+        )
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
@@ -329,44 +354,6 @@ class Package(Content):
             PULP_PACKAGE_ATTRS.URL: getattr(package, CR_PACKAGE_ATTRS.URL) or "",
             PULP_PACKAGE_ATTRS.VERSION: getattr(package, CR_PACKAGE_ATTRS.VERSION),
         }
-
-    @staticmethod
-    def to_nevra(pkg):
-        """
-        Generate NEVRA from a package metadata.
-
-        Args:
-            pkg(dict): package metadata
-
-        Returns: NEVRA as a string
-        """
-        return f"{pkg['name']}-{pkg['epoch']}:{pkg['version']}-{pkg['release']}.{pkg['arch']}"
-
-    @staticmethod
-    def to_nvra(pkg):
-        """
-        Generate NEVRA from a package metadata.
-
-        Args:
-            pkg(dict): package metadata
-
-        Returns: NVRA as a string
-        """
-        return f"{pkg['name']}-{pkg['version']}-{pkg['release']}.{pkg['arch']}"
-
-    @classmethod
-    def short_nevra(cls, pkg):
-        """
-        Returns NEVRA or NVRA based on epoch.
-
-        Args:
-            pkg(dict): package metadata
-
-        Returns: NEVRA or NVRA based on epoch.
-        """
-        if int(pkg["epoch"]) > 0:
-            return cls.to_nevra(pkg)
-        return cls.to_nvra(pkg)
 
     def to_createrepo_c(self):
         """

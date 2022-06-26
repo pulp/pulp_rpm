@@ -12,7 +12,7 @@ from pulpcore.plugin.serializers import (
 )
 
 from pulp_rpm.app.models import Package
-from pulp_rpm.app.shared_utils import _prepare_package
+from pulp_rpm.app.shared_utils import read_crpackage_from_artifact, format_nevra_short
 
 
 log = logging.getLogger(__name__)
@@ -247,7 +247,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         data = super().deferred_validate(data)
         # export META from rpm and prepare dict as saveable format
         try:
-            new_pkg = _prepare_package(data["artifact"])
+            new_pkg = Package.createrepo_to_dict(read_crpackage_from_artifact(data["artifact"]))
         except OSError:
             log.info(traceback.format_exc())
             raise NotAcceptable(detail="RPM file cannot be parsed for metadata")
@@ -274,7 +274,16 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
                 _("There is already a package with: {values}.").format(values=error_data)
             )
 
-        new_pkg["location_href"] = Package.short_nevra(new_pkg) + ".rpm"
+        new_pkg["location_href"] = (
+            format_nevra_short(
+                new_pkg["name"],
+                new_pkg["epoch"],
+                new_pkg["version"],
+                new_pkg["release"],
+                new_pkg["arch"],
+            )
+            + ".rpm"
+        )
         if not data.get("relative_path"):
             data["relative_path"] = new_pkg["location_href"]
 

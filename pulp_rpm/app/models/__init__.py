@@ -8,7 +8,7 @@ from .comps import PackageCategory, PackageEnvironment, PackageGroup, PackageLan
 from .custom_metadata import RepoMetadataFile  # noqa
 from .distribution import Addon, Checksum, DistributionTree, Image, Variant  # noqa
 from .modulemd import Modulemd, ModulemdDefaults  # noqa
-from .package import Package  # noqa
+from .package import Package, format_nevra, format_nevra_short, format_nvra  # noqa
 from .repository import RpmDistribution, RpmPublication, RpmRemote, UlnRemote, RpmRepository  # noqa
 
 # at the end to avoid circular import as ACS needs import RpmRemote

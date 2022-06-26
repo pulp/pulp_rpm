@@ -557,8 +557,6 @@ class BasicSyncTestCase(PulpTestCase):
 
         Test if advisory with same ID and pkglist, but newer version is updated.
 
-        `Pulp #4142 <https://pulp.plan.io/issues/4142>`_
-
         1. Sync rpm-unsigned repository
         2. Re-sync rpm-advisory-updateversion
         3. Check if the newer version advisory was synced
@@ -601,8 +599,6 @@ class BasicSyncTestCase(PulpTestCase):
         """Sync a repository and re-sync with older version of Advisory.
 
         Test if advisory with same ID and pkglist, but older version is not updated.
-
-        `Pulp #4142 <https://pulp.plan.io/issues/4142>`_
 
         1. Sync rpm-advisory-updateversion
         2. Re-sync rpm-unsigned repository
