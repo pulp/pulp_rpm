@@ -160,11 +160,12 @@ def add_metadata_to_publication(publication, version, prefix=""):
     publication.sqlite_metadata = has_sqlite
 
     for (relative_path, metadata_file_path) in repo_metadata_files.items():
-        PublishedMetadata.create_from_file(
-            file=File(open(metadata_file_path, "rb")),
-            relative_path=os.path.join(prefix, relative_path),
-            publication=publication,
-        )
+        with open(metadata_file_path, "rb") as metadata_fd:
+            PublishedMetadata.create_from_file(
+                file=File(metadata_fd),
+                relative_path=os.path.join(prefix, relative_path),
+                publication=publication,
+            )
 
     published_artifacts = []
 
