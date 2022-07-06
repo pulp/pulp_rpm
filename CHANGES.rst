@@ -14,6 +14,30 @@ Changelog
 .. towncrier release notes start
 
 
+3.17.7 (2022-07-05)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed an issue that could cause orphan cleanup to fail for certain repos.
+  `#2459 <https://github.com/pulp/pulp_rpm/issues/2459>`__
+- Fixed unix timestamps not being parsed correctly for issued and updated dates.
+  `#2528 <https://github.com/pulp/pulp_rpm/issues/2528>`__
+- Fix a small FD leak during complete mirror syncs
+  `#2624 <https://github.com/pulp/pulp_rpm/issues/2624>`__
+
+
+Misc
+----
+
+- `#2276 <https://github.com/pulp/pulp_rpm/issues/2276>`__
+
+
+----
+
+
 3.17.6 (2022-06-21)
 ===================
 
