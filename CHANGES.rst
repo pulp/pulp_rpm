@@ -385,6 +385,28 @@ Misc
 ----
 
 
+3.14.16 (2022-07-08)
+====================
+
+
+Bugfixes
+--------
+
+- Fixed an issue that could cause orphan cleanup to fail for certain repos.
+  `#2459 <https://github.com/pulp/pulp_rpm/issues/2459>`__
+- Fix a small FD leak during complete mirror syncs
+  `#2624 <https://github.com/pulp/pulp_rpm/issues/2624>`__
+
+
+Misc
+----
+
+- `#2276 <https://github.com/pulp/pulp_rpm/issues/2276>`__
+
+
+----
+
+
 3.14.15 (2022-04-12)
 ====================
 
