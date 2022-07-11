@@ -186,9 +186,9 @@ class CDNTestCase(unittest.TestCase):
         # Certificates processing
         cls.cdn_client_cert = False
         if (
-            os.environ["CDN_CLIENT_CERT"]
-            and os.environ["CDN_CLIENT_KEY"]
-            and os.environ["CDN_CA_CERT"]
+            os.getenv("CDN_CLIENT_CERT")
+            and os.getenv("CDN_CLIENT_KEY")
+            and os.getenv("CDN_CA_CERT")
         ):
             # strings have escaped newlines from environmental variable
             cls.cdn_client_cert = os.environ["CDN_CLIENT_CERT"].replace("\\n", "\n")
