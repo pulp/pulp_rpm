@@ -20,6 +20,7 @@ from pulp_rpm.tests.functional.constants import (
     PULP_TYPE_PACKAGE,
     RPM_FIXTURE_SUMMARY,
     RPM_PACKAGE_COUNT,
+    RPM_MODULAR_PACKAGE_COUNT,
     RPM_MODULES_STATIC_CONTEXT_FIXTURE_URL,
     RPM_MODULAR_STATIC_FIXTURE_SUMMARY,
 )
@@ -146,7 +147,7 @@ class RetentionPolicyTestCase(PulpTestCase):
             get_added_content_summary(repo.to_dict()), RPM_MODULAR_STATIC_FIXTURE_SUMMARY
         )
         # Test that the # of packages processed is correct
-        self.assertEqual(self.get_num_parsed_packages(task), RPM_PACKAGE_COUNT)
+        self.assertEqual(self.get_num_parsed_packages(task), RPM_MODULAR_PACKAGE_COUNT)
 
         # Set the retention policy to retain only 1 version of each package
         repo_data = repo.to_dict()
@@ -161,7 +162,7 @@ class RetentionPolicyTestCase(PulpTestCase):
         # it should be the same because the older version are covered by modules)
         self.assertDictEqual(get_removed_content_summary(repo.to_dict()), {})
         # Test that the number of packages processed is correct
-        self.assertEqual(self.get_num_parsed_packages(task), RPM_PACKAGE_COUNT)
+        self.assertEqual(self.get_num_parsed_packages(task), RPM_MODULAR_PACKAGE_COUNT)
 
     def test_mirror_sync_with_retention_fails(self):
         """Verify functionality with sync.
