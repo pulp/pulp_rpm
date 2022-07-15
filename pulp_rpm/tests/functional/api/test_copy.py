@@ -40,11 +40,12 @@ from pulp_rpm.tests.functional.utils import gen_rpm_client, gen_rpm_remote, rpm_
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 from pulpcore.client.pulp_rpm import (
-    ContentPackagesApi,
     ContentAdvisoriesApi,
+    ContentModulemdsApi,
+    ContentPackagesApi,
+    RemotesRpmApi,
     RepositoriesRpmApi,
     RpmRepositorySyncURL,
-    RemotesRpmApi,
 )
 
 
@@ -582,11 +583,12 @@ class AdvisoryCopyTestCase(PulpTestCase):
         cls.client = gen_rpm_client()
         cls.repo_api = RepositoriesRpmApi(cls.client)
         cls.remote_api = RemotesRpmApi(cls.client)
-        cls.rpm_package_content_api = ContentPackagesApi(cls.client)
         cls.rpm_advisory_content_api = ContentAdvisoriesApi(cls.client)
-
-        cls.test_advisory = "RHEA-2012:0055"
-        cls.test_advisory_dependencies = ["walrus", "penguin", "shark"]
+        cls.rpm_modulemd_content_api = ContentModulemdsApi(cls.client)
+        cls.rpm_package_content_api = ContentPackagesApi(cls.client)
+        cls.test_advisory = "FEDORA-2019-0329090518"
+        # these dependencies have same name for dependent packages as dependant modules
+        cls.test_advisory_dependencies = ["postgresql", "nodejs"]
         delete_orphans()
 
     def test_child_detection(self):
@@ -639,10 +641,15 @@ class AdvisoryCopyTestCase(PulpTestCase):
         empty_repo_advisories = [
             advisory["id"] for advisory in get_content(empty_repo.to_dict())[PULP_TYPE_ADVISORY]
         ]
+        empty_repo_modules = [
+            module["name"] for module in get_content(empty_repo.to_dict())[PULP_TYPE_MODULEMD]
+        ]
 
+        # check the specific advisory was copied
         self.assertEqual(len(empty_repo_advisories), 1)
-        # assert that 3 packages were copied, the direct children of the advisory
-        self.assertEqual(len(empty_repo_packages), 3)
+        # assert that all dependant packages were copied, the direct children of the advisory
+        self.assertEqual(len(empty_repo_packages), len(self.test_advisory_dependencies))
         # assert dependencies package names
         for dependency in self.test_advisory_dependencies:
             self.assertIn(dependency, empty_repo_packages)
+            self.assertIn(dependency, empty_repo_modules)
