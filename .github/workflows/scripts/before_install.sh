@@ -131,22 +131,12 @@ fi
 cd ..
 
 
-
-if [[ "$TEST" == "upgrade" ]]; then
-  cd pulpcore
-  git checkout -b ci_upgrade_test
-  git fetch --depth=1 origin heads/$FROM_PULPCORE_BRANCH:$FROM_PULPCORE_BRANCH
-  git checkout $FROM_PULPCORE_BRANCH
-  cd ..
-fi
-
-
 # Intall requirements for ansible playbooks
 pip install docker netaddr boto3 ansible
 
 for i in {1..3}
 do
-  ansible-galaxy collection install amazon.aws && s=0 && break || s=$? && sleep 3
+  ansible-galaxy collection install "amazon.aws:1.5.0" && s=0 && break || s=$? && sleep 3
 done
 if [[ $s -gt 0 ]]
 then
