@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('rpm', '0040_rpmalternatecontentsource'),
+        ('rpm', '0041_modulemdobsolete'),
     ]
 
     operations = [
