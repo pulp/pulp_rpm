@@ -78,7 +78,8 @@ class RetentionPolicyTestCase(PulpTestCase):
         self.assertDictEqual(get_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
         self.assertDictEqual(get_added_content_summary(repo.to_dict()), RPM_FIXTURE_SUMMARY)
         # Test that the # of packages processed is correct
-        self.assertEqual(self.get_num_parsed_packages(task), RPM_PACKAGE_COUNT)
+        reports = self.get_progress_reports_by_code(task)
+        self.assertEqual(reports["sync.parsing.packages"].total, RPM_PACKAGE_COUNT)
 
         # Set the retention policy to retain only 1 version of each package
         repo_data = repo.to_dict()
@@ -105,7 +106,9 @@ class RetentionPolicyTestCase(PulpTestCase):
             versions_for_packages,
         )
         # Test that the number of packages processed is correct (doesn't include older ones)
-        self.assertEqual(self.get_num_parsed_packages(task), RPM_PACKAGE_COUNT - 4)
+        reports = self.get_progress_reports_by_code(task)
+        self.assertEqual(reports["sync.parsing.packages"].total, RPM_PACKAGE_COUNT)
+        self.assertEqual(reports["sync.skipped.packages"].total, 4)
 
     def test_sync_with_retention_and_modules(self):
         """Verify functionality with sync.
@@ -147,7 +150,9 @@ class RetentionPolicyTestCase(PulpTestCase):
             get_added_content_summary(repo.to_dict()), RPM_MODULAR_STATIC_FIXTURE_SUMMARY
         )
         # Test that the # of packages processed is correct
-        self.assertEqual(self.get_num_parsed_packages(task), RPM_MODULAR_PACKAGE_COUNT)
+        reports = self.get_progress_reports_by_code(task)
+        self.assertEqual(reports["sync.parsing.packages"].total, RPM_MODULAR_PACKAGE_COUNT)
+        self.assertEqual(reports["sync.skipped.packages"].total, 0)
 
         # Set the retention policy to retain only 1 version of each package
         repo_data = repo.to_dict()
@@ -162,7 +167,9 @@ class RetentionPolicyTestCase(PulpTestCase):
         # it should be the same because the older version are covered by modules)
         self.assertDictEqual(get_removed_content_summary(repo.to_dict()), {})
         # Test that the number of packages processed is correct
-        self.assertEqual(self.get_num_parsed_packages(task), RPM_MODULAR_PACKAGE_COUNT)
+        reports = self.get_progress_reports_by_code(task)
+        self.assertEqual(reports["sync.parsing.packages"].total, RPM_MODULAR_PACKAGE_COUNT)
+        self.assertEqual(reports["sync.skipped.packages"].total, 0)
 
     def test_mirror_sync_with_retention_fails(self):
         """Verify functionality with sync.
@@ -185,11 +192,9 @@ class RetentionPolicyTestCase(PulpTestCase):
             self.sync(repository=repo, remote=remote, optimize=False, mirror=True)
             self.assertEqual(exc.code, 400)
 
-    def get_num_parsed_packages(self, task):
-        """Get the number of packages parsed from the progress report."""
-        for report in task.progress_reports:
-            if report.code == "sync.parsing.packages":
-                return report.total
+    def get_progress_reports_by_code(self, task):
+        """Return the progress reports in a dictionary keyed by codename."""
+        return {report.code: report for report in task.progress_reports}
 
     def versions_for_packages(self, packages):
         """Get a list of versions for each package present in a list of Package dicts.
