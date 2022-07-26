@@ -1,5 +1,6 @@
 import asyncio
 import collections
+import functools
 import json
 import logging
 import os
@@ -103,7 +104,7 @@ log = logging.getLogger(__name__)
 metadata_files_for_mirroring = collections.defaultdict(dict)
 # A global dictionary for storing data mapping pkgid to location_href for all packages, used
 # for mirroring. Indexed by repository.pk due to sub-repos.
-pkgid_to_location_href = collections.defaultdict(dict)
+pkgid_to_location_href = collections.defaultdict(functools.partial(collections.defaultdict, set))
 
 
 MIRROR_INCOMPATIBLE_REPO_ERR_MSG = (
@@ -133,7 +134,10 @@ def store_package_for_mirroring(repo, pkgid, location_href):
         location_href: The relative path to the package within the repository
     """
     global pkgid_to_location_href
-    pkgid_to_location_href[str(repo.pk)][pkgid] = location_href
+    # this shouldn't really add the location_href to a list, really it ought to set the value
+    # but unfortunately some repositories have the same packages present in multiple places
+    # same pkgid, >1 different location_hrefs
+    pkgid_to_location_href[str(repo.pk)][pkgid].add(location_href)
 
 
 def add_metadata_to_publication(publication, version, prefix=""):
@@ -177,15 +181,15 @@ def add_metadata_to_publication(publication, version, prefix=""):
         .only("pk", "artifact", "content", "content__rpm_package__pkgId")
     )
     for ca in pkg_data.iterator():
-        relative_path = pkgid_to_location_href[str(version.repository.pk)][
+        for relative_path in pkgid_to_location_href[str(version.repository.pk)][
             ca.content.rpm_package.pkgId
-        ]
-        pa = PublishedArtifact(
-            content_artifact=ca,
-            relative_path=os.path.join(prefix, relative_path),
-            publication=publication,
-        )
-        published_artifacts.append(pa)
+        ]:
+            pa = PublishedArtifact(
+                content_artifact=ca,
+                relative_path=os.path.join(prefix, relative_path),
+                publication=publication,
+            )
+            published_artifacts.append(pa)
 
     # Handle everything else
     # TODO: this code is copied directly from publication, we should deduplicate it later
@@ -1056,7 +1060,8 @@ class RpmFirstStage(Stage):
         modular_artifact_nevras = set()
         pkgid_warning_triggered = False
         nevra_warning_triggered = False
-        num_packages = 0
+        total_packages = 0
+        skipped_packages = 0
 
         for modulemd in modulemd_list:
             modular_artifact_nevras |= set(modulemd[PULP_MODULE_ATTR.ARTIFACTS])
@@ -1065,6 +1070,9 @@ class RpmFirstStage(Stage):
         # The repository can contain packages of arbitrary arches, and they are not comparable.
         # {"x86_64": {"glibc": [...]}, "i686": {"glibc": [...], "src": {"glibc": [...]}}
         latest_packages_by_arch_and_name = defaultdict(lambda: defaultdict(list))
+        # duplicate NEVRA tiebreaker - if we have multiple packages with the same nevra then
+        # we might want to pick the latest based on the build time.
+        latest_build_time_by_nevra = {}
 
         # Perform various checks and potentially filter out unwanted packages
         # We parse all of primary.xml first and fail fast if something is wrong.
@@ -1074,15 +1082,10 @@ class RpmFirstStage(Stage):
             nonlocal nevra_warning_triggered
             nonlocal package_skip_nevras
             nonlocal latest_packages_by_arch_and_name
-            nonlocal num_packages
+            nonlocal total_packages
+            nonlocal latest_build_time_by_nevra
+            nonlocal skipped_packages
 
-            ERR_MSG = _(
-                "The repository metadata being synced into Pulp is erroneous in a way that "
-                "makes it ambiguous (duplicate {}), and therefore we do not allow it to be "
-                "synced in 'mirror_complete' mode. Please choose a sync policy which does "
-                "not mirror repository metadata.\n\n"
-                "Please read https://github.com/pulp/pulp_rpm/issues/2402 for more details."
-            )
             WARN_MSG = _(
                 "The repository metadata being synced into Pulp is erroneous in a way that "
                 "makes it ambiguous (duplicate {}). Yum, DNF and Pulp try to handle these "
@@ -1090,29 +1093,34 @@ class RpmFirstStage(Stage):
                 "Please read https://github.com/pulp/pulp_rpm/issues/2402 for more details."
             )
 
-            num_packages += 1
-
-            # Check for packages with duplicate pkgids
-            if not pkgid_warning_triggered and pkg.pkgId in checksums:
-                pkgid_warning_triggered = True
-                if self.mirror_metadata:
-                    raise Exception(ERR_MSG.format("PKGIDs"))
-                else:
-                    log.warn(WARN_MSG.format("PKGIDs"))
-            # Check for packages with duplicate NEVRAs
-            if not nevra_warning_triggered and pkg.nevra() in nevras:
-                nevra_warning_triggered = True
-                if self.mirror_metadata:
-                    raise Exception(ERR_MSG.format("NEVRAs"))
-                else:
-                    log.warn(WARN_MSG.format("NEVRAs"))
-
+            total_packages += 1
             pkg_nevra = pkg.nevra()
 
+            duplicate_nevra = pkg_nevra in nevras
+            duplicate_pkgid = pkg.pkgId in checksums
+
+            # Check for packages with duplicate pkgids
+            if not pkgid_warning_triggered and duplicate_pkgid:
+                pkgid_warning_triggered = True
+                log.warn(WARN_MSG.format("PKGIDs"))
+            # Check for packages with duplicate NEVRAs
+            if not nevra_warning_triggered and duplicate_nevra:
+                nevra_warning_triggered = True
+                log.warn(WARN_MSG.format("NEVRAs"))
+
+            # Keep track of the latest build time for each package - all but the latest should be
+            # rejected. This matches what DNF ought to do, and should prevent Pulp from ever
+            # publishing the repo with multiple packages sharing the same path. Only one can win
+            # so let's make sure it's the one that clients will pick.
+            latest_build_time_by_nevra[pkg_nevra] = max(
+                pkg.time_build, latest_build_time_by_nevra.get(pkg_nevra, 0)
+            )
             nevras.add(pkg_nevra)
             checksums.add(pkg.pkgId)
 
-            # Check that all packages are within the root of the repo (if in mirror_complete mode)
+            # Check that all packages are within the root of the repo (if in mirror_complete mode).
+            # We can't allow mirroring metadata that references packages outside of the repo
+            # e.g. "../../RPMS/foobar.rpm"
             if self.mirror_metadata:
                 uses_base_url = pkg.location_base
                 illegal_relative_path = self.is_illegal_relative_path(pkg.location_href)
@@ -1120,14 +1128,19 @@ class RpmFirstStage(Stage):
                 if uses_base_url or illegal_relative_path:
                     raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
 
-            # Add any srpms to the skip set
+            # Add any srpms to the skip set if specified
             if skip_srpms and pkg.arch == "src":
                 package_skip_nevras.add(pkg_nevra)
+                skipped_packages += 1
+            # Take into account duplicate NEVRA - only one will be synced
+            elif duplicate_nevra:
+                skipped_packages += 1
 
-            # Collect the N highest-version packages, kick out the older ones and add those
-            # to the skip list. Don't include any modular packages in the EVR comparisons
-            # since they may be older and we don't want to skip them, or newer and we don't want to
-            # exclude any nonmodular packages on the basis of the modular package existing.
+            # Collect a list of non-modular package versions so that we can filter them by age and
+            # add older ones to the skip list. Don't include any modular packages because the sole
+            # purpose of this collection is deciding what to skip, and we never want to exclude
+            # modular packages on the basis of being too old or nonmodular packages on the basis of
+            # newer modular packages existing.
             if self.repository.retain_package_versions and pkg_nevra not in modular_artifact_nevras:
                 pkg_evr = RpmVersion(pkg.epoch, pkg.version, pkg.release)
                 latest_packages_by_arch_and_name[pkg.arch][pkg.name].append((pkg_evr, pkg_nevra))
@@ -1144,25 +1157,44 @@ class RpmFirstStage(Stage):
                 for pkg in versions[self.repository.retain_package_versions :]:
                     (evr, nevra) = pkg
                     package_skip_nevras.add(nevra)
+                    skipped_packages += 1
 
         del latest_packages_by_arch_and_name
 
-        log.debug(
-            "Skipping {} packages due to retain_package_versions".format(len(package_skip_nevras))
-        )
+        if skipped_packages:
+            msg = (
+                "Excluding {} packages "
+                "(duplicates, outdated or skipping was requested e.g. 'skip_types')"
+            )
+            log.info(msg.format(skipped_packages))
 
-        # the progress bar message is slightly misleading here because we're potentially parsing
-        # more packages than this.
-        num_pkgs_to_sync = num_packages - len(package_skip_nevras)
+        progress_data = {
+            "message": "Skipping Packages",
+            "code": "sync.skipped.packages",
+            "done": skipped_packages,
+            "total": skipped_packages,
+        }
+        with ProgressReport(**progress_data) as skipped_pb:
+            skipped_pb.save()
+
         progress_data = {
             "message": "Parsed Packages",
             "code": "sync.parsing.packages",
-            "total": num_pkgs_to_sync,
+            "total": total_packages,
         }
         with ProgressReport(**progress_data) as packages_pb:
             for pkg in parser.as_iterator():
-                if package_skip_nevras and pkg.nevra() in package_skip_nevras:
+                pkg_nevra = pkg.nevra()
+                # Skip over packages (retention feature, skip_types feature)
+                if package_skip_nevras and pkg_nevra in package_skip_nevras:
                     continue
+                # Same heuristic as DNF / Yum / Zypper - in the event we encounter multiple package
+                # entries with the same NEVRA, pick the one with the larger build time
+                elif pkg.time_build != latest_build_time_by_nevra[pkg_nevra]:
+                    continue
+                # Implicit: There can be multiple package entries that are completely identical
+                # (same NEVRA, same build time, same checksum / pkgid) and the same or different
+                # location_href. We're not explicitly handling this, the pipeline will deduplicate.
                 package = Package(**Package.createrepo_to_dict(pkg))
                 base_url = pkg.location_base or self.remote_url
                 url = urlpath_sanitize(base_url, package.location_href)
