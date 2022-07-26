@@ -192,10 +192,6 @@ class PublishTestCase(unittest.TestCase):
         """Publish CentOS 8 AppStream."""
         self.rpm_publish(url=CENTOS8_STREAM_APPSTREAM_URL)
 
-    def test_centos8_kickstart_baseos(self):
-        """Kickstart Publish CentOS 8 BaseOS."""
+    def test_centos8_baseos(self):
+        """Publish CentOS 8 BaseOS."""
         self.rpm_publish(url=CENTOS8_STREAM_BASEOS_URL)
-
-    def test_centos8_kickstart_appstream(self):
-        """Kickstart Publish CentOS 8 AppStream."""
-        self.rpm_publish(url=CENTOS8_STREAM_APPSTREAM_URL)

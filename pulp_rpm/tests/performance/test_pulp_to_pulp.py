@@ -138,11 +138,3 @@ class SynctoSyncTestCase(unittest.TestCase):
     def test_centos8_appstream_on_demand(self):
         """Sync CentOS 8 AppStream."""
         self.do_test(url=CENTOS8_STREAM_APPSTREAM_URL)
-
-    def test_centos8_kickstart_baseos_on_demand(self):
-        """Kickstart Sync CentOS 8 BaseOS."""
-        self.do_test(url=CENTOS8_STREAM_BASEOS_URL)
-
-    def test_centos8_kickstart_appstream_on_demand(self):
-        """Kickstart Sync CentOS 8 AppStream."""
-        self.do_test(url=CENTOS8_STREAM_APPSTREAM_URL)
