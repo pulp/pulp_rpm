@@ -5,6 +5,12 @@ Settings
 
 pulp_rpm adds configuration options to the those offered by pulpcore.
 
+PREVENT_RPM_DUPLICATE_PATHS
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+    This setting when set to `True` will prevent rpm packages from being added to a repo if there
+    already exists an rpm with the same path. Defaults to `False` which only logs a warning.
+
 KEEP_CHANGELOG_LIMIT
 ^^^^^^^^^^^^^^^^^^^^
 

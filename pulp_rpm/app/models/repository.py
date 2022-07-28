@@ -344,12 +344,15 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
         try:
             validate_version_paths(new_version)
         except ValueError as ve:
-            log.warning(
-                _(
-                    "New version of repository {repo} reports duplicate/overlap errors : "
-                    "{value_errors}"
-                ).format(repo=new_version.repository.name, value_errors=str(ve))
-            )
+            if settings.PREVENT_RPM_DUPLICATE_PATHS:
+                raise ve
+            else:
+                log.warning(
+                    _(
+                        "New version of repository {repo} reports duplicate/overlap errors : "
+                        "{value_errors}"
+                    ).format(repo=new_version.repository.name, value_errors=str(ve))
+                )
 
     def _apply_retention_policy(self, new_version):
         """Apply the repository's "retain_package_versions" settings to the new version.
