@@ -1,4 +1,5 @@
 import createrepo_c
+import os
 import tempfile
 import shutil
 
@@ -25,7 +26,7 @@ def _prepare_package(artifact, filename):
         filename: name of file uploaded by user
     """
     artifact_file = storage.open(artifact.file.name)
-    with tempfile.NamedTemporaryFile("wb", dir=".", suffix=filename) as temp_file:
+    with tempfile.NamedTemporaryFile("wb", dir=".", suffix=os.path.basename(filename)) as temp_file:
         shutil.copyfileobj(artifact_file, temp_file)
         temp_file.flush()
         cr_pkginfo = createrepo_c.package_from_rpm(
