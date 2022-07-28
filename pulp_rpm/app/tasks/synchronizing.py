@@ -292,7 +292,10 @@ def fetch_remote_url(remote, custom_url=None):
         # which doesn't support mirror lists.
         if custom_url:
             raise ValueError(
-                _("Remote URL {} for Alternate Content Source is invalid").format(custom_url)
+                _(
+                    "ACS remote for url '{}' raised an error '{}: {}'. "
+                    "Please check your ACS remote configuration."
+                ).format(custom_url, exc.status, exc.message)
             )
         log.info(
             _("Attempting to resolve a true url from potential mirrolist url '{}'").format(url)
