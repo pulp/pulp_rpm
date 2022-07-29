@@ -1127,7 +1127,7 @@ class RpmFirstStage(Stage):
         )
 
         # skip SRPM if defined
-        skip_srpms = "srpm" in self.skip_types
+        skip_srpms = "srpm" in self.skip_types and not self.mirror_metadata
         nevras = set()
         checksums = set()
         modular_artifact_nevras = set()
