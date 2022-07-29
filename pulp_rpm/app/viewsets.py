@@ -145,7 +145,8 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin):
             )
             if repository.retain_package_versions > 0:
                 raise DRFValidationError(err_msg.format("retain_package_versions"))
-        elif sync_policy == SYNC_POLICIES.MIRROR_COMPLETE:
+
+        if sync_policy == SYNC_POLICIES.MIRROR_COMPLETE:
             err_msg = "Cannot use '{}' in combination with a 'mirror_complete' sync policy."
             if repository.autopublish:
                 raise DRFValidationError(err_msg.format("autopublish"))
