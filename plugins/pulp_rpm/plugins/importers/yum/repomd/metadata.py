@@ -437,7 +437,7 @@ def process_repomd_data_element(data_element):
         file_info['open_checksum']['hex_digest'] = open_checksum_element.text
 
     open_size_element = data_element.find(OPEN_SIZE_TAG)
-    if open_size_element is not None:
+    if open_size_element is not None and open_size_element.text:
         file_info['open_size'] = int(open_size_element.text)
 
     for child in data_element.getchildren():
