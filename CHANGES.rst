@@ -13,6 +13,32 @@ Changelog
 
 .. towncrier release notes start
 
+3.17.8 (2022-08-01)
+===================
+
+
+Bugfixes
+--------
+
+- Improved error reporting in one scenario where it could be highly confusing.
+  `#2395 <https://github.com/pulp/pulp_rpm/issues/2395>`__
+- Fix package temporary upload path.
+  `#2403 <https://github.com/pulp/pulp_rpm/issues/2403>`__
+- Using `retain_package_versions` (with the required "additive" `sync_policy`) will now avoid downloading the older packages when synced with download_policy "on_demand", resulting in much faster and more efficient syncs.
+  `#2479 <https://github.com/pulp/pulp_rpm/issues/2479>`__
+- Improved error message for Alternate Content Source refresh when it has insufficient permissions.
+  `#2667 <https://github.com/pulp/pulp_rpm/issues/2667>`__
+
+
+Misc
+----
+
+- `#2565 <https://github.com/pulp/pulp_rpm/issues/2565>`__
+
+
+----
+
+
 3.17.7 (2022-07-05)
 ===================
 
