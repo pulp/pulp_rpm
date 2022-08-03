@@ -644,7 +644,7 @@ class RpmFirstStage(Stage):
                             result.url,
                         )
                     )
-                    raise Exception(msg)
+                    log.warn(msg)
 
                 self.repository.last_sync_revision_number = repomd.revision
                 self.repository.last_sync_repomd_checksum = get_sha256(repomd_path)
