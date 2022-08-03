@@ -411,6 +411,28 @@ Misc
 ----
 
 
+3.14.17 (2022-08-02)
+====================
+
+
+Bugfixes
+--------
+
+- Substantial improvements to the memory consumption of syncs, with a modest improvement in time required to sync.
+  `#2296 <https://github.com/pulp/pulp_rpm/issues/2296>`__
+- Improved error reporting in one scenario where it could be highly confusing.
+  `#2395 <https://github.com/pulp/pulp_rpm/issues/2395>`__
+
+
+Misc
+----
+
+- `#2274 <https://github.com/pulp/pulp_rpm/issues/2274>`__
+
+
+----
+
+
 3.14.16 (2022-07-08)
 ====================
 
