@@ -729,7 +729,7 @@ class RpmFirstStage(Stage):
                             result.url,
                         )
                     )
-                    raise Exception(msg)
+                    log.warn(msg)
 
                 checksum_types = {}
                 repomd_downloaders = {}
