@@ -13,6 +13,20 @@ Changelog
 
 .. towncrier release notes start
 
+3.17.9 (2022-08-03)
+===================
+
+
+Bugfixes
+--------
+
+- Don't raise a fatal error when encountering mostly valid metadata that contains data we don't expect, or data in the wrong places, in situations where it doesn't really matter.
+  `#2686 <https://github.com/pulp/pulp_rpm/issues/2686>`__
+
+
+----
+
+
 3.17.8 (2022-08-01)
 ===================
 
