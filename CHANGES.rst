@@ -13,6 +13,26 @@ Changelog
 
 .. towncrier release notes start
 
+3.14.19 (2022-08-04)
+====================
+
+
+Bugfixes
+--------
+
+- Using `retain_package_versions` (with the required "additive" `sync_policy`) will now avoid downloading the older packages when synced with download_policy "on_demand", resulting in much faster and more efficient syncs.
+  `#2479 <https://github.com/pulp/pulp_rpm/issues/2479>`__
+
+
+Misc
+----
+
+- `#2565 <https://github.com/pulp/pulp_rpm/issues/2565>`__
+
+
+----
+
+
 3.14.18 (2022-08-03)
 ====================
 
