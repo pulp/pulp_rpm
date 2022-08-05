@@ -1,5 +1,6 @@
-import os
+from collections import defaultdict
 from gettext import gettext as _
+import os
 import logging
 import shutil
 import tempfile
@@ -118,53 +119,57 @@ class PublicationData:
         published_artifacts = []
 
         # Special case for Packages
-        contentartifact_qs = ContentArtifact.objects.filter(content__in=content).filter(
-            content__pulp_type=Package.get_pulp_type()
+        contentartifact_qs = (
+            ContentArtifact.objects.filter(content__in=content)
+            .filter(content__pulp_type=Package.get_pulp_type())
+            .select_related("content__rpm_package__time_build")
         )
 
-        paths = set()
-        duplicated_paths = []
-        for content_artifact in contentartifact_qs.values("pk", "relative_path").iterator():
+        rel_path_mapping = defaultdict(list)
+        # Some Suboptimal Repos have the 'same' artifact living in multiple places.
+        # Specifically, the same NEVRA, in more than once place, **with different checksums**
+        # (since if all that was different was location_href there would be only one
+        # ContentArtifact in the first place).
+        #
+        # pulp_rpm wants to publish a 'canonical' repository-layout, under which an RPM
+        # "name-version-release-arch" appears at "Packages/n/name-version-release-arch.rpm".
+        # Because the assumption is that Packages don't "own" their path, only the filename
+        # is kept as relative_path.
+        #
+        # In this case, we have to pick one - which is essentially what the rest of the RPM
+        # Ecosystem does when faced with the impossible. This code takes the one with the
+        # most recent build time which is the same heuristic used by Yum/DNF/Zypper.
+        #
+        # Note that this only impacts user-created publications, which produce the "standard"
+        # RPM layout of repo/Packages/f/foo.rpm. A publication created by mirror-sync retains
+        # whatever layout their "upstream" repo-metadata dictates.
+        fields = ["pk", "relative_path", "content__rpm_package__time_build"]
+        for content_artifact in contentartifact_qs.values(*fields).iterator():
             relative_path = content_artifact["relative_path"]
+            time_build = content_artifact["content__rpm_package__time_build"]
+
             relative_path = os.path.join(
                 prefix, PACKAGES_DIRECTORY, relative_path.lower()[0], relative_path
             )
-            #
-            # Some Suboptimal Repos have the 'same' artifact living in multiple places.
-            # Specifically, the same NEVRA, in more than once place, **with different checksums**
-            # (since if all that was different was location_href there would be only one
-            # ContentArtifact in the first place).
-            #
-            # pulp_rpm wants to publish a 'canonical' repository-layout, under which an RPM
-            # "name-version-release-arch" appears at "Packages/n/name-version-release-arch.rpm".
-            # Because the assumption is that Packages don't "own" their path, only the filename
-            # is kept as relative_path.
-            #
-            # In this case, we have to pick one - which is essentially what the rest of the RPM
-            # Ecosystem does when faced with the impossible. This code takes the first-found. We
-            # could implement something more complicated, if there are better options
-            # (choose by last-created maybe?)
-            #
-            # Note that this only impacts user-created publications, which produce the "standard"
-            # RPM layout of repo/Packages/f/foo.rpm. A publication created by mirror-sync retains
-            # whatever layout their "upstream" repo-metadata dictates.
-            #
-            if relative_path in paths:
-                duplicated_paths.append(f'{relative_path}:{content_artifact["pk"]}')
-                continue
-            else:
-                paths.add(relative_path)
+            rel_path_mapping[relative_path].append((content_artifact["pk"], time_build))
+
+        for rel_path, content_artifacts in rel_path_mapping.items():
+            # sort the content artifacts by when the package was built
+            if len(content_artifacts) > 1:
+                content_artifacts.sort(key=lambda p: p[1], reverse=True)
+                log.warning(
+                    "Duplicate packages found competing for {path}, selected the one with "
+                    "the most recent build time, excluding {others} others.".format(
+                        path=rel_path, others=len(content_artifacts[1:])
+                    )
+                )
+
+            # Only add the first one (the one with the highest build time)
             published_artifacts.append(
                 PublishedArtifact(
-                    relative_path=relative_path,
+                    relative_path=rel_path,
                     publication=self.publication,
-                    content_artifact_id=content_artifact["pk"],
-                )
-            )
-        if duplicated_paths:
-            log.warning(
-                _("Duplicate paths found at publish : {problems} ").format(
-                    problems="; ".join(duplicated_paths)
+                    content_artifact_id=content_artifacts[0][0],
                 )
             )
 
@@ -462,11 +467,6 @@ def generate_repo_metadata(
         oth_db = cr.OtherSqlite(oth_db_path)
 
     packages = Package.objects.filter(pk__in=content)
-    total_packages = packages.count()
-
-    pri_xml.set_num_of_pkgs(total_packages)
-    fil_xml.set_num_of_pkgs(total_packages)
-    oth_xml.set_num_of_pkgs(total_packages)
 
     # We want to support publishing with a different checksum type than the one built-in to the
     # package itself, so we need to get the correct checksums somehow if there is an override.
@@ -513,8 +513,36 @@ def generate_repo_metadata(
 
         pkg_to_hash[ca.content_id] = (package_checksum_type, pkgid)
 
+    # TODO: this is meant to be a !! *temporary* !! fix for
+    # https://github.com/pulp/pulp_rpm/issues/2407
+    pkg_pks_to_ignore = set()
+    latest_build_time_by_nevra = defaultdict(list)
+    for pkg in packages.only(
+        "pk", "name", "epoch", "version", "release", "arch", "time_build"
+    ).iterator():
+        latest_build_time_by_nevra[pkg.nevra].append((pkg.time_build, pkg.pk))
+    for nevra, pkg_data in latest_build_time_by_nevra.items():
+        # sort the packages by when they were built
+        if len(pkg_data) > 1:
+            pkg_data.sort(key=lambda p: p[0], reverse=True)
+            pkg_pks_to_ignore |= set(entry[1] for entry in pkg_data[1:])
+            log.warning(
+                "Duplicate packages found competing for NEVRA {nevra}, selected the one with "
+                "the most recent build time, excluding {others} others.".format(
+                    nevra=nevra, others=len(pkg_data[1:])
+                )
+            )
+
+    total_packages = packages.count() - len(pkg_pks_to_ignore)
+
+    pri_xml.set_num_of_pkgs(total_packages)
+    fil_xml.set_num_of_pkgs(total_packages)
+    oth_xml.set_num_of_pkgs(total_packages)
+
     # Process all packages
     for package in packages.order_by("name", "evr").iterator():
+        if package.pk in pkg_pks_to_ignore:  # Temporary!
+            continue
         pkg = package.to_createrepo_c()
 
         # rewrite the checksum and checksum type with the desired ones
