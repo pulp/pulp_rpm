@@ -14,6 +14,22 @@ Changelog
 .. towncrier release notes start
 
 
+3.17.10 (2022-08-08)
+====================
+
+
+Bugfixes
+--------
+
+- Made sure that Pulp doesn't publish repos with duplicate NEVRA in some edge case scenarios.
+  `#2407 <https://github.com/pulp/pulp_rpm/issues/2407>`__
+- Allow syncing repositories with duplicate NEVRA in mirror_complete mode, but make sure syncing those packages are skipped.
+  `#2691 <https://github.com/pulp/pulp_rpm/issues/2691>`__
+
+
+----
+
+
 3.17.9 (2022-08-03)
 ===================
 
@@ -420,6 +436,22 @@ Misc
 ----
 
 - `#8494 <https://pulp.plan.io/issues/8494>`_, `#9279 <https://pulp.plan.io/issues/9279>`_
+
+
+----
+
+
+3.14.20 (2022-08-08)
+====================
+
+
+Bugfixes
+--------
+
+- Made sure that Pulp doesn't publish repos with duplicate NEVRA in some edge case scenarios.
+  `#2407 <https://github.com/pulp/pulp_rpm/issues/2407>`__
+- Allow syncing repositories with duplicate NEVRA in mirror_complete mode, but make sure syncing those packages are skipped.
+  `#2691 <https://github.com/pulp/pulp_rpm/issues/2691>`__
 
 
 ----
