@@ -1,0 +1,1 @@
+Fixed a bug were some SLES repos were publishing metadata with missing drpms.
