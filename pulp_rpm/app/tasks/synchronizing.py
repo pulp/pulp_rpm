@@ -107,6 +107,7 @@ metadata_files_for_mirroring = collections.defaultdict(dict)
 pkgid_to_location_href = collections.defaultdict(functools.partial(collections.defaultdict, set))
 
 
+UNSUPPORTED_METADATA = ["prestodelta", "deltainfo"]
 MIRROR_INCOMPATIBLE_REPO_ERR_MSG = (
     "This repository uses features which are incompatible with 'mirror' sync. "
     "Please sync without mirroring enabled."
@@ -678,7 +679,11 @@ class RpmFirstStage(Stage):
                         uses_base_url = record.location_base
                         illegal_relative_path = self.is_illegal_relative_path(record.location_href)
 
-                        if uses_base_url or illegal_relative_path or record.type == "prestodelta":
+                        if (
+                            uses_base_url
+                            or illegal_relative_path
+                            or record.type in UNSUPPORTED_METADATA
+                        ):
                             raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
 
                     if not self.mirror_metadata and record.type not in types_to_download:
@@ -849,7 +854,7 @@ class RpmFirstStage(Stage):
                 for suffix in ["_zck", "_gz", "_xz"]:
                     if suffix in record.type:
                         should_skip = True
-                if record.type in ["prestodelta"]:
+                if record.type in UNSUPPORTED_METADATA:
                     should_skip = True
 
                 if should_skip:
