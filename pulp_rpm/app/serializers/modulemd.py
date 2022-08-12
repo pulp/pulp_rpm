@@ -3,9 +3,8 @@ from gettext import gettext as _
 from rest_framework import serializers
 
 from pulpcore.plugin.serializers import (
-    ContentChecksumSerializer,
     DetailRelatedField,
-    SingleArtifactContentUploadSerializer,
+    NoArtifactContentSerializer,
 )
 
 from pulp_rpm.app.models import (
@@ -16,7 +15,7 @@ from pulp_rpm.app.models import (
 )
 
 
-class ModulemdSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSerializer):
+class ModulemdSerializer(NoArtifactContentSerializer):
     """
     Modulemd serializer.
     """
@@ -53,27 +52,25 @@ class ModulemdSerializer(SingleArtifactContentUploadSerializer, ContentChecksumS
         view_name="content-rpm/packages-detail",
         many=True,
     )
+    snippet = serializers.CharField(help_text=_("Modulemd snippet"), write_only=True)
 
     class Meta:
-        fields = (
-            ContentChecksumSerializer.Meta.fields
-            + SingleArtifactContentUploadSerializer.Meta.fields
-            + (
-                "name",
-                "stream",
-                "version",
-                "static_context",
-                "context",
-                "arch",
-                "artifacts",
-                "dependencies",
-                "packages",
-            )
+        fields = NoArtifactContentSerializer.Meta.fields + (
+            "name",
+            "stream",
+            "version",
+            "static_context",
+            "context",
+            "arch",
+            "artifacts",
+            "dependencies",
+            "packages",
+            "snippet",
         )
         model = Modulemd
 
 
-class ModulemdDefaultsSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSerializer):
+class ModulemdDefaultsSerializer(NoArtifactContentSerializer):
     """
     ModulemdDefaults serializer.
     """
@@ -81,21 +78,19 @@ class ModulemdDefaultsSerializer(SingleArtifactContentUploadSerializer, ContentC
     module = serializers.CharField(help_text=_("Modulemd name."))
     stream = serializers.CharField(help_text=_("Modulemd default stream."))
     profiles = serializers.JSONField(help_text=_("Default profiles for modulemd streams."))
+    snippet = serializers.CharField(help_text=_("Modulemd default snippet"), write_only=True)
 
     class Meta:
-        fields = (
-            ContentChecksumSerializer.Meta.fields
-            + SingleArtifactContentUploadSerializer.Meta.fields
-            + (
-                "module",
-                "stream",
-                "profiles",
-            )
+        fields = NoArtifactContentSerializer.Meta.fields + (
+            "module",
+            "stream",
+            "profiles",
+            "snippet",
         )
         model = ModulemdDefaults
 
 
-class ModulemdObsoleteSerializer(SingleArtifactContentUploadSerializer):
+class ModulemdObsoleteSerializer(NoArtifactContentSerializer):
     """
     ModulemdObsolete serializer.
     """
@@ -120,7 +115,7 @@ class ModulemdObsoleteSerializer(SingleArtifactContentUploadSerializer):
     snippet = serializers.CharField(help_text=_("Module Obsolete snippet."), write_only=True)
 
     class Meta:
-        fields = SingleArtifactContentUploadSerializer.Meta.fields + (
+        fields = NoArtifactContentSerializer.Meta.fields + (
             "modified",
             "module_name",
             "module_stream",

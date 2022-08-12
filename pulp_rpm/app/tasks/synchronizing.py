@@ -54,7 +54,6 @@ from pulp_rpm.app.constants import (
     PACKAGE_DB_REPODATA,
     PACKAGE_REPODATA,
     PULP_MODULE_ATTR,
-    PULP_MODULEDEFAULTS_ATTR,
     SYNC_POLICIES,
     UPDATE_REPODATA,
 )
@@ -973,25 +972,13 @@ class RpmFirstStage(Stage):
             modulemd_pb.done = modulemd_total
 
         for modulemd in modulemd_all:
-            artifact = modulemd.pop("artifact")
-            relative_path = "{}{}{}{}{}snippet".format(
-                modulemd[PULP_MODULE_ATTR.NAME],
-                modulemd[PULP_MODULE_ATTR.STREAM],
-                modulemd[PULP_MODULE_ATTR.VERSION],
-                modulemd[PULP_MODULE_ATTR.CONTEXT],
-                modulemd[PULP_MODULE_ATTR.ARCH],
-            )
-            da = DeclarativeArtifact(
-                artifact=artifact, relative_path=relative_path, url=modulemd_result.url
-            )
             modulemd_content = Modulemd(**modulemd)
-            dc = DeclarativeContent(content=modulemd_content, d_artifacts=[da])
+            dc = DeclarativeContent(content=modulemd_content)
             dc.extra_data = defaultdict(list)
-
+            modulemd_dcs.append(dc)
             # dc.content.artifacts are Modulemd artifacts
             for artifact in dc.content.artifacts:
                 self.nevra_to_module.setdefault(artifact, set()).add(dc)
-            modulemd_dcs.append(dc)
 
         # Parse modulemd default names
         modulemd_default_names = parse_defaults(modulemd_index)
@@ -1009,17 +996,8 @@ class RpmFirstStage(Stage):
 
         default_content_dcs = []
         for default in modulemd_default_names:
-            artifact = default.pop("artifact")
-            relative_path = "{}{}snippet".format(
-                default[PULP_MODULEDEFAULTS_ATTR.MODULE], default[PULP_MODULEDEFAULTS_ATTR.STREAM]
-            )
-            da = DeclarativeArtifact(
-                artifact=artifact, relative_path=relative_path, url=modulemd_result.url
-            )
             default_content = ModulemdDefaults(**default)
-            default_content_dcs.append(
-                DeclarativeContent(content=default_content, d_artifacts=[da])
-            )
+            default_content_dcs.append(DeclarativeContent(content=default_content))
 
         if default_content_dcs:
             for default_content_dc in default_content_dcs:
