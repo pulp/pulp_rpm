@@ -1,9 +1,6 @@
-import os
-import tempfile
-
+import hashlib
 from datetime import datetime
 
-from pulpcore.plugin.models import Artifact
 from pulp_rpm.app.models import Modulemd, Package
 from pulp_rpm.app.constants import PULP_MODULE_ATTR, PULP_MODULEDEFAULTS_ATTR
 
@@ -53,24 +50,6 @@ def resolve_module_packages(version, previous_version):
     version.add_content(Package.objects.filter(pk__in=packages_to_add))
 
 
-def _create_snippet(snippet_string):
-    """
-    Create snippet of modulemd[-defaults] as artifact.
-
-    Args:
-        snippet_string (string):
-            Snippet with modulemd[-defaults] yaml
-
-    Returns:
-        Snippet as unsaved Artifact object
-
-    """
-    tmp_file = tempfile.NamedTemporaryFile(dir=os.getcwd(), delete=False)
-    with open(tmp_file.name, "w") as snippet:
-        snippet.write(snippet_string)
-    return Artifact.init_and_validate(tmp_file.name)
-
-
 def parse_modulemd(module_names, module_index):
     """
     Get modulemd NSVCA, artifacts, dependencies.
@@ -109,8 +88,7 @@ def parse_modulemd(module_names, module_index):
             # create yaml snippet for this modulemd stream
             temp_index = mmdlib.ModuleIndex.new()
             temp_index.add_module_stream(stream)
-            artifact = _create_snippet(temp_index.dump_to_string())
-            modulemd["artifact"] = artifact
+            modulemd["snippet"] = temp_index.dump_to_string()
             ret.append(modulemd)
     return ret
 
@@ -138,14 +116,14 @@ def parse_defaults(module_index):
             # create modulemd-default snippet
             temp_index = mmdlib.ModuleIndex.new()
             temp_index.add_defaults(defaults)
-            artifact = _create_snippet(temp_index.dump_to_string())
+            snippet = temp_index.dump_to_string()
             ret.append(
                 {
                     PULP_MODULEDEFAULTS_ATTR.MODULE: modulemd.get_module_name(),
                     PULP_MODULEDEFAULTS_ATTR.STREAM: default_stream,
                     PULP_MODULEDEFAULTS_ATTR.PROFILES: default_profile,
-                    PULP_MODULEDEFAULTS_ATTR.DIGEST: artifact.sha256,
-                    "artifact": artifact,
+                    PULP_MODULEDEFAULTS_ATTR.DIGEST: hashlib.sha256(snippet.encode()).hexdigest(),
+                    "snippet": snippet,
                 }
             )
     return ret

@@ -38,6 +38,8 @@ class Modulemd(Content):
             Artifacts shipped with this module.
         packages (Text):
             List of Packages connected to this modulemd.
+        snippet (Text):
+            A string to hold modulemd-obsolete snippet
     """
 
     TYPE = "modulemd"
@@ -53,6 +55,8 @@ class Modulemd(Content):
     dependencies = models.JSONField(default=list)
     artifacts = models.JSONField(default=list)
     packages = models.ManyToManyField(Package)
+
+    snippet = models.TextField()
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
@@ -72,6 +76,8 @@ class ModulemdDefaults(Content):
             Default profiles for modulemd streams.
         digest (Text):
             Modulemd digest
+        snippet (Text):
+            A string to hold modulemd-obsolete snippet
     """
 
     TYPE = "modulemd_defaults"
@@ -79,8 +85,9 @@ class ModulemdDefaults(Content):
     module = models.TextField()
     stream = models.TextField()
     profiles = models.JSONField(default=list)
-
     digest = models.TextField(unique=True)
+
+    snippet = models.TextField()
 
     repo_key_fields = ("module",)
 
@@ -104,19 +111,19 @@ class ModulemdObsolete(Content):
             A DateTime field representing last modification of modulemd obsolete.
         reset (Bool):
             A boolean option to reset all previously specified obsoletes
-        module (String):
+        module (Text):
             A string representing a Name of a module that is EOLed
-        stream (String):
+        stream (Text):
             A string representing a Stream of a module that is EOLed
-        context (String):
+        context (Text):
             A string representing a Context of a module that is EOLed
         eol_date (models.DateTimeField):
             A DateTime field representing end of life date.
-        message (String):
+        message (Text):
             A string describing the change, reason, etc.
         obsolete_by (JSON):
             A dict to provide details about the obsoleting module and stream
-        module_snippet (String):
+        snippet (Text):
             A string to hold modulemd-obsolete snippet
     """
 
