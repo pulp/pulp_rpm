@@ -1,0 +1,1 @@
+Do not optimize sync if retain-package-versions was set/changed

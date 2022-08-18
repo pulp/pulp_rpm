@@ -345,10 +345,13 @@ def should_optimize_sync(sync_details, last_sync_details):
         return False
 
     url_has_changed = last_sync_details.get("url") != sync_details["url"]
+    retain_package_versions_has_changed = (
+        last_sync_details.get("retain_package_versions") != sync_details["retain_package_versions"]
+    )
     repository_has_been_modified = (
         last_sync_details.get("most_recent_version") != sync_details["most_recent_version"]
     )
-    if url_has_changed or repository_has_been_modified:
+    if url_has_changed or repository_has_been_modified or retain_package_versions_has_changed:
         return False
 
     old_revision = is_previous_version(sync_details["revision"], last_sync_details.get("revision"))
@@ -444,7 +447,8 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
 
         return treeinfo_serialized
 
-    def get_sync_details(remote, url, sync_policy, version):
+    def get_sync_details(remote, url, sync_policy, repository):
+        version = repository.latest_version()
         with tempfile.TemporaryDirectory(dir="."):
             result = get_repomd_file(remote, url)
             repomd_path = result.path
@@ -458,6 +462,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
             "most_recent_version": version.number,
             "revision": repomd.revision,
             "repomd_checksum": repomd_checksum,
+            "retain_package_versions": repository.retain_package_versions,
         }
 
     mirror = sync_policy.startswith("mirror")
@@ -473,9 +478,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
 
     with tempfile.TemporaryDirectory(dir="."):
         remote_url = fetch_remote_url(remote, url)
-        sync_details = get_sync_details(
-            remote, remote_url, sync_policy, repository.latest_version()
-        )
+        sync_details = get_sync_details(remote, remote_url, sync_policy, repository)
 
         repo_sync_config[PRIMARY_REPO] = {
             "should_skip": should_optimize_sync(sync_details, repository.last_sync_details),
@@ -502,9 +505,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
                 new_url = urlpath_sanitize(remote_url, path)
 
                 try:
-                    subrepo_sync_details = get_sync_details(
-                        remote, new_url, sync_policy, sub_repo.latest_version()
-                    )
+                    subrepo_sync_details = get_sync_details(remote, new_url, sync_policy, sub_repo)
                 except ClientResponseError as exc:
                     if is_subrepo(directory) and exc.status == 404:
                         log.warning("Unable to sync sub-repo '{}' from treeinfo.".format(directory))
