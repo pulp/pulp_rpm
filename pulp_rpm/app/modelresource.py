@@ -464,6 +464,27 @@ class UpdateCollectionPackageResource(QueryModelResource):
         uc = UpdateCollection.objects.filter(name=uc_name, update_record=uc_updrecord).first()
         row["update_collection"] = str(uc.pulp_id)
 
+    def get_instance(self, instance_loader, row):
+        """
+        If all 'import_id_fields' are present in the dataset,
+        get instance of UpdateCollectionPackage manually as duplicates
+        could appear. Otherwise, returns `None`.
+        """
+        import_id_fields = [self.fields[f] for f in self.get_import_id_fields()]
+        for field in import_id_fields:
+            if field.column_name not in row:
+                return
+
+        # We need to clear empty values in a row which is a job of `instance_loader`,
+        # but we don't call it to avoid failures with usage `get`s.
+        # https://github.com/django-import-export/django-import-export/blob/main/import_export/instance_loaders.py#L28
+        cleaned_row = {}
+        for field in row.keys():
+            if row[field]:
+                cleaned_row[field] = row[field]
+
+        return UpdateCollectionPackage.objects.filter(**cleaned_row).first()
+
     def set_up_queryset(self):
         """
         Set up a queryset for UpdateCollectionPackages.
@@ -472,11 +493,15 @@ class UpdateCollectionPackageResource(QueryModelResource):
             UpdateCollectionPackages specific to a specified repo-version.
 
         """
-        return UpdateCollectionPackage.objects.filter(
-            update_collection__in=UpdateCollection.objects.filter(
-                update_record__in=UpdateRecord.objects.filter(pk__in=self.repo_version.content)
+        return (
+            UpdateCollectionPackage.objects.filter(
+                update_collection__in=UpdateCollection.objects.filter(
+                    update_record__in=UpdateRecord.objects.filter(pk__in=self.repo_version.content)
+                )
             )
-        ).order_by("pulp_id")
+            .distinct("name", "epoch", "version", "release", "arch")
+            .order_by("name", "epoch", "version", "release", "arch")
+        )
 
     class Meta:
         model = UpdateCollectionPackage
