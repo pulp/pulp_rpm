@@ -15,16 +15,12 @@ set -euv
 
 source .github/workflows/scripts/utils.sh
 
-if [[ "$TEST" = "docs" || "$TEST" = "publish" ]]; then
-  pip install -r ../pulpcore/doc_requirements.txt
-  pip install -r doc_requirements.txt
-fi
-
-pip install -r functest_requirements.txt
+export PULP_API_ROOT="/pulp/"
 
 cd .ci/ansible/
 
 TAG=ci_build
+PULPCORE=./pulpcore
 if [[ "$TEST" == "plugin-from-pypi" ]]; then
   PLUGIN_NAME=pulp_rpm
 elif [[ "${RELEASE_WORKFLOW:-false}" == "true" ]]; then
@@ -44,11 +40,8 @@ plugins:
     source: pulpcore>=3.15.0,<3.17
   - name: pulp_rpm
     source:  "${PLUGIN_NAME}"
-services:
-  - name: pulp
-    image: "pulp:${TAG}"
-    volumes:
-      - ./settings:/etc/pulp
+  - name: pulp-smash
+    source: ./pulp-smash
 VARSYAML
 else
   cat >> vars/main.yaml << VARSYAML
@@ -59,14 +52,22 @@ plugins:
   - name: pulp_rpm
     source: "${PLUGIN_NAME}"
   - name: pulpcore
-    source: ./pulpcore
+    source: "${PULPCORE}"
+  - name: pulp-smash
+    source: ./pulp-smash
+VARSYAML
+fi
+
+cat >> vars/main.yaml << VARSYAML
 services:
   - name: pulp
     image: "pulp:${TAG}"
     volumes:
       - ./settings:/etc/pulp
+      - ./ssh:/keys/
+      - ~/.config:/root/.config
+      - ../../../pulp-openapi-generator:/root/pulp-openapi-generator
 VARSYAML
-fi
 
 cat >> vars/main.yaml << VARSYAML
 pulp_settings: {"allowed_content_checksums": ["sha1", "sha224", "sha256", "sha384", "sha512"], "allowed_export_paths": ["/tmp"], "allowed_import_paths": ["/tmp"]}
@@ -76,7 +77,8 @@ pulp_container_tag: https
 
 VARSYAML
 
-if [[ "$TEST" == "pulp" || "$TEST" == "performance" || "$TEST" == "upgrade" || "$TEST" == "s3" || "$TEST" == "plugin-from-pypi" ]]; then
+SCENARIOS=("pulp" "performance" "azure" "s3" "stream" "plugin-from-pypi" "generate-bindings")
+if [[ " ${SCENARIOS[*]} " =~ " ${TEST} " ]]; then
   sed -i -e '/^services:/a \
   - name: pulp-fixtures\
     image: docker.io/pulp/pulp-fixtures:latest\
@@ -96,25 +98,49 @@ if [ "$TEST" = "s3" ]; then
   sed -i -e '$a s3_test: true\
 minio_access_key: "'$MINIO_ACCESS_KEY'"\
 minio_secret_key: "'$MINIO_SECRET_KEY'"' vars/main.yaml
+  export PULP_API_ROOT="/rerouted/djnd/"
+fi
+
+echo "PULP_API_ROOT=${PULP_API_ROOT}" >> "$GITHUB_ENV"
+
+if [ "${PULP_API_ROOT:-}" ]; then
+  sed -i -e '$a api_root: "'"$PULP_API_ROOT"'"' vars/main.yaml
 fi
 
 ansible-playbook build_container.yaml
 ansible-playbook start_container.yaml
+
+if [[ "$TEST" = "docs" || "$TEST" = "publish" ]]; then
+  cmd_prefix bash -c "cd pulpcore; pip install -r doc_requirements.txt"
+  cmd_prefix bash -c "cd pulp_rpm; pip install -r doc_requirements.txt"
+fi
 echo ::group::SSL
 # Copy pulp CA
 sudo docker cp pulp:/etc/pulp/certs/pulp_webserver.crt /usr/local/share/ca-certificates/pulp_webserver.crt
 
 # Hack: adding pulp CA to certifi.where()
 CERTIFI=$(python -c 'import certifi; print(certifi.where())')
-cat /usr/local/share/ca-certificates/pulp_webserver.crt | sudo tee -a $CERTIFI
+cat /usr/local/share/ca-certificates/pulp_webserver.crt | sudo tee -a "$CERTIFI" > /dev/null
+if [[ "$TEST" = "azure" ]]; then
+  cat /usr/local/share/ca-certificates/azcert.crt | sudo tee -a "$CERTIFI" > /dev/null
+fi
 
 # Hack: adding pulp CA to default CA file
 CERT=$(python -c 'import ssl; print(ssl.get_default_verify_paths().openssl_cafile)')
-cat $CERTIFI | sudo tee -a $CERT
+cat "$CERTIFI" | sudo tee -a "$CERT" > /dev/null
 
 # Updating certs
 sudo update-ca-certificates
 echo ::endgroup::
+
+if [[ "$TEST" = "azure" ]]; then
+  AZCERTIFI=$(/opt/az/bin/python3 -c 'import certifi; print(certifi.where())')
+  cat /usr/local/share/ca-certificates/azcert.crt >> $AZCERTIFI
+  cat /usr/local/share/ca-certificates/azcert.crt | cmd_stdin_prefix tee -a /usr/local/lib/python3.8/site-packages/certifi/cacert.pem > /dev/null
+  cat /usr/local/share/ca-certificates/azcert.crt | cmd_stdin_prefix tee -a /etc/pki/tls/cert.pem > /dev/null
+  AZURE_STORAGE_CONNECTION_STRING='DefaultEndpointsProtocol=https;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=https://ci-azurite:10000/devstoreaccount1;'
+  az storage container create --name pulp-test --connection-string $AZURE_STORAGE_CONNECTION_STRING
+fi
 
 echo ::group::PIP_LIST
 cmd_prefix bash -c "pip3 list && pip3 install pipdeptree && pipdeptree"

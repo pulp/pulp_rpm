@@ -6,25 +6,26 @@
 # For more info visit https://github.com/pulp/plugin_template
 
 import re
-import subprocess
 import sys
 from pathlib import Path
+import subprocess
 
 
+import warnings
 import requests
 
 
 NO_ISSUE = "[noissue]"
 CHANGELOG_EXTS = [".feature", ".bugfix", ".doc", ".removal", ".misc", ".deprecation"]
+sha = sys.argv[1]
+message = subprocess.check_output(["git", "log", "--format=%B", "-n 1", sha]).decode("utf-8")
 
 
 KEYWORDS = ["fixes", "closes", "re", "ref"]
 STATUSES = ["NEW", "ASSIGNED", "POST", "MODIFIED"]
 REDMINE_URL = "https://pulp.plan.io"
 
-sha = sys.argv[1]
 project = "pulp_rpm"
-message = subprocess.check_output(["git", "log", "--format=%B", "-n 1", sha]).decode("utf-8")
 
 
 def __check_status(issue):
@@ -32,7 +33,11 @@ def __check_status(issue):
     response.raise_for_status()
     bug_json = response.json()
     status = bug_json["issue"]["status"]["name"]
-    if status not in STATUSES:
+    if status not in STATUSES and "cherry picked from commit" not in message:
+        warnings.warn(
+            "When backporting, use the -x flag to append a line that says "
+            "'(cherry picked from commit ...)' to the original commit message."
+        )
         sys.exit(
             "Error: issue #{issue} has invalid status of {status}. Status must be one of "
             "{statuses}.".format(issue=issue, status=status, statuses=", ".join(STATUSES))
@@ -53,6 +58,8 @@ def __check_changelog(issue):
     for match in matches:
         if match.suffix not in CHANGELOG_EXTS:
             sys.exit(f"Invalid extension for changelog entry '{match}'.")
+        if match.suffix == ".feature" and "cherry picked from commit" in message:
+            sys.exit(f"Can not backport '{match}' as it is a feature.")
 
 
 print("Checking commit message for {sha}.".format(sha=sha[0:7]))
@@ -70,6 +77,8 @@ if issues:
 else:
     if NO_ISSUE in message:
         print("Commit {sha} has no issues but is tagged {tag}.".format(sha=sha[0:7], tag=NO_ISSUE))
+    elif "Merge" in message and "cherry picked from commit" in message:
+        pass
     else:
         sys.exit(
             "Error: no attached issues found for {sha}. If this was intentional, add "
