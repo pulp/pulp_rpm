@@ -28,6 +28,7 @@ This file contains list of features and their test coverage.
 | As a user, I can sync repos with repomd.xml files whose filenames contain dashes (e.g., app-icons.tar.gz) | NO  | Example: https://updates.suse.com/SUSE/Updates/SLE-SERVER/12-SP5/x86_64/update/ |
 | As a user, the content metadata being saved to Pulp is correct | PART | Packages and distribution trees are covered. Updateinfo and Groups metadata is not covered. "Weird" cases not covered. |
 | As a user, the metadata being produced by Pulp is correct | PART | Primary, Filelists, and Other metadata is covered, Distribution Tree (.treeinfo) metadata is covered, Updateinfo and Groups metadata is not covered. "Weird" cases not covered. |
+| As a user, I can see a package from modular repository is marked as modular | YES | Using ``is modular`` field on a package |
 | **Duplicates** |  |  |
 | As a user, I have only one advisory with the same id in a repo version | YES |  |
 | As a user, I have only one module with the same NSVCA in a repo version | NO |  |
