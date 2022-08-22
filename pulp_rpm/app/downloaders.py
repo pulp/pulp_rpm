@@ -87,6 +87,8 @@ class RpmDownloader(HttpDownloader):
             self.url = urlpath_sanitize(new_url) + auth_param
         else:
             self.url = new_url
+        # Let's log a URL for debugging where the file come from
+        log.debug(f"The URL of the file to download is {self.url}")
 
     def raise_for_status(self, response):
         """
