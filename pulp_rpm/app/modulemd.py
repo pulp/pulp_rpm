@@ -75,6 +75,12 @@ def parse_modulemd(module_names, module_index):
             modulemd[PULP_MODULE_ATTR.CONTEXT] = stream.props.context
             modulemd[PULP_MODULE_ATTR.ARCH] = stream.props.arch
             modulemd[PULP_MODULE_ATTR.ARTIFACTS] = stream.get_rpm_artifacts()
+            modulemd[PULP_MODULE_ATTR.DESCRIPTION] = stream.get_description()
+
+            modulemd[PULP_MODULE_ATTR.PROFILES] = {}
+            for profile in stream.get_profile_names():
+                stream_profile = stream.get_profile(profile)
+                modulemd[PULP_MODULE_ATTR.PROFILES][profile] = stream_profile.get_rpms()
 
             dependencies_list = stream.get_dependencies()
             dependencies = list()

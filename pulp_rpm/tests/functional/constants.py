@@ -1538,3 +1538,19 @@ BIG_GROUPS = 3
 BIG_CATEGORY = 4
 BIG_LANGPACK = 0
 BIG_ENVIRONMENTS = 3
+
+MODULEMD_FIELDS = [
+    "arch",
+    "artifacts",
+    "context",
+    "dependencies",
+    "description",
+    "name",
+    "packages",
+    "profiles",
+    "pulp_created",
+    "pulp_href",
+    "static_context",
+    "stream",
+    "version",
+]

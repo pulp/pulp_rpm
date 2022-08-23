@@ -145,6 +145,8 @@ MODULEMD_MODULE_ATTR = SimpleNamespace(
     STREAM="stream",
     VERSION="version",
     DEPENDENCIES="dependencies",
+    PROFILES="profiles",
+    DESCRIPTION="description",
 )
 
 MODULEMD_MODULEDEFAULTS_ATTR = SimpleNamespace(

@@ -44,6 +44,7 @@ class ModulemdSerializer(NoArtifactContentSerializer):
     # TODO: The performance of this is not great, there's a noticable difference in response
     # time before/after. Since this will only return Package content hrefs, we might benefit
     # from creating a specialized version of this Field that can skip some of the work.
+    description = serializers.CharField(help_text=_("Description of module."))
     packages = DetailRelatedField(
         help_text=_("Modulemd artifacts' packages."),
         allow_null=True,
@@ -52,6 +53,7 @@ class ModulemdSerializer(NoArtifactContentSerializer):
         view_name="content-rpm/packages-detail",
         many=True,
     )
+    profiles = serializers.JSONField(help_text=_("Modulemd profiles."), allow_null=True)
     snippet = serializers.CharField(help_text=_("Modulemd snippet"), write_only=True)
 
     class Meta:
@@ -66,6 +68,8 @@ class ModulemdSerializer(NoArtifactContentSerializer):
             "dependencies",
             "packages",
             "snippet",
+            "profiles",
+            "description",
         )
         model = Modulemd
 
