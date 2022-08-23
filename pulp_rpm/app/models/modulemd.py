@@ -55,6 +55,8 @@ class Modulemd(Content):
     dependencies = models.JSONField(default=list)
     artifacts = models.JSONField(default=list)
     packages = models.ManyToManyField(Package)
+    profiles = models.JSONField(default=dict)
+    description = models.TextField()
 
     snippet = models.TextField()
 
