@@ -338,7 +338,11 @@ def cleanup_subrepos(sender, instance, **kwargs):
     Remove subrepos when a DistributionTree is being removed.
 
     """
-    subrepo = instance.repository
+    subrepo = None
+    try:
+        subrepo = instance.repository
+    except Repository.DoesNotExist:
+        pass
     if subrepo:
         Variant.objects.filter(repository=subrepo).delete()
         Addon.objects.filter(repository=subrepo).delete()
