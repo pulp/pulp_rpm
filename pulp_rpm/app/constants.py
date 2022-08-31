@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from django.conf import settings
 
 CHECKSUM_TYPES = SimpleNamespace(
     UNKNOWN="unknown",
@@ -22,6 +23,10 @@ CHECKSUM_CHOICES = (
     (CHECKSUM_TYPES.SHA384, CHECKSUM_TYPES.SHA384),
     (CHECKSUM_TYPES.SHA512, CHECKSUM_TYPES.SHA512),
 )
+
+ALLOWED_CHECKSUM_CHOICES = [
+    choice for choice in CHECKSUM_CHOICES if choice[0] in settings.ALLOWED_CONTENT_CHECKSUMS
+]
 
 ALLOWED_CHECKSUM_ERROR_MSG = """Checksum must be one of the allowed checksum types.
 You can adjust these with the 'ALLOWED_CONTENT_CHECKSUMS' setting."""

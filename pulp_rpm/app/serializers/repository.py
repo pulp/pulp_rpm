@@ -22,6 +22,7 @@ from pulpcore.plugin.serializers import (
 
 from pulp_rpm.app.constants import (
     ALLOWED_CHECKSUM_ERROR_MSG,
+    ALLOWED_CHECKSUM_CHOICES,
     CHECKSUM_CHOICES,
     SKIP_TYPES,
     SYNC_POLICY_CHOICES,
@@ -210,12 +211,12 @@ class RpmPublicationSerializer(PublicationSerializer):
 
     metadata_checksum_type = serializers.ChoiceField(
         help_text=_("The checksum type for metadata."),
-        choices=CHECKSUM_CHOICES,
+        choices=ALLOWED_CHECKSUM_CHOICES,
         required=False,
     )
     package_checksum_type = serializers.ChoiceField(
         help_text=_("The checksum type for packages."),
-        choices=CHECKSUM_CHOICES,
+        choices=ALLOWED_CHECKSUM_CHOICES,
         required=False,
     )
     gpgcheck = serializers.IntegerField(
