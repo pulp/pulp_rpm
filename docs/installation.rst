@@ -71,19 +71,22 @@ If you are on Fedora, install the build dependencies with this command:
 
 .. code-block:: bash
 
-   sudo dnf install -y gcc make cmake bzip2-devel expat-devel file-devel glib2-devel libcurl-devel libmodulemd-devel libxml2-devel python3-devel python3-gobject python3-libmodulemd rpm-devel openssl-devel sqlite-devel xz-devel zchunk-devel zlib-devel
+   sudo dnf install -y gcc make cairo-devel cairo-gobject-devel cmake bzip2-devel expat-devel file-devel glib2-devel gobject-introspection-devel libcurl-devel libmodulemd-devel libxml2-devel openssl-devel python3-devel rpm-devel sqlite-devel xz-devel zchunk-devel zlib-devel
 
 If on CentOS or RHEL, use this commands:
 
-Ensure you have enabled ``epel`` repository
+Ensure you have enabled ``epel`` and ``powertools`` (in RHEL it is ``CodeReady``) repositories
 
 .. code-block:: bash
 
     sudo yum install -y epel-release
+    sudo yum config-manager --set-enabled powertools
+    # sudo subscription-manager repos --enable codeready-builder-for-rhel-8-x86_64-rpms
 
 .. code-block:: bash
 
-   sudo yum install -y gcc make cmake bzip2-devel expat-devel file-devel glib2-devel libcurl-devel libmodulemd2-devel ninja-build libxml2-devel python36-devel python36-gobject rpm-devel openssl-devel sqlite-devel xz-devel zchunk-devel zlib-devel
+   sudo yum install -y gcc make cairo-devel cairo-gobject-devel cmake bzip2-devel expat-devel file-devel glib2-devel gobject-introspection-devel libcurl-devel libmodulemd-devel libxml2-devel openssl-devel python3-devel rpm-devel sqlite-devel swig xz-devel zchunk-devel zlib-devel
+
 
 
 Ensure your virtual environment uses system wide packages
