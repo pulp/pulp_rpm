@@ -2,7 +2,7 @@ from gettext import gettext as _
 
 from django.core.management import BaseCommand, CommandError
 
-from pulp_rpm.app.models import Package  # noqa
+from pulp_rpm.app.models import Package, UpdateCollectionPackage  # noqa
 
 
 class Command(BaseCommand):
@@ -22,6 +22,8 @@ class Command(BaseCommand):
 
         if issue == "2460":
             self.repair_2460()
+        elif issue == "2754":
+            self.repair_2754()
         else:
             raise CommandError(_("Unknown issue: '{}'").format(issue))
 
@@ -45,3 +47,29 @@ class Command(BaseCommand):
         for package in packages:
             fix_package(package)
             package.save()
+
+    def repair_2754(self):
+        """Perform datarepair for issue #2754."""
+
+        duplicate_pks = set()
+
+        package_query = UpdateCollectionPackage.objects.all()
+
+        for ucp in package_query:
+            q = package_query.filter(
+                name=ucp.name,
+                epoch=ucp.epoch,
+                version=ucp.version,
+                release=ucp.release,
+                arch=ucp.arch,
+                filename=ucp.filename,
+                update_collection=ucp.update_collection,
+            )
+            if len(q) > 1:
+                for pkg in q[1:]:
+                    duplicate_pks.add(pkg.pk)
+
+        if input(
+            f"Are you sure to remove {len(duplicate_pks)} duplicated advisory packages? (y/N) "
+        ) in ["Y", "y"]:
+            UpdateCollectionPackage.objects.filter(pk__in=duplicate_pks).delete()

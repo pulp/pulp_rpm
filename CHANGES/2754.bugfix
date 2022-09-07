@@ -1,0 +1,1 @@
+Added unique constraint for advisory collection packages. Added data repair command in case any duplicates already exists  ``pulpcore-manager rpm-datarepair 2754``.

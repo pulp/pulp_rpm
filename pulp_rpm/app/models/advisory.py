@@ -387,6 +387,9 @@ class UpdateCollectionPackage(BaseModel):
         UpdateCollection, related_name="packages", on_delete=models.CASCADE
     )
 
+    class Meta:
+        unique_together = ("name", "epoch", "version", "release", "arch", "update_collection")
+
     @classmethod
     def createrepo_to_dict(cls, package):
         """
