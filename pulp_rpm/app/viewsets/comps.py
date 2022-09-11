@@ -32,6 +32,20 @@ class CompsXmlViewSet(viewsets.ViewSet):
     ViewSet for comps.xml Upload.
     """
 
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["create"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_required_repo_perms_on_upload:rpm.modify_content_rpmrepository",
+                    "has_required_repo_perms_on_upload:rpm.view_rpmrepository",
+                ],
+            },
+        ],
+    }
+
     @extend_schema(
         description="Trigger an asynchronous task to upload a comps.xml file.",
         summary="Upload comps.xml",
@@ -74,6 +88,17 @@ class PackageGroupViewSet(ReadOnlyContentViewSet):
     queryset = PackageGroup.objects.all()
     serializer_class = PackageGroupSerializer
 
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+        ],
+        "queryset_scoping": {"function": "scope_queryset"},
+    }
+
 
 class PackageCategoryViewSet(ReadOnlyContentViewSet):
     """
@@ -83,6 +108,17 @@ class PackageCategoryViewSet(ReadOnlyContentViewSet):
     endpoint_name = "packagecategories"
     queryset = PackageCategory.objects.all()
     serializer_class = PackageCategorySerializer
+
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+        ],
+        "queryset_scoping": {"function": "scope_queryset"},
+    }
 
 
 class PackageEnvironmentViewSet(ReadOnlyContentViewSet):
@@ -94,6 +130,17 @@ class PackageEnvironmentViewSet(ReadOnlyContentViewSet):
     queryset = PackageEnvironment.objects.all()
     serializer_class = PackageEnvironmentSerializer
 
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+        ],
+        "queryset_scoping": {"function": "scope_queryset"},
+    }
+
 
 class PackageLangpacksViewSet(ReadOnlyContentViewSet):
     """
@@ -103,3 +150,14 @@ class PackageLangpacksViewSet(ReadOnlyContentViewSet):
     endpoint_name = "packagelangpacks"
     queryset = PackageLangpacks.objects.all()
     serializer_class = PackageLangpacksSerializer
+
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+        ],
+        "queryset_scoping": {"function": "scope_queryset"},
+    }
