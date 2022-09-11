@@ -6,7 +6,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('rpm', '0043_rbac_perms'),
+        ('rpm', '0042_alter_repometadatafile_data_type'),
     ]
 
     operations = [
