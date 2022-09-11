@@ -1,13 +1,13 @@
 from logging import getLogger
 
-from pulpcore.plugin.models import AlternateContentSource, AutoAddObjPermsMixin
+from pulpcore.plugin.models import AlternateContentSource
 from pulp_rpm.app.models import RpmRemote
 
 
 log = getLogger(__name__)
 
 
-class RpmAlternateContentSource(AlternateContentSource, AutoAddObjPermsMixin):
+class RpmAlternateContentSource(AlternateContentSource):
     """
     Alternate Content Source for 'RPM" content.
     """
@@ -17,7 +17,3 @@ class RpmAlternateContentSource(AlternateContentSource, AutoAddObjPermsMixin):
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-        permissions = [
-            ("refresh_rpmalternatecontentsource", "Refresh an Alternate Content Source"),
-            ("manage_roles_rpmalternatecontentsource", "Can manage roles on ACS"),
-        ]

@@ -9,7 +9,6 @@ from django.conf import settings
 from django.db import models
 from pulpcore.plugin.download import DownloaderFactory
 from pulpcore.plugin.models import (
-    AutoAddObjPermsMixin,
     Artifact,
     AsciiArmoredDetachedSigningService,
     Content,
@@ -47,7 +46,7 @@ from pulp_rpm.app.shared_utils import urlpath_sanitize
 log = getLogger(__name__)
 
 
-class RpmRemote(Remote, AutoAddObjPermsMixin):
+class RpmRemote(Remote):
     """
     Remote for "rpm" content.
     """
@@ -107,12 +106,9 @@ class RpmRemote(Remote, AutoAddObjPermsMixin):
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-        permissions = [
-            ("manage_roles_rpmremote", "Can manage roles on an RPM remotes"),
-        ]
 
 
-class UlnRemote(Remote, AutoAddObjPermsMixin):
+class UlnRemote(Remote):
     """
     Remote for "uln" content.
     """
@@ -178,12 +174,9 @@ class UlnRemote(Remote, AutoAddObjPermsMixin):
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-        permissions = [
-            ("manage_roles_ulnremote", "Can manage roles on an ULN remotes"),
-        ]
 
 
-class RpmRepository(Repository, AutoAddObjPermsMixin):
+class RpmRepository(Repository):
     """
     Repository for "rpm" content.
 
@@ -287,13 +280,6 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-        permissions = [
-            ("manage_roles_rpmrepository", "Can manage roles on RPM repositories"),
-            ("modify_content_rpmrepository", "Add content to, or remove content from a repository"),
-            ("repair_rpmrepository", "Copy a repository"),
-            ("sync_rpmrepository", "Sync a repository"),
-            ("delete_rpmrepository_version", "Delete a repository version"),
-        ]
 
     def finalize_new_version(self, new_version):
         """
@@ -416,7 +402,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
             )
 
 
-class RpmPublication(Publication, AutoAddObjPermsMixin):
+class RpmPublication(Publication):
     """
     Publication for "rpm" content.
     """
@@ -432,12 +418,9 @@ class RpmPublication(Publication, AutoAddObjPermsMixin):
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-        permissions = [
-            ("manage_roles_rpmpublication", "Can manage roles on an RPM publication"),
-        ]
 
 
-class RpmDistribution(Distribution, AutoAddObjPermsMixin):
+class RpmDistribution(Distribution):
     """
     Distribution for "rpm" content.
     """
@@ -509,6 +492,3 @@ class RpmDistribution(Distribution, AutoAddObjPermsMixin):
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-        permissions = [
-            ("manage_roles_rpmdistribution", "Can manage roles on an RPM distribution"),
-        ]
