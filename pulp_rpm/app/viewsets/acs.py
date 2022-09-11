@@ -12,6 +12,7 @@ from pulpcore.plugin.serializers import (
 )
 from pulpcore.plugin.viewsets import (
     AlternateContentSourceViewSet,
+    RolesMixin,
     TaskGroupOperationResponse,
 )
 
@@ -27,7 +28,7 @@ from pulp_rpm.app.serializers import (
 )
 
 
-class RpmAlternateContentSourceViewSet(AlternateContentSourceViewSet):
+class RpmAlternateContentSourceViewSet(AlternateContentSourceViewSet, RolesMixin):
     """
     ViewSet for ACS.
     """
@@ -35,6 +36,89 @@ class RpmAlternateContentSourceViewSet(AlternateContentSourceViewSet):
     endpoint_name = "rpm"
     queryset = RpmAlternateContentSource.objects.all()
     serializer_class = RpmAlternateContentSourceSerializer
+    queryset_filtering_required_permission = "rpm.view_rpmalternatecontentsource"
+
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list"],
+                "principal": ["authenticated"],
+                "effect": "allow",
+            },
+            {
+                "action": ["retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": "has_model_or_obj_perms:rpm.view_rpmalternatecontentsource",
+            },
+            {
+                "action": ["create"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_remote_param_model_or_obj_perms:rpm.view_rpmremote",
+                    "has_model_perms:rpm.add_rpmalternatecontentsource",
+                ],
+            },
+            {
+                "action": ["refresh"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_obj_perms:rpm.view_rpmalternatecontentsource",
+                    "has_model_perms:rpm.refresh_rpmalternatecontentsource",
+                ],
+            },
+            {
+                "action": ["update", "partial_update"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_obj_perms:rpm.change_rpmalternatecontentsource",
+                    "has_model_or_obj_perms:rpm.view_rpmalternatecontentsource",
+                    "has_remote_param_model_or_obj_perms:rpm.view_rpmremote",
+                ],
+            },
+            {
+                "action": ["destroy"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_obj_perms:rpm.delete_rpmalternatecontentsource",
+                    "has_model_or_obj_perms:rpm.view_rpmalternatecontentsource",
+                ],
+            },
+            {
+                "action": ["list_roles", "add_role", "remove_role"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": "has_model_or_obj_perms:rpm.manage_roles_rpmalternatecontentsource",
+            },
+        ],
+        "queryset_scoping": {"function": "scope_queryset"},
+        "creation_hooks": [
+            {
+                "function": "add_roles_for_object_creator",
+                "parameters": {"roles": "rpm.rpmalternatecontentsource_owner"},
+            }
+        ],
+    }
+
+    LOCKED_ROLES = {
+        "rpm.rpmalternatecontentsource_owner": [
+            "rpm.change_rpmalternatecontentsource",
+            "rpm.delete_rpmalternatecontentsource",
+            "rpm.manage_roles_rpmalternatecontentsource",
+            "rpm.refresh_rpmalternatecontentsource",
+            "rpm.view_rpmalternatecontentsource",
+        ],
+        "rpm.rpmalternatecontentsource_creator": [
+            "rpm.add_rpmalternatecontentsource",
+        ],
+        "rpm.rpmalternatecontentsource_viewer": [
+            "rpm.view_rpmalternatecontentsource",
+        ],
+    }
 
     @extend_schema(
         description="Trigger an asynchronous task to create Alternate Content Source content.",

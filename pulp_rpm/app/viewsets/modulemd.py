@@ -42,6 +42,26 @@ class ModulemdViewSet(SingleArtifactContentUploadViewSet):
     serializer_class = ModulemdSerializer
     filterset_class = ModulemdFilter
 
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+            {
+                "action": ["create"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_required_repo_perms_on_upload:rpm.modify_content_rpmrepository",
+                    "has_required_repo_perms_on_upload:rpm.view_rpmrepository",
+                ],
+            },
+        ],
+        "queryset_scoping": {"function": "scope_queryset"},
+    }
+
 
 class ModulemdDefaultsFilter(ContentFilter):
     """
@@ -68,6 +88,26 @@ class ModulemdDefaultsViewSet(SingleArtifactContentUploadViewSet):
     serializer_class = ModulemdDefaultsSerializer
     filterset_class = ModulemdDefaultsFilter
 
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+            {
+                "action": ["create"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_required_repo_perms_on_upload:rpm.modify_content_rpmrepository",
+                    "has_required_repo_perms_on_upload:rpm.view_rpmrepository",
+                ],
+            },
+        ],
+        "queryset_scoping": {"function": "scope_queryset"},
+    }
+
 
 class ModulemdObsoleteViewSet(SingleArtifactContentUploadViewSet):
     """
@@ -77,3 +117,19 @@ class ModulemdObsoleteViewSet(SingleArtifactContentUploadViewSet):
     endpoint_name = "modulemd_obsoletes"
     queryset = ModulemdObsolete.objects.all()
     serializer_class = ModulemdObsoleteSerializer
+
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+            {
+                "action": ["create"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+        ],
+        "queryset_scoping": {"function": "scope_queryset"},
+    }

@@ -67,3 +67,4 @@ This file contains list of features and their test coverage.
 | As a user, I can export RPM-repository content to be consumed by a downstream Pulp3 instance. | PART | basic pulp-export succeeds |
 | As a user, I can import RPM-repository content exported from an upstream Pulp3 instance. | PART | basic pulp-import succeeds |
 | As a user, I can export/import an RPM repository with a kickstart | PART | Need to use rpm-distribution-tree fixture and check content after import |
+| As a user, I can use RBAC | PART | Basic CRUD of ACS/Repo/Remote/Publication/Distribution covered |

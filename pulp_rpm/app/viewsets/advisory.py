@@ -43,3 +43,24 @@ class UpdateRecordViewSet(NoArtifactContentUploadViewSet):
     serializer_class = UpdateRecordSerializer
     minimal_serializer_class = MinimalUpdateRecordSerializer
     filterset_class = UpdateRecordFilter
+
+    # TODO: adjust this policy after upload access policy design done and in place
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+            {
+                "action": ["create"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_required_repo_perms_on_upload:rpm.modify_content_rpmrepository",
+                    "has_required_repo_perms_on_upload:rpm.view_rpmrepository",
+                ],
+            },
+        ],
+        "queryset_scoping": {"function": "scope_queryset"},
+    }

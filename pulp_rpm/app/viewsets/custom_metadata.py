@@ -12,3 +12,14 @@ class RepoMetadataFileViewSet(ReadOnlyContentViewSet):
     endpoint_name = "repo_metadata_files"
     queryset = RepoMetadataFile.objects.all()
     serializer_class = RepoMetadataFileSerializer
+
+    DEFAULT_ACCESS_POLICY = {
+        "statements": [
+            {
+                "action": ["list", "retrieve"],
+                "principal": "authenticated",
+                "effect": "allow",
+            },
+        ],
+        "queryset_scoping": {"function": "scope_queryset"},
+    }
