@@ -48,7 +48,7 @@ def convert_artifact_to_snippets(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('rpm', '0044_textfield_conversion'),
+        ('rpm', '0043_textfield_conversion'),
     ]
 
     operations = [

@@ -50,7 +50,7 @@ def populate_new_fields(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("rpm", "0045_noartifact_modules"),
+        ("rpm", "0044_noartifact_modules"),
     ]
 
     operations = [
