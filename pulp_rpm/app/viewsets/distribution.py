@@ -19,14 +19,3 @@ class DistributionTreeViewSet(ReadOnlyContentViewSet):
     endpoint_name = "distribution_trees"
     queryset = DistributionTree.objects.all()
     serializer_class = DistributionTreeSerializer
-
-    DEFAULT_ACCESS_POLICY = {
-        "statements": [
-            {
-                "action": ["list", "retrieve"],
-                "principal": "authenticated",
-                "effect": "allow",
-            },
-        ],
-        "queryset_scoping": {"function": "scope_queryset"},
-    }
