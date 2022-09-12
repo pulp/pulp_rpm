@@ -1,1 +1,0 @@
-The use of `skip_types` while performing a sync under the `mirror_complete` sync policy is now disallowed. Previously it would be silently ignored instead.

@@ -1,1 +1,0 @@
-Require libmodulemd 2.12+, re-enable the tests that exercise support for new metadata.

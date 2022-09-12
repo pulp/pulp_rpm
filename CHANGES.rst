@@ -13,6 +13,110 @@ Changelog
 
 .. towncrier release notes start
 
+3.18.0 (2022-09-12)
+===================
+
+
+Features
+--------
+
+- RPM metadata is now sorted by package name and version information, which slightly improves compression efficiency.
+  `#2274 <https://github.com/pulp/pulp_rpm/issues/2274>`__
+- Make ``relative_path`` optional when uploading a package.
+  `#2440 <https://github.com/pulp/pulp_rpm/issues/2440>`__
+- Shows modulemd profiles and description to user.
+  `#2456 <https://github.com/pulp/pulp_rpm/issues/2456>`__
+- Support Modulemd obsoletes.
+  `#2570 <https://github.com/pulp/pulp_rpm/issues/2570>`__
+- Enabled pulp_rpm to take advantage of "create_repositories" at PulpImport time.
+  `#2585 <https://github.com/pulp/pulp_rpm/issues/2585>`__
+- Keep modular metadata in database as a string instead of saving them to the disk.
+  `#2621 <https://github.com/pulp/pulp_rpm/issues/2621>`__
+
+
+Bugfixes
+--------
+
+- Fixed treeinfo processing to handle some very old treeinfo formats.
+  `#2243 <https://github.com/pulp/pulp_rpm/issues/2243>`__
+- Update installation dependencies.
+  `#2289 <https://github.com/pulp/pulp_rpm/issues/2289>`__
+- The use of `skip_types` while performing a sync under the `mirror_complete` sync policy is now disallowed. Previously it would be silently ignored instead.
+  `#2293 <https://github.com/pulp/pulp_rpm/issues/2293>`__
+- Substantial improvements to the memory consumption of syncs, with a modest improvement in time required to sync.
+  `#2296 <https://github.com/pulp/pulp_rpm/issues/2296>`__
+- Improved error reporting in one scenario where it could be highly confusing.
+  `#2395 <https://github.com/pulp/pulp_rpm/issues/2395>`__
+- Added an exception for a case where repository metadata is incorrect in such a way that it should not be "mirrored", and a warning in other cases. If these warnings / errors are encountered, the party which manages the repo should be contacted. If it is a public repo, an issue can be filed in our tracker, and we will follow up with that party following confirmation of the issue.
+  `#2398 <https://github.com/pulp/pulp_rpm/issues/2398>`__
+- Made sure that Pulp doesn't publish repos with duplicate NEVRA in some edge case scenarios.
+  `#2407 <https://github.com/pulp/pulp_rpm/issues/2407>`__
+- Taught advisory-conflict-resolution to handle just-EVR-differences in incoming advisory's
+  package-list. This solves the case of repositories that update advisories to always have
+  the newest versions of RPMs (looking at you, EPEL...).
+  `#2422 <https://github.com/pulp/pulp_rpm/issues/2422>`__
+- Fix ULN remote `username` and `password` fields which ought to have been write-only and hidden.
+  `#2428 <https://github.com/pulp/pulp_rpm/issues/2428>`__
+- Fix the behavior of `gpgcheck` and `repo_gpgcheck` options when specified on the repository.
+  `#2430 <https://github.com/pulp/pulp_rpm/issues/2430>`__
+- Fixed an issue that could cause orphan cleanup to fail for certain repos.
+  `#2459 <https://github.com/pulp/pulp_rpm/issues/2459>`__
+- Fix an issue where package requirements containing an ampersand character in the name might have their data parsed incorrectly, and added a data repair script (`pulpcore-manager rpm-datarepair 2460`).
+  `#2460 <https://github.com/pulp/pulp_rpm/issues/2460>`__
+- Changed the naming of the `trim_rpm_changelogs` management command to `rpm-trim-changelogs` to better match with other command names.
+  `#2470 <https://github.com/pulp/pulp_rpm/issues/2470>`__
+- Fixed instances of /tmp/ being used instead of the worker's working directory.
+  `#2475 <https://github.com/pulp/pulp_rpm/issues/2475>`__
+- Using `retain_package_versions` (with the required "additive" `sync_policy`) will now avoid downloading the older packages when synced with download_policy "on_demand", resulting in much faster and more efficient syncs.
+  `#2479 <https://github.com/pulp/pulp_rpm/issues/2479>`__
+- Converted RepoMetadataFile.data_type to TextField in order to drop the max_length restriction.
+  `#2501 <https://github.com/pulp/pulp_rpm/issues/2501>`__
+- Fixes ACS to not require ``name`` in bindings.
+  `#2504 <https://github.com/pulp/pulp_rpm/issues/2504>`__
+- Fix ACS to update last refreshed time.
+  `#2505 <https://github.com/pulp/pulp_rpm/issues/2505>`__
+- Fixed unix timestamps not being parsed correctly for issued and updated dates.
+  `#2528 <https://github.com/pulp/pulp_rpm/issues/2528>`__
+- Fix a small FD leak during complete mirror syncs
+  `#2624 <https://github.com/pulp/pulp_rpm/issues/2624>`__
+- Fix import/export of Alma linux repositories.
+  `#2648 <https://github.com/pulp/pulp_rpm/issues/2648>`__
+- Improved error message for Alternate Content Source refresh when it has insufficient permissions.
+  `#2667 <https://github.com/pulp/pulp_rpm/issues/2667>`__
+- Don't raise a fatal error when encountering mostly valid metadata that contains data we don't expect, or data in the wrong places, in situations where it doesn't really matter.
+  `#2686 <https://github.com/pulp/pulp_rpm/issues/2686>`__
+- Allow syncing repositories with duplicate NEVRA in mirror_complete mode, but make sure syncing those packages are skipped.
+  `#2691 <https://github.com/pulp/pulp_rpm/issues/2691>`__
+- Do not optimize sync if retain-package-versions was set/changed
+  `#2704 <https://github.com/pulp/pulp_rpm/issues/2704>`__
+- Fixed a bug were some SLES repos were publishing metadata with missing drpms.
+  `#2705 <https://github.com/pulp/pulp_rpm/issues/2705>`__
+- Fixed orphan cleanup error in case Addon(Variant) were pointing to same subrepo.
+  `#2733 <https://github.com/pulp/pulp_rpm/issues/2733>`__
+
+
+Improved Documentation
+----------------------
+
+- Added documentation steps to remove content.
+  `#2303 <https://github.com/pulp/pulp_rpm/issues/2303>`__
+
+
+Deprecations and Removals
+-------------------------
+
+- sqlite metadata support is being deprecated. See `this discourse thread <https://discourse.pulpproject.org/t/planning-to-remove-a-feature-from-the-rpm-plugin-sqlite-metadata/418>`_ for additional details, or to advocate for the continued support of the feature.
+  `#2457 <https://github.com/pulp/pulp_rpm/issues/2457>`__
+
+
+Misc
+----
+
+- `#2245 <https://github.com/pulp/pulp_rpm/issues/2245>`__, `#2276 <https://github.com/pulp/pulp_rpm/issues/2276>`__, `#2302 <https://github.com/pulp/pulp_rpm/issues/2302>`__, `#2560 <https://github.com/pulp/pulp_rpm/issues/2560>`__, `#2565 <https://github.com/pulp/pulp_rpm/issues/2565>`__, `#2599 <https://github.com/pulp/pulp_rpm/issues/2599>`__, `#2620 <https://github.com/pulp/pulp_rpm/issues/2620>`__
+
+
+----
+
 
 3.17.12 (2022-08-16)
 ====================

@@ -1,3 +1,0 @@
-Taught advisory-conflict-resolution to handle just-EVR-differences in incoming advisory's
-package-list. This solves the case of repositories that update advisories to always have
-the newest versions of RPMs (looking at you, EPEL...).
