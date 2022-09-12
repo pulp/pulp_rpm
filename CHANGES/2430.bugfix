@@ -1,1 +1,0 @@
-Fix the behavior of `gpgcheck` and `repo_gpgcheck` options when specified on the repository.

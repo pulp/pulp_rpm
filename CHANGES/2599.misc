@@ -1,1 +1,0 @@
-Updated the consume signed content test to use pulp-smash for checking API_ROOT setting in Pulp.
