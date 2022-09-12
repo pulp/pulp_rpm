@@ -6,10 +6,15 @@ from urllib.parse import urljoin
 from pulp_smash.pulp3.bindings import (
     delete_orphans,
     monitor_task,
-    PulpTaskError,
     PulpTestCase,
 )
-from pulp_smash.pulp3.utils import gen_repo, get_content
+
+from pulp_smash.pulp3.utils import (
+    gen_repo,
+    get_content,
+    get_content_summary,
+    get_added_content_summary,
+)
 
 from pulp_rpm.tests.functional.utils import (
     gen_artifact,
@@ -52,8 +57,10 @@ class ContentUnitTestCase(PulpTestCase):
         """Create class-wide variable."""
         delete_orphans()
         cls.content_unit = {}
-        cls.rpm_content_api = ContentPackagesApi(gen_rpm_client())
         cls.artifact = gen_artifact(RPM_SIGNED_URL)
+        cls.client = gen_rpm_client()
+        cls.rpm_content_api = ContentPackagesApi(cls.client)
+        cls.repo_api = RepositoriesRpmApi(cls.client)
 
     @classmethod
     def tearDownClass(cls):
@@ -126,15 +133,31 @@ class ContentUnitTestCase(PulpTestCase):
         self.assertIn(msg, exc.exception.args[0])
 
     @skip_if(bool, "content_unit", False)
-    def test_05_duplicate_raise_error(self):
-        """Attempt to create duplicate package."""
+    def test_05_duplicate_no_repo_return_existing_href(self):
+        """Attempt to create duplicate package without specifying a repository."""
         attrs = gen_rpm_content_attrs(self.artifact, RPM_PACKAGE_FILENAME)
         response = self.rpm_content_api.create(**attrs)
-        with self.assertRaises(PulpTaskError) as cm:
-            monitor_task(response.task)
-        task_result = cm.exception.task.to_dict()
-        msg = "There is already a package with"
-        self.assertTrue(msg in task_result["error"]["description"])
+        duplicate = self.rpm_content_api.read(monitor_task(response.task).created_resources[0])
+        assert duplicate.pulp_href == self.content_unit["pulp_href"]
+
+    @skip_if(bool, "content_unit", False)
+    def test_06_duplicate_add_to_repo(self):
+        """Attempt to create duplicate package while specifying a repository."""
+        repo = self.repo_api.create(gen_repo())
+        attrs = gen_rpm_content_attrs(self.artifact, RPM_PACKAGE_FILENAME)
+        attrs["repository"] = repo.pulp_href
+        response = self.rpm_content_api.create(**attrs)
+        monitored_response = monitor_task(response.task)
+
+        duplicate = self.rpm_content_api.read(monitored_response.created_resources[1])
+        assert duplicate.pulp_href == self.content_unit["pulp_href"]
+
+        repo = self.repo_api.read(repo.pulp_href)
+        assert repo.latest_version_href.endswith("/versions/1/")
+        assert get_content_summary(repo.to_dict()) == {"rpm.package": 1}
+        assert get_added_content_summary(repo.to_dict()) == {"rpm.package": 1}
+
+        self.repo_api.delete(repo.pulp_href)
 
 
 class ContentUnitRemoveTestCase(PulpTestCase):
