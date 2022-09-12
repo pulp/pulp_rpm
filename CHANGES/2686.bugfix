@@ -1,1 +1,0 @@
-Don't raise a fatal error when encountering mostly valid metadata that contains data we don't expect, or data in the wrong places, in situations where it doesn't really matter.
