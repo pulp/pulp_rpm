@@ -1,1 +1,0 @@
-Removed "pulp_rpm to take advantage of "create_repositories" at PulpImport time" due to a compatibility issue - it will be shipped in 3.19.
