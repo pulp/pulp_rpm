@@ -13,6 +13,26 @@ Changelog
 
 .. towncrier release notes start
 
+3.18.1 (2022-09-13)
+===================
+
+
+Deprecations and Removals
+-------------------------
+
+- Removed "pulp_rpm to take advantage of "create_repositories" at PulpImport time" due to a compatibility issue - it will be shipped in 3.19.
+  `#2585 <https://github.com/pulp/pulp_rpm/issues/2585>`__
+
+
+Misc
+----
+
+- `#2771 <https://github.com/pulp/pulp_rpm/issues/2771>`__
+
+
+----
+
+
 3.18.0 (2022-09-12)
 ===================
 
