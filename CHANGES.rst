@@ -13,6 +13,20 @@ Changelog
 
 .. towncrier release notes start
 
+3.18.2 (2022-09-19)
+===================
+
+
+Bugfixes
+--------
+
+- Fix migration from modular artifacts to db snippets.
+  `#2777 <https://github.com/pulp/pulp_rpm/issues/2777>`__
+
+
+----
+
+
 3.18.1 (2022-09-13)
 ===================
 
