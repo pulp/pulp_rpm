@@ -17,6 +17,7 @@ from django.core.files import File
 from django.db import transaction
 from django.db.models import Q
 
+
 from aiohttp.client_exceptions import ClientResponseError
 from aiohttp.web_exceptions import HTTPNotFound
 
@@ -42,8 +43,8 @@ from pulpcore.plugin.stages import (
     RemoteArtifactSaver,
     Stage,
     QueryExistingArtifacts,
-    QueryExistingContents,
 )
+from pulpcore.plugin.sync import sync_to_async_iterable
 
 from pulp_rpm.app.advisory import hash_update_record
 from pulp_rpm.app.constants import (
@@ -619,7 +620,7 @@ class RpmDeclarativeVersion(DeclarativeVersion):
             [
                 ArtifactDownloader(),
                 ArtifactSaver(),
-                QueryExistingContents(),
+                RpmQueryExistingContents(),
                 RpmContentSaver(),
                 RpmInterrelateContent(),
                 RemoteArtifactSaver(fix_mismatched_remote_artifacts=True),
@@ -1531,3 +1532,74 @@ class RpmContentSaver(ContentSaver):
 
         if update_references_to_save:
             UpdateReference.objects.bulk_create(update_references_to_save, ignore_conflicts=True)
+
+
+class RpmQueryExistingContents(Stage):
+    """
+    Checks if DeclarativeContent objects already exist and replaces them in the stream if so.
+
+    This was largely copied from pulpcore.plugin.stages.content.QueryExistingContents but with
+    some customizations - see the original docstring for more details. The goal of the
+    customization is to address any issues where data may not saved properly in the past,
+    e.g. https://github.com/pulp/pulp_rpm/issues/2643.
+
+    Fixes can be added or removed over time as necessary.
+    """
+
+    async def run(self):
+        """
+        The coroutine for this stage.
+
+        Returns:
+            The coroutine for this stage.
+        """
+        async for batch in self.batches():
+            content_q_by_type = defaultdict(lambda: Q(pk__in=[]))
+            d_content_by_nat_key = defaultdict(list)
+            for d_content in batch:
+                if d_content.content._state.adding:
+                    model_type = type(d_content.content)
+                    unit_q = d_content.content.q()
+                    content_q_by_type[model_type] = content_q_by_type[model_type] | unit_q
+                    d_content_by_nat_key[d_content.content.natural_key()].append(d_content)
+
+            for model_type, content_q in content_q_by_type.items():
+                try:
+                    await sync_to_async(model_type.objects.filter(content_q).touch)()
+                except AttributeError:
+                    raise TypeError(
+                        "Plugins which declare custom ORM managers on their content classes "
+                        "should have those managers inherit from "
+                        "pulpcore.plugin.models.ContentManager."
+                    )
+                async for result in sync_to_async_iterable(
+                    model_type.objects.filter(content_q).iterator()
+                ):
+                    for d_content in d_content_by_nat_key[result.natural_key()]:
+                        # ============ The below lines are added vs. pulpcore ============
+                        if model_type == Package:
+                            # changelogs coming out of the database are list[list],
+                            # coming from the stage are list[tuple]
+                            normalized_result_changelogs = [tuple(ch) for ch in result.changelogs]
+                            incorrect_changelogs = (
+                                normalized_result_changelogs != d_content.content.changelogs
+                            )
+                            incorrect_modular_relation = (
+                                not result.is_modular and d_content.content.is_modular
+                            )
+
+                            if incorrect_changelogs:
+                                # Covers a class of issues with changelog data on the CDN
+                                result.changelogs = d_content.content.changelogs
+                            if incorrect_modular_relation:
+                                # Covers #2643
+                                result.is_modular = True
+
+                            if incorrect_changelogs or incorrect_modular_relation:
+                                log.debug("Updated data for package {}".format(result.nevra()))
+                                result.save()
+                        # ==================================================================
+                        d_content.content = result
+
+            for d_content in batch:
+                await self.put(d_content)
