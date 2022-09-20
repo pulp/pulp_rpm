@@ -2,6 +2,7 @@
 
 from django.db import migrations, models, transaction
 
+import ast
 import gi
 import logging
 
@@ -15,7 +16,22 @@ logger = logging.getLogger(__name__)
 def populate_new_fields(apps, schema_editor):
     """Populate new fields of modulemd."""
     Modulemd = apps.get_model("rpm", "Modulemd")
+    ModulemdDefaults = apps.get_model("rpm", "ModulemdDefaults")
     modules_to_update = []
+
+    # Fix issue #2786 if already tried to update to 3.18.1
+    modulemds_to_update = []
+    for modulemd in Modulemd.objects.filter(snippet__startswith="b\'---"):
+        modulemd.snippet = ast.literal_eval(modulemd.snippet).decode("utf8")
+        modulemds_to_update.append(modulemd)
+    Modulemd.objects.bulk_update(modulemds_to_update, ["snippet"])
+
+    # Same issue (#2786) has happened to modulemd defaults
+    modulemd_defaults_to_update = []
+    for default in ModulemdDefaults.objects.filter(snippet__startswith="b\'---"):
+        default.snippet = ast.literal_eval(default.snippet).decode("utf8")
+        modulemd_defaults_to_update.append(default)
+    ModulemdDefaults.objects.bulk_update(modulemd_defaults_to_update, ["snippet"])
 
     for modulemd in Modulemd.objects.filter(profiles={}):
         module_index = mmdlib.ModuleIndex.new()
