@@ -1592,8 +1592,8 @@ class RpmQueryExistingContents(Stage):
                                 result.is_modular = True
 
                             if incorrect_changelogs or incorrect_modular_relation:
-                                log.debug("Updated data for package {}".format(result.nevra()))
-                                result.save()
+                                log.debug("Updated data for package {}".format(result.nevra))
+                                await sync_to_async(result.save)()
                         # ==================================================================
                         d_content.content = result
 
