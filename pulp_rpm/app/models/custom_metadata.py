@@ -23,6 +23,7 @@ class RepoMetadataFile(Content):
     """
 
     TYPE = "repo_metadata_file"
+    UNSUPPORTED_METADATA = ["prestodelta", "deltainfo"]
 
     data_type = models.TextField()
     checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
@@ -34,3 +35,10 @@ class RepoMetadataFile(Content):
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
         unique_together = ("data_type", "checksum", "relative_path")
+
+    @property
+    def unsupported_metadata_type(self):
+        """
+        Metadata files that are known to contain deltarpm's are unsupported!
+        """
+        return self.data_type in self.UNSUPPORTED_METADATA
