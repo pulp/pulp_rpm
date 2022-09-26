@@ -87,6 +87,10 @@ class PublicationData:
         )
 
         for repo_metadata_file in repo_metadata_files:
+            if repo_metadata_file.unsupported_metadata_type:
+                # Normally these types are not synced in the first place, we skip them here, since
+                # they might still exist in old repo versions from before we started excluding them.
+                continue
             content_artifact = repo_metadata_file.contentartifact_set.get()
             current_file = content_artifact.artifact.file.file
             path = content_artifact.relative_path.split("/")[-1]
