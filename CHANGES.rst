@@ -13,6 +13,22 @@ Changelog
 
 .. towncrier release notes start
 
+3.18.3 (2022-09-27)
+===================
+
+
+Bugfixes
+--------
+
+- Perform a data repair during the sync process to address a couple of data quality issues.  Namely: fix changelogs in some cases where what is saved no longer matches what is synced, and fix packages which were previously incorrectly marked as non-modular.
+  `#2643 <https://github.com/pulp/pulp_rpm/issues/2643>`__
+- Ensured unsupported metadata files are also handled during publish.
+  `#2795 <https://github.com/pulp/pulp_rpm/issues/2795>`__
+
+
+----
+
+
 3.18.2 (2022-09-19)
 ===================
 
