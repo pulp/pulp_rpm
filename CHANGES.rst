@@ -13,6 +13,36 @@ Changelog
 
 .. towncrier release notes start
 
+3.17.13 (2022-09-27)
+====================
+
+
+Bugfixes
+--------
+
+- Perform a data repair during the sync process to address a couple of data quality issues.  Namely: fix changelogs in some cases where what is saved no longer matches what is synced, and fix packages which were previously incorrectly marked as non-modular.
+  `#2643 <https://github.com/pulp/pulp_rpm/issues/2643>`__
+- Fix import/export of Alma linux repositories.
+  `#2648 <https://github.com/pulp/pulp_rpm/issues/2648>`__
+- Do not optimize sync if retain-package-versions was set/changed
+  `#2704 <https://github.com/pulp/pulp_rpm/issues/2704>`__
+- Fixed a bug were some SLES repos were publishing metadata with missing drpms.
+  `#2705 <https://github.com/pulp/pulp_rpm/issues/2705>`__
+- Fixed orphan cleanup error in case Addon(Variant) were pointing to same subrepo.
+  `#2733 <https://github.com/pulp/pulp_rpm/issues/2733>`__
+- Ensured unsupported metadata files are also handled during publish.
+  `#2795 <https://github.com/pulp/pulp_rpm/issues/2795>`__
+
+
+Misc
+----
+
+- `#2620 <https://github.com/pulp/pulp_rpm/issues/2620>`__
+
+
+----
+
+
 3.17.12 (2022-08-16)
 ====================
 

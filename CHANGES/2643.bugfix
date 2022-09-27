@@ -1,1 +1,0 @@
-Perform a data repair during the sync process to address a couple of data quality issues.  Namely: fix changelogs in some cases where what is saved no longer matches what is synced, and fix packages which were previously incorrectly marked as non-modular.
