@@ -70,7 +70,7 @@ def parse_modulemd(module_names, module_index):
             modulemd = dict()
             modulemd[PULP_MODULE_ATTR.NAME] = stream.props.module_name
             modulemd[PULP_MODULE_ATTR.STREAM] = stream.props.stream_name
-            modulemd[PULP_MODULE_ATTR.VERSION] = stream.props.version
+            modulemd[PULP_MODULE_ATTR.VERSION] = str(stream.props.version)
             modulemd[PULP_MODULE_ATTR.STATIC_CONTEXT] = stream.props.static_context
             modulemd[PULP_MODULE_ATTR.CONTEXT] = stream.props.context
             modulemd[PULP_MODULE_ATTR.ARCH] = stream.props.arch
