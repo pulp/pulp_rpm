@@ -1576,6 +1576,18 @@ class RpmQueryExistingContents(Stage):
                 ):
                     for d_content in d_content_by_nat_key[result.natural_key()]:
                         # ============ The below lines are added vs. pulpcore ============
+                        if model_type == Modulemd:
+                            # Fix saved snippet if malformed in DB, covers #2735
+                            if result.snippet != d_content.content.snippet:
+                                result.snippet = d_content.content.snippet
+                                await sync_to_async(result.save)()
+
+                        if model_type == ModulemdDefaults:
+                            # Fix saved snippet if malformed in DB, covers #2735
+                            if result.snippet != d_content.content.snippet:
+                                result.snippet = d_content.content.snippet
+                                await sync_to_async(result.save)()
+
                         if model_type == Package:
                             # changelogs coming out of the database are list[list],
                             # coming from the stage are list[tuple]
