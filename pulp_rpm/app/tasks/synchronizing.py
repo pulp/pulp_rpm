@@ -1593,7 +1593,9 @@ class RpmQueryExistingContents(Stage):
                             if incorrect_modular_relation:
                                 # Covers #2643
                                 result.is_modular = True
-
+                            duplicated_files = len(result.files) != len(d_content.content.files)
+                            if duplicated_files:
+                                d_content.content.files = result.files
                             if incorrect_changelogs or incorrect_modular_relation:
                                 log.debug("Updated data for package {}".format(result.nevra))
                                 await sync_to_async(result.save)()
