@@ -310,7 +310,19 @@ class Package(Content):
             changelog_limit = settings.KEEP_CHANGELOG_LIMIT or 1
             # changelogs are listed in chronological order, grab the last N changelogs from the list
             changelogs = changelogs[-changelog_limit:]
-
+        files = getattr(package, CR_PACKAGE_ATTRS.FILES, [])
+        seen = set()
+        deduplicated_files = []
+        has_duplicates = False
+        for fileentry in files:
+            if fileentry in seen:
+                has_duplicates = True
+                continue
+            seen.add(fileentry)
+            deduplicated_files.append(fileentry)
+        if has_duplicates:
+            log.warn(f"Package {package.nevra()} lists some files more than once")
+        files = deduplicated_files
         return {
             PULP_PACKAGE_ATTRS.ARCH: getattr(package, CR_PACKAGE_ATTRS.ARCH),
             PULP_PACKAGE_ATTRS.CHANGELOGS: changelogs,
@@ -321,7 +333,7 @@ class Package(Content):
             PULP_PACKAGE_ATTRS.DESCRIPTION: getattr(package, CR_PACKAGE_ATTRS.DESCRIPTION) or "",
             PULP_PACKAGE_ATTRS.ENHANCES: getattr(package, CR_PACKAGE_ATTRS.ENHANCES, []),
             PULP_PACKAGE_ATTRS.EPOCH: getattr(package, CR_PACKAGE_ATTRS.EPOCH) or "",
-            PULP_PACKAGE_ATTRS.FILES: getattr(package, CR_PACKAGE_ATTRS.FILES, []),
+            PULP_PACKAGE_ATTRS.FILES: files,
             PULP_PACKAGE_ATTRS.LOCATION_BASE: "",  # TODO, delete this entirely
             PULP_PACKAGE_ATTRS.LOCATION_HREF: getattr(package, CR_PACKAGE_ATTRS.LOCATION_HREF),
             PULP_PACKAGE_ATTRS.NAME: getattr(package, CR_PACKAGE_ATTRS.NAME),
