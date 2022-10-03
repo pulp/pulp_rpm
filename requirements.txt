@@ -1,6 +1,6 @@
 createrepo_c~=0.20.1
 django_readonly_field~=1.1.1
-jsonschema>=4.6,<5.0
+jsonschema>=4.4,<5.0
 libcomps>=0.1.15,<0.2
 productmd~=1.33.0
 pulpcore>=3.21,<3.25
