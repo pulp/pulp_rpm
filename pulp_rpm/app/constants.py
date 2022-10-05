@@ -157,6 +157,24 @@ PULP_MODULEDEFAULTS_ATTR = SimpleNamespace(
     MODULE="module", STREAM="stream", PROFILES="profiles", DIGEST="digest"
 )
 
+PULP_MODULEOBSOLETES_ATTR = SimpleNamespace(
+    MODIFIED="modified",
+    MODULE="module_name",
+    STREAM="module_stream",
+    MESSAGE="message",
+    RESET="override_previous",
+    CONTEXT="module_context",
+    EOL="eol_date",
+    OBSOLETE_BY_MODULE="obsoleted_by_module_name",
+    OBSOLETE_BY_STREAM="obsoleted_by_module_name",
+)
+
+# Mandatory fields for Modulemd types
+# https://github.com/fedora-modularity/libmodulemd/blob/main/yaml_specs/modulemd_defaults_v1.yaml
+YAML_MODULEMD_DEFAULTS_REQUIRED_ATTR = ["module"]
+# https://github.com/fedora-modularity/libmodulemd/blob/main/yaml_specs/modulemd_obsoletes_v1.yaml
+YAML_MODULEMD_OBSOLETES_REQUIRED_ATTR = ["modified", "module", "stream", "message"]
+
 PULP_MODULE_ATTR = MODULEMD_MODULE_ATTR
 
 LIBCOMPS_GROUP_ATTRS = SimpleNamespace(

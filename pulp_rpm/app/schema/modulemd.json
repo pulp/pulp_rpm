@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Modulemd",
+  "description": "Modulemd data",
+  "type": "object",
+  "properties": {
+    "name": {"type": "string"},
+    "version": {"type": "integer"},
+    "context": {"type": ["number", "string"]},
+    "arch": {"type": "string"},
+    "summary": {"type": "string"},
+    "description": {"type": "string"},
+    "license": {
+      "type": "object",
+      "properties": {
+        "module": {"type": "array"},
+        "content": {"type": "array"}
+      },
+      "required": ["module", "content"]
+    }
+  },
+  "required": ["name", "stream", "version", "context", "arch", "summary", "description", "license"],
+  "additionalProperties": true,
+  "if": {
+    "properties": {
+      "components": {"type":  "object"}
+    }
+  },
+  "then": {
+    "components": {
+      "type": "object",
+      "patternProperties": {
+        ".": {
+          "type": "object",
+          "properties": {
+            "rationale": {"type": "string"}
+          }
+        }
+      }
+    }
+  }
+}

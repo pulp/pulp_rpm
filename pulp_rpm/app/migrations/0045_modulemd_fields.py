@@ -3,11 +3,8 @@
 from django.db import migrations, models, transaction
 
 import ast
-import gi
 import logging
-
-gi.require_version("Modulemd", "2.0")
-from gi.repository import Modulemd as mmdlib  # noqa: E402
+import yaml
 
 
 logger = logging.getLogger(__name__)
@@ -34,22 +31,11 @@ def populate_new_fields(apps, schema_editor):
     ModulemdDefaults.objects.bulk_update(modulemd_defaults_to_update, ["snippet"])
 
     for modulemd in Modulemd.objects.filter(profiles={}):
-        module_index = mmdlib.ModuleIndex.new()
         try:
-            ret, err = module_index.update_from_string(modulemd.snippet, False)
-            if err:
-                raise ValueError(
-                    "Repair failed on module "
-                    f"'{modulemd.name}.{modulemd.stream}.{modulemd.version}'."
-                )
-            for module in module_index.get_module_names():
-                for stream in module_index.get_module(module).get_all_streams():
-                    modulemd.profiles = {}
-                    modulemd.description = stream.get_description()
-                    for profile in stream.get_profile_names():
-                        stream_profile = stream.get_profile(profile)
-                        modulemd.profiles[profile] = stream_profile.get_rpms()
-                        modules_to_update.append(modulemd)
+            modulemd_dict = yaml.safe_load(modulemd.snippet)
+            modulemd.profiles = modulemd_dict["data"]["profiles"]
+            modulemd.description = modulemd_dict["data"]["description"]
+            modules_to_update.append(modulemd)
         except ValueError as err:
             # Due to issue #2735 it could happen that snippet will be empty
             # https://github.com/pulp/pulp_rpm/issues/2735
