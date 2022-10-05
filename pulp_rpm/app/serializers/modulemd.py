@@ -99,7 +99,7 @@ class ModulemdObsoleteSerializer(NoArtifactContentSerializer):
     ModulemdObsolete serializer.
     """
 
-    modified = serializers.DateTimeField(help_text=_("Obsolete modified time."))
+    modified = serializers.CharField(help_text=_("Obsolete modified time."))
     module_name = serializers.CharField(help_text=_("Modulemd name."))
     module_stream = serializers.CharField(help_text=_("Modulemd's stream."))
     message = serializers.CharField(help_text=_("Obsolete description."))
@@ -108,7 +108,7 @@ class ModulemdObsoleteSerializer(NoArtifactContentSerializer):
         help_text=_("Reset previous obsoletes."), allow_null=True
     )
     module_context = serializers.CharField(help_text=_("Modulemd's context."), allow_null=True)
-    eol_date = serializers.DateTimeField(help_text=_("End of Life date."), allow_null=True)
+    eol_date = serializers.CharField(help_text=_("End of Life date."), allow_null=True)
     obsoleted_by_module_name = serializers.CharField(
         help_text=_("Obsolete by module name."), allow_null=True
     )

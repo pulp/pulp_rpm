@@ -1,13 +1,21 @@
+import gzip
 import hashlib
-from datetime import datetime
+import logging
+import lzma
+import yaml
+
+from jsonschema import Draft7Validator
+from gettext import gettext as _  # noqa:F401
 
 from pulp_rpm.app.models import Modulemd, Package
-from pulp_rpm.app.constants import PULP_MODULE_ATTR, PULP_MODULEDEFAULTS_ATTR
-
-import gi
-
-gi.require_version("Modulemd", "2.0")
-from gi.repository import Modulemd as mmdlib  # noqa: E402
+from pulp_rpm.app.constants import (
+    PULP_MODULEDEFAULTS_ATTR,
+    PULP_MODULEOBSOLETES_ATTR,
+    PULP_MODULE_ATTR,
+    YAML_MODULEMD_OBSOLETES_REQUIRED_ATTR,
+    YAML_MODULEMD_DEFAULTS_REQUIRED_ATTR,
+)
+from pulp_rpm.app.schema import MODULEMD_SCHEMA
 
 
 def resolve_module_packages(version, previous_version):
@@ -50,130 +58,126 @@ def resolve_module_packages(version, previous_version):
     version.add_content(Package.objects.filter(pk__in=packages_to_add))
 
 
-def parse_modulemd(module_names, module_index):
+def split_modulmd_file(file):
     """
-    Get modulemd NSVCA, artifacts, dependencies.
-
-    Args:
-        module_names (list):
-            list of modulemd names
-        module_index (mmdlib.ModuleIndex):
-            libmodulemd index object
-
-    Returns:
-        list of modulemd as dict
-
+    Helper method to preserve original formatting of modulemd.
     """
-    ret = list()
-    for module in module_names:
-        for stream in module_index.get_module(module).get_all_streams():
-            modulemd = dict()
-            modulemd[PULP_MODULE_ATTR.NAME] = stream.props.module_name
-            modulemd[PULP_MODULE_ATTR.STREAM] = stream.props.stream_name
-            modulemd[PULP_MODULE_ATTR.VERSION] = str(stream.props.version)
-            modulemd[PULP_MODULE_ATTR.STATIC_CONTEXT] = stream.props.static_context
-            modulemd[PULP_MODULE_ATTR.CONTEXT] = stream.props.context
-            modulemd[PULP_MODULE_ATTR.ARCH] = stream.props.arch
-            modulemd[PULP_MODULE_ATTR.ARTIFACTS] = stream.get_rpm_artifacts()
-            modulemd[PULP_MODULE_ATTR.DESCRIPTION] = stream.get_description()
-
-            modulemd[PULP_MODULE_ATTR.PROFILES] = {}
-            for profile in stream.get_profile_names():
-                stream_profile = stream.get_profile(profile)
-                modulemd[PULP_MODULE_ATTR.PROFILES][profile] = stream_profile.get_rpms()
-
-            dependencies_list = stream.get_dependencies()
-            dependencies = list()
-            for dep in dependencies_list:
-                depmodule_list = dep.get_runtime_modules()
-                platform_deps = dict()
-                for depmod in depmodule_list:
-                    platform_deps[depmod] = dep.get_runtime_streams(depmod)
-                dependencies.append(platform_deps)
-            modulemd[PULP_MODULE_ATTR.DEPENDENCIES] = dependencies
-            # create yaml snippet for this modulemd stream
-            temp_index = mmdlib.ModuleIndex.new()
-            temp_index.add_module_stream(stream)
-            modulemd["snippet"] = temp_index.dump_to_string()
-            ret.append(modulemd)
-    return ret
+    m_open = (
+        gzip.open if file.url.endswith(".gz") else lzma.open if file.url.endswith(".xz") else open
+    )
+    with m_open(file.path, "r") as modulemd_file:
+        module = ""
+        for line in modulemd_file:
+            line = line.decode("utf-8")
+            if line.startswith("---"):
+                if module:  # avoid first empty yield in the beginning of document
+                    yield module
+                    module = ""
+            module += line
+        yield module
 
 
-def parse_defaults(module_index):
+def check_mandatory_module_fields(module, required_fields):
     """
-    Get modulemd_defaults.
-
-    Args:
-        module_index (mmdlib.ModuleIndex):
-            libmodulemd index object
-
-    Returns:
-        list of modulemd_defaults as dict
-
+    Check mandatory fields on module dict.
     """
-    ret = list()
-    modulemd_defaults = module_index.get_default_streams().keys()
-    for module in modulemd_defaults:
-        modulemd = module_index.get_module(module)
-        defaults = modulemd.get_defaults()
-        if defaults:
-            default_stream = defaults.get_default_stream()
-            default_profile = defaults.get_default_profiles_for_stream(default_stream)
-            # create modulemd-default snippet
-            temp_index = mmdlib.ModuleIndex.new()
-            temp_index.add_defaults(defaults)
-            snippet = temp_index.dump_to_string()
-            ret.append(
-                {
-                    PULP_MODULEDEFAULTS_ATTR.MODULE: modulemd.get_module_name(),
-                    PULP_MODULEDEFAULTS_ATTR.STREAM: default_stream,
-                    PULP_MODULEDEFAULTS_ATTR.PROFILES: default_profile,
-                    PULP_MODULEDEFAULTS_ATTR.DIGEST: hashlib.sha256(snippet.encode()).hexdigest(),
-                    "snippet": snippet,
-                }
+    data = module["data"]
+    for field in required_fields:
+        if field not in data.keys():
+            raise ValueError(
+                _("Mandatory field {} is missing in {}.".format(field, module["document"]))
             )
-    return ret
 
 
-def parse_obsoletes(module_names, module_index):
+def create_modulemd(modulemd, snippet):
     """
-    Get modulemd obsoletes.
-
-    Args:
-        module_names (list):
-            list of modulemd names
-        module_index (mmdlib.ModuleIndex):
-            libmodulemd index object
-
-    Returns:
-        list of modulemd obsoletes as dict
-
+    Create dict with modulemd data to can be saved to DB.
     """
-    ret = list()
-    for module in module_names:
-        modulemd = module_index.get_module(module)
-        for obsolete in modulemd.get_obsoletes():
-            new_obsolete = dict()
-            # parsed as in documentation
-            # https://fedora-modularity.github.io/libmodulemd/latest/modulemd-2.0-Modulemd.Obsoletes.html#ModulemdObsoletes--modified
-            new_obsolete["modified"] = datetime.strptime(str(obsolete.props.modified), "%Y%m%d%H%M")
-            new_obsolete["module_name"] = obsolete.props.module_name
-            new_obsolete["module_stream"] = obsolete.props.module_stream
-            new_obsolete["message"] = obsolete.props.message
-            new_obsolete["override_previous"] = obsolete.props.override_previous
-            new_obsolete["module_context"] = obsolete.props.module_context
-            # EOL date is '0' if not specified instead None
-            try:
-                new_obsolete["eol_date"] = datetime.strptime(
-                    str(obsolete.props.eol_date), "%Y%m%d%H%M"
-                )
-            except ValueError:
-                new_obsolete["eol_date"] = None
-            new_obsolete["obsoleted_by_module_name"] = obsolete.props.obsoleted_by_module_name
-            new_obsolete["obsoleted_by_module_stream"] = obsolete.props.obsoleted_by_module_stream
-            # Create a snippet
-            temp_module_index = mmdlib.ModuleIndex.new()
-            temp_module_index.add_obsoletes(obsolete)
-            new_obsolete["snippet"] = temp_module_index.dump_to_string()
-            ret.append(new_obsolete)
-    return ret
+    new_module = dict()
+    new_module[PULP_MODULE_ATTR.NAME] = modulemd["data"].get("name")
+    new_module[PULP_MODULE_ATTR.STREAM] = modulemd["data"].get("stream")
+    new_module[PULP_MODULE_ATTR.VERSION] = str(modulemd["data"].get("version"))
+    new_module[PULP_MODULE_ATTR.STATIC_CONTEXT] = modulemd["data"].get("static_context")
+    new_module[PULP_MODULE_ATTR.CONTEXT] = modulemd["data"].get("context")
+    new_module[PULP_MODULE_ATTR.ARCH] = modulemd["data"].get("arch")
+    new_module[PULP_MODULE_ATTR.ARTIFACTS] = modulemd["data"].get("artifacts", [])
+    new_module[PULP_MODULE_ATTR.DESCRIPTION] = modulemd["data"].get("description")
+    new_module[PULP_MODULE_ATTR.PROFILES] = modulemd["data"].get("profiles", {})
+    new_module[PULP_MODULE_ATTR.DEPENDENCIES] = modulemd["data"].get("dependencies", [])
+    new_module["snippet"] = snippet
+
+    return new_module
+
+
+def create_modulemd_defaults(default, snippet):
+    """
+    Create dict with modulemd-defaults data to can be saved to DB.
+    """
+    new_default = dict()
+    new_default[PULP_MODULEDEFAULTS_ATTR.MODULE] = default["data"].get("module")
+    new_default[PULP_MODULEDEFAULTS_ATTR.STREAM] = default["data"].get("stream", "")
+    new_default[PULP_MODULEDEFAULTS_ATTR.PROFILES] = default["data"].get("profiles")
+    new_default["snippet"] = snippet
+    new_default[PULP_MODULEDEFAULTS_ATTR.DIGEST] = hashlib.sha256(snippet.encode()).hexdigest()
+
+    return new_default
+
+
+def create_modulemd_obsoletes(obsolete, snippet):
+    """
+    Create dict with modulemd-obsoletes data to can be saved to DB.
+    """
+    new_obsolete = dict()
+
+    new_obsolete[PULP_MODULEOBSOLETES_ATTR.MODIFIED] = obsolete["data"].get("modified")
+    new_obsolete[PULP_MODULEOBSOLETES_ATTR.MODULE] = obsolete["data"].get("module")
+    new_obsolete[PULP_MODULEOBSOLETES_ATTR.STREAM] = obsolete["data"].get("stream")
+    new_obsolete[PULP_MODULEOBSOLETES_ATTR.MESSAGE] = obsolete["data"].get("message")
+    new_obsolete[PULP_MODULEOBSOLETES_ATTR.RESET] = obsolete["data"].get("reset")
+    new_obsolete[PULP_MODULEOBSOLETES_ATTR.CONTEXT] = obsolete["data"].get("context")
+
+    if obsolete["data"].get("eol_date"):
+        new_obsolete[PULP_MODULEOBSOLETES_ATTR.EOL] = obsolete["data"].get("eol_date")
+    if obsolete["data"].get("obsoleted_by"):
+        new_obsolete[PULP_MODULEOBSOLETES_ATTR.OBSOLETE_BY_MODULE] = obsolete["data"][
+            "obsoleted_by"
+        ].get("module")
+        new_obsolete[PULP_MODULEOBSOLETES_ATTR.OBSOLETE_BY_STREAM] = obsolete["data"][
+            "obsoleted_by"
+        ].get("stream")
+    new_obsolete["snippet"] = snippet
+
+    return new_obsolete
+
+
+def parse_modular(file):
+    """
+    Parse all modular metadata.
+    """
+    modulemd_all = []
+    modulemd_defaults_all = []
+    modulemd_obsoletes_all = []
+
+    for module in split_modulmd_file(file):
+        parsed_data = yaml.safe_load(module)
+        # here we check the modulemd document as we don't store all info, so serializers
+        # are not enough then we only need to take required data from dict which is
+        # parsed by pyyaml library
+        if parsed_data["document"] == "modulemd":
+            validator = Draft7Validator(MODULEMD_SCHEMA)
+            err = []
+            for error in sorted(validator.iter_errors(parsed_data["data"]), key=str):
+                err.append(error.message)
+            if err:
+                raise ValueError(_("Provided modular data is invalid:'{}'".format(err)))
+            modulemd_all.append(create_modulemd(parsed_data, module))
+        elif parsed_data["document"] == "modulemd-defaults":
+            check_mandatory_module_fields(parsed_data, YAML_MODULEMD_DEFAULTS_REQUIRED_ATTR)
+            modulemd_defaults_all.append(create_modulemd_defaults(parsed_data, module))
+        elif parsed_data["document"] == "modulemd-obsoletes":
+            check_mandatory_module_fields(parsed_data, YAML_MODULEMD_OBSOLETES_REQUIRED_ATTR)
+            modulemd_obsoletes_all.append(create_modulemd_obsoletes(parsed_data, module))
+        else:
+            logging.warning(f"Unknown modular document type found: {parsed_data.get('document')}")
+
+    return modulemd_all, modulemd_defaults_all, modulemd_obsoletes_all

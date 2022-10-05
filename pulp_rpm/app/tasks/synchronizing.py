@@ -82,22 +82,13 @@ from pulp_rpm.app.models import (
     UpdateRecord,
     UpdateReference,
 )
-from pulp_rpm.app.modulemd import (
-    parse_defaults,
-    parse_modulemd,
-    parse_obsoletes,
-)
+from pulp_rpm.app.modulemd import parse_modular
 
 from pulp_rpm.app.comps import strdict_to_dict, dict_digest
 from pulp_rpm.app.kickstart.treeinfo import PulpTreeInfo, TreeinfoData
 from pulp_rpm.app.metadata_parsing import MetadataParser
 from pulp_rpm.app.shared_utils import is_previous_version, get_sha256, urlpath_sanitize
 from pulp_rpm.app.rpm_version import RpmVersion
-
-import gi
-
-gi.require_version("Modulemd", "2.0")
-from gi.repository import Modulemd as mmdlib  # noqa: E402
 
 log = logging.getLogger(__name__)
 
@@ -906,6 +897,12 @@ class RpmFirstStage(Stage):
         modulemd_result = metadata_results.get("modules", None)
         modulemd_list = []
         if modulemd_result:
+            # Need to check modules compression here because modules are parsed before
+            # all other metadata. And check for compression type of metadata few lines
+            # bellow only skip them if unsupported. If we cannot parse modulemd, package
+            # can't be flagged as 'modular' thus broken repository!
+            if modulemd_result.url.endswith("zck"):
+                raise TypeError(_("Modular data compressed with ZCK is not supported."))
             (modulemd_dcs, modulemd_list) = await self.parse_modules_metadata(modulemd_result)
 
         # **Now** we can successfully parse package-metadata
@@ -972,11 +969,8 @@ class RpmFirstStage(Stage):
 
     async def parse_modules_metadata(self, modulemd_result):
         """Parse modules' metadata which define what packages are built for specific releases."""
-        modulemd_index = mmdlib.ModuleIndex.new()
-        modulemd_index.update_from_file(modulemd_result.path, True)
+        modulemd_all, defaults_all, obsoletes_all = parse_modular(modulemd_result)
 
-        modulemd_names = modulemd_index.get_module_names() or []
-        modulemd_all = parse_modulemd(modulemd_names, modulemd_index)
         modulemd_dcs = []
 
         # Parsing modules happens all at one time, and from here on no useful work happens.
@@ -993,11 +987,8 @@ class RpmFirstStage(Stage):
             dc.extra_data = defaultdict(list)
             modulemd_dcs.append(dc)
             # dc.content.artifacts are Modulemd artifacts
-            for artifact in dc.content.artifacts:
+            for artifact in dc.content.artifacts["rpms"]:
                 self.nevra_to_module.setdefault(artifact, set()).add(dc)
-
-        # Parse modulemd default names
-        modulemd_default_names = parse_defaults(modulemd_index)
 
         # Parsing module-defaults happens all at one time, and from here on no useful
         # work happens. So just report that it finished this stage.
@@ -1006,21 +997,18 @@ class RpmFirstStage(Stage):
             "code": "sync.parsing.modulemd_defaults",
         }
         async with ProgressReport(**modulemd_defaults_pb_data) as modulemd_defaults_pb:
-            modulemd_defaults_total = len(modulemd_default_names)
+            modulemd_defaults_total = len(defaults_all)
             modulemd_defaults_pb.total = modulemd_defaults_total
             modulemd_defaults_pb.done = modulemd_defaults_total
 
         default_content_dcs = []
-        for default in modulemd_default_names:
+        for default in defaults_all:
             default_content = ModulemdDefaults(**default)
             default_content_dcs.append(DeclarativeContent(content=default_content))
 
         if default_content_dcs:
             for default_content_dc in default_content_dcs:
                 await self.put(default_content_dc)
-
-        # Parse modulemd obsoletes
-        modulemd_obsoletes = parse_obsoletes(modulemd_names, modulemd_index)
 
         # Parsing module obsoletes happens all at one time, and from here on no useful
         # work happens. So just report that it finished this stage.
@@ -1029,12 +1017,12 @@ class RpmFirstStage(Stage):
             "code": "sync.parsing.modulemd_obsoletes",
         }
         async with ProgressReport(**modulemd_obsoletes_pb_data) as modulemd_obsoletes_pb:
-            modulemd_obsoletes_total = len(modulemd_default_names)
+            modulemd_obsoletes_total = len(obsoletes_all)
             modulemd_obsoletes_pb.total = modulemd_obsoletes_total
             modulemd_obsoletes_pb.done = modulemd_obsoletes_total
 
         obsolete_content_dcs = []
-        for obsolete in modulemd_obsoletes:
+        for obsolete in obsoletes_all:
             obsolete_content = ModulemdObsolete(**obsolete)
             obsolete_content_dcs.append(DeclarativeContent(content=obsolete_content))
 
@@ -1162,8 +1150,9 @@ class RpmFirstStage(Stage):
         total_packages = 0
         skipped_packages = 0
 
+        # Module artifacts are divided by a type, here we need packages
         for modulemd in modulemd_list:
-            modular_artifact_nevras |= set(modulemd[PULP_MODULE_ATTR.ARTIFACTS])
+            modular_artifact_nevras |= set(modulemd[PULP_MODULE_ATTR.ARTIFACTS].get("rpms"))
 
         package_skip_nevras = set()
         # The repository can contain packages of arbitrary arches, and they are not comparable.

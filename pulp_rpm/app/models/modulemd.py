@@ -109,8 +109,8 @@ class ModulemdObsolete(Content):
     The "Modulemd Obsoletes" content type.
 
     Fields:
-        modified (models.DateTimeField):
-            A DateTime field representing last modification of modulemd obsolete.
+        modified (models.TextField):
+            A TextField field representing last modification of modulemd obsolete.
         reset (Bool):
             A boolean option to reset all previously specified obsoletes
         module (Text):
@@ -119,8 +119,8 @@ class ModulemdObsolete(Content):
             A string representing a Stream of a module that is EOLed
         context (Text):
             A string representing a Context of a module that is EOLed
-        eol_date (models.DateTimeField):
-            A DateTime field representing end of life date.
+        eol_date (models.TextField):
+            A TextField field representing end of life date.
         message (Text):
             A string describing the change, reason, etc.
         obsolete_by (JSON):
@@ -132,7 +132,7 @@ class ModulemdObsolete(Content):
     TYPE = "modulemd_obsolete"
 
     # Mandatory fields
-    modified = models.DateTimeField()
+    modified = models.TextField()
     module_name = models.TextField()
     module_stream = models.TextField()
     message = models.TextField()
@@ -140,7 +140,7 @@ class ModulemdObsolete(Content):
     # Optional fields
     override_previous = models.BooleanField(null=True)
     module_context = models.TextField(null=True)
-    eol_date = models.DateTimeField(null=True)
+    eol_date = models.TextField(null=True)
     obsoleted_by_module_name = models.TextField(null=True)
     obsoleted_by_module_stream = models.TextField(null=True)
 
