@@ -975,6 +975,27 @@ class BasicSyncTestCase(PulpTestCase):
         self.assertEqual(present_package_count, 0)
         self.assertEqual(present_advisory_count, SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT)
 
+    def test_sync_clean_srpm(self):
+        """Sync everything first, then without SRPMs."""
+        body = gen_rpm_remote(SRPM_UNSIGNED_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+        repo = self.repo_api.create(gen_repo())
+        self.sync(repository=repo, remote=remote, skip_types=[])
+
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        repo = self.repo_api.read(repo.pulp_href)
+        present_package_count = len(get_content(repo.to_dict())[PULP_TYPE_PACKAGE])
+        self.assertEqual(present_package_count, RPM_PACKAGE_COUNT + SRPM_UNSIGNED_FIXTURE_PACKAGE_COUNT)
+
+        # Sync again
+        self.sync(repository=repo, remote=remote, skip_types=["srpm"])
+
+        repo = self.repo_api.read(repo.pulp_href)
+        present_package_count = len(get_content(repo.to_dict())[PULP_TYPE_PACKAGE])
+        self.assertEqual(present_package_count, 0)
+
     def test_sync_skip_srpm_on_mirror(self):
         """In mirror_content_only mode, skip_types is allowed."""
         body = gen_rpm_remote(SRPM_UNSIGNED_FIXTURE_URL)
