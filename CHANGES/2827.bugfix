@@ -1,0 +1,1 @@
+Fix migration of modular snippets from filesystem to DB.
