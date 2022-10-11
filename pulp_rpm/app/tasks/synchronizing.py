@@ -359,7 +359,10 @@ def should_optimize_sync(sync_details, last_sync_details):
     same_repomd_checksum = (
         last_sync_details.get("repomd_checksum") == sync_details["repomd_checksum"]
     )
-    if not old_revision or not (same_revision and same_repomd_checksum):
+    same_treeinfo_checksum = (
+        last_sync_details.get("treeinfo_checksum") == sync_details["treeinfo_checksum"]
+    )
+    if not old_revision or not (same_revision and same_repomd_checksum and same_treeinfo_checksum):
         return False
 
     return True
@@ -454,6 +457,8 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
             repomd_path = result.path
             repomd = cr.Repomd(repomd_path)
             repomd_checksum = get_sha256(repomd_path)
+            treinfo_file_data = get_treeinfo_data(remote, url)
+            treeinfo_checksum = treinfo_file_data.get("hash", "")
 
         return {
             "url": remote.url,  # use the original remote url so that mirrorlists are optimizable
@@ -462,6 +467,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
             "most_recent_version": version.number,
             "revision": repomd.revision,
             "repomd_checksum": repomd_checksum,
+            "treeinfo_checksum": treeinfo_checksum,
             "retain_package_versions": repository.retain_package_versions,
         }
 
