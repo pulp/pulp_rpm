@@ -13,6 +13,34 @@ Changelog
 
 .. towncrier release notes start
 
+3.18.7 (2022-10-12)
+===================
+
+
+No significant changes.
+
+
+----
+
+
+3.18.6 (2022-10-12)
+===================
+
+
+Bugfixes
+--------
+
+- Deduplicate file entries
+  `#2719 <https://github.com/pulp/pulp_rpm/issues/2719>`__
+- Fix recreation of modular snippet when missing.
+  `#2735 <https://github.com/pulp/pulp_rpm/issues/2735>`__
+- Fix migration of modular snippets from filesystem to DB.
+  `#2827 <https://github.com/pulp/pulp_rpm/issues/2827>`__
+
+
+----
+
+
 3.18.5 (2022-09-30)
 ===================
 
