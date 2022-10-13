@@ -615,7 +615,7 @@ CENTOS9_STREAM_BASEOS_URL = "http://mirror.stream.centos.org/9-stream/BaseOS/x86
 CENTOS9_STREAM_APPSTREAM_URL = "http://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/"
 EPEL7_URL = "https://dl.fedoraproject.org/pub/epel/7/x86_64/"
 EPEL8_MIRRORLIST_URL = "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-8&arch=x86_64"
-EPEL8_PLAYGROUND_KICKSTART_URL = "http://mirrors.sonic.net/epel/playground/8/Everything/x86_64/os/"
+F36_KICKSTART_URL = "https://dl.fedoraproject.org/pub/fedora/linux/releases/36/Server/x86_64/os/"
 RHEL6_KICKSTART_CDN_URL = "https://cdn.redhat.com/content/dist/rhel/server/6/6.10/x86_64/kickstart/"
 RHEL8_BASEOS_CDN_URL = "https://cdn.redhat.com/content/dist/rhel8/8/x86_64/baseos/os/"
 RHEL8_APPSTREAM_CDN_URL = "https://cdn.redhat.com/content/dist/rhel8/8/x86_64/appstream/os/"
