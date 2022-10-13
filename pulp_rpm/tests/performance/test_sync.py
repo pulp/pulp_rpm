@@ -25,7 +25,7 @@ from pulp_rpm.tests.functional.constants import (
     CENTOS8_STREAM_APPSTREAM_URL,
     CENTOS8_STREAM_BASEOS_URL,
     EPEL8_MIRRORLIST_URL,
-    EPEL8_PLAYGROUND_KICKSTART_URL,
+    F36_KICKSTART_URL,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_client, skip_if
 from pulpcore.client.pulp_rpm import (
@@ -167,9 +167,9 @@ class SyncTestCase(unittest.TestCase):
         # Don't fail a test due to outside data concerns...
         self.rpm_sync(url=EPEL8_MIRRORLIST_URL, check_dist_tree=False, resync=False)
 
-    def test_epel8_playground_kickstart_on_demand(self):
+    def test_f36_kickstart_on_demand(self):
         """Kickstart Sync Epel 8 playground."""
-        self.rpm_sync(url=EPEL8_PLAYGROUND_KICKSTART_URL)
+        self.rpm_sync(url=F36_KICKSTART_URL)
 
 
 class CDNTestCase(unittest.TestCase):
