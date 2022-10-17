@@ -14,7 +14,7 @@ from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files import File
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.db.models import Q
 
 
@@ -555,14 +555,30 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
                 namespace=directory,
             )
 
-            dv = RpmDeclarativeVersion(first_stage=stage, repository=repo, mirror=mirror)
-            repo_version = dv.create() or repo.latest_version()
+            # Concurrent syncs colliding while attempting to create the same version in the same
+            # repo is Bad. It can happen if multiple repositories have the same sub-repositories
+            # (e.g., multiple repos syncing from the same remote kickstart-repo with sub-repos,
+            # such as RHEL6-kickstart). The collision is due to the kickstart-sub-repos naming
+            # scheme of `name = f"{repodata}-{treeinfo['hash']}"` from 100 lines or so up.
+            # This is not unique across repos, if multiple repos are syncing identical .treeinfo
+            # files.
+            # When a collision happens, instead of a fatal error, assume "whoever got there first
+            # won the new-version derby" and that the is nothing for 'this' thread to do here.
+            try:
+                dv = RpmDeclarativeVersion(first_stage=stage, repository=repo, mirror=mirror)
+                repo_version = dv.create() or repo.latest_version()
 
-            repo_config["sync_details"]["most_recent_version"] = repo_version.number
-            repo.last_sync_details = repo_config["sync_details"]
-            repo.save()
+                repo_config["sync_details"]["most_recent_version"] = repo_version.number
+                repo.last_sync_details = repo_config["sync_details"]
+                repo.save()
 
-            repo_sync_results[directory] = repo_version
+                repo_sync_results[directory] = repo_version
+            except IntegrityError:
+                log.info(
+                    _("Collision creating a new version for repository {} - skipping.").format(
+                        repo.name
+                    )
+                )
 
     if skipped_syncs:
         with ProgressReport(
