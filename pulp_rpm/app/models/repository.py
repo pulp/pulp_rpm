@@ -472,7 +472,7 @@ class RpmDistribution(Distribution, AutoAddObjPermsMixin):
             if signing_service:
                 gpgkey_path = urlpath_sanitize(
                     base_url,
-                    "/repodata/repomd.xml.key",
+                    "repodata/repomd.xml.key",
                 )
                 val += f"gpgkey={gpgkey_path}\n"
 
