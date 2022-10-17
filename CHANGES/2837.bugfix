@@ -1,0 +1,1 @@
+Fix ``gpgkey_path`` double slash ('//') after base_url.
