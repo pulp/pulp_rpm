@@ -13,6 +13,26 @@ Changelog
 
 .. towncrier release notes start
 
+3.17.14 (2022-10-19)
+====================
+
+
+Bugfixes
+--------
+
+- Deduplicate file entries
+  `#2719 <https://github.com/pulp/pulp_rpm/issues/2719>`__
+
+
+Misc
+----
+
+- `#2791 <https://github.com/pulp/pulp_rpm/issues/2791>`__, `#2832 <https://github.com/pulp/pulp_rpm/issues/2832>`__
+
+
+----
+
+
 3.17.13 (2022-09-27)
 ====================
 
