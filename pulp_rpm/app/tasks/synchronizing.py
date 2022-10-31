@@ -484,24 +484,16 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
 
     with tempfile.TemporaryDirectory(dir="."):
         remote_url = fetch_remote_url(remote, url)
-        sync_details = get_sync_details(remote, remote_url, sync_policy, repository)
 
-        repo_sync_config[PRIMARY_REPO] = {
-            "should_skip": should_optimize_sync(sync_details, repository.last_sync_details),
-            "sync_details": sync_details,
-            "url": remote_url,
-            "repo": repository,
-        }
-
+        # Find and set up to deal with any subtrees
         treeinfo = get_treeinfo_data(remote, remote_url)
-
         if treeinfo:
             treeinfo["repositories"] = {}
             for repodata in set(treeinfo["download"]["repodatas"]):
                 if repodata == DIST_TREE_MAIN_REPO_PATH:
                     treeinfo["repositories"].update({repodata: None})
                     continue
-                name = f"{repodata}-{treeinfo['hash']}"
+                name = f"{repodata}-{treeinfo['hash']}-{repository.pulp_id}"
                 sub_repo, created = RpmRepository.objects.get_or_create(name=name, user_hidden=True)
                 if created:
                     sub_repo.save()
@@ -527,6 +519,15 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
                     "repo": sub_repo,
                 }
 
+        # Set up to deal with the primary repository
+        sync_details = get_sync_details(remote, remote_url, sync_policy, repository)
+        repo_sync_config[PRIMARY_REPO] = {
+            "should_skip": should_optimize_sync(sync_details, repository.last_sync_details),
+            "sync_details": sync_details,
+            "url": remote_url,
+            "repo": repository,
+        }
+
         # If all repos are exactly the same, we should skip all further processing, even in
         # metadata-mirror mode
         if optimize and all([config["should_skip"] for config in repo_sync_config.values()]):
@@ -541,6 +542,8 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
         repo_sync_results = {}
 
         # If some repos need to be synced and others do not, we go through them all
+        # items() returns in insertion-order - make sure PRIMARY is the LAST thing we process
+        # here, or autopublish will fail to find any subrepo-content.
         for directory, repo_config in repo_sync_config.items():
             repo = repo_config["repo"]
             # If metadata_mirroring is enabled we cannot skip any syncs, because the generated
@@ -878,7 +881,8 @@ class RpmFirstStage(Stage):
                 )
                 d_artifacts.append(da)
 
-            self.treeinfo["distribution_tree"]["digest"] = self.treeinfo["hash"]
+            tree_digest = f'{self.treeinfo["hash"]}-{self.repository.pulp_id}'
+            self.treeinfo["distribution_tree"]["digest"] = tree_digest
             distribution_tree = DistributionTree(**self.treeinfo["distribution_tree"])
             dc = DeclarativeContent(content=distribution_tree, d_artifacts=d_artifacts)
             dc.extra_data = self.treeinfo
