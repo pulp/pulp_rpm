@@ -1,0 +1,3 @@
+Fixed concurrent-overlapping-sync of subrepos by making them repository-unique.
+
+This change is transparent to end-users.
