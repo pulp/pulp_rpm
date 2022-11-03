@@ -625,6 +625,7 @@ RHEL9_APPSTREAM_CDN_URL = "https://cdn.redhat.com/content/dist/rhel9/9/x86_64/ap
 # TODO: static test fixtures for these
 REPO_WITH_XML_BASE_URL = "https://harbottle.gitlab.io/harbottle-main/8/x86_64/"
 REPO_WITH_EXTERNAL_LOCATION_HREF_URL = (
+    # This URL no longer works for this purpose
     "https://packages.rundeck.com/pagerduty/rundeck/rpm_any/rpm_any/x86_64/"
 )
 
