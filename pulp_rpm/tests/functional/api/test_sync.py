@@ -1171,6 +1171,7 @@ class InvalidSyncConfigTestCase(PulpTestCase):
             ctx.exception.task.error["description"],
         )
 
+    @unittest.skip("Repo URL no longer works")
     def test_complete_mirror_with_external_location_href_fails(self):
         """
         Test that syncing a repository that contains an external location_href fails in mirror mode.
