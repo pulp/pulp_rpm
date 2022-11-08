@@ -13,6 +13,26 @@ Changelog
 
 .. towncrier release notes start
 
+3.18.8 (2022-11-07)
+===================
+
+
+Bugfixes
+--------
+
+- Fix migrations to work on any storage backend.
+  `#2843 <https://github.com/pulp/pulp_rpm/issues/2843>`__
+
+
+Misc
+----
+
+- `#2791 <https://github.com/pulp/pulp_rpm/issues/2791>`__, `#2832 <https://github.com/pulp/pulp_rpm/issues/2832>`__
+
+
+----
+
+
 3.18.7 (2022-10-12)
 ===================
 
