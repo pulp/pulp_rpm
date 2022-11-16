@@ -332,7 +332,9 @@ class Package(Content):
             PULP_PACKAGE_ATTRS.CONFLICTS: getattr(package, CR_PACKAGE_ATTRS.CONFLICTS, []),
             PULP_PACKAGE_ATTRS.DESCRIPTION: getattr(package, CR_PACKAGE_ATTRS.DESCRIPTION) or "",
             PULP_PACKAGE_ATTRS.ENHANCES: getattr(package, CR_PACKAGE_ATTRS.ENHANCES, []),
-            PULP_PACKAGE_ATTRS.EPOCH: getattr(package, CR_PACKAGE_ATTRS.EPOCH) or "",
+            # it is possible but rare for packages to have no epoch metadata at all,
+            # and RpmVersionField wants a numeric value
+            PULP_PACKAGE_ATTRS.EPOCH: getattr(package, CR_PACKAGE_ATTRS.EPOCH) or "0",
             PULP_PACKAGE_ATTRS.FILES: files,
             PULP_PACKAGE_ATTRS.LOCATION_BASE: "",  # TODO, delete this entirely
             PULP_PACKAGE_ATTRS.LOCATION_HREF: getattr(package, CR_PACKAGE_ATTRS.LOCATION_HREF),
