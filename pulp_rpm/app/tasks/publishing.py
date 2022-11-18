@@ -719,6 +719,9 @@ def generate_repo_metadata(
         with open(pubkey_name, "wb+") as f:
             f.write(signing_service.public_key.encode("utf-8"))
             f.flush()
+            # important! as the file has already been opened and used, it will be treated as a
+            # cursor and when calculating the checksum it will calculate the checksum of nothing.
+            f.seek(0)
             PublishedMetadata.create_from_file(
                 relative_path=os.path.join(repodata_path, pubkey_name),
                 publication=publication,
