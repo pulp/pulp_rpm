@@ -2,6 +2,7 @@ import aiohttp_xmlrpc
 import asyncio
 import asynctest
 import os
+import tempfile
 
 from pulp_rpm.app.downloaders import UlnDownloader, UlnCredentialsError
 
@@ -96,14 +97,15 @@ class TestUlnDownloader(asynctest.TestCase):
         mock_response.content.read.side_effect = self.create_Future
         mock_response.release.side_effect = self.create_Future
 
-        self.my_loop.run_until_complete(
-            self.run_downloader(
-                "uln://channelLabel/repodata/repomd.xml",
-                mock_session,
-                "penguins",
-                "iamabirdbutcannotfly",
+        with tempfile.TemporaryDirectory(dir="."):
+            self.my_loop.run_until_complete(
+                self.run_downloader(
+                    "uln://channelLabel/repodata/repomd.xml",
+                    mock_session,
+                    "penguins",
+                    "iamabirdbutcannotfly",
+                )
             )
-        )
 
         # make test assertions
         # assert that the session key was imported correctly
@@ -143,23 +145,24 @@ class TestUlnDownloader(asynctest.TestCase):
             mock_response.release.side_effect = self.create_Future
 
             # assert error for wrong credentials
-            with self.assertRaises(UlnCredentialsError):
-                self.my_loop.run_until_complete(
-                    self.run_downloader(
-                        "uln://channelLabel/repodata/repomd.xml", mock_session, "penguins", None
+            with tempfile.TemporaryDirectory(dir="."):
+                with self.assertRaises(UlnCredentialsError):
+                    self.my_loop.run_until_complete(
+                        self.run_downloader(
+                            "uln://channelLabel/repodata/repomd.xml", mock_session, "penguins", None
+                        )
                     )
-                )
 
-            # failed authentification error
-            with self.assertRaises(UlnCredentialsError):
-                self.my_loop.run_until_complete(
-                    self.run_downloader(
-                        "uln://channelLabel/repodata/repomd.xml",
-                        mock_session,
-                        "penguins",
-                        "iamabirdbutcannotfly",
+                # failed authentification error
+                with self.assertRaises(UlnCredentialsError):
+                    self.my_loop.run_until_complete(
+                        self.run_downloader(
+                            "uln://channelLabel/repodata/repomd.xml",
+                            mock_session,
+                            "penguins",
+                            "iamabirdbutcannotfly",
+                        )
                     )
-                )
 
     def tearDown(self):
         """
