@@ -109,36 +109,46 @@ def resolve_advisories(version, previous_version):
             elif advisory_id in previous_advisory_ids:
                 advisory_id_conflicts["added_vs_previous"].append(advisory_id)
 
-    if advisory_id_conflicts["in_added"]:
-        raise AdvisoryConflict(
-            _(
-                "It is not possible to add more than one advisory with the same id to a "
-                "repository version. Affected advisories: {}.".format(
-                    ",".join(advisory_id_conflicts["in_added"])
-                )
-            )
-        )
+    content_pks_to_add = set()
+    content_pks_to_remove = set()
+    content_pks_to_exclude = set()  # exclude from the set of content which is being added
 
-    if advisory_id_conflicts["added_vs_previous"]:
-        for advisory_id in advisory_id_conflicts["added_vs_previous"]:
-            previous_advisory_qs = previous_advisories.filter(id=advisory_id)
-            # there can only be one added advisory at this point otherwise the AdvisoryConflict
-            # would have been raised by now
-            added_advisory = added_advisories_by_id[advisory_id][0]
-            added_advisory.touch()
-            if previous_advisory_qs.count() > 1:
-                # due to an old bug there could be N advisories with the same id in a repo,
-                # this is wrong and there may not be a good way to resolve those, so let's take a
-                # new one.
-                content_pks_to_add.update([added_advisory.pk])
-                content_pks_to_remove.update([adv.pk for adv in previous_advisory_qs])
-            else:
-                to_add, to_remove, to_exclude = resolve_advisory_conflict(
-                    previous_advisory_qs.first(), added_advisory
-                )
-                content_pks_to_add.update(to_add)
-                content_pks_to_remove.update(to_remove)
-                content_pks_to_exclude.update(to_exclude)
+    # Incoming has duplicates - merge till There Is Only One
+    for adv_id in advisory_id_conflicts["in_added"]:
+        conflict_advisories = current_advisories_by_id[adv_id]
+        new_advisory = conflict_advisories[0]
+        tmp_advisories = []
+        for adv in conflict_advisories[1:]:
+            pk_to_add, pk_to_remove, pk_to_exclude = resolve_advisory_conflict(new_advisory, adv)
+            new_advisory = UpdateRecord.objects.filter(pk=pk_to_add[0]).get()
+            tmp_advisories.append(new_advisory)
+            content_pks_to_exclude.update(pk_to_exclude)
+            content_pks_to_remove.update(pk_to_remove)
+        added_advisories_by_id[adv_id] = [new_advisory]
+        content_pks_to_add.add(new_advisory.pk)
+        for tmp_adv in tmp_advisories[:-1]:  # Keep only the last added advisory
+            tmp_adv.delete()
+
+    # Incoming has a duplicate advisory-id to previous - resolve
+    for advisory_id in advisory_id_conflicts["added_vs_previous"]:
+        previous_advisory_qs = previous_advisories.filter(id=advisory_id)
+        # there can only be one added advisory at this point otherwise the AdvisoryConflict
+        # would have been raised by now
+        added_advisory = added_advisories_by_id[advisory_id][0]
+        added_advisory.touch()
+        if previous_advisory_qs.count() > 1:
+            # due to an old bug there could be N advisories with the same id in a repo,
+            # this is wrong and there may not be a good way to resolve those, so let's take the
+            # new one.
+            content_pks_to_add.update([added_advisory.pk])
+            content_pks_to_remove.update([adv.pk for adv in previous_advisory_qs])
+        else:
+            to_add, to_remove, to_exclude = resolve_advisory_conflict(
+                previous_advisory_qs.first(), added_advisory
+            )
+            content_pks_to_add.update(to_add)
+            content_pks_to_remove.update(to_remove)
+            content_pks_to_exclude.update(to_exclude)
 
     if content_pks_to_add:
         version.add_content(Content.objects.filter(pk__in=content_pks_to_add))
