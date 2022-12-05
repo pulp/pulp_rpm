@@ -1,0 +1,1 @@
+Taught RPM how to handle duplicate-advisory-ids at repository-version-create time.

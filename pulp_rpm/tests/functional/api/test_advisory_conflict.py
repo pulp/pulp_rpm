@@ -13,7 +13,6 @@ from pulp_rpm.tests.functional.utils import (
 from pulp_smash.pulp3.bindings import (
     delete_orphans,
     monitor_task,
-    PulpTaskError,
     PulpTestCase,
 )
 from pulp_smash.pulp3.utils import gen_repo
@@ -76,7 +75,7 @@ class AdvisoryConflictTestCase(PulpTestCase):
         """
         Test when two different advisories with the same id are added to a repo.
 
-        This is not allowed.
+        Should merge the two advisories into a single one.
         """
         repo = self.repo_api.create(gen_repo())
         self.addCleanup(self.repo_api.delete, repo.pulp_href)
@@ -88,12 +87,11 @@ class AdvisoryConflictTestCase(PulpTestCase):
             ]
         }
         response = self.repo_api.modify(repo.pulp_href, data)
-        with self.assertRaises(PulpTaskError) as exc:
-            monitor_task(response.task)
+        monitor_task(response.task)
+        a_repo = self.repo_api.read(repo.pulp_href)
 
-        task_result = exc.exception.task.to_dict()
-        error_msg = (
-            "It is not possible to add more than one advisory with the same id to a repository "
-            "version. Affected advisories: {}.".format(RPM_ADVISORY_TEST_ID)
-        )
-        self.assertIn(error_msg, task_result["error"]["description"])
+        duplicated_advisory_list = self.advisory_api.list(
+            repository_version=a_repo.latest_version_href,
+            id=RPM_ADVISORY_TEST_ID,
+        ).results
+        self.assertEqual(1, len(duplicated_advisory_list))
