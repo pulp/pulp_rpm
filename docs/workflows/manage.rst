@@ -19,7 +19,8 @@ It carries information about the updates: which packages need to be updated to s
 
 There can be only one advisory with the same id in a repository version.
 
-If advisory with the same id already exists in a repository version at the time when another one is being added, a conflict resolution mechanism is applied. 
+If advisory with the same id already exists in a repository version at the time when another one is being added,
+or if a remote repository holds duplicate advisory-ids at sync time, a conflict resolution mechanism is applied.
 As a result, a new combined advisory might be created and added to a repository instead of two conflicting ones.
 It's also possible that one of advisories will be kept as is, in case it's a newer version of the other.
 For more information of the conflict resolution logic, see `this detailed explanation <https://github.com/pulp/pulp_rpm/blob/1d507db453d4e6a91518beb4981a434a29cc3c01/pulp_rpm/app/advisory.py#L81-L96>`__.
