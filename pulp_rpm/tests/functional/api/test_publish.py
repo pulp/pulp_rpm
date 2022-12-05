@@ -1,5 +1,6 @@
 """Tests that publish rpm plugin repositories."""
 import collections
+from lxml import etree
 import os
 from random import choice
 from xml.etree import ElementTree
@@ -922,30 +923,33 @@ class PublishDirectoryLayoutTestCase(PulpTestCase):
     def test_distribute_with_modules(self):
         """Ensure no more files or folders are present when distribute repository with modules."""
         distribution = self.do_test(RPM_MODULAR_FIXTURE_URL)
-        repository = ElementTree.fromstring(http_get(distribution))
+        parser = etree.XMLParser(recover=True)
+        repository = etree.fromstring(http_get(distribution), parser=parser)
         # Get links from repository HTML
         # Each link is an item (file or directory) in repository root
         repository_root_items = []
         for elem in repository.iter():
-            if elem.tag == "a":
+            if elem.tag == "a" and not elem.text.startswith(".."):  # skip parent-dir if present
                 repository_root_items.append(elem.attrib["href"])
 
         # Check if 'Packages' and 'repodata' are present
         # Trailing '/' is present for easier check
         self.assertIn("Packages/", repository_root_items)
         self.assertIn("repodata/", repository_root_items)
-        # Only three items should be present, two mentioned above and 'config.repo'
+        self.assertIn("config.repo", repository_root_items)
+        # Only these three items should be present
         self.assertEqual(len(repository_root_items), 3)
 
     def test_distribute_with_treeinfo(self):
         """Ensure no more files or folders are present when distribute repository with treeinfo."""
         distribution = self.do_test(RPM_KICKSTART_FIXTURE_URL)
-        repository = ElementTree.fromstring(http_get(distribution))
+        parser = etree.XMLParser(recover=True)
+        repository = etree.fromstring(http_get(distribution), parser=parser)
         # Get links from repository HTML
         # Each link is an item (file or directory) in repository root
         repository_root_items = []
         for elem in repository.iter():
-            if elem.tag == "a":
+            if elem.tag == "a" and not elem.text.startswith(".."):  # skip parent-dir if present
                 repository_root_items.append(elem.attrib["href"])
         # Check if all treeinfo related directories are present
         # Trailing '/' is present for easier check
@@ -953,6 +957,7 @@ class PublishDirectoryLayoutTestCase(PulpTestCase):
             self.assertIn(directory, repository_root_items)
 
         self.assertIn("repodata/", repository_root_items)
+        self.assertIn("config.repo", repository_root_items)
         # assert how many items are present altogether
         # here is '+2' for 'repodata' and 'config.repo'
         self.assertEqual(len(repository_root_items), len(RPM_KICKSTART_REPOSITORY_ROOT_CONTENT) + 2)
