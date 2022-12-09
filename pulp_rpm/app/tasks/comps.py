@@ -8,6 +8,8 @@ from django.db import transaction
 
 from pulpcore.plugin.models import PulpTemporaryFile, CreatedResource
 from pulpcore.plugin.models import Content
+from pulpcore.plugin.util import get_domain
+
 from pulp_rpm.app.comps import strdict_to_dict, dict_digest
 
 from pulp_rpm.app.models import (
@@ -27,6 +29,7 @@ def parse_comps_components(comps_file):
     created_objects = []
     all_objects = []
     comps = libcomps.Comps()
+    curr_domain = get_domain()
     # Read the file and pass the string along because comps.fromxml_f() will only take a
     # path-string that doesn't work on things like S3 storage
     with comps_file.file.open("rb") as comps_uploaded:
@@ -42,7 +45,9 @@ def parse_comps_components(comps_file):
     if comps.langpacks:
         langpack_dict = PackageLangpacks.libcomps_to_dict(comps.langpacks)
         langpack, created = PackageLangpacks.objects.get_or_create(
-            matches=strdict_to_dict(comps.langpacks), digest=dict_digest(langpack_dict)
+            matches=strdict_to_dict(comps.langpacks),
+            digest=dict_digest(langpack_dict),
+            _pulp_domain=curr_domain,
         )
         if created:
             created_objects.append(langpack)
@@ -52,6 +57,7 @@ def parse_comps_components(comps_file):
         for category in comps.categories:
             category_dict = PackageCategory.libcomps_to_dict(category)
             category_dict["digest"] = dict_digest(category_dict)
+            category_dict["_pulp_domain"] = curr_domain
             packagecategory, created = PackageCategory.objects.get_or_create(**category_dict)
             if created:
                 created_objects.append(packagecategory)
@@ -61,6 +67,7 @@ def parse_comps_components(comps_file):
         for environment in comps.environments:
             environment_dict = PackageEnvironment.libcomps_to_dict(environment)
             environment_dict["digest"] = dict_digest(environment_dict)
+            environment_dict["_pulp_domain"] = curr_domain
             packageenvironment, created = PackageEnvironment.objects.get_or_create(
                 **environment_dict
             )
@@ -72,6 +79,7 @@ def parse_comps_components(comps_file):
         for group in comps.groups:
             group_dict = PackageGroup.libcomps_to_dict(group)
             group_dict["digest"] = dict_digest(group_dict)
+            group_dict["_pulp_domain"] = curr_domain
             packagegroup, created = PackageGroup.objects.get_or_create(**group_dict)
             if created:
                 created_objects.append(packagegroup)

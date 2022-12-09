@@ -5,6 +5,7 @@ import libcomps
 from django.db import models
 
 from pulpcore.plugin.models import Content
+from pulpcore.plugin.util import get_domain_pk
 
 from pulp_rpm.app.constants import (
     LIBCOMPS_CATEGORY_ATTRS,
@@ -73,19 +74,15 @@ class PackageGroup(Content):
     desc_by_lang = models.JSONField(default=dict)
     name_by_lang = models.JSONField(default=dict)
 
-    digest = models.TextField(unique=True)
+    digest = models.TextField(db_index=True)
 
     repo_key_fields = ("id",)
 
+    _pulp_domain = models.ForeignKey("core.Domain", default=get_domain_pk, on_delete=models.PROTECT)
+
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-
-    @classmethod
-    def natural_key_fields(cls):
-        """
-        Digest is used as a natural key for PackageGroups.
-        """
-        return ("digest",)
+        unique_together = ("_pulp_domain", "digest")
 
     @classmethod
     def pkglist_to_list(cls, value):
@@ -230,19 +227,15 @@ class PackageCategory(Content):
     desc_by_lang = models.JSONField(default=dict)
     name_by_lang = models.JSONField(default=dict)
 
-    digest = models.TextField(unique=True)
+    digest = models.TextField(db_index=True)
 
     repo_key_fields = ("id",)
 
+    _pulp_domain = models.ForeignKey("core.Domain", default=get_domain_pk, on_delete=models.PROTECT)
+
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-
-    @classmethod
-    def natural_key_fields(cls):
-        """
-        Digest is used as a natural key for PackageCategory.
-        """
-        return ("digest",)
+        unique_together = ("_pulp_domain", "digest")
 
     @classmethod
     def grplist_to_lst(cls, value):
@@ -357,19 +350,15 @@ class PackageEnvironment(Content):
     desc_by_lang = models.JSONField(default=dict)
     name_by_lang = models.JSONField(default=dict)
 
-    digest = models.TextField(unique=True)
+    digest = models.TextField(db_index=True)
 
     repo_key_fields = ("id",)
 
+    _pulp_domain = models.ForeignKey("core.Domain", default=get_domain_pk, on_delete=models.PROTECT)
+
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-
-    @classmethod
-    def natural_key_fields(cls):
-        """
-        Digest is used as a natural key for PackageEnvironment.
-        """
-        return ("digest",)
+        unique_together = ("_pulp_domain", "digest")
 
     @classmethod
     def grplist_to_lst(cls, value):
@@ -463,17 +452,13 @@ class PackageLangpacks(Content):
 
     matches = models.JSONField(default=dict)
 
-    digest = models.TextField(unique=True)
+    digest = models.TextField(db_index=True)
+
+    _pulp_domain = models.ForeignKey("core.Domain", default=get_domain_pk, on_delete=models.PROTECT)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-
-    @classmethod
-    def natural_key_fields(cls):
-        """
-        Digest is used as a natural key for PackageLangpacks.
-        """
-        return ("digest",)
+        unique_together = ("_pulp_domain", "digest")
 
     @classmethod
     def libcomps_to_dict(cls, langpacks):

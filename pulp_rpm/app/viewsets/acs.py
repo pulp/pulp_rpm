@@ -49,15 +49,15 @@ class RpmAlternateContentSourceViewSet(AlternateContentSourceViewSet, RolesMixin
                 "action": ["retrieve"],
                 "principal": "authenticated",
                 "effect": "allow",
-                "condition": "has_model_or_obj_perms:rpm.view_rpmalternatecontentsource",
+                "condition": "has_model_or_domain_or_obj_perms:rpm.view_rpmalternatecontentsource",
             },
             {
                 "action": ["create"],
                 "principal": "authenticated",
                 "effect": "allow",
                 "condition": [
-                    "has_remote_param_model_or_obj_perms:rpm.view_rpmremote",
-                    "has_model_perms:rpm.add_rpmalternatecontentsource",
+                    "has_remote_param_model_or_domain_or_obj_perms:rpm.view_rpmremote",
+                    "has_model_or_domain_perms:rpm.add_rpmalternatecontentsource",
                 ],
             },
             {
@@ -65,8 +65,8 @@ class RpmAlternateContentSourceViewSet(AlternateContentSourceViewSet, RolesMixin
                 "principal": "authenticated",
                 "effect": "allow",
                 "condition": [
-                    "has_model_or_obj_perms:rpm.view_rpmalternatecontentsource",
-                    "has_model_perms:rpm.refresh_rpmalternatecontentsource",
+                    "has_model_or_domain_or_obj_perms:rpm.view_rpmalternatecontentsource",
+                    "has_model_or_domain_perms:rpm.refresh_rpmalternatecontentsource",
                 ],
             },
             {
@@ -74,9 +74,9 @@ class RpmAlternateContentSourceViewSet(AlternateContentSourceViewSet, RolesMixin
                 "principal": "authenticated",
                 "effect": "allow",
                 "condition": [
-                    "has_model_or_obj_perms:rpm.change_rpmalternatecontentsource",
-                    "has_model_or_obj_perms:rpm.view_rpmalternatecontentsource",
-                    "has_remote_param_model_or_obj_perms:rpm.view_rpmremote",
+                    "has_model_or_domain_or_obj_perms:rpm.change_rpmalternatecontentsource",
+                    "has_model_or_domain_or_obj_perms:rpm.view_rpmalternatecontentsource",
+                    "has_remote_param_model_or_domain_or_obj_perms:rpm.view_rpmremote",
                 ],
             },
             {
@@ -84,15 +84,16 @@ class RpmAlternateContentSourceViewSet(AlternateContentSourceViewSet, RolesMixin
                 "principal": "authenticated",
                 "effect": "allow",
                 "condition": [
-                    "has_model_or_obj_perms:rpm.delete_rpmalternatecontentsource",
-                    "has_model_or_obj_perms:rpm.view_rpmalternatecontentsource",
+                    "has_model_or_domain_or_obj_perms:rpm.delete_rpmalternatecontentsource",
+                    "has_model_or_domain_or_obj_perms:rpm.view_rpmalternatecontentsource",
                 ],
             },
             {
                 "action": ["list_roles", "add_role", "remove_role"],
                 "principal": "authenticated",
                 "effect": "allow",
-                "condition": "has_model_or_obj_perms:rpm.manage_roles_rpmalternatecontentsource",
+                "condition": "has_model_or_domain_or_obj_perms:"
+                "rpm.manage_roles_rpmalternatecontentsource",
             },
         ],
         "queryset_scoping": {"function": "scope_queryset"},

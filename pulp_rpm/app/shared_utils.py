@@ -4,7 +4,6 @@ import shutil
 from hashlib import sha256
 
 from django.conf import settings
-from django.core.files.storage import default_storage as storage
 from django.utils.dateparse import parse_datetime
 
 
@@ -44,7 +43,7 @@ def read_crpackage_from_artifact(artifact):
         artifact: inited and validated artifact to save
     """
     filename = f"{artifact.pulp_id}.rpm"
-    artifact_file = storage.open(artifact.file.name)
+    artifact_file = artifact.pulp_domain.get_storage().open(artifact.file.name)
     with tempfile.NamedTemporaryFile("wb", dir=".", suffix=filename) as temp_file:
         shutil.copyfileobj(artifact_file, temp_file)
         temp_file.flush()

@@ -115,7 +115,7 @@ if [ "$TEST" = "azure" ]; then
       - ./azurite:/etc/pulp\
     command: "azurite-blob --blobHost 0.0.0.0 --cert /etc/pulp/azcert.pem --key /etc/pulp/azkey.pem"' vars/main.yaml
   sed -i -e '$a azure_test: true\
-pulp_scenario_settings: null\
+pulp_scenario_settings: {"domain_enabled": true}\
 ' vars/main.yaml
 fi
 

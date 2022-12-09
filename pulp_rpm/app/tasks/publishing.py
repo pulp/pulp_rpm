@@ -10,7 +10,6 @@ import libcomps
 
 from django.conf import settings
 from django.core.files import File
-from django.core.files.storage import default_storage as storage
 from django.db.models import Q
 
 from pulpcore.plugin.models import (
@@ -218,7 +217,8 @@ class PublicationData:
         original_treeinfo_content_artifact = distribution_tree.contentartifact_set.get(
             relative_path__in=[".treeinfo", "treeinfo"]
         )
-        artifact_file = storage.open(original_treeinfo_content_artifact.artifact.file.name)
+        orig_artifact = original_treeinfo_content_artifact.artifact
+        artifact_file = orig_artifact.pulp_domain.get_storage().open(orig_artifact.file.name)
         with tempfile.NamedTemporaryFile("wb", dir=".") as temp_file:
             shutil.copyfileobj(artifact_file, temp_file)
             temp_file.flush()
