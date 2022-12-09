@@ -65,15 +65,17 @@ def split_modulmd_file(file):
     m_open = (
         gzip.open if file.url.endswith(".gz") else lzma.open if file.url.endswith(".xz") else open
     )
-    with m_open(file.path, "r") as modulemd_file:
+    # We have to be explicit here, since gzip/lzma open(...,"r") defaults to **binary** mode.
+    with m_open(file.path, "rt") as modulemd_file:
         module = ""
+
         for line in modulemd_file:
-            line = line.decode("utf-8")
             if line.startswith("---"):
                 if module:  # avoid first empty yield in the beginning of document
                     yield module
                     module = ""
             module += line
+
         yield module
 
 

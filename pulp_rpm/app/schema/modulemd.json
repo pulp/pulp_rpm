@@ -16,7 +16,7 @@
         "module": {"type": "array"},
         "content": {"type": "array"}
       },
-      "required": ["module", "content"]
+      "required": ["module"]
     }
   },
   "required": ["name", "stream", "version", "context", "arch", "summary", "description", "license"],
