@@ -2,6 +2,7 @@ from django.db import transaction
 from django.db.models import Q
 
 from pulpcore.plugin.models import Content, RepositoryVersion
+from pulpcore.plugin.util import get_domain_pk
 
 from pulp_rpm.app.depsolving import Solver
 from pulp_rpm.app.models import (
@@ -52,7 +53,12 @@ def find_children_of_content(content, src_repo_version):
         for nevra in package_nevras:
             (name, epoch, version, release, arch) = nevra
             advisory_package_q |= Q(
-                name=name, epoch=epoch, version=version, release=release, arch=arch
+                name=name,
+                epoch=epoch,
+                version=version,
+                release=release,
+                arch=arch,
+                pulp_domain=get_domain_pk(),
             )
         children.update(packages.filter(advisory_package_q).values_list("pk", flat=True))
 
@@ -61,7 +67,12 @@ def find_children_of_content(content, src_repo_version):
         for nsvca in module_nsvcas:
             (name, stream, version, context, arch) = nsvca
             advisory_module_q |= Q(
-                name=name, stream=stream, version=version, context=context, arch=arch
+                name=name,
+                stream=stream,
+                version=version,
+                context=context,
+                arch=arch,
+                pulp_domain=get_domain_pk(),
             )
         children.update(modules.filter(advisory_module_q).values_list("pk", flat=True))
 
@@ -144,6 +155,8 @@ def copy_content(config, dependency_solving):
             content_filter = Q(pk__in=entry.get("content"))
         else:
             content_filter = Q()
+
+        content_filter &= Q(pulp_domain=get_domain_pk())
 
         return (
             source_repo_version,

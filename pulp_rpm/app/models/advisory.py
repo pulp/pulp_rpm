@@ -8,6 +8,7 @@ from pulpcore.plugin.models import (
     BaseModel,
     Content,
 )
+from pulpcore.plugin.util import get_domain_pk
 
 from pulp_rpm.app.constants import (
     CR_UPDATE_COLLECTION_ATTRS,
@@ -100,14 +101,9 @@ class UpdateRecord(Content):
     # A field that represents the hash digest of the update record. Used to track differences
     # between two UpdateRecord objects without having to examine the associations like
     # UpdateCollection or UpdateCollectionPackage.
-    digest = models.TextField(unique=True)
+    digest = models.TextField(db_index=True)
 
-    @classmethod
-    def natural_key_fields(cls):
-        """
-        Digest is used as a natural key for UpdateRecords.
-        """
-        return ("digest",)
+    _pulp_domain = models.ForeignKey("core.Domain", default=get_domain_pk, on_delete=models.PROTECT)
 
     @classmethod
     def createrepo_to_dict(cls, update):
@@ -228,6 +224,7 @@ class UpdateRecord(Content):
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
+        unique_together = ("_pulp_domain", "digest")
 
 
 class UpdateCollection(BaseModel):

@@ -452,11 +452,23 @@ class RpmDistribution(Distribution, AutoAddObjPermsMixin):
             repository, publication = self.get_repository_and_publication()
             if not publication:
                 return
-            base_url = "{}/".format(
-                urlpath_sanitize(
-                    settings.CONTENT_ORIGIN, settings.CONTENT_PATH_PREFIX, self.base_path
+            if settings.DOMAIN_ENABLED:
+                base_url = "{}/".format(
+                    urlpath_sanitize(
+                        settings.CONTENT_ORIGIN,
+                        settings.CONTENT_PATH_PREFIX,
+                        self.pulp_domain.name,
+                        self.base_path,
+                    )
                 )
-            )
+            else:
+                base_url = "{}/".format(
+                    urlpath_sanitize(
+                        settings.CONTENT_ORIGIN,
+                        settings.CONTENT_PATH_PREFIX,
+                        self.base_path,
+                    )
+                )
             val = textwrap.dedent(
                 f"""\
                 [{self.name}]

@@ -10,6 +10,7 @@ from pulpcore.plugin.serializers import (
     ContentChecksumSerializer,
     SingleArtifactContentUploadSerializer,
 )
+from pulpcore.plugin.util import get_domain_pk
 
 from pulp_rpm.app.models import Package
 from pulp_rpm.app.shared_utils import read_crpackage_from_artifact, format_nvra
@@ -278,8 +279,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
             raise NotAcceptable(detail="RPM file cannot be parsed for metadata")
 
         package = Package(**pkg)
-
-        return Package.objects.filter(package.q()).first()
+        return Package.objects.filter(pkgId=package.pkgId, pulp_domain=get_domain_pk()).first()
 
     class Meta:
         fields = (

@@ -25,6 +25,7 @@ from aiohttp.web_exceptions import HTTPNotFound
 import createrepo_c as cr
 import libcomps
 
+from pulpcore.plugin.util import get_domain
 from pulpcore.plugin.models import (
     Artifact,
     ContentArtifact,
@@ -1347,6 +1348,7 @@ class RpmFirstStage(Stage):
         async with ProgressReport(**progress_data) as advisories_pb:
             for update in updates:
                 update_record = UpdateRecord(**UpdateRecord.createrepo_to_dict(update))
+                update_record.pulp_domain = get_domain()
                 update_record.digest = hash_update_record(update)
                 future_relations = {"collections": defaultdict(list), "references": []}
 
@@ -1355,6 +1357,7 @@ class RpmFirstStage(Stage):
                     if coll_dict["name"] is None:
                         coll_dict["name"] = "collection-autofill-" + uuid.uuid4().hex[:12]
                     coll = UpdateCollection(**coll_dict)
+                    coll.pulp_domain = get_domain()
 
                     for package in collection.packages:
                         pkg_dict = UpdateCollectionPackage.createrepo_to_dict(package)
@@ -1364,6 +1367,7 @@ class RpmFirstStage(Stage):
                 for reference in update.references:
                     reference_dict = UpdateReference.createrepo_to_dict(reference)
                     ref = UpdateReference(**reference_dict)
+                    coll.pulp_domain = get_domain()
                     future_relations["references"].append(ref)
 
                 await advisories_pb.aincrement()

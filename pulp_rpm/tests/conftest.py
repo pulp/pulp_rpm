@@ -63,10 +63,13 @@ def rpm_repository_api(rpm_client):
 def rpm_repository_factory(rpm_repository_api, gen_object_with_cleanup):
     """A factory to generate an RPM Repository with auto-deletion after the test run."""
 
-    def _rpm_repository_factory(**kwargs):
+    def _rpm_repository_factory(pulp_domain=None, **body):
         data = {"name": str(uuid.uuid4())}
-        data.update(kwargs)
-        return gen_object_with_cleanup(rpm_repository_api, data)
+        data.update(body)
+        kwargs = {}
+        if pulp_domain:
+            kwargs["pulp_domain"] = pulp_domain
+        return gen_object_with_cleanup(rpm_repository_api, data, **kwargs)
 
     return _rpm_repository_factory
 
@@ -75,10 +78,15 @@ def rpm_repository_factory(rpm_repository_api, gen_object_with_cleanup):
 def rpm_rpmremote_factory(rpm_rpmremote_api, gen_object_with_cleanup):
     """A factory to generate an RPM Remote with auto-deletion after the test run."""
 
-    def _rpm_rpmremote_factory(*, url=RPM_UNSIGNED_FIXTURE_URL, policy="immediate", **kwargs):
+    def _rpm_rpmremote_factory(
+        *, url=RPM_UNSIGNED_FIXTURE_URL, policy="immediate", pulp_domain=None, **body
+    ):
         data = {"url": url, "policy": policy, "name": str(uuid.uuid4())}
-        data.update(kwargs)
-        return gen_object_with_cleanup(rpm_rpmremote_api, data)
+        data.update(body)
+        kwargs = {}
+        if pulp_domain:
+            kwargs["pulp_domain"] = pulp_domain
+        return gen_object_with_cleanup(rpm_rpmremote_api, data, **kwargs)
 
     return _rpm_rpmremote_factory
 
@@ -87,10 +95,13 @@ def rpm_rpmremote_factory(rpm_rpmremote_api, gen_object_with_cleanup):
 def rpm_distribution_factory(rpm_distribution_api, gen_object_with_cleanup):
     """A factory to generate an RPM Distribution with auto-deletion after the test run."""
 
-    def _rpm_distribution_factory(**kwargs):
+    def _rpm_distribution_factory(pulp_domain=None, **body):
         data = {"base_path": str(uuid.uuid4()), "name": str(uuid.uuid4())}
-        data.update(kwargs)
-        return gen_object_with_cleanup(rpm_distribution_api, data)
+        data.update(body)
+        kwargs = {}
+        if pulp_domain:
+            kwargs["pulp_domain"] = pulp_domain
+        return gen_object_with_cleanup(rpm_distribution_api, data, **kwargs)
 
     return _rpm_distribution_factory
 
@@ -99,10 +110,13 @@ def rpm_distribution_factory(rpm_distribution_api, gen_object_with_cleanup):
 def rpm_publication_factory(rpm_publication_api, gen_object_with_cleanup):
     """A factory to generate an RPM Publication with auto-deletion after the test run."""
 
-    def _rpm_publication_factory(**kwargs):
+    def _rpm_publication_factory(pulp_domain=None, **body):
         # XOR check on repository and repository_version
-        assert bool("repository" in kwargs) ^ bool("repository_version" in kwargs)
-        return gen_object_with_cleanup(rpm_publication_api, kwargs)
+        assert bool("repository" in body) ^ bool("repository_version" in body)
+        kwargs = {}
+        if pulp_domain:
+            kwargs["pulp_domain"] = pulp_domain
+        return gen_object_with_cleanup(rpm_publication_api, body, **kwargs)
 
     return _rpm_publication_factory
 
