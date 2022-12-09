@@ -8,6 +8,7 @@ from django.db.models import Window, F
 from django.db.models.functions import RowNumber
 
 from pulpcore.plugin.models import Content, ContentManager
+from pulpcore.plugin.util import get_domain_pk
 
 from pulp_rpm.app.constants import (
     CHECKSUM_CHOICES,
@@ -236,6 +237,8 @@ class Package(Content):
     # E.g. glibc-2.26.11.3.2.nosrc.rpm vs glibc-2.26.11.3.2.src.rpm
     repo_key_fields = ("name", "epoch", "version", "release", "arch", "location_href")
 
+    pulp_domain = models.ForeignKey("core.Domain", default=get_domain_pk, on_delete=models.PROTECT)
+
     @property
     def filename(self):
         """
@@ -283,7 +286,16 @@ class Package(Content):
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-        unique_together = ("name", "epoch", "version", "release", "arch", "checksum_type", "pkgId")
+        unique_together = (
+            "pulp_domain",
+            "name",
+            "epoch",
+            "version",
+            "release",
+            "arch",
+            "checksum_type",
+            "pkgId",
+        )
 
     class ReadonlyMeta:
         readonly = ["evr"]

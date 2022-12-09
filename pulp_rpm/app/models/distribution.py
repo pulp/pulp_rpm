@@ -12,6 +12,7 @@ from pulpcore.plugin.models import (
     ContentArtifact,
     Repository,
 )
+from pulpcore.plugin.util import get_domain_pk
 
 log = getLogger(__name__)
 
@@ -94,6 +95,8 @@ class DistributionTree(Content):
 
     digest = models.TextField(null=False)
 
+    pulp_domain = models.ForeignKey("core.Domain", default=get_domain_pk, on_delete=models.PROTECT)
+
     def repositories(self):
         """
         Return the subrepos in this DistributionTree.
@@ -134,7 +137,7 @@ class DistributionTree(Content):
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-        unique_together = ("digest",)
+        unique_together = ("pulp_domain", "digest")
 
 
 class Checksum(BaseModel):

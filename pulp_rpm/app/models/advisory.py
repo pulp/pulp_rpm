@@ -8,6 +8,7 @@ from pulpcore.plugin.models import (
     BaseModel,
     Content,
 )
+from pulpcore.plugin.util import get_domain_pk
 
 from pulp_rpm.app.constants import (
     CR_UPDATE_COLLECTION_ATTRS,
@@ -101,6 +102,8 @@ class UpdateRecord(Content):
     # between two UpdateRecord objects without having to examine the associations like
     # UpdateCollection or UpdateCollectionPackage.
     digest = models.TextField(unique=True)
+
+    pulp_domain = models.ForeignKey("core.Domain", default=get_domain_pk, on_delete=models.PROTECT)
 
     @classmethod
     def natural_key_fields(cls):
@@ -228,6 +231,7 @@ class UpdateRecord(Content):
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
+        unique_together = ("pulp_domain", "id")
 
 
 class UpdateCollection(BaseModel):

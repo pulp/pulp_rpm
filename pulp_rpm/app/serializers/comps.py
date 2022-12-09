@@ -177,5 +177,13 @@ class CompsXmlSerializer(serializers.Serializer):
         write_only=True,
     )
 
+    # TODO: determine what comps is uploaded
+    # def retrieve(self, validated_data):
+    #     content = UpdateRecord.objects.filter(
+    #         digest=validated_data["id"],
+    #         pulp_domain=get_domain(),
+    #     )
+    #     return content.first()
+
     class Meta:
         fields = ("file", "repository", "replace")

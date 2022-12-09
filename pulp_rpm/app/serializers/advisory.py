@@ -10,6 +10,7 @@ from pulpcore.plugin.serializers import (
     ModelSerializer,
     NoArtifactContentUploadSerializer,
 )
+from pulpcore.plugin.util import get_domain
 
 from pulp_rpm.app.advisory import hash_update_record
 from pulp_rpm.app.fields import (
@@ -230,6 +231,15 @@ class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
 
         validated_data = super().validate(update_record_data)
         return validated_data
+
+    # pulpcore 3.22 feature
+    # when uploading content second time I don't get error but already existing content
+    def retrieve(self, validated_data):
+        content = UpdateRecord.objects.filter(
+            id=validated_data["id"],
+            pulp_domain=get_domain(),
+        )
+        return content.first()
 
     class Meta:
         fields = NoArtifactContentUploadSerializer.Meta.fields + (

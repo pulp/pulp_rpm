@@ -5,6 +5,7 @@ import libcomps
 from django.db import models
 
 from pulpcore.plugin.models import Content
+from pulpcore.plugin.util import get_domain_pk
 
 from pulp_rpm.app.constants import (
     LIBCOMPS_CATEGORY_ATTRS,
@@ -77,8 +78,11 @@ class PackageGroup(Content):
 
     repo_key_fields = ("id",)
 
+    pulp_domain = models.ForeignKey("core.Domain", default=get_domain_pk, on_delete=models.PROTECT)
+
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
+        unique_together = ("pulp_domain", "digest")
 
     @classmethod
     def natural_key_fields(cls):
@@ -234,8 +238,11 @@ class PackageCategory(Content):
 
     repo_key_fields = ("id",)
 
+    pulp_domain = models.ForeignKey("core.Domain", default=get_domain_pk, on_delete=models.PROTECT)
+
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
+        unique_together = ("pulp_domain", "digest")
 
     @classmethod
     def natural_key_fields(cls):
@@ -361,8 +368,11 @@ class PackageEnvironment(Content):
 
     repo_key_fields = ("id",)
 
+    pulp_domain = models.ForeignKey("core.Domain", default=get_domain_pk, on_delete=models.PROTECT)
+
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
+        unique_together = ("pulp_domain", "digest")
 
     @classmethod
     def natural_key_fields(cls):
@@ -465,8 +475,11 @@ class PackageLangpacks(Content):
 
     digest = models.TextField(unique=True)
 
+    pulp_domain = models.ForeignKey("core.Domain", default=get_domain_pk, on_delete=models.PROTECT)
+
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
+        unique_together = ("pulp_domain", "digest")
 
     @classmethod
     def natural_key_fields(cls):

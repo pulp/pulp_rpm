@@ -11,6 +11,9 @@ from pulpcore.plugin.serializers import (
     SingleArtifactContentUploadSerializer,
 )
 
+# get_domain will be needed when upload part is fixed
+# from pulpcore.plugin.util import get_domain
+
 from pulp_rpm.app.models import Package
 from pulp_rpm.app.shared_utils import read_crpackage_from_artifact, format_nevra_short
 
@@ -268,6 +271,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         data.update(new_pkg)
         return data
 
+    # TODO: add domain check
     def retrieve(self, data):
         try:
             pkg = Package.createrepo_to_dict(read_crpackage_from_artifact(data["artifact"]))

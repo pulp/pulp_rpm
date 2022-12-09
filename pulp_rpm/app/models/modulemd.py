@@ -3,6 +3,7 @@ from logging import getLogger
 from django.db import models
 
 from pulpcore.plugin.models import Content
+from pulpcore.plugin.util import get_domain_pk
 
 from pulp_rpm.app.models.package import Package
 
@@ -60,9 +61,11 @@ class Modulemd(Content):
 
     snippet = models.TextField()
 
+    pulp_domain = models.ForeignKey("core.Domain", default=get_domain_pk, on_delete=models.PROTECT)
+
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-        unique_together = ("name", "stream", "version", "context", "arch")
+        unique_together = ("pulp_domain", "name", "stream", "version", "context", "arch")
 
 
 class ModulemdDefaults(Content):
@@ -93,6 +96,8 @@ class ModulemdDefaults(Content):
 
     repo_key_fields = ("module",)
 
+    pulp_domain = models.ForeignKey("core.Domain", default=get_domain_pk, on_delete=models.PROTECT)
+
     @classmethod
     def natural_key_fields(cls):
         """
@@ -102,6 +107,7 @@ class ModulemdDefaults(Content):
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
+        unique_together = ("pulp_domain", "digest")
 
 
 class ModulemdObsolete(Content):
@@ -146,6 +152,8 @@ class ModulemdObsolete(Content):
 
     snippet = models.TextField()
 
+    pulp_domain = models.ForeignKey("core.Domain", default=get_domain_pk, on_delete=models.PROTECT)
+
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-        unique_together = ("modified", "module_name", "module_stream")
+        unique_together = ("pulp_domain", "modified", "module_name", "module_stream")

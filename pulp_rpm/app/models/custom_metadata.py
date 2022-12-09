@@ -3,6 +3,7 @@ from logging import getLogger
 from django.db import models
 
 from pulpcore.plugin.models import Content
+from pulpcore.plugin.util import get_domain_pk
 from pulp_rpm.app.constants import CHECKSUM_CHOICES
 
 log = getLogger(__name__)
@@ -32,9 +33,11 @@ class RepoMetadataFile(Content):
 
     repo_key_fields = ("data_type",)
 
+    pulp_domain = models.ForeignKey("core.Domain", default=get_domain_pk, on_delete=models.PROTECT)
+
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-        unique_together = ("data_type", "checksum", "relative_path")
+        unique_together = ("pulp_domain", "data_type", "checksum", "relative_path")
 
     @property
     def unsupported_metadata_type(self):
