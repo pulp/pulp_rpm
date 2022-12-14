@@ -206,6 +206,10 @@ The ``mirror`` option is deprecated, ``sync_policy`` should be used instead. If 
 Optionally, you can skip ``SRPM`` packages by using ``skip_types:="[\"srpm\"]"``
 option.
 
+Optionally, you can skip kickstart-trees referred to by a parent repository by using ``skip_types:="[\"treeinfo\"]"``
+
+You can combine these options by using by using ``skip_types:="[\"srpm\", \"treeinfo\"]"``.
+
 By default, ``optimize=True`` and sync will only proceed if changes are present.
 You can override this by setting ``optimize=False`` which will disable optimizations and
 run a full sync.

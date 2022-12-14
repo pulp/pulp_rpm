@@ -81,7 +81,7 @@ PACKAGE_DB_REPODATA = ["primary_db", "filelists_db", "other_db"]
 UPDATE_REPODATA = ["updateinfo"]
 MODULAR_REPODATA = ["modules"]
 COMPS_REPODATA = ["group"]
-SKIP_TYPES = ["srpm"]
+SKIP_TYPES = ["srpm", "treeinfo"]
 
 CR_UPDATE_RECORD_ATTRS = SimpleNamespace(
     ID="id",
