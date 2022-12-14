@@ -111,6 +111,69 @@ class DistributionTreeCopyTestCase(PulpTestCase):
         self.assertEqual(len(get_content(repo_copy)[PULP_TYPE_DISTRIBUTION_TREE]), 1)
 
 
+class SkipDistributionTreeTest(PulpTestCase):
+    """Test Distribution Trees."""
+
+    @classmethod
+    def setUpClass(cls):
+        """Create class-wide variables."""
+        cls.client = gen_rpm_client()
+        cls.dist_tree_api = ContentDistributionTreesApi(cls.client)
+        cls.packages_api = ContentPackagesApi(cls.client)
+        cls.repo_api = RepositoriesRpmApi(cls.client)
+        cls.remote_api = RemotesRpmApi(cls.client)
+        delete_orphans()
+
+    def do_test(self, repository=None, remote=None, skip_treeinfo=False):
+        """Sync a repository.
+
+        Args:
+            repository (pulp_rpm.app.models.repository.RpmRepository):
+                object of RPM repository
+            remote (pulp_rpm.app.models.repository.RpmRemote):
+                object of RPM Remote
+            skip_treeinfo(bool):
+                True if we should skip treeinfo in sync, False otherwise
+        Returns (pulpcore.app.models.task.Task):
+            completed sync-task
+        """
+        if repository:
+            repo = self.repo_api.read(repository.pulp_href)
+        else:
+            repo = self.repo_api.create(gen_repo())
+            self.assertEqual(repo.latest_version_href, f"{repo.pulp_href}versions/0/")
+        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+
+        if not remote:
+            body = gen_rpm_remote()
+            remote = self.remote_api.create(body)
+        else:
+            remote = self.remote_api.read(remote.pulp_href)
+        if skip_treeinfo:
+            repository_sync_data = RpmRepositorySyncURL(
+                remote=remote.pulp_href, skip_types=["treeinfo"]
+            )
+        else:
+            repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
+        return monitor_task(sync_response.task)
+
+    def test_skip_treeinfo(self):
+        body = gen_rpm_remote(RPM_KICKSTART_FIXTURE_URL)
+        remote = self.remote_api.create(body)
+        self.addCleanup(self.remote_api.delete, remote.pulp_href)
+
+        # Sync repo. Should create only main repo, not subrepos
+        task = self.do_test(remote=remote, skip_treeinfo=True)
+        rsrvd_repos = [r for r in task.reserved_resources_record if "/repositories/rpm/rpm/" in r]
+        self.assertEqual(1, len(rsrvd_repos))
+
+        # Sync again, including kstree. Should end up w/ 5 repos reserved.
+        task = self.do_test(remote=remote, skip_treeinfo=False)
+        rsrvd_repos = [r for r in task.reserved_resources_record if "/repositories/rpm/rpm/" in r]
+        self.assertEqual(5, len(rsrvd_repos))
+
+
 class DistributionTreeTest(PulpTestCase):
     """Test Distribution Trees."""
 
@@ -147,7 +210,6 @@ class DistributionTreeTest(PulpTestCase):
             remote = self.remote_api.create(body)
         else:
             remote = self.remote_api.read(remote.pulp_href)
-
         repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
         sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
         monitor_task(sync_response.task)
