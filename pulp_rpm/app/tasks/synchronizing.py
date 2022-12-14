@@ -402,10 +402,14 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
     log.info(_("Synchronizing: repository={r} remote={p}").format(r=repository.name, p=remote.name))
 
     deferred_download = remote.policy != Remote.IMMEDIATE  # Interpret download policy
+    skip_treeinfo = "treeinfo" in skip_types
 
     def get_treeinfo_data(remote, remote_url):
         """Get Treeinfo data from remote."""
         treeinfo_serialized = {}
+        if skip_treeinfo:
+            return treeinfo_serialized
+
         namespaces = [".treeinfo", "treeinfo"]
         for namespace in namespaces:
             downloader = remote.get_downloader(
@@ -448,8 +452,8 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
             repomd_path = result.path
             repomd = cr.Repomd(repomd_path)
             repomd_checksum = get_sha256(repomd_path)
-            treinfo_file_data = get_treeinfo_data(remote, url)
-            treeinfo_checksum = treinfo_file_data.get("hash", "")
+            treeinfo_file_data = get_treeinfo_data(remote, url)
+            treeinfo_checksum = treeinfo_file_data.get("hash", "")
 
         return {
             "url": remote.url,  # use the original remote url so that mirrorlists are optimizable
