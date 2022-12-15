@@ -4,6 +4,7 @@ from pulpcore.client.pulp_rpm import (
     AcsRpmApi,
     ApiClient as RpmApiClient,
     ContentAdvisoriesApi,
+    ContentDistributionTreesApi,
     ContentPackagecategoriesApi,
     ContentPackagegroupsApi,
     ContentPackagelangpacksApi,
@@ -93,3 +94,8 @@ def rpm_package_lang_packs_api(rpm_client):
 def rpm_modulemd_api(rpm_client):
     """Fixture for RPM Modulemd API."""
     return ContentModulemdsApi(rpm_client)
+
+
+@pytest.fixture(scope="session")
+def rpm_content_distribution_trees_api(rpm_client):
+    return ContentDistributionTreesApi(rpm_client)
