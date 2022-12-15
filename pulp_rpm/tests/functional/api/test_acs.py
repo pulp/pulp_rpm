@@ -46,6 +46,8 @@ class AlternateContentSourceSyncTestCase(PulpTestCase):
         cls.repo_api = RepositoriesRpmApi(cls.client)
         cls.remote_api = RemotesRpmApi(cls.client)
 
+        delete_orphans()
+
     @classmethod
     def tearDownClass(cls):
         """Tear down."""
