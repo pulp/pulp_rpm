@@ -1,7 +1,8 @@
-import gzip
+import createrepo_c as cr
 import hashlib
 import logging
-import lzma
+import os
+import tempfile
 import yaml
 
 from jsonschema import Draft7Validator
@@ -58,25 +59,23 @@ def resolve_module_packages(version, previous_version):
     version.add_content(Package.objects.filter(pk__in=packages_to_add))
 
 
-def split_modulmd_file(file):
+def split_modulemd_file(file):
     """
     Helper method to preserve original formatting of modulemd.
     """
-    m_open = (
-        gzip.open if file.url.endswith(".gz") else lzma.open if file.url.endswith(".xz") else open
-    )
-    # We have to be explicit here, since gzip/lzma open(...,"r") defaults to **binary** mode.
-    with m_open(file.path, "rt") as modulemd_file:
-        module = ""
+    with tempfile.TemporaryDirectory(dir=".") as tf:
+        decompressed_path = os.path.join(tf, "modulemd.yaml")
+        cr.decompress_file(file.path, decompressed_path, cr.AUTO_DETECT_COMPRESSION)
+        with open(decompressed_path) as modulemd_file:
+            module = ""
+            for line in modulemd_file:
+                if line.startswith("---"):
+                    if module:  # avoid first empty yield in the beginning of document
+                        yield module
+                        module = ""
+                module += line
 
-        for line in modulemd_file:
-            if line.startswith("---"):
-                if module:  # avoid first empty yield in the beginning of document
-                    yield module
-                    module = ""
-            module += line
-
-        yield module
+            yield module
 
 
 def check_mandatory_module_fields(module, required_fields):
@@ -160,7 +159,7 @@ def parse_modular(file):
     modulemd_defaults_all = []
     modulemd_obsoletes_all = []
 
-    for module in split_modulmd_file(file):
+    for module in split_modulemd_file(file):
         parsed_data = yaml.safe_load(module)
         # here we check the modulemd document as we don't store all info, so serializers
         # are not enough then we only need to take required data from dict which is
