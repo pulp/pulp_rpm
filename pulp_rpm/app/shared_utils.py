@@ -1,7 +1,6 @@
-import createrepo_c
+import createrepo_c as cr
 import tempfile
 import shutil
-
 from hashlib import sha256
 
 from django.conf import settings
@@ -49,7 +48,7 @@ def read_crpackage_from_artifact(artifact):
     with tempfile.NamedTemporaryFile("wb", dir=".", suffix=filename) as temp_file:
         shutil.copyfileobj(artifact_file, temp_file)
         temp_file.flush()
-        cr_pkginfo = createrepo_c.package_from_rpm(
+        cr_pkginfo = cr.package_from_rpm(
             temp_file.name, changelog_limit=settings.KEEP_CHANGELOG_LIMIT
         )
 
