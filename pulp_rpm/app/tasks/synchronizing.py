@@ -87,7 +87,11 @@ from pulp_rpm.app.modulemd import parse_modular
 from pulp_rpm.app.comps import strdict_to_dict, dict_digest
 from pulp_rpm.app.kickstart.treeinfo import PulpTreeInfo, TreeinfoData
 from pulp_rpm.app.metadata_parsing import MetadataParser
-from pulp_rpm.app.shared_utils import is_previous_version, get_sha256, urlpath_sanitize
+from pulp_rpm.app.shared_utils import (
+    is_previous_version,
+    get_sha256,
+    urlpath_sanitize,
+)
 from pulp_rpm.app.rpm_version import RpmVersion
 
 log = logging.getLogger(__name__)
@@ -1051,7 +1055,11 @@ class RpmFirstStage(Stage):
         dc_groups = []
 
         comps = libcomps.Comps()
-        comps.fromxml_f(comps_result.path)
+        with tempfile.TemporaryDirectory(dir=".") as tf:
+            decompressed_path = os.path.join(tf, "comps.xml")
+            cr.decompress_file(comps_result.path, decompressed_path, cr.AUTO_DETECT_COMPRESSION)
+            with open(decompressed_path) as f:
+                comps.fromxml_str(f.read())
 
         async with ProgressReport(message="Parsed Comps", code="sync.parsing.comps") as comps_pb:
             comps_total = len(comps.groups) + len(comps.categories) + len(comps.environments)
