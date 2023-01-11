@@ -1,4 +1,5 @@
 import os
+import createrepo_c as cr
 import tempfile
 import shutil
 from hashlib import sha256
