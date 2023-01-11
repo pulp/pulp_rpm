@@ -1,5 +1,8 @@
+import createrepo_c as cr
 import libcomps
 import logging
+import os
+import tempfile
 
 from django.db import transaction
 
@@ -26,9 +29,15 @@ def parse_comps_components(comps_file):
     comps = libcomps.Comps()
     # Read the file and pass the string along because comps.fromxml_f() will only take a
     # path-string that doesn't work on things like S3 storage
-    with comps_file.file.open("rb") as f:
-        data = f.read()
-        comps.fromxml_str(data.decode("utf-8"))
+    with comps_file.file.open("rb") as comps_uploaded:
+        with tempfile.NamedTemporaryFile(dir=".", delete=False) as comps_on_disk:
+            comps_on_disk.write(comps_uploaded.read())
+            comps_on_disk.flush()
+        with tempfile.TemporaryDirectory(dir=".") as tf:
+            decompressed_path = os.path.join(tf, "comps.xml")
+            cr.decompress_file(comps_on_disk.name, decompressed_path, cr.AUTO_DETECT_COMPRESSION)
+            with open(decompressed_path) as f:
+                comps.fromxml_str(f.read())
 
     if comps.langpacks:
         langpack_dict = PackageLangpacks.libcomps_to_dict(comps.langpacks)
