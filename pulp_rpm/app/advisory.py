@@ -372,7 +372,6 @@ def merge_advisories(previous_advisory, added_advisory):
         # if a collection has no name, we assign it the name "collection" and uniquify-it from there
         names_seen = {"collection": 0}
         for collection in chain(previous_collections, added_collections):
-
             # no-name? When merging, ILLEGAL! Give it a name
             if not collection.name:
                 collection.name = "collection"
