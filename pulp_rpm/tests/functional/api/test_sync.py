@@ -394,7 +394,9 @@ def test_optimize(
     repository, remote = init_and_sync(policy="on_demand")
 
     # sync again, assert optimized
-    repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+    repository_sync_data = RpmRepositorySyncURL(
+        remote=remote.pulp_href, sync_policy="mirror_content_only"
+    )
     sync_response = rpm_repository_api.sync(repository.pulp_href, repository_sync_data)
     task = monitor_task(sync_response.task)
 
@@ -414,7 +416,9 @@ def test_optimize(
     )
     monitor_task(response.task)
 
-    repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+    repository_sync_data = RpmRepositorySyncURL(
+        remote=remote.pulp_href, sync_policy="mirror_content_only"
+    )
     sync_response = rpm_repository_api.sync(repository.pulp_href, repository_sync_data)
     task = monitor_task(sync_response.task)
 
@@ -431,7 +435,9 @@ def test_optimize(
 
     # create new remote with the same URL and download_policy as the first and run a sync task
     new_remote = gen_object_with_cleanup(rpm_rpmremote_api, gen_rpm_remote())
-    repository_sync_data = RpmRepositorySyncURL(remote=new_remote.pulp_href)
+    repository_sync_data = RpmRepositorySyncURL(
+        remote=new_remote.pulp_href, sync_policy="mirror_content_only"
+    )
     sync_response = rpm_repository_api.sync(repository.pulp_href, repository_sync_data)
     task = monitor_task(sync_response.task)
 
@@ -441,7 +447,9 @@ def test_optimize(
     body = {"url": RPM_RICH_WEAK_FIXTURE_URL}
     monitor_task(rpm_rpmremote_api.partial_update(new_remote.pulp_href, body).task)
 
-    repository_sync_data = RpmRepositorySyncURL(remote=new_remote.pulp_href)
+    repository_sync_data = RpmRepositorySyncURL(
+        remote=new_remote.pulp_href, sync_policy="mirror_content_only"
+    )
     sync_response = rpm_repository_api.sync(repository.pulp_href, repository_sync_data)
     task = monitor_task(sync_response.task)
 
@@ -466,9 +474,7 @@ def test_optimize(
 
     latest_sync_repo_version = rpm_repository_api.read(repository.pulp_href).latest_version_href
 
-    # TODO: this assertion will always fail: https://github.com/pulp/pulp_rpm/pull/2917
-    # assert first_sync_repo_version == latest_sync_repo_version
-    assert first_sync_repo_version or latest_sync_repo_version
+    assert first_sync_repo_version == latest_sync_repo_version
 
     # sync again with sync_policy='mirror_complete', assert optimized
     sync_response = rpm_repository_api.sync(repository.pulp_href, repository_sync_data)
