@@ -126,7 +126,7 @@ def is_previous_version(version, target_version):
     target_version_components = target_version.split(".")
 
     if len(version_components) == len(target_version_components):
-        for (comp_a, comp_b) in zip(version_components, target_version_components):
+        for comp_a, comp_b in zip(version_components, target_version_components):
             if comp_a.isdigit() and comp_b.isdigit():
                 # if both strings contain numeric information, convert them to ints and compare
                 a = int(comp_a)

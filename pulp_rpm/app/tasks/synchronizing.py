@@ -166,7 +166,7 @@ def add_metadata_to_publication(publication, version, prefix=""):
     publication.repo_gpgcheck = has_repomd_signature
     publication.sqlite_metadata = has_sqlite
 
-    for (relative_path, metadata_file_path) in repo_metadata_files.items():
+    for relative_path, metadata_file_path in repo_metadata_files.items():
         with open(metadata_file_path, "rb") as metadata_fd:
             PublishedMetadata.create_from_file(
                 file=File(metadata_fd),
@@ -588,7 +588,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
         with RpmPublication.create(
             repo_sync_results[PRIMARY_REPO], pass_through=False
         ) as publication:
-            for (path, repo_version) in repo_sync_results.items():
+            for path, repo_version in repo_sync_results.items():
                 add_metadata_to_publication(publication, repo_version, prefix=path)
 
     return repo_sync_results[PRIMARY_REPO]

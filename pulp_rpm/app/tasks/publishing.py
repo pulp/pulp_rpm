@@ -379,7 +379,6 @@ def publish(
                 total=total_repos,
             )
             with ProgressReport(**pb_data) as publish_pb:
-
                 content = publication.repository_version.content
 
                 # Main repo

@@ -1009,7 +1009,6 @@ def write_solver_debug_data(solver, problems, mapping, full=False):
     }
 
     with summary_path.open("wt") as summary:
-
         print("Problems Encountered:", file=summary)
         print("=====================", file=summary)
         for problem in problems:
