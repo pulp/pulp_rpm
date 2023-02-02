@@ -196,6 +196,12 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         help_text=_("Last byte of the header"),
         read_only=True,
     )
+    signer_key_id = serializers.CharField(
+        help_text=_("16-digit hex key id of the public key that signed this rpm (if any)"),
+        allow_blank=True,
+        required=False,
+        read_only=True,
+    )
     is_modular = serializers.BooleanField(
         help_text=_("Flag to identify if the package is modular"),
         required=False,
@@ -247,7 +253,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         data = super().deferred_validate(data)
         # export META from rpm and prepare dict as saveable format
         try:
-            new_pkg = Package.createrepo_to_dict(read_crpackage_from_artifact(data["artifact"]))
+            new_pkg = Package.createrepo_to_dict(*read_crpackage_from_artifact(data["artifact"]))
         except OSError:
             log.info(traceback.format_exc())
             raise NotAcceptable(detail="RPM file cannot be parsed for metadata")
@@ -314,6 +320,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
                 "rpm_vendor",
                 "rpm_header_start",
                 "rpm_header_end",
+                "signer_key_id",
                 "is_modular",
                 "size_archive",
                 "size_installed",

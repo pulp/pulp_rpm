@@ -233,6 +233,15 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin, Roles
             if skip_types:
                 raise DRFValidationError(err_msg.format("skip_types"))
 
+        if remote.policy != "immediate" and repository.allowed_pub_keys:
+            err_msg = (
+                "Cannot use '{}' download policy in combination with server-side signature "
+                "verification. Signature verification requires examination of the actual RPM, so "
+                "the current Repository 'allowed_pub_keys' setting conflicts with the Remote "
+                "'policy' setting."
+            )
+            raise DRFValidationError(err_msg.format(remote.policy))
+
         result = dispatch(
             tasks.synchronize,
             shared_resources=[remote],

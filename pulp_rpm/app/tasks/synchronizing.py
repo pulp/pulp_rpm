@@ -90,6 +90,7 @@ from pulp_rpm.app.metadata_parsing import MetadataParser
 from pulp_rpm.app.shared_utils import (
     is_previous_version,
     get_sha256,
+    parse_signer_id,
     urlpath_sanitize,
 )
 from pulp_rpm.app.rpm_version import RpmVersion
@@ -1435,6 +1436,8 @@ class RpmContentSaver(ContentSaver):
 
         When it has a treeinfo file, save a batch of Addon, Checksum, Image, Variant objects.
 
+        Examine Package headers and save signer_key_id.
+
         Args:
             batch (list of :class:`~pulpcore.plugin.stages.DeclarativeContent`): The batch of
                 :class:`~pulpcore.plugin.stages.DeclarativeContent` objects to be saved.
@@ -1492,6 +1495,7 @@ class RpmContentSaver(ContentSaver):
         update_collection_to_save = []
         update_references_to_save = []
         update_collection_packages_to_save = []
+        packages_to_update = []
         seen_updaterecords = []
 
         for declarative_content in batch:
@@ -1534,6 +1538,12 @@ class RpmContentSaver(ContentSaver):
                 for update_reference in update_references:
                     update_reference.update_record = update_record
                     update_references_to_save.append(update_reference)
+            elif isinstance(declarative_content.content, Package):
+                artifact = declarative_content.d_artifacts[0]  # Packages have 1 artifact
+                signer_key_id = parse_signer_id(artifact.artifact.file.path)
+                if signer_key_id is not None:
+                    declarative_content.content.signer_key_id = signer_key_id
+                    packages_to_update.append(declarative_content.content)
 
         if update_collection_to_save:
             UpdateCollection.objects.bulk_create(update_collection_to_save, ignore_conflicts=True)
@@ -1545,6 +1555,9 @@ class RpmContentSaver(ContentSaver):
 
         if update_references_to_save:
             UpdateReference.objects.bulk_create(update_references_to_save, ignore_conflicts=True)
+
+        if packages_to_update:
+            Package.objects.bulk_update(packages_to_update, ["signer_key_id"])
 
 
 class RpmQueryExistingContents(Stage):

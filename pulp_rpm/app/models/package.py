@@ -134,6 +134,8 @@ class Package(Content):
             First byte of the header
         rpm_header_end (BigInteger):
             Last byte of the header
+        signer_key_id (Text):
+            16-digit hex key id of the public key that signed this rpm (if any)
         is_modular (Bool):
             Flag to identify if the package is modular
 
@@ -220,6 +222,8 @@ class Package(Content):
     rpm_vendor = models.TextField()
     rpm_header_start = models.BigIntegerField(null=True)
     rpm_header_end = models.BigIntegerField(null=True)
+    # According to rfc4880 is always 8 octets, aka a 16-digit hex number
+    signer_key_id = models.CharField(null=True, max_length=16)
 
     size_archive = models.BigIntegerField(null=True)
     size_installed = models.BigIntegerField(null=True)
@@ -289,12 +293,13 @@ class Package(Content):
         readonly = ["evr"]
 
     @classmethod
-    def createrepo_to_dict(cls, package):
+    def createrepo_to_dict(cls, package, signer_key_id=None):
         """
         Convert createrepo_c package object to dict for instantiating Package object.
 
         Args:
             package(createrepo_c.Package): a RPM/SRPM package to convert
+            signer_key_id(str): the key_id of the signer, if any
 
         Returns:
             dict: all data for RPM/SRPM content creation
@@ -367,6 +372,7 @@ class Package(Content):
             PULP_PACKAGE_ATTRS.TIME_FILE: getattr(package, CR_PACKAGE_ATTRS.TIME_FILE),
             PULP_PACKAGE_ATTRS.URL: getattr(package, CR_PACKAGE_ATTRS.URL) or "",
             PULP_PACKAGE_ATTRS.VERSION: getattr(package, CR_PACKAGE_ATTRS.VERSION),
+            "signer_key_id": signer_key_id,
         }
 
     def to_createrepo_c(self):

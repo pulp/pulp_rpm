@@ -1,11 +1,17 @@
 import createrepo_c as cr
+from logging import getLogger
 import tempfile
+import traceback
 import shutil
 from hashlib import sha256
+from pgpy.pgp import PGPSignature
+import rpmfile
 
 from django.conf import settings
 from django.core.files.storage import default_storage as storage
 from django.utils.dateparse import parse_datetime
+
+log = getLogger(__name__)
 
 
 def format_nevra(name=None, epoch=0, version=None, release=None, arch=None):
@@ -51,9 +57,10 @@ def read_crpackage_from_artifact(artifact):
         cr_pkginfo = cr.package_from_rpm(
             temp_file.name, changelog_limit=settings.KEEP_CHANGELOG_LIMIT
         )
+        signer_key_id = parse_signer_id(temp_file.name)
 
     artifact_file.close()
-    return cr_pkginfo
+    return cr_pkginfo, signer_key_id
 
 
 def urlpath_sanitize(*args):
@@ -159,3 +166,42 @@ def parse_time(value):
         int | datetime | None: formatted time value
     """
     return int(value) if value.isdigit() else parse_datetime(value)
+
+
+def parse_signer_id(rpm_path):
+    """
+    Parse the key_id of the signing key from the RPM header, given a locally-available RPM.
+
+    Args:
+        rpm_path(str): Path to the local RPM file.
+    Returns:
+        str: 16-digit hex key_id of signing key, or None.
+    """
+    # I have filed an Issue with createrepo_c requesting the ability to access the signature
+    # through the python bindings. Until that is available we'll have to read the header
+    # a second time with a utility that actually makes it available.
+    # https://github.com/rpm-software-management/createrepo_c/issues/346
+    # TODO: When the above is resolved re-evaluate and potentially drop extra dependencies.
+    signature = ""
+    try:
+        with rpmfile.open(rpm_path) as rpm:
+
+            def hdr(header):
+                return rpm.headers.get(header, "")
+
+            # What the `rpm -qi` command does. See "--info" definition in /usr/lib/rpm/rpmpopt-*
+            signature = hdr("dsaheader") or hdr("rsaheader") or hdr("siggpg") or hdr("sigpgp")
+    except:
+        log.info(f"Could not extract signature from RPM file: {rpm_path}")
+        log.info(traceback.format_exc())
+        return None
+
+    signer_key_id = ""  # If package is unsigned, store empty str
+    if signature:
+        try:
+            signer_key_id = PGPSignature.from_blob(signature).signer
+        except:
+            signer_key_id = None  # If error (or never examined), store None
+            log.info(f"Could not parse PGP signature for {hdr('nevra')}")
+            log.info(traceback.format_exc())
+    return signer_key_id

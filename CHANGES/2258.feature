@@ -1,0 +1,1 @@
+Pulp is able to reject packages that are unsigned or incorrectly signed, if desired.

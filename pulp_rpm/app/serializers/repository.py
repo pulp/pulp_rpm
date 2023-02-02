@@ -1,4 +1,6 @@
 from gettext import gettext as _
+import json
+import re
 
 from django.conf import settings
 from jsonschema import Draft7Validator
@@ -105,6 +107,17 @@ class RpmRepositorySerializer(RepositorySerializer):
             "DEPRECATED: An option specifying whether Pulp should generate SQLite metadata."
         ),
     )
+    allowed_pub_keys = serializers.JSONField(
+        default=list,
+        required=False,
+        help_text=_(
+            "A list of Public Key IDs (16-digit hex strings) if you want to require that all rpms "
+            "added to the Repo must be signed by one of them. This is a Pulp-side *data-sanity* "
+            "check, whereas gpgcheck triggers a client-side *security* restriction. You can find "
+            "the Key ID by importing the public key and then taking the last 16 digits from the "
+            "hex string in the output of `gpg --list-keys`."
+        ),
+    )
 
     def validate(self, data):
         """Validate data."""
@@ -116,6 +129,21 @@ class RpmRepositorySerializer(RepositorySerializer):
             ):
                 raise serializers.ValidationError({field: _(ALLOWED_CHECKSUM_ERROR_MSG)})
 
+        signed_by = "allowed_pub_keys"
+        if signed_by in data:
+            if type(data[signed_by]) == list:
+                keys = data[signed_by]  # framework parses empty list automatically
+            else:
+                keys = json.loads(data[signed_by])
+            uppercase_keys = []
+            for key in keys:
+                key = key.upper()  # key ids in rpm headers are always uppercase
+                if not re.match("^[A-F0-9]{16}$", key):
+                    raise serializers.ValidationError(
+                        {field: _("Public Key IDs must be 16-digit hex strings.")}
+                    )
+                uppercase_keys.append(key)
+            data[signed_by] = uppercase_keys
         validated_data = super().validate(data)
         return validated_data
 
@@ -129,6 +157,7 @@ class RpmRepositorySerializer(RepositorySerializer):
             "gpgcheck",
             "repo_gpgcheck",
             "sqlite_metadata",
+            "allowed_pub_keys",
         )
         model = RpmRepository
 

@@ -7,6 +7,11 @@ Package
 Within a repository version there can be only one package (RPM or SRPM) with the same NEVRA.
 NEVRA stands for name, epoch, version, release, architecture.
 
+Repositories can be set to only allow packages signed by specific key(s) to be added to them by setting the `allowed_pub_keys` field on the repo.
+That field is a list of Key IDs for the acceptable signing keys.
+A Key ID is the last 16 digits of the hex fingerprint of the public keys (import the key to gpg, do `gpg --list-keys`, take the last 16 digits).
+For example, a repo that had set `allowed_pub_keys: ["ABCDEF0123456789", "0987654321FEDCBA"]` would only allow packages signed by those two keys to be added, and any update that contained an RPM *not* signed by one of them would fail.
+
 
 Advisory
 --------
