@@ -252,6 +252,28 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
             log.info(traceback.format_exc())
             raise NotAcceptable(detail="RPM file cannot be parsed for metadata")
 
+        attrs = {key: new_pkg[key] for key in Package.natural_key_fields()}
+        package = Package.objects.filter(**attrs)
+
+        if package.exists():
+            keywords = (
+                "name",
+                "epoch",
+                "version",
+                "release",
+                "arch",
+                "checksum_type",
+                "pkgId",
+            )
+            error_data = ", ".join(
+                ["=".join(item) for item in new_pkg.items() if item[0] in keywords]
+            )
+
+            package.get().touch()
+            raise serializers.ValidationError(
+                _("There is already a package with: {values}.").format(values=error_data)
+            )
+
         new_pkg["location_href"] = (
             format_nevra_short(
                 new_pkg["name"],
@@ -267,17 +289,6 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
 
         data.update(new_pkg)
         return data
-
-    def retrieve(self, data):
-        try:
-            pkg = Package.createrepo_to_dict(read_crpackage_from_artifact(data["artifact"]))
-        except OSError:
-            log.info(traceback.format_exc())
-            raise NotAcceptable(detail="RPM file cannot be parsed for metadata")
-
-        package = Package(**pkg)
-
-        return Package.objects.filter(package.q()).first()
 
     class Meta:
         fields = (

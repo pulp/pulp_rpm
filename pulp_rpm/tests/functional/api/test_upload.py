@@ -67,7 +67,8 @@ class ContentUnitTestCase(PulpTestCase):
         except PulpTaskError:
             pass
         task_report = self.tasks_api.read(upload.task)
-        assert task_report.created_resources[0] == package.pulp_href
+        msg = "There is already a package with"
+        self.assertTrue(msg in task_report.error["description"])
 
     def test_upload_non_ascii(self):
         """Test whether one can upload an RPM with non-ascii metadata."""
