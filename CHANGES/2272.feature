@@ -1,1 +1,0 @@
-Add RBAC support for RPM plugin.
