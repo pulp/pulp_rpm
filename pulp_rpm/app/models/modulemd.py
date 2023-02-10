@@ -21,6 +21,11 @@ class Modulemd(Content):
             The modulemd's stream
         version (Text):
             The version of the modulemd.
+        description (Text):
+            A verbose description of the module.
+        profiles (Json):
+            Package lists of components to be installed by default by default if the stream is
+            enabled.
         static_context (Boolean):
             If True, then the context flag is a string of up to thirteen [a-zA-Z0-9_] characters
             representing a build and runtime configuration for this stream. If False or unset, then
@@ -74,7 +79,7 @@ class ModulemdDefaults(Content):
             Modulemd name.
         stream (Text):
             Modulemd default stream.
-        profiles (Text):
+        profiles (Json):
             Default profiles for modulemd streams.
         digest (Text):
             Modulemd digest
