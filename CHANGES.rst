@@ -13,6 +13,20 @@ Changelog
 
 .. towncrier release notes start
 
+3.18.11 (2023-02-15)
+====================
+
+
+Bugfixes
+--------
+
+- Allow syncing repos with a compressed comps.xml "group" metadata declared in repomd.xml.
+  `#2753 <https://github.com/pulp/pulp_rpm/issues/2753>`__
+
+
+----
+
+
 3.18.10 (2023-01-27)
 ====================
 
