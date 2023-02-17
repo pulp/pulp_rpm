@@ -356,6 +356,20 @@ Misc
 ----
 
 
+3.17.16 (2023-02-16)
+====================
+
+
+Bugfixes
+--------
+
+- Allow syncing repos with a compressed comps.xml "group" metadata declared in repomd.xml.
+  `#2753 <https://github.com/pulp/pulp_rpm/issues/2753>`__
+
+
+----
+
+
 3.17.15 (2022-11-21)
 ====================
 
