@@ -3,5 +3,6 @@ productmd>=1.25
 pytest
 dictdiffer
 xmltodict
+pyyaml
 lxml
 django  # TODO: test_sync.py has a dependency on date parsing functions
