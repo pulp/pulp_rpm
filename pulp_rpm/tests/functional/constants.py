@@ -1,4 +1,5 @@
 """Constants for Pulp RPM plugin tests."""
+# flake8: noqa
 
 from urllib.parse import urljoin
 from pulp_smash import config
@@ -1543,8 +1544,347 @@ MODULEMD_FIELDS = [
     "packages",
     "profiles",
     "pulp_created",
-    "pulp_href",
-    "static_context",
     "stream",
     "version",
+]
+
+RPM_MODULEMD_DEFAULTS_DATA = [
+    {"module": "nodejs", "stream": "8", "profiles": {"8": ["default"], "10": ["default"]}},
+    {"module": "postgresql", "stream": "9.6", "profiles": {"9.6": ["default"]}},
+    {"module": "meson", "stream": "master", "profiles": {"master": ["default"]}},
+    {
+        "module": "ninja",
+        "stream": "master",
+        "profiles": {"master": ["default"], "development": ["default"]},
+    },
+]
+
+RPM_MODULEMD_OBSOLETES_DATA = [
+    {
+        "modified": "2020-05-01T00:00Z",
+        "module_name": "postgresql",
+        "module_stream": "6",
+        "message": "obsoletes with reset",
+        "override_previous": "True",
+        "module_context": "6c81f848",
+        "eol_date": None,
+        "obsoleted_by_module_name": None,
+        "obsoleted_by_module_stream": None,
+    },
+    {
+        "modified": "2020-05-01T00:00Z",
+        "module_name": "nodejs",
+        "module_stream": "8",
+        "message": "immediate obsoletes",
+        "override_previous": None,
+        "module_context": "6c81f848",
+        "eol_date": None,
+        "obsoleted_by_module_name": None,
+        "obsoleted_by_module_stream": None,
+    },
+    {
+        "modified": "2020-05-01T00:00Z",
+        "module_name": "nodejs",
+        "module_stream": "5",
+        "message": "obsoleting obsoletes",
+        "override_previous": None,
+        "module_context": "6c81f848",
+        "eol_date": None,
+        "obsoleted_by_module_name": "10",
+        "obsoleted_by_module_stream": None,
+    },
+    {
+        "modified": "2020-05-01T00:00Z",
+        "module_name": "nodejs",
+        "module_stream": "11",
+        "message": "obsoletes without context affects all nodejs 11 contexts",
+        "override_previous": None,
+        "module_context": None,
+        "eol_date": None,
+        "obsoleted_by_module_name": None,
+        "obsoleted_by_module_stream": None,
+    },
+    {
+        "modified": "2020-05-01T00:00Z",
+        "module_name": "nodejs",
+        "module_stream": "10",
+        "message": "eol is in far far future",
+        "override_previous": None,
+        "module_context": "6c81f848",
+        "eol_date": "2990-01-01T00:00Z",
+        "obsoleted_by_module_name": None,
+        "obsoleted_by_module_stream": None,
+    },
+    {
+        "modified": "2020-05-01T00:00Z",
+        "module_name": "meson",
+        "module_stream": "master",
+        "message": "chain of obsoletes",
+        "override_previous": None,
+        "module_context": None,
+        "eol_date": None,
+        "obsoleted_by_module_name": "5",
+        "obsoleted_by_module_stream": None,
+    },
+]
+
+RPM_MODULEMDS_DATA = [
+    {
+        "name": "postgresql",
+        "stream": "9.6",
+        "version": "20180816142114",
+        "static_context": None,
+        "context": "6c81f848",
+        "arch": "x86_64",
+        "artifacts": {
+            "rpms": [
+                "postgresql-0:9.6.8-1.module_1710+b535a823.x86_64",
+                "postgresql-0:9.6.8-1.module_1710+b535a823.src",
+                "postgresql-libs-0:9.6.8-1.module_1710+b535a823.x86_64",
+                "postgresql-server-0:9.6.8-1.module_1710+b535a823.x86_64",
+                "postgresql-test-0:9.6.8-1.module_1710+b535a823.x86_64",
+            ]
+        },
+        "dependencies": [
+            {"requires": {"platform": ["f29"]}, "buildrequires": {"platform": ["f29"]}}
+        ],
+        "profiles": {
+            "client": {"rpms": ["postgresql"]},
+            "server": {"rpms": ["postgresql-server"]},
+            "default": {"rpms": ["postgresql-server"]},
+        },
+        "description": "PostgreSQL is an advanced Object-Relational database management system (DBMS). The PostgreSQL server can be found in the postgresql-server sub-package.",
+    },
+    {
+        "name": "postgresql",
+        "stream": "6",
+        "version": "20190329142114",
+        "static_context": None,
+        "context": "6c81f848",
+        "arch": "x86_64",
+        "artifacts": {
+            "rpms": [
+                "postgresql-0:6.1-1.module_2514+aa9aadc5.x86_64",
+                "postgresql-0:6.1-1.module_2514+aa9aadc5.src",
+                "postgresql-libs-0:6.1-1.module_2514+aa9aadc5.x86_64",
+                "postgresql-server-0:6.1-1.module_2514+aa9aadc5.x86_64",
+                "postgresql-test-0:6.1-1.module_2514+aa9aadc5.x86_64",
+            ]
+        },
+        "dependencies": [
+            {"requires": {"platform": ["f29"]}, "buildrequires": {"platform": ["f29"]}}
+        ],
+        "profiles": {
+            "client": {"rpms": ["postgresql"]},
+            "server": {"rpms": ["postgresql-server"]},
+            "default": {"rpms": ["postgresql-server"]},
+        },
+        "description": "PostgreSQL is an advanced Object-Relational database management system (DBMS). The PostgreSQL server can be found in the postgresql-server sub-package.",
+    },
+    {
+        "name": "nodejs",
+        "stream": "8",
+        "version": "20180801080000",
+        "static_context": None,
+        "context": "6c81f848",
+        "arch": "x86_64",
+        "artifacts": {
+            "rpms": [
+                "nodejs-1:8.11.4-1.module_2030+42747d40.x86_64",
+                "nodejs-1:8.11.4-1.module_2030+42747d40.src",
+                "nodejs-devel-1:8.11.4-1.module_2030+42747d40.x86_64",
+                "nodejs-docs-1:8.11.4-1.module_2030+42747d40.noarch",
+                "npm-1:8.11.4-1.module_2030+42747d40.x86_64",
+            ]
+        },
+        "dependencies": [
+            {"requires": {"platform": ["f29"]}, "buildrequires": {"platform": ["f29"]}}
+        ],
+        "profiles": {
+            "default": {"rpms": ["nodejs", "npm"]},
+            "minimal": {"rpms": ["nodejs"]},
+            "development": {"rpms": ["nodejs", "nodejs-devel", "npm"]},
+        },
+        "description": "Node.js is a platform built on Chrome''s JavaScript runtime for easily building fast, scalable network applications. Node.js uses an event-driven, non-blocking I/O model that makes it lightweight and efficient, perfect for data-intensive real-time applications that run across distributed devices.",
+    },
+    {
+        "name": "nodejs",
+        "stream": "5",
+        "version": "20150811143428",
+        "static_context": None,
+        "context": "6c81f848",
+        "arch": "x86_64",
+        "artifacts": {
+            "rpms": [
+                "nodejs-1:5.3.1-1.module_2011+41787af0.x86_64",
+                "nodejs-1:5.3.1-1.module_2011+41787af0.src",
+                "nodejs-devel-1:5.3.1-1.module_2011+41787af0.x86_64",
+                "nodejs-docs-1:5.3.1-1.module_2011+41787af0.noarch",
+                "npm-1:5.3.1-1.module_2011+41787af0.x86_64",
+            ]
+        },
+        "dependencies": [
+            {"requires": {"platform": ["f29"]}, "buildrequires": {"platform": ["f29"]}}
+        ],
+        "profiles": {
+            "default": {"rpms": ["nodejs", "npm"]},
+            "minimal": {"rpms": ["nodejs"]},
+            "development": {"rpms": ["nodejs", "nodejs-devel", "npm"]},
+        },
+        "description": "Node.js is a platform built on Chrome''s JavaScript runtime for easily building fast, scalable network applications. Node.js uses an event-driven, non-blocking I/O model that makes it lightweight and efficient, perfect for data-intensive real-time applications that run across distributed devices.",
+    },
+    {
+        "name": "nodejs",
+        "stream": "11",
+        "version": "20180920144611",
+        "static_context": None,
+        "context": "6c81f848",
+        "arch": "x86_64",
+        "artifacts": {
+            "rpms": [
+                "nodejs-1:11.0.0-1.module_2311+8d497411.x86_64",
+                "nodejs-1:11.0.0-1.module_2311+8d497411.src",
+                "nodejs-devel-1:11.0.0-1.module_2311+8d497411.x86_64",
+                "nodejs-docs-1:11.0.0-1.module_2311+8d497411.noarch",
+                "npm-1:11.0.0-1.module_2311+8d497411.x86_64",
+            ]
+        },
+        "dependencies": [
+            {
+                "requires": {"platform": ["f29"], "postgresql": [9.6]},
+                "buildrequires": {"platform": ["f29"]},
+            }
+        ],
+        "profiles": {
+            "default": {"rpms": ["nodejs", "npm"]},
+            "minimal": {"rpms": ["nodejs"]},
+            "development": {"rpms": ["nodejs", "nodejs-devel", "npm"]},
+        },
+        "description": "Node.js is a platform built on Chrome''s JavaScript runtime for easily building fast, scalable network applications. Node.js uses an event-driven, non-blocking I/O model that makes it lightweight and efficient, perfect for data-intensive real-time applications that run across distributed devices.",
+    },
+    {
+        "name": "nodejs",
+        "stream": "10",
+        "version": "20180920144631",
+        "static_context": None,
+        "context": "6c81f848",
+        "arch": "x86_64",
+        "artifacts": {
+            "rpms": [
+                "nodejs-1:10.11.0-1.module_2200+adbac02b.x86_64",
+                "nodejs-1:10.11.0-1.module_2200+adbac02b.src",
+                "nodejs-devel-1:10.11.0-1.module_2200+adbac02b.x86_64",
+                "nodejs-docs-1:10.11.0-1.module_2200+adbac02b.noarch",
+                "npm-1:10.11.0-1.module_2200+adbac02b.x86_64",
+            ]
+        },
+        "dependencies": [
+            {"requires": {"platform": ["f29"]}, "buildrequires": {"platform": ["f29"]}}
+        ],
+        "profiles": {
+            "default": {"rpms": ["nodejs", "npm"]},
+            "minimal": {"rpms": ["nodejs"]},
+            "development": {"rpms": ["nodejs", "nodejs-devel", "npm"]},
+        },
+        "description": "Node.js is a platform built on Chrome''s JavaScript runtime for easily building fast, scalable network applications. Node.js uses an event-driven, non-blocking I/O model that makes it lightweight and efficient, perfect for data-intensive real-time applications that run across distributed devices.",
+    },
+    {
+        "name": "ninja",
+        "stream": "master",
+        "version": "20180816141421",
+        "static_context": None,
+        "context": "6c81f848",
+        "arch": "x86_64",
+        "artifacts": {
+            "rpms": [
+                "ninja-build-0:1.8.2-4.module_1991+4e5efe2f.x86_64",
+                "ninja-build-debuginfo-0:1.8.2-4.module_1991+4e5efe2f.x86_64",
+                "ninja-build-debugsource-0:1.8.2-4.module_1991+4e5efe2f.x86_64",
+                "ninja-build-0:1.8.2-4.module_1991+4e5efe2f.src",
+            ]
+        },
+        "dependencies": [
+            {"requires": {"platform": ["f29"]}, "buildrequires": {"platform": ["f29"]}}
+        ],
+        "profiles": {"default": {"rpms": ["ninja-build"]}},
+        "description": "This module includes Ninja build system. Ninja is a small build system with a focus on speed. It differs from other build systems in two major respects: it is designed to have its input files generated by a higher-level build system, and it is designed to run builds as fast as possible.",
+    },
+    {
+        "name": "ninja",
+        "stream": "legacy",
+        "version": "20180816141421",
+        "static_context": None,
+        "context": "6c81f848",
+        "arch": "x86_64",
+        "artifacts": {
+            "rpms": [
+                "ninja-build-0:1.5.2-1.module_1991+4e5efe2f.x86_64",
+                "ninja-build-0:1.5.2-1.module_1991+4e5efe2f.src",
+            ]
+        },
+        "dependencies": [
+            {"requires": {"platform": ["f29"]}, "buildrequires": {"platform": ["f29"]}}
+        ],
+        "profiles": {"default": {"rpms": ["ninja-build"]}},
+        "description": "This module includes Ninja build system. Ninja is a small build system with a focus on speed. It differs from other build systems in two major respects: it is designed to have its input files generated by a higher-level build system, and it is designed to run builds as fast as possible.",
+    },
+    {
+        "name": "ninja",
+        "stream": "development",
+        "version": "20180816141421",
+        "static_context": None,
+        "context": "6c81f848",
+        "arch": "x86_64",
+        "artifacts": {"rpms": ["ninja-build-0:1.9.2-1.module_1991+4e5efe2f.x86_64"]},
+        "dependencies": [
+            {"requires": {"platform": ["f29"]}, "buildrequires": {"platform": ["f29"]}}
+        ],
+        "profiles": {"default": {"rpms": ["ninja-build"]}},
+        "description": "This module includes Ninja build system. Ninja is a small build system with a focus on speed. It differs from other build systems in two major respects: it is designed to have its input files generated by a higher-level build system, and it is designed to run builds as fast as possible.",
+    },
+    {
+        "name": "meson",
+        "stream": "master",
+        "version": "20180816151613",
+        "static_context": None,
+        "context": "06d0a27d",
+        "arch": "x86_64",
+        "artifacts": {
+            "rpms": [
+                "meson-0:0.47.1-5.module_1993+7c0a4d1e.noarch",
+                "meson-0:0.47.1-5.module_1993+7c0a4d1e.src",
+                "meson-doc-0:0.47.1-5.module_1993+7c0a4d1e.noarch",
+                "meson-doc-0:0.47.1-5.module_1993+7c0a4d1e.src",
+            ]
+        },
+        "dependencies": [
+            {"requires": {"ninja": [], "platform": ["f29"]}, "buildrequires": {"platform": ["f29"]}}
+        ],
+        "profiles": {"default": {"rpms": ["meson"]}},
+        "description": "Meson is an open source build system meant to be both extremely fast, and, even more importantly, as user friendly as possible.\nThe main design point of Meson is that every moment a developer spends writing or debugging build definitions is a second wasted. So is every second spent waiting for the build system to actually start compiling code.",
+    },
+    {
+        "name": "dwm",
+        "stream": "6.0",
+        "version": "20180813144159",
+        "static_context": None,
+        "context": "6c81f848",
+        "arch": "x86_64",
+        "artifacts": {
+            "rpms": [
+                "dwm-0:6.0-1.module_1997+c375c79c.x86_64",
+                "dwm-0:6.0-1.module_1997+c375c79c.src",
+            ]
+        },
+        "dependencies": [
+            {"requires": {"platform": ["f29"]}, "buildrequires": {"platform": ["f29"]}}
+        ],
+        "profiles": {
+            "default": {
+                "rpms": ["dwm"],
+                "description": "The minimal, distribution-compiled dwm binary.",
+            }
+        },
+        "description": "dwm is a dynamic window manager for X.  It manages windows in tiled, monocle, and floating layouts.  All of the layouts can be applied dynamically, optimizing the environment for the application in use and the task performed.",
+    },
 ]
