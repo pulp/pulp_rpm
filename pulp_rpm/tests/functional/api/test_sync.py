@@ -66,6 +66,9 @@ from pulp_rpm.tests.functional.constants import (
     SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT,
     SRPM_UNSIGNED_FIXTURE_PACKAGE_COUNT,
     SRPM_UNSIGNED_FIXTURE_URL,
+    RPM_MODULEMD_DEFAULTS_DATA,
+    RPM_MODULEMD_OBSOLETES_DATA,
+    RPM_MODULEMDS_DATA,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_remote
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
@@ -922,9 +925,6 @@ def test_core_metadata(init_and_sync, rpm_package_api):
         name=RPM_COMPLEX_PACKAGE_DATA["name"], repository_version=repository.latest_version_href
     ).results[0]
     package = package.to_dict()
-    # delete pulp-specific metadata
-    package.pop("pulp_href")
-    package.pop("pulp_created")
 
     # sort file and changelog metadata
     package["changelogs"].sort(reverse=True)
@@ -940,8 +940,14 @@ def test_core_metadata(init_and_sync, rpm_package_api):
         metadata["files"] = sorted(files)
 
     # TODO: figure out how to un-ignore "time_file" without breaking the tests
-    diff = dictdiffer.diff(package, RPM_COMPLEX_PACKAGE_DATA, ignore={"time_file"})
+    diff = dictdiffer.diff(
+        package, RPM_COMPLEX_PACKAGE_DATA, ignore={"time_file", "pulp_created", "pulp_href"}
+    )
     assert list(diff) == [], list(diff)
+
+    # assert no package is marked modular
+    for pkg in get_content(repository.to_dict())[RPM_PACKAGE_CONTENT_NAME]:
+        assert pkg["is_modular"] is False
 
 
 @pytest.mark.parallel
@@ -975,6 +981,74 @@ def test_treeinfo_metadata(init_and_sync, rpm_content_distribution_trees_api):
 
     diff = dictdiffer.diff(distribution_tree, RPM_KICKSTART_DATA)
     assert list(diff) == [], list(diff)
+
+
+def test_modular_metadata(
+    init_and_sync,
+    rpm_modulemd_api,
+    rpm_modulemd_defaults_api,
+    rpm_modulemd_obsoletes_api,
+    delete_orphans_pre,
+):
+    """Test that the metadata returned by the Pulp API post-sync matches what we expect.
+
+    Do the following:
+
+    1. Sync a repo.
+    2. Query modular metadata from the API.
+    3. Match it against the metadata that we expect to be there.
+    """
+    repository, _ = init_and_sync(url=RPM_MODULAR_FIXTURE_URL, policy="on_demand")
+
+    modules = [
+        md.to_dict()
+        for md in rpm_modulemd_api.list(repository_version=repository.latest_version_href).results
+    ]
+    module_defaults = [
+        md.to_dict()
+        for md in rpm_modulemd_defaults_api.list(
+            repository_version=repository.latest_version_href
+        ).results
+    ]
+    module_obsoletes = [
+        md.to_dict()
+        for md in rpm_modulemd_obsoletes_api.list(
+            repository_version=repository.latest_version_href
+        ).results
+    ]
+
+    def module_key(m):
+        return f"{m['name']}-{m['stream']}-{m['version']}-{m['context']}-{m['arch']}"
+
+    def module_default_key(m):
+        return f"{m['module']}-{m['stream']}"
+
+    def module_obsolete_key(m):
+        return f"{m['module_name']}-{m['module_stream']}"
+
+    modules.sort(key=module_key)
+    module_defaults.sort(key=module_default_key)
+    module_obsoletes.sort(key=module_obsolete_key)
+
+    RPM_MODULEMDS_DATA.sort(key=module_key)
+    RPM_MODULEMD_DEFAULTS_DATA.sort(key=module_default_key)
+    RPM_MODULEMD_OBSOLETES_DATA.sort(key=module_obsolete_key)
+
+    for m1, m2 in zip(modules, RPM_MODULEMDS_DATA):
+        diff = dictdiffer.diff(m1, m2, ignore={"packages", "pulp_created", "pulp_href"})
+        assert list(diff) == [], list(diff)
+
+    for m1, m2 in zip(module_defaults, RPM_MODULEMD_DEFAULTS_DATA):
+        diff = dictdiffer.diff(m1, m2, ignore={"pulp_created", "pulp_href"})
+        assert list(diff) == [], list(diff)
+
+    for m1, m2 in zip(module_obsoletes, RPM_MODULEMD_OBSOLETES_DATA):
+        diff = dictdiffer.diff(m1, m2, ignore={"pulp_created", "pulp_href"})
+        assert list(diff) == [], list(diff)
+
+    # assert all package from modular repo is marked as modular
+    for pkg in get_content(repository.to_dict())[RPM_PACKAGE_CONTENT_NAME]:
+        assert pkg["is_modular"] is True
 
 
 @pytest.mark.parallel
