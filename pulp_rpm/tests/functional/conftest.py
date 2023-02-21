@@ -13,6 +13,8 @@ from pulpcore.client.pulp_rpm import (
     ContentPackagesApi,
     DistributionsRpmApi,
     ContentModulemdsApi,
+    ContentModulemdDefaultsApi,
+    ContentModulemdObsoletesApi,
     PublicationsRpmApi,
     RemotesRpmApi,
     RemotesUlnApi,
@@ -107,6 +109,18 @@ def rpm_package_lang_packs_api(rpm_client):
 def rpm_modulemd_api(rpm_client):
     """Fixture for RPM Modulemd API."""
     return ContentModulemdsApi(rpm_client)
+
+
+@pytest.fixture(scope="session")
+def rpm_modulemd_defaults_api(rpm_client):
+    """Fixture for RPM ModulemdDefault API."""
+    return ContentModulemdDefaultsApi(rpm_client)
+
+
+@pytest.fixture(scope="session")
+def rpm_modulemd_obsoletes_api(rpm_client):
+    """Fixture for RPM ModulemdObsolete API."""
+    return ContentModulemdObsoletesApi(rpm_client)
 
 
 @pytest.fixture(scope="session")
