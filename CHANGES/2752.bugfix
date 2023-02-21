@@ -1,0 +1,1 @@
+Publish all metadata with a stable sort order. This should reduce artifact churn when certain metadata files are published repeatedly unchanged.

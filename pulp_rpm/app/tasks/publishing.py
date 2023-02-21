@@ -459,7 +459,7 @@ def generate_repo_metadata(
     pri_xml = cr.PrimaryXmlFile(pri_xml_path)
     fil_xml = cr.FilelistsXmlFile(fil_xml_path)
     oth_xml = cr.OtherXmlFile(oth_xml_path)
-    upd_xml = cr.UpdateInfoXmlFile(upd_xml_path)
+    upd_xml = None
 
     if publication.sqlite_metadata:
         pri_db_path = os.path.join(cwd, "primary.sqlite")
@@ -566,39 +566,52 @@ def generate_repo_metadata(
             oth_db.add_pkg(pkg)
 
     # Process update records
-    for update_record in UpdateRecord.objects.filter(pk__in=content).iterator():
+    update_records = UpdateRecord.objects.filter(pk__in=content).order_by("id", "digest")
+    for update_record in update_records.iterator():
+        if not upd_xml:
+            upd_xml = cr.UpdateInfoXmlFile(upd_xml_path)
         upd_xml.add_chunk(cr.xml_dump_updaterecord(update_record.to_createrepo_c()))
 
     # Process modulemd, modulemd_defaults and obsoletes
     with open(mod_yml_path, "ab") as mod_yml:
-        for modulemd in Modulemd.objects.filter(pk__in=content).iterator():
+        modulemds = Modulemd.objects.filter(pk__in=content).order_by(*Modulemd.natural_key_fields())
+        for modulemd in modulemds.iterator():
             mod_yml.write(modulemd.snippet.encode())
             mod_yml.write(b"\n")
             has_modules = True
-        for default in ModulemdDefaults.objects.filter(pk__in=content).iterator():
+        modulemd_defaults = ModulemdDefaults.objects.filter(pk__in=content).order_by(
+            *ModulemdDefaults.natural_key_fields()
+        )
+        for default in modulemd_defaults.iterator():
             mod_yml.write(default.snippet.encode())
             mod_yml.write(b"\n")
             has_modules = True
-        for obsolete in ModulemdObsolete.objects.filter(pk__in=content).iterator():
+        modulemd_obsoletes = ModulemdObsolete.objects.filter(pk__in=content).order_by(
+            *ModulemdObsolete.natural_key_fields()
+        )
+        for obsolete in modulemd_obsoletes.iterator():
             mod_yml.write(obsolete.snippet.encode())
             mod_yml.write(b"\n")
             has_modules = True
 
     # Process comps
     comps = libcomps.Comps()
-    for pkg_grp in PackageGroup.objects.filter(pk__in=content).iterator():
+    for pkg_grp in PackageGroup.objects.filter(pk__in=content).order_by("id").iterator():
         group = pkg_grp.pkg_grp_to_libcomps()
         comps.groups.append(group)
         has_comps = True
-    for pkg_cat in PackageCategory.objects.filter(pk__in=content).iterator():
+    for pkg_cat in PackageCategory.objects.filter(pk__in=content).order_by("id").iterator():
         cat = pkg_cat.pkg_cat_to_libcomps()
         comps.categories.append(cat)
         has_comps = True
-    for pkg_env in PackageEnvironment.objects.filter(pk__in=content).iterator():
+    for pkg_env in PackageEnvironment.objects.filter(pk__in=content).order_by("id").iterator():
         env = pkg_env.pkg_env_to_libcomps()
         comps.environments.append(env)
         has_comps = True
-    for pkg_lng in PackageLangpacks.objects.filter(pk__in=content).iterator():
+    package_langpacks = PackageLangpacks.objects.filter(pk__in=content).order_by(
+        *PackageLangpacks.natural_key_fields()
+    )
+    for pkg_lng in package_langpacks.iterator():
         comps.langpacks = dict_to_strdict(pkg_lng.matches)
         has_comps = True
 
@@ -615,7 +628,8 @@ def generate_repo_metadata(
     pri_xml.close()
     fil_xml.close()
     oth_xml.close()
-    upd_xml.close()
+    if upd_xml:
+        upd_xml.close()
 
     repomd = cr.Repomd()
     # If the repository is empty, use a revision of 0
@@ -631,15 +645,16 @@ def generate_repo_metadata(
             ("primary_db", pri_db_path, None),
             ("filelists_db", fil_db_path, None),
             ("other_db", oth_db_path, None),
-            ("updateinfo", upd_xml_path, None),
         ]
     else:
         repomdrecords = [
             ("primary", pri_xml_path, None),
             ("filelists", fil_xml_path, None),
             ("other", oth_xml_path, None),
-            ("updateinfo", upd_xml_path, None),
         ]
+
+    if upd_xml:
+        repomdrecords.append(("updateinfo", upd_xml_path, None))
 
     if has_modules:
         repomdrecords.append(("modules", mod_yml_path, None))
