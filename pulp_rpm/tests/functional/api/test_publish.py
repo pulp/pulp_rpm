@@ -253,14 +253,16 @@ def test_publish_references_update(assert_created_publication):
     assert_created_publication(RPM_REFERENCES_UPDATEINFO_URL)
 
 
-@pytest.mark.parallel
+@pytest.mark.parametrize("repo_url", [RPM_COMPLEX_FIXTURE_URL, RPM_MODULAR_FIXTURE_URL])
 def test_complex_repo_core_metadata(
+    repo_url,
     init_and_sync,
     rpm_publication_api,
     gen_object_with_cleanup,
     http_get,
     rpm_distribution_api,
     monitor_task,
+    delete_orphans_pre,
 ):
     """Test the "complex" fixture that covers more of the metadata cases.
 
@@ -268,22 +270,23 @@ def test_complex_repo_core_metadata(
     with the "complex-package" does, and also does a better job of covering rich deps
     and other atypical metadata.
     """
-    # 1. create repo and remote
-    repo, _ = init_and_sync(url=RPM_COMPLEX_FIXTURE_URL, policy="on_demand")
 
-    # 2. publish
+    # create repo and remote
+    repo, _ = init_and_sync(url=repo_url, policy="on_demand")
+
+    # publish
     publish_data = RpmRpmPublication(repository=repo.pulp_href)
     publish_response = rpm_publication_api.create(publish_data)
     created_resources = monitor_task(publish_response.task).created_resources
     publication_href = created_resources[0]
 
-    # 3. distribute
+    # distribute
     body = gen_distribution(publication=publication_href)
     distribution = gen_object_with_cleanup(rpm_distribution_api, body)
 
-    # 4. Download and parse the metadata.
+    # Download and parse the metadata.
     original_repomd = ElementTree.fromstring(
-        http_get(os.path.join(RPM_COMPLEX_FIXTURE_URL, "repodata/repomd.xml"))
+        http_get(os.path.join(repo_url, "repodata/repomd.xml"))
     )
 
     reproduced_repomd = ElementTree.fromstring(
@@ -308,24 +311,48 @@ def test_complex_repo_core_metadata(
         #     …
         xpath = "{{{}}}data".format(RPM_NAMESPACES["metadata/repo"])
         data_elems = [elem for elem in repomd_elem.findall(xpath) if elem.get("type") == meta_type]
+        if not data_elems:
+            return None
+
         xpath = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
         location_href = data_elems[0].find(xpath).get("href")
 
         return read_xml_gz(http_get(os.path.join(base_url, location_href)))
 
-    # 5, 6. Convert the metadata into a more workable form and then compare.
+    # Convert the metadata into a more workable form and then compare.
     for metadata_file in ["primary", "filelists", "other"]:
-        original_metadata = get_metadata_content(
-            RPM_COMPLEX_FIXTURE_URL, original_repomd, metadata_file
-        )
+        original_metadata = get_metadata_content(repo_url, original_repomd, metadata_file)
         generated_metadata = get_metadata_content(
             distribution.base_url, reproduced_repomd, metadata_file
         )
 
-        _compare_metadata_file(original_metadata, generated_metadata, metadata_file)
+        _compare_xml_metadata_file(original_metadata, generated_metadata, metadata_file)
+
+    # =================
+
+    original_modulemds = get_metadata_content(repo_url, original_repomd, "modules")
+    generated_modulemds = get_metadata_content(distribution.base_url, reproduced_repomd, "modules")
+
+    assert bool(original_modulemds) == bool(generated_modulemds)
+
+    if original_modulemds:
+        # compare list of modulemd, modulemd-defaults, and modulemd-obsoletes after sorting them
+        original_modulemds = sorted(original_modulemds.decode().split("---")[1:])
+        generated_modulemds = sorted(generated_modulemds.decode().split("---")[1:])
+
+        assert original_modulemds == generated_modulemds
+
+    # ===================
+
+    # TODO: make this deeper
+    original_updateinfo = get_metadata_content(repo_url, original_repomd, "updateinfo")
+    generated_updateinfo = get_metadata_content(
+        distribution.base_url, reproduced_repomd, "updateinfo"
+    )
+    assert bool(original_updateinfo) == bool(generated_updateinfo)
 
 
-def _compare_metadata_file(original_metadata_text, generated_metadata_text, meta_type):
+def _compare_xml_metadata_file(original_metadata_text, generated_metadata_text, meta_type):
     """Compare two metadata files.
 
     First convert the metadata into a canonical form. We convert from XML to JSON, and then to
@@ -347,10 +374,15 @@ def _compare_metadata_file(original_metadata_text, generated_metadata_text, meta
         generated_metadata_text, dict_constructor=collections.OrderedDict
     )[subsection]["package"]
 
+    if not isinstance(original_metadata, list):
+        original_metadata = [original_metadata]
+    if not isinstance(generated_metadata, list):
+        generated_metadata = [generated_metadata]
+
     # The other transformations are inside the package nodes - they differ by type of metadata
     if meta_type == "primary":
         # location_href gets rewritten by Pulp so we should ignore these differences
-        ignore = {"location.@href", "format.file"}
+        ignore = {"location.@href", "format.file", "time.@file"}
         # we need to make sure all of the requirements are in the same order
         requirement_types = [
             "rpm:suggests",
@@ -362,35 +394,49 @@ def _compare_metadata_file(original_metadata_text, generated_metadata_text, meta
             "rpm:conflicts",
             "rpm:supplements",
         ]
+
+        original_metadata = sorted(original_metadata, key=lambda x: x["checksum"]["#text"])
+        generated_metadata = sorted(generated_metadata, key=lambda x: x["checksum"]["#text"])
         for md_file in [original_metadata, generated_metadata]:
-            for req in requirement_types:
-                if md_file["format"].get(req):
-                    md_file["format"][req] = sorted(md_file["format"][req])
+            for pkg in md_file:
+                for req in requirement_types:
+                    if pkg["format"].get(req):
+                        pkg["format"][req] = sorted(pkg["format"][req])
     elif meta_type == "filelists":
         ignore = {}
+        original_metadata = sorted(original_metadata, key=lambda x: x["@pkgid"])
+        generated_metadata = sorted(generated_metadata, key=lambda x: x["@pkgid"])
         # make sure the files are all in the same order and type and sort them
         # nodes with a "type" attribute in the XML become OrderedDicts, so we have to convert
         # them to a string representation.
         for md_file in [original_metadata, generated_metadata]:
-            if md_file.get("file"):
-                files = []
-                for f in md_file["file"]:
-                    if isinstance(f, collections.OrderedDict):
-                        files.append("{path} type={type}".format(path=f["@type"], type=f["#text"]))
-                    else:
-                        files.append(f)
+            for pkg in md_file:
+                if pkg.get("file"):
+                    files = []
+                    for f in pkg["file"]:
+                        if isinstance(f, collections.OrderedDict):
+                            files.append(
+                                "{path} type={type}".format(path=f["@type"], type=f["#text"])
+                            )
+                        else:
+                            files.append(f)
 
-                md_file["file"] = sorted(files)
+                    pkg["file"] = sorted(files)
     elif meta_type == "other":
         ignore = {}
-        # make sure the changelogs are in the same order
+        original_metadata = sorted(original_metadata, key=lambda x: x["@pkgid"])
+        generated_metadata = sorted(generated_metadata, key=lambda x: x["@pkgid"])
+
         for md_file in [original_metadata, generated_metadata]:
-            if md_file.get("changelog"):
-                md_file["changelog"] = sorted(md_file["changelog"], key=lambda x: x["@author"])
+            for pkg in md_file:
+                # make sure the changelogs are in the same order
+                if pkg.get("changelog"):
+                    pkg["changelog"] = sorted(pkg["changelog"], key=lambda x: x["@author"])
 
     # The metadata dicts should now be consistently ordered. Check for differences.
-    diff = dictdiffer.diff(original_metadata, generated_metadata, ignore=ignore)
-    assert list(diff) == [], list(diff)
+    for original, generated in zip(original_metadata, generated_metadata):
+        diff = dictdiffer.diff(original, generated, ignore=ignore)
+        assert list(diff) == [], list(diff)
 
 
 @pytest.mark.parallel
