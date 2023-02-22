@@ -93,17 +93,19 @@ if [ -n "$PULP_OPENAPI_GENERATOR_PR_NUMBER" ]; then
 fi
 
 
-git clone --depth=1 https://github.com/pulp/pulp-cli.git
+git clone https://github.com/pulp/pulp-cli.git
+cd pulp-cli
 if [ -n "$PULP_CLI_PR_NUMBER" ]; then
-  cd pulp-cli
   git fetch origin pull/$PULP_CLI_PR_NUMBER/head:$PULP_CLI_PR_NUMBER
   git checkout $PULP_CLI_PR_NUMBER
-  cd ..
+  pip install . ./pulp-glue
+else
+  pip install pulp-cli
+  PULP_CLI_VERSION="$(python -c "from pulpcore.cli.common import __version__; print(__version__)")"
+  git checkout "$PULP_CLI_VERSION"
 fi
 
-cd pulp-cli
-pip install .
-pulp config create --base-url https://pulp --location tests/cli.toml 
+pulp config create --base-url https://pulp  --location tests/cli.toml
 mkdir ~/.config/pulp
 cp tests/cli.toml ~/.config/pulp/cli.toml
 cd ..
@@ -134,6 +136,11 @@ then
 fi
 
 cd pulp_rpm
+
+if [[ "$TEST" = "lowerbounds" ]]; then
+  python3 .ci/scripts/calc_deps_lowerbounds.py > lowerbounds_requirements.txt
+  mv lowerbounds_requirements.txt requirements.txt
+fi
 
 if [ -f $POST_BEFORE_INSTALL ]; then
   source $POST_BEFORE_INSTALL
