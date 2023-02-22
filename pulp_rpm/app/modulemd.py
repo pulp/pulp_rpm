@@ -71,11 +71,10 @@ def split_modulemd_file(file):
             for line in modulemd_file:
                 if line.startswith("---"):
                     if module:  # avoid first empty yield in the beginning of document
-                        yield module
+                        yield module.strip("\n")
                         module = ""
                 module += line
-
-            yield module
+            yield module.strip("\n")
 
 
 def check_mandatory_module_fields(module, required_fields):

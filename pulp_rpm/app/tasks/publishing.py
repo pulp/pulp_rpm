@@ -573,12 +573,15 @@ def generate_repo_metadata(
     with open(mod_yml_path, "ab") as mod_yml:
         for modulemd in Modulemd.objects.filter(pk__in=content).iterator():
             mod_yml.write(modulemd.snippet.encode())
+            mod_yml.write(b"\n")
             has_modules = True
         for default in ModulemdDefaults.objects.filter(pk__in=content).iterator():
             mod_yml.write(default.snippet.encode())
+            mod_yml.write(b"\n")
             has_modules = True
         for obsolete in ModulemdObsolete.objects.filter(pk__in=content).iterator():
             mod_yml.write(obsolete.snippet.encode())
+            mod_yml.write(b"\n")
             has_modules = True
 
     # Process comps
