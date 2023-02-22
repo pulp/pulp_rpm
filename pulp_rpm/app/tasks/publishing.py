@@ -577,18 +577,21 @@ def generate_repo_metadata(
         modulemds = Modulemd.objects.filter(pk__in=content).order_by(*Modulemd.natural_key_fields())
         for modulemd in modulemds.iterator():
             mod_yml.write(modulemd.snippet.encode())
+            mod_yml.write(b"\n")
             has_modules = True
         modulemd_defaults = ModulemdDefaults.objects.filter(pk__in=content).order_by(
             *ModulemdDefaults.natural_key_fields()
         )
         for default in modulemd_defaults.iterator():
             mod_yml.write(default.snippet.encode())
+            mod_yml.write(b"\n")
             has_modules = True
         modulemd_obsoletes = ModulemdObsolete.objects.filter(pk__in=content).order_by(
             *ModulemdObsolete.natural_key_fields()
         )
         for obsolete in modulemd_obsoletes.iterator():
             mod_yml.write(obsolete.snippet.encode())
+            mod_yml.write(b"\n")
             has_modules = True
 
     # Process comps
