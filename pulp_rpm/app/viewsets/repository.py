@@ -9,6 +9,7 @@ from rest_framework.serializers import ValidationError as DRFValidationError
 from pulpcore.plugin.actions import ModifyRepositoryActionMixin
 from pulpcore.plugin.models import RepositoryVersion
 from pulpcore.plugin.tasking import dispatch
+from pulpcore.plugin.util import extract_pk
 from pulpcore.plugin.serializers import (
     AsyncOperationResponseSerializer,
 )
