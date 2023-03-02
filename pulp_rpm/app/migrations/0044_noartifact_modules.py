@@ -15,7 +15,7 @@ def convert_artifact_to_snippets(apps, schema_editor):
 
         for module in Modulemd.objects.all():
             artifact = module._artifacts.get()
-            if default_storage.exists(artifact.file.path):
+            if default_storage.exists(artifact.file.name):
                 module.snippet = artifact.file.read().decode("utf-8")
             content_artifact = ContentArtifact.objects.filter(content__pk=module.pk)
             content_artifact.delete()
@@ -23,7 +23,7 @@ def convert_artifact_to_snippets(apps, schema_editor):
 
         for default in ModulemdDefaults.objects.all():
             artifact = default._artifacts.get()
-            if default_storage.exists(artifact.file.path):
+            if default_storage.exists(artifact.file.name):
                 default.snippet = artifact.file.read().decode("utf-8")
             content_artifact = ContentArtifact.objects.filter(content__pk=default.pk)
             content_artifact.delete()
