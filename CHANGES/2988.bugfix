@@ -1,0 +1,1 @@
+Fixed 0044_noartifact_modules migration that was failing with object storage.
