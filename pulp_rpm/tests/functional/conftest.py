@@ -1,5 +1,3 @@
-import uuid
-
 import pytest
 
 from pulpcore.client.pulp_rpm import (
@@ -17,12 +15,7 @@ from pulpcore.client.pulp_rpm import (
     RemotesRpmApi,
     RemotesUlnApi,
     RepositoriesRpmApi,
-    RepositoriesRpmVersionsApi,
-    RpmRepositorySyncURL,
 )
-
-from pulp_rpm.tests.functional.constants import RPM_UNSIGNED_FIXTURE_URL
-from pulp_rpm.tests.functional.utils import gen_rpm_remote
 
 
 @pytest.fixture(scope="session")
@@ -35,12 +28,6 @@ def rpm_client(bindings_cfg):
 def rpm_repository_api(rpm_client):
     """Fixture for RPM repositories API."""
     return RepositoriesRpmApi(rpm_client)
-
-
-@pytest.fixture(scope="session")
-def rpm_repository_version_api(rpm_client):
-    """Fixture for the RPM repository versions API."""
-    return RepositoriesRpmVersionsApi(rpm_client)
 
 
 @pytest.fixture(scope="session")
@@ -112,45 +99,3 @@ def rpm_modulemd_api(rpm_client):
 @pytest.fixture(scope="session")
 def rpm_content_distribution_trees_api(rpm_client):
     return ContentDistributionTreesApi(rpm_client)
-
-
-@pytest.fixture(scope="class")
-def init_and_sync(gen_object_with_cleanup, monitor_task, rpm_repository_api, rpm_rpmremote_api):
-    def _init_and_sync(
-        repository=None,
-        remote=None,
-        url=RPM_UNSIGNED_FIXTURE_URL,
-        policy="immediate",
-        sync_policy="additive",
-        skip_types=None,
-    ):
-        """Initialize a new repository and remote and sync the content from the passed URL."""
-        if repository is None:
-            repository = gen_object_with_cleanup(rpm_repository_api, {"name": str(uuid.uuid4())})
-        if remote is None:
-            remote = gen_object_with_cleanup(
-                rpm_rpmremote_api, gen_rpm_remote(url=url, policy=policy)
-            )
-
-        repository_sync_data = RpmRepositorySyncURL(
-            remote=remote.pulp_href, sync_policy=sync_policy, skip_types=skip_types
-        )
-        sync_response = rpm_repository_api.sync(repository.pulp_href, repository_sync_data)
-        monitor_task(sync_response.task)
-
-        repository = rpm_repository_api.read(repository.pulp_href)
-        return repository, remote
-
-    return _init_and_sync
-
-
-@pytest.fixture(scope="class")
-def rpm_unsigned_repo_immediate(init_and_sync):
-    repo, _ = init_and_sync()
-    yield repo
-
-
-@pytest.fixture(scope="class")
-def rpm_unsigned_repo_on_demand(init_and_sync):
-    repo, _ = init_and_sync(policy="on_demand")
-    yield repo
