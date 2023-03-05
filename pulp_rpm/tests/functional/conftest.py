@@ -24,6 +24,8 @@ from pulpcore.client.pulp_rpm import (
 
 from pulp_rpm.tests.functional.constants import RPM_UNSIGNED_FIXTURE_URL, RPM_KICKSTART_FIXTURE_URL
 
+IMPORT_EXPORT_NUM_REPOS = 2
+
 
 @pytest.fixture(scope="session")
 def rpm_client(bindings_cfg):
@@ -200,3 +202,73 @@ def rpm_unsigned_repo_on_demand(init_and_sync):
 def rpm_kickstart_repo_immediate(init_and_sync):
     repo, _ = init_and_sync(url=RPM_KICKSTART_FIXTURE_URL)
     return repo
+
+
+@pytest.fixture
+def import_export_repositories(
+    rpm_repository_api,
+    rpm_repository_factory,
+    rpm_rpmremote_factory,
+    monitor_task,
+):
+    """Create and sync a number of repositories to be exported."""
+
+    def _import_export_repositories(
+        import_repos=None, export_repos=None, url=RPM_UNSIGNED_FIXTURE_URL
+    ):
+        if import_repos or export_repos:
+            # repositories were initialized by the caller
+            return import_repos, export_repos
+
+        import_repos = []
+        export_repos = []
+        for r in range(IMPORT_EXPORT_NUM_REPOS):
+            import_repo = rpm_repository_factory()
+            export_repo = rpm_repository_factory()
+
+            remote = rpm_rpmremote_factory(url=url)
+            repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
+            sync_response = rpm_repository_api.sync(export_repo.pulp_href, repository_sync_data)
+            monitor_task(sync_response.task)
+
+            # remember it
+            import_repo = rpm_repository_api.read(import_repo.pulp_href)
+            export_repo = rpm_repository_api.read(export_repo.pulp_href)
+            export_repos.append(export_repo)
+            import_repos.append(import_repo)
+        return import_repos, export_repos
+
+    return _import_export_repositories
+
+
+@pytest.fixture
+def create_exporter(gen_object_with_cleanup, exporters_pulp_api_client, import_export_repositories):
+    def _create_exporter(import_repos=None, export_repos=None, url=RPM_UNSIGNED_FIXTURE_URL):
+        if not export_repos:
+            _, export_repos = import_export_repositories(import_repos, export_repos, url=url)
+
+        body = {
+            "name": str(uuid.uuid4()),
+            "repositories": [r.pulp_href for r in export_repos],
+            "path": f"/tmp/{uuid.uuid4()}/",
+        }
+        exporter = gen_object_with_cleanup(exporters_pulp_api_client, body)
+        return exporter
+
+    return _create_exporter
+
+
+@pytest.fixture
+def create_export(exporters_pulp_exports_api_client, create_exporter, monitor_task):
+    def _create_export(
+        import_repos=None, export_repos=None, url=RPM_UNSIGNED_FIXTURE_URL, exporter=None
+    ):
+        if not exporter:
+            exporter = create_exporter(import_repos, export_repos, url=url)
+
+        export_response = exporters_pulp_exports_api_client.create(exporter.pulp_href, {})
+        export_href = monitor_task(export_response.task).created_resources[0]
+        export = exporters_pulp_exports_api_client.read(export_href)
+        return export
+
+    return _create_export
