@@ -4,459 +4,399 @@ Tests PulpImporter and PulpImport functionality.
 NOTE: assumes ALLOWED_EXPORT_PATHS and ALLOWED_IMPORT_PATHS settings contain "/tmp" - all tests
 will fail if this is not the case.
 """
-from pulp_smash import api, cli, config, utils
-from pulp_smash.utils import uuid4
-from pulp_smash.pulp3.bindings import (
-    delete_orphans,
-    monitor_task,
-    monitor_task_group,
-    PulpTestCase,
-)
-from pulp_smash.pulp3.utils import gen_repo, get_content
+import uuid
+import pytest
+
+from collections import namedtuple
 
 from pulp_rpm.tests.functional.constants import RPM_KICKSTART_FIXTURE_URL, RPM_UNSIGNED_FIXTURE_URL
-from pulp_rpm.tests.functional.utils import (
-    gen_rpm_client,
-    gen_rpm_remote,
-)
 
-from pulpcore.client.pulpcore import (
-    ApiClient as CoreApiClient,
-    ExportersPulpApi,
-    ExportersPulpExportsApi,
-    ImportersPulpApi,
-    ImportersPulpImportsApi,
-)
-from pulpcore.client.pulp_rpm import (
-    ContentDistributionTreesApi,
-    RepositoriesRpmApi,
-    RpmRepositorySyncURL,
-    RemotesRpmApi,
-)
+from pulpcore.client.pulp_rpm import RpmRepositorySyncURL
 
 NUM_REPOS = 2
 
+ExportFileInfo = namedtuple("ExportFileInfo", "output_file_info")
 
-class PulpImportTestBase(PulpTestCase):
-    """
-    Base functionality for PulpImporter and PulpImport test classes.
-    """
 
-    @classmethod
-    def _setup_repositories(cls, url=None):
-        """Create and sync a number of repositories to be exported."""
-        # create and remember a set of repo
+@pytest.fixture
+def import_export_repositories(
+    rpm_repository_api,
+    rpm_repository_factory,
+    rpm_rpmremote_factory,
+    monitor_task,
+):
+    """Create and sync a number of repositories to be exported."""
+
+    def _import_export_repositories(
+        import_repos=None, export_repos=None, url=RPM_UNSIGNED_FIXTURE_URL
+    ):
+        if import_repos or export_repos:
+            # repositories were initialized by the caller
+            return import_repos, export_repos
+
         import_repos = []
         export_repos = []
-        remotes = []
         for r in range(NUM_REPOS):
-            import_repo = cls.repo_api.create(gen_repo())
-            export_repo = cls.repo_api.create(gen_repo())
+            import_repo = rpm_repository_factory()
+            export_repo = rpm_repository_factory()
 
-            if url:
-                body = gen_rpm_remote(url)
-            else:
-                body = gen_rpm_remote()
-            remote = cls.remote_api.create(body)
-
+            remote = rpm_rpmremote_factory(url=url)
             repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
-            sync_response = cls.repo_api.sync(export_repo.pulp_href, repository_sync_data)
+            sync_response = rpm_repository_api.sync(export_repo.pulp_href, repository_sync_data)
             monitor_task(sync_response.task)
+
             # remember it
+            import_repo = rpm_repository_api.read(import_repo.pulp_href)
+            export_repo = rpm_repository_api.read(export_repo.pulp_href)
             export_repos.append(export_repo)
             import_repos.append(import_repo)
-            remotes.append(remote)
-        return import_repos, export_repos, remotes
+        return import_repos, export_repos
 
-    @classmethod
-    def _create_exporter(cls, cleanup=True):
+    return _import_export_repositories
+
+
+@pytest.fixture
+def create_exporter(gen_object_with_cleanup, exporters_pulp_api_client, import_export_repositories):
+    def _create_exporter(import_repos=None, export_repos=None, url=RPM_UNSIGNED_FIXTURE_URL):
+        if not export_repos:
+            _, export_repos = import_export_repositories(import_repos, export_repos, url=url)
+
         body = {
-            "name": uuid4(),
-            "repositories": [r.pulp_href for r in cls.export_repos],
-            "path": "/tmp/{}".format(uuid4()),
+            "name": str(uuid.uuid4()),
+            "repositories": [r.pulp_href for r in export_repos],
+            "path": f"/tmp/{uuid.uuid4()}/",
         }
-        exporter = cls.exporter_api.create(body)
+        exporter = gen_object_with_cleanup(exporters_pulp_api_client, body)
         return exporter
 
-    @classmethod
-    def _create_export(cls):
-        export_response = cls.exports_api.create(cls.exporter.pulp_href, {})
-        monitor_task(export_response.task)
-        task = cls.client.get(export_response.task)
-        resources = task["created_resources"]
-        export_href = resources[0]
-        export = cls.exports_api.read(export_href)
+    return _create_exporter
+
+
+@pytest.fixture
+def create_export(exporters_pulp_exports_api_client, create_exporter, monitor_task):
+    def _create_export(
+        import_repos=None, export_repos=None, url=RPM_UNSIGNED_FIXTURE_URL, exporter=None
+    ):
+        if not exporter:
+            exporter = create_exporter(import_repos, export_repos, url=url)
+
+        export_response = exporters_pulp_exports_api_client.create(exporter.pulp_href, {})
+        export_href = monitor_task(export_response.task).created_resources[0]
+        export = exporters_pulp_exports_api_client.read(export_href)
         return export
 
-    @classmethod
-    def _create_chunked_export(cls):
-        export_response = cls.exports_api.create(cls.exporter.pulp_href, {"chunk_size": "5KB"})
-        monitor_task(export_response.task)
-        task = cls.client.get(export_response.task)
-        resources = task["created_resources"]
-        export_href = resources[0]
-        export = cls.exports_api.read(export_href)
+    return _create_export
+
+
+@pytest.fixture
+def create_chunked_export(exporters_pulp_exports_api_client, create_exporter, monitor_task):
+    def _create_chunked_export(import_repos, export_repos, url=RPM_UNSIGNED_FIXTURE_URL):
+        exporter = create_exporter(import_repos, export_repos, url=url)
+        export_response = exporters_pulp_exports_api_client.create(
+            exporter.pulp_href, {"chunk_size": "5KB"}
+        )
+        export_href = monitor_task(export_response.task).created_resources[0]
+        export = exporters_pulp_exports_api_client.read(export_href)
         return export
 
-    @classmethod
-    def _delete_exporter(cls, delete_file=True):
-        """
-        Utility routine to delete an exporter.
+    return _create_chunked_export
 
-        Also removes the export-directory and all its contents.
-        """
-        if delete_file:
-            cli_client = cli.Client(cls.cfg)
-            cmd = ("rm", "-rf", cls.exporter.path)
-            cli_client.run(cmd, sudo=True)
-        cls.exporter_api.delete(cls.exporter.pulp_href)
 
-    @classmethod
-    def tearDownClass(cls):
-        """Clean up."""
-        for remote in cls.remotes:
-            cls.remote_api.delete(remote.pulp_href)
-
-        for repo in cls.export_repos:
-            cls.repo_api.delete(repo.pulp_href)
-
-        for repo in cls.import_repos:
-            cls.repo_api.delete(repo.pulp_href)
-
-        cls._delete_exporter()
-
-        delete_orphans()
-
-    def _create_importer(self, name=None, cleanup=True):
+@pytest.fixture
+def pulp_importer_factory(
+    gen_object_with_cleanup, import_export_repositories, importers_pulp_api_client
+):
+    def _pulp_importer_factory(
+        import_repos=None,
+        exported_repos=None,
+        name=None,
+        mapping=None,
+        url=RPM_UNSIGNED_FIXTURE_URL,
+    ):
         """Create an importer."""
-        mapping = {}
+        _import_repos, _exported_repos = import_export_repositories(
+            import_repos, exported_repos, url=url
+        )
         if not name:
-            name = uuid4()
+            name = str(uuid.uuid4())
 
-        for idx, repo in enumerate(self.export_repos):
-            mapping[repo.name] = self.import_repos[idx].name
+        if not mapping:
+            mapping = {}
+            if not import_repos:
+                import_repos = _import_repos
+            if not exported_repos:
+                exported_repos = _exported_repos
+
+            for idx, repo in enumerate(exported_repos):
+                mapping[repo.name] = import_repos[idx].name
 
         body = {
             "name": name,
             "repo_mapping": mapping,
         }
 
-        importer = self.importer_api.create(body)
-
-        if cleanup:
-            self.addCleanup(self.importer_api.delete, importer.pulp_href)
+        importer = gen_object_with_cleanup(importers_pulp_api_client, body)
 
         return importer
 
-    def _perform_import(self, importer, chunked=False):
+    return _pulp_importer_factory
+
+
+@pytest.fixture
+def perform_import(
+    create_chunked_export,
+    create_export,
+    importers_pulp_imports_api_client,
+    monitor_task_group,
+    import_export_repositories,
+):
+    def _perform_import(
+        importer, import_repos=None, export_repos=None, chunked=False, an_export=None, body=None
+    ):
         """Perform an import with importer."""
+        if body is None:
+            body = {}
+
+        if not an_export:
+            if not (import_repos or export_repos):
+                import_repos, export_repos = import_export_repositories()
+
+            an_export = (
+                create_chunked_export(import_repos, export_repos)
+                if chunked
+                else create_export(import_repos, export_repos)
+            )
+
         if chunked:
-            filenames = [
-                f for f in list(self.chunked_export.output_file_info.keys()) if f.endswith("json")
-            ]
-            import_response = self.imports_api.create(importer.pulp_href, {"toc": filenames[0]})
+            filenames = [f for f in list(an_export.output_file_info.keys()) if f.endswith("json")]
+            if "toc" not in body:
+                body["toc"] = filenames[0]
         else:
-            filenames = [
-                f for f in list(self.export.output_file_info.keys()) if f.endswith("tar.gz")
-            ]
-            import_response = self.imports_api.create(importer.pulp_href, {"path": filenames[0]})
+            filenames = [f for f in list(an_export.output_file_info.keys()) if f.endswith("tar.gz")]
+            if "path" not in body:
+                body["path"] = filenames[0]
+
+        import_response = importers_pulp_imports_api_client.create(importer.pulp_href, body)
         task_group = monitor_task_group(import_response.task_group)
 
         return task_group
 
+    return _perform_import
 
-class PulpImportTestCase(PulpImportTestBase):
+
+@pytest.mark.parallel
+def test_import(
+    pulp_importer_factory, import_export_repositories, perform_import, rpm_repository_api
+):
+    """Test an import."""
+    import_repos, exported_repos = import_export_repositories()
+    importer = pulp_importer_factory(import_repos, exported_repos)
+    task_group = perform_import(importer, import_repos, exported_repos, chunked=True)
+    assert (len(import_repos) + 1) == task_group.completed
+
+    for repo in import_repos:
+        repo = rpm_repository_api.read(repo.pulp_href)
+        assert f"{repo.pulp_href}versions/1/" == repo.latest_version_href
+
+
+@pytest.mark.parallel
+def test_double_import(
+    pulp_importer_factory,
+    importers_pulp_imports_api_client,
+    import_export_repositories,
+    rpm_repository_api,
+    perform_import,
+):
+    """Test two imports of our export."""
+    import_repos, exported_repos = import_export_repositories()
+
+    importer = pulp_importer_factory(import_repos, exported_repos)
+    perform_import(importer, import_repos, exported_repos)
+    perform_import(importer, import_repos, exported_repos)
+
+    imports = importers_pulp_imports_api_client.list(importer.pulp_href).results
+    assert len(imports) == 2
+
+    for repo in import_repos:
+        repo = rpm_repository_api.read(repo.pulp_href)
+        # still only one version as pulp won't create a new version if nothing changed
+        assert f"{repo.pulp_href}versions/1/" == repo.latest_version_href
+
+
+@pytest.mark.parallel
+def test_distribution_tree_import(
+    import_export_repositories,
+    pulp_importer_factory,
+    rpm_repository_api,
+    rpm_content_distribution_trees_api,
+    perform_import,
+):
+    """Tests for PulpImporter and PulpImport for repos with DistributionTrees."""
+    import_repos, exported_repos = import_export_repositories(url=RPM_KICKSTART_FIXTURE_URL)
+    importer = pulp_importer_factory(import_repos, exported_repos, url=RPM_UNSIGNED_FIXTURE_URL)
+    task_group = perform_import(importer, import_repos, exported_repos)
+    assert (len(import_repos) + 1) == task_group.completed
+
+    for repo in import_repos:
+        repo = rpm_repository_api.read(repo.pulp_href)
+        assert f"{repo.pulp_href}versions/1/" == repo.latest_version_href
+
+        trees = rpm_content_distribution_trees_api.list(repository_version=repo.latest_version_href)
+        assert trees.count == 1
+
+
+def test_clean_import(
+    rpm_repository_api,
+    import_export_repositories,
+    create_export,
+    pulp_importer_factory,
+    monitor_task,
+    orphans_cleanup_api_client,
+    perform_import,
+):
+    """Test an import into an empty instance."""
+    # By the time we get here, setUpClass() has created repos and an export for us
+    # Find the export file, create the importer, delete repos/export, and then let
+    # the import happen
+    import_repos, exported_repos = import_export_repositories()
+    export = create_export(import_repos, exported_repos)
+    filenames = [f for f in list(export.output_file_info.keys()) if f.endswith("tar.gz")]
+    importer = pulp_importer_factory(import_repos, exported_repos)
+
+    an_export = ExportFileInfo(export.output_file_info)
+
+    for repo in exported_repos:
+        monitor_task(rpm_repository_api.delete(repo.pulp_href).task)
+    monitor_task(orphans_cleanup_api_client.cleanup({"orphan_protection_time": 0}).task)
+
+    existing_repos = rpm_repository_api.list().count
+    # At this point we should be importing into a content-free-zone
+    task_group = perform_import(importer, an_export=an_export, body={"path": filenames[0]})
+    assert len(import_repos) + 1 == task_group.completed
+
+    for repo in import_repos:
+        repo = rpm_repository_api.read(repo.pulp_href)
+        assert f"{repo.pulp_href}versions/1/" == repo.latest_version_href
+    # We should have the same number of repositories, post-import, than however many we had
+    # post-removal of the export-repos
+    assert rpm_repository_api.list().count == existing_repos
+
+
+def test_create_missing_repos(
+    init_and_sync,
+    rpm_rpmremote_api,
+    rpm_repository_api,
+    rpm_content_distribution_trees_api,
+    monitor_task,
+    exporters_pulp_api_client,
+    exporters_pulp_exports_api_client,
+    orphans_cleanup_api_client,
+    importers_pulp_api_client,
+    gen_object_with_cleanup,
+    importers_pulp_imports_api_client,
+    monitor_task_group,
+):
     """
-    Basic tests for PulpImporter and PulpImport.
-    """
+    Tests for PulpImporter and create-missing-repos.
 
-    @classmethod
-    def setUpClass(cls):
-        """Create class-wide variables."""
-        cls.cfg = config.get_config()
-        cls.client = api.Client(cls.cfg, api.json_handler)
-        cls.core_client = CoreApiClient(configuration=cls.cfg.get_bindings_config())
-        cls.rpm_client = gen_rpm_client()
-
-        cls.repo_api = RepositoriesRpmApi(cls.rpm_client)
-        cls.remote_api = RemotesRpmApi(cls.rpm_client)
-        cls.exporter_api = ExportersPulpApi(cls.core_client)
-        cls.exports_api = ExportersPulpExportsApi(cls.core_client)
-        cls.importer_api = ImportersPulpApi(cls.core_client)
-        cls.imports_api = ImportersPulpImportsApi(cls.core_client)
-
-        cls.import_repos, cls.export_repos, cls.remotes = cls._setup_repositories()
-        cls.exporter = cls._create_exporter()
-        cls.export = cls._create_export()
-        cls.chunked_export = cls._create_chunked_export()
-
-    def test_import(self):
-        """Test an import."""
-        importer = self._create_importer()
-        task_group = self._perform_import(importer)
-        self.assertEqual(len(self.import_repos) + 1, task_group.completed)
-        for repo in self.import_repos:
-            repo = self.repo_api.read(repo.pulp_href)
-            self.assertEqual(f"{repo.pulp_href}versions/1/", repo.latest_version_href)
-
-    def test_double_import(self):
-        """Test two imports of our export."""
-        importer = self._create_importer()
-        self._perform_import(importer)
-        self._perform_import(importer)
-
-        imports = self.imports_api.list(importer.pulp_href).results
-        self.assertEqual(len(imports), 2)
-
-        for repo in self.import_repos:
-            repo = self.repo_api.read(repo.pulp_href)
-            # still only one version as pulp won't create a new version if nothing changed
-            self.assertEqual(f"{repo.pulp_href}versions/1/", repo.latest_version_href)
-
-
-class DistributionTreePulpImportTestCase(PulpImportTestBase):
-    """
-    Tests for PulpImporter and PulpImport for repos with DistributionTrees.
-    """
-
-    @classmethod
-    def setUpClass(cls):
-        """Create class-wide variables."""
-        cls.cfg = config.get_config()
-        cls.client = api.Client(cls.cfg, api.json_handler)
-        cls.core_client = CoreApiClient(configuration=cls.cfg.get_bindings_config())
-        cls.rpm_client = gen_rpm_client()
-
-        cls.repo_api = RepositoriesRpmApi(cls.rpm_client)
-        cls.remote_api = RemotesRpmApi(cls.rpm_client)
-        cls.exporter_api = ExportersPulpApi(cls.core_client)
-        cls.exports_api = ExportersPulpExportsApi(cls.core_client)
-        cls.importer_api = ImportersPulpApi(cls.core_client)
-        cls.imports_api = ImportersPulpImportsApi(cls.core_client)
-        cls.dist_tree_api = ContentDistributionTreesApi(cls.rpm_client)
-
-        cls.import_repos, cls.export_repos, cls.remotes = cls._setup_repositories(
-            RPM_KICKSTART_FIXTURE_URL
-        )
-        cls.exporter = cls._create_exporter()
-        cls.export = cls._create_export()
-
-    def test_import(self):
-        """Test an import."""
-        importer = self._create_importer()
-        task_group = self._perform_import(importer)
-        self.assertEqual(len(self.import_repos) + 1, task_group.completed)
-        for repo in self.import_repos:
-            repo = self.repo_api.read(repo.pulp_href)
-            self.assertEqual(f"{repo.pulp_href}versions/1/", repo.latest_version_href)
-            trees = self.dist_tree_api.list(repository_version=repo.latest_version_href)
-            self.assertEqual(trees.count, 1)
-
-
-class ParallelImportTestCase(PulpImportTestBase):
-    """
-    Tests for PulpImporter and PulpImport parallel import into a clean repository.
-    """
-
-    @classmethod
-    def setUpClass(cls):
-        """Create class-wide variables."""
-        cls.cfg = config.get_config()
-        cls.client = api.Client(cls.cfg, api.json_handler)
-        cls.core_client = CoreApiClient(configuration=cls.cfg.get_bindings_config())
-        cls.rpm_client = gen_rpm_client()
-
-        cls.repo_api = RepositoriesRpmApi(cls.rpm_client)
-        cls.remote_api = RemotesRpmApi(cls.rpm_client)
-        cls.exporter_api = ExportersPulpApi(cls.core_client)
-        cls.exports_api = ExportersPulpExportsApi(cls.core_client)
-        cls.importer_api = ImportersPulpApi(cls.core_client)
-        cls.imports_api = ImportersPulpImportsApi(cls.core_client)
-        cls.dist_tree_api = ContentDistributionTreesApi(cls.rpm_client)
-
-        cls.import_repos, cls.export_repos, cls.remotes = cls._setup_repositories(
-            RPM_UNSIGNED_FIXTURE_URL
-        )
-        cls.exporter = cls._create_exporter()
-        cls.export = cls._create_export()
-
-    @classmethod
-    def tearDownClass(cls):
-        """No need for class to clean up, we've already done it."""
-        pass
-
-    def tearDown(self):
-        """Remaining clean up repos/export already gone by now."""
-        for repo in self.import_repos:
-            self.repo_api.delete(repo.pulp_href)
-        delete_orphans()
-
-    def _post_export_cleanup(self):
-        """
-        Remove the exported repos and their content, so we're importing into a 'clean' db.
-        """
-        self._delete_exporter(delete_file=False)
-        for remote in self.remotes:
-            self.remote_api.delete(remote.pulp_href)
-        for repo in self.export_repos:
-            self.repo_api.delete(repo.pulp_href)
-        delete_orphans()
-
-    def test_clean_import(self):
-        """Test an import into an empty instance."""
-        # By the time we get here, setUpClass() has created repos and an export for us
-        # Find the export file, create the importer, delete repos/export, and then let
-        # the import happen
-        filenames = [f for f in list(self.export.output_file_info.keys()) if f.endswith("tar.gz")]
-        importer = self._create_importer()
-        self._post_export_cleanup()
-        existing_repos = self.repo_api.list().count
-        # At this point we should be importing into a content-free-zone
-        import_response = self.imports_api.create(importer.pulp_href, {"path": filenames[0]})
-        task_group = monitor_task_group(import_response.task_group)
-        self.assertEqual(len(self.import_repos) + 1, task_group.completed)
-        for repo in self.import_repos:
-            repo = self.repo_api.read(repo.pulp_href)
-            self.assertEqual(f"{repo.pulp_href}versions/1/", repo.latest_version_href)
-        # We should have the same number of repositories, post-import, than however many we had
-        # post-removal of the export-repos
-        self.assertEqual(self.repo_api.list().count, existing_repos)
-
-
-class CreateMissingReposImportTestCase(PulpTestCase):
-    """
-     Tests for PulpImporter and create-missing-repos.
-
-     1. Create a regular and a dist-tree remote
-     2. Create a repo for each
-     3. Sync both repos
-     4. Create an exporter
-     5. Export the repos, remember the export-file
-     6. post-export-cleanup
-        a. delete repos
-        b. delete exporter
-        c. orphan cleanup
-    7. create importer
-    8. import the export, create_repos=True
-    9. Inspect the results
+    1. Create a dist-tree remote and a synced repository
+    2. Create an exporter
+    3. Export the repos, remember the export-file
+    4. post-export-cleanup
+       a. delete repos
+       b. delete exporter
+       c. orphan cleanup
+    5. create importer
+    6. import the export, create_repos=True
+    7. Inspect the results
        a. Only 2 new repos exist
        b. dist-tree-repo has expected addon/variant/etc
     """
+    entity_map = {}
 
-    def setUp(self):
-        """API-access, steps 1-6 above."""
-        self.cfg = config.get_config()
-        self.client = api.Client(self.cfg, api.json_handler)
-        self.core_client = CoreApiClient(configuration=self.cfg.get_bindings_config())
-        self.rpm_client = gen_rpm_client()
+    # Step 1, sync repositories
+    entity_map["rpm-repo"], entity_map["rpm-remote"] = init_and_sync(policy="immediate")
+    entity_map["ks-repo"], entity_map["ks-remote"] = init_and_sync(
+        url=RPM_KICKSTART_FIXTURE_URL, policy="immediate"
+    )
 
-        self.repo_api = RepositoriesRpmApi(self.rpm_client)
-        self.remote_api = RemotesRpmApi(self.rpm_client)
-        self.exporter_api = ExportersPulpApi(self.core_client)
-        self.exports_api = ExportersPulpExportsApi(self.core_client)
-        self.importer_api = ImportersPulpApi(self.core_client)
-        self.imports_api = ImportersPulpImportsApi(self.core_client)
-        self.dist_tree_api = ContentDistributionTreesApi(self.rpm_client)
+    entity_map["ks-content"] = rpm_content_distribution_trees_api.list(
+        repository_version=entity_map["ks-repo"].latest_version_href
+    ).results
 
-        entity_map = {}
+    # Step 2, exporter
+    body = {
+        "name": str(uuid.uuid4()),
+        "repositories": [entity_map["rpm-repo"].pulp_href, entity_map["ks-repo"].pulp_href],
+        "path": f"/tmp/{uuid.uuid4()}/",
+    }
+    exporter = gen_object_with_cleanup(exporters_pulp_api_client, body)
+    entity_map["exporter-path"] = exporter.path
 
-        # Step 1, remotes
-        body = {"name": utils.uuid4(), "url": RPM_UNSIGNED_FIXTURE_URL, "policy": "immediate"}
-        entity_map["rpm-remote"] = self.remote_api.create(body)
-        body = {"name": utils.uuid4(), "url": RPM_KICKSTART_FIXTURE_URL, "policy": "immediate"}
-        entity_map["ks-remote"] = self.remote_api.create(body)
+    # Step 3, export
+    export_response = exporters_pulp_exports_api_client.create(exporter.pulp_href, {})
+    export_href = monitor_task(export_response.task).created_resources[0]
+    export = exporters_pulp_exports_api_client.read(export_href)
+    filenames = [f for f in list(export.output_file_info.keys()) if f.endswith("tar.gz")]
+    entity_map["export-filename"] = filenames[0]
 
-        # Step 2, repositories
-        body = {"name": utils.uuid4()}
-        entity_map["rpm-repo"] = self.repo_api.create(body)
-        body = {"name": utils.uuid4()}
-        entity_map["ks-repo"] = self.repo_api.create(body)
+    assert len(exporter.repositories) == len(export.exported_resources)
+    assert export.output_file_info is not None
 
-        # Step 3, sync
-        repository_sync_data = RpmRepositorySyncURL(remote=entity_map["rpm-remote"].pulp_href)
-        sync_response = self.repo_api.sync(entity_map["rpm-repo"].pulp_href, repository_sync_data)
-        monitor_task(sync_response.task)
+    for an_export_filename in export.output_file_info.keys():
+        assert "//" not in an_export_filename
 
-        repository_sync_data = RpmRepositorySyncURL(remote=entity_map["ks-remote"].pulp_href)
-        sync_response = self.repo_api.sync(entity_map["ks-repo"].pulp_href, repository_sync_data)
-        monitor_task(sync_response.task)
-        # Read back sync'd ks-repo, so we can compare post-import
-        entity_map["ks-repo"] = self.repo_api.read(entity_map["ks-repo"].pulp_href)
-        entity_map["ks-content"] = get_content(entity_map["ks-repo"].to_dict())
+    # Step 4, exporter/repo-cleanup, orphans
+    exporters_pulp_api_client.delete(exporter.pulp_href)
+    rpm_rpmremote_api.delete(entity_map["rpm-remote"].pulp_href)
+    rpm_rpmremote_api.delete(entity_map["ks-remote"].pulp_href)
+    rpm_repository_api.delete(entity_map["rpm-repo"].pulp_href)
+    rpm_repository_api.delete(entity_map["ks-repo"].pulp_href)
+    monitor_task(orphans_cleanup_api_client.cleanup({"orphan_protection_time": 0}).task)
 
-        # Step 4, exporter
-        body = {
-            "name": uuid4(),
-            "repositories": [entity_map["rpm-repo"].pulp_href, entity_map["ks-repo"].pulp_href],
-            "path": "/tmp/{}".format(uuid4()),
-        }
-        exporter = self.exporter_api.create(body)
-        entity_map["exporter-path"] = exporter.path
+    saved_entities = entity_map
 
-        # Step 5, export
-        export_response = self.exports_api.create(exporter.pulp_href, {})
-        export_href = monitor_task(export_response.task).created_resources[0]
-        export = self.exports_api.read(export_href)
-        filenames = [f for f in list(export.output_file_info.keys()) if f.endswith("tar.gz")]
-        entity_map["export-filename"] = filenames[0]
+    """Steps 5-7 from above."""
+    existing_repos = rpm_repository_api.list().count
 
-        # Step 6, exporter/repo-cleanup, orphans
-        self.exporter_api.delete(exporter.pulp_href)
-        self.remote_api.delete(entity_map["rpm-remote"].pulp_href)
-        self.remote_api.delete(entity_map["ks-remote"].pulp_href)
-        self.repo_api.delete(entity_map["rpm-repo"].pulp_href)
-        self.repo_api.delete(entity_map["ks-repo"].pulp_href)
-        delete_orphans()
+    # Step 5
+    body = {
+        "name": str(uuid.uuid4()),
+    }
+    importer = gen_object_with_cleanup(importers_pulp_api_client, body)
 
-        self.saved_entities = entity_map
+    # Step 6
+    # At this point we should be importing into a content-free-zone
+    import_response = importers_pulp_imports_api_client.create(
+        importer.pulp_href,
+        {"path": saved_entities["export-filename"], "create_repositories": True},
+    )
+    task_group = monitor_task_group(import_response.task_group)
+    # We should have created 1 import and 2 repositories here
+    assert 3 == task_group.completed
 
-    def tearDown(self):
-        """Final cleanup (export-files and orphans)."""
-        cli_client = cli.Client(self.cfg)
-        cmd = ("rm", "-rf", self.saved_entities["exporter-path"])
-        cli_client.run(cmd, sudo=True)
-        delete_orphans()
+    # Find the repos we just created
+    rpm_repo = rpm_repository_api.list(name=saved_entities["rpm-repo"].name).results[0]
+    ks_repo = rpm_repository_api.list(name=saved_entities["ks-repo"].name).results[0]
+    try:
+        # 7. Inspect the results
+        # Step 7a
+        assert f"{rpm_repo.pulp_href}versions/1/" == rpm_repo.latest_version_href
+        assert f"{ks_repo.pulp_href}versions/1/" == ks_repo.latest_version_href
 
-    def test_createrepos_import(self):
-        """Steps 7-9 from above."""
-        existing_repos = self.repo_api.list().count
-
-        # Step 7
-        body = {
-            "name": uuid4(),
-        }
-        importer = self.importer_api.create(body)
-        self.addCleanup(self.importer_api.delete, importer.pulp_href)
-
-        # Step 8
-        # At this point we should be importing into a content-free-zone
-        import_response = self.imports_api.create(
-            importer.pulp_href,
-            {"path": self.saved_entities["export-filename"], "create_repositories": True},
-        )
-        task_group = monitor_task_group(import_response.task_group)
-        # We should have created 1 import and 2 repositories here
-        self.assertEqual(3, task_group.completed)
-
-        # Find the repos we just created
-        rpm_repo = self.repo_api.list(name=self.saved_entities["rpm-repo"].name).results[0]
-        self.addCleanup(self.repo_api.delete, rpm_repo.pulp_href)
-        ks_repo = self.repo_api.list(name=self.saved_entities["ks-repo"].name).results[0]
-        self.addCleanup(self.repo_api.delete, ks_repo.pulp_href)
-
-        # 9. Inspect the results
-        # Step 9a
-        self.assertEqual(f"{rpm_repo.pulp_href}versions/1/", rpm_repo.latest_version_href)
-        self.assertEqual(f"{ks_repo.pulp_href}versions/1/", ks_repo.latest_version_href)
-
-        # Step 9b
-        imported_ks_content = get_content(ks_repo.to_dict())
-        orig_dtree = self.saved_entities["ks-content"]["rpm.distribution_tree"][0]
-        imported_dtree = imported_ks_content["rpm.distribution_tree"][0]
+        # Step 7b
+        imported_ks_content = rpm_content_distribution_trees_api.list(
+            repository_version=ks_repo.latest_version_href
+        ).results
+        orig_dtree = saved_entities["ks-content"][0].to_dict()
+        imported_dtree = imported_ks_content[0].to_dict()
         for disttree_content_type in ["addons", "checksums", "images", "variants"]:
-            self.assertEqual(
-                len(orig_dtree[disttree_content_type]), len(imported_dtree[disttree_content_type])
+            assert len(orig_dtree[disttree_content_type]) == len(
+                imported_dtree[disttree_content_type]
             )
 
         # Make sure we only created the repos being imported
-        self.assertEqual(self.repo_api.list().count, existing_repos + 2)
+        assert rpm_repository_api.list().count == existing_repos + 2
+    finally:
+        rpm_repository_api.delete(rpm_repo.pulp_href)
+        rpm_repository_api.delete(ks_repo.pulp_href)
