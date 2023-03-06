@@ -5,7 +5,10 @@
   "type": "object",
   "properties": {
     "name": {"type": "string"},
-    "version": {"type": "integer"},
+    "version": {
+      "type": ["integer", "string"],
+      "pattern": "^[0-9]+$"
+    },
     "context": {"type": ["number", "string"]},
     "arch": {"type": "string"},
     "summary": {"type": "string"},
