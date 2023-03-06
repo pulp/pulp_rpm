@@ -164,6 +164,11 @@ def parse_modular(file):
         # are not enough then we only need to take required data from dict which is
         # parsed by pyyaml library
         if parsed_data["document"] == "modulemd":
+            # the validator currently accepts formatting slightly different to the
+            # spec due to the misconfiguration of some Rocky Linux 9 repositories
+            # https://bugs.rockylinux.org/view.php?id=2575
+            # further discussion on this issue can be found here:
+            # https://github.com/pulp/pulp_rpm/issues/2998
             validator = Draft7Validator(MODULEMD_SCHEMA)
             err = []
             for error in sorted(validator.iter_errors(parsed_data["data"]), key=str):
