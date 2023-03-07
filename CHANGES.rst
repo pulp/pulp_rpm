@@ -13,6 +13,34 @@ Changelog
 
 .. towncrier release notes start
 
+3.19.1 (2023-03-06)
+===================
+
+
+Bugfixes
+--------
+
+- Publish all metadata with a stable sort order. This should reduce artifact churn when certain metadata files are published repeatedly unchanged.
+  `#2752 <https://github.com/pulp/pulp_rpm/issues/2752>`__
+- Fixed a failure that can occur during migration from 3.17 to 3.18
+  `#2952 <https://github.com/pulp/pulp_rpm/issues/2952>`__
+- Fix a minor module metadata parsing regression that broke Pulp-to-Pulp sync in some scenarios.
+  `#2961 <https://github.com/pulp/pulp_rpm/issues/2961>`__
+- Stopped publishing updateinfo.xml when there are no advisories.
+  `#2967 <https://github.com/pulp/pulp_rpm/issues/2967>`__
+- Fixed 0044_noartifact_modules migration that was failing with object storage.
+  `#2988 <https://github.com/pulp/pulp_rpm/issues/2988>`__
+
+
+Misc
+----
+
+- `#2874 <https://github.com/pulp/pulp_rpm/issues/2874>`__, `#2881 <https://github.com/pulp/pulp_rpm/issues/2881>`__
+
+
+----
+
+
 3.19.0 (2023-02-06)
 ===================
 
@@ -71,6 +99,30 @@ Misc
 ----
 
 - `#2718 <https://github.com/pulp/pulp_rpm/issues/2718>`__, `#2791 <https://github.com/pulp/pulp_rpm/issues/2791>`__, `#2805 <https://github.com/pulp/pulp_rpm/issues/2805>`__, `#2832 <https://github.com/pulp/pulp_rpm/issues/2832>`__, `#2886 <https://github.com/pulp/pulp_rpm/issues/2886>`__, `#2905 <https://github.com/pulp/pulp_rpm/issues/2905>`__
+
+
+----
+
+
+3.18.12 (2023-03-06)
+====================
+
+
+Bugfixes
+--------
+
+- Publish all metadata with a stable sort order. This should reduce artifact churn when certain metadata files are published repeatedly unchanged.
+  `#2752 <https://github.com/pulp/pulp_rpm/issues/2752>`__
+- Stopped publishing updateinfo.xml when there are no advisories.
+  `#2967 <https://github.com/pulp/pulp_rpm/issues/2967>`__
+- Fixed 0044_noartifact_modules migration that was failing with object storage.
+  `#2988 <https://github.com/pulp/pulp_rpm/issues/2988>`__
+
+
+Misc
+----
+
+- `#2874 <https://github.com/pulp/pulp_rpm/issues/2874>`__, `#2881 <https://github.com/pulp/pulp_rpm/issues/2881>`__, `#2886 <https://github.com/pulp/pulp_rpm/issues/2886>`__
 
 
 ----
