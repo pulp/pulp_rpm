@@ -12,6 +12,7 @@ from pulpcore.plugin.tasking import dispatch
 from pulpcore.plugin.serializers import (
     AsyncOperationResponseSerializer,
 )
+from pulpcore.plugin.util import extract_pk
 from pulpcore.plugin.viewsets import (
     DistributionViewSet,
     NamedModelViewSet,
@@ -750,7 +751,7 @@ class CopyViewSet(viewsets.ViewSet):
             if entry.get("content") is not None:
                 r["content"] = []
                 for c in entry["content"]:
-                    r["content"].append(NamedModelViewSet().extract_pk(c))
+                    r["content"].append(extract_pk(c))
             result.append(r)
 
         return result, shared_repos, exclusive_repos
