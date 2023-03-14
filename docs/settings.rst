@@ -64,3 +64,11 @@ ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION
     This approach to conflict-resolution is done **AT YOUR OWN RISK**.
     Pulp cannot guarantee the usability/usefulness of the resulting advisory.
 
+
+RPM_METADATA_USE_REPO_PACKAGE_TIME
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+When publishing RPM metadata, if this is true, Pulp will use the timestamp that the package was
+added to the repo rather than the timestamp that the package first appeared in Pulp. This timestamp
+appears in the "file" field of the time element for each package in primary.xml. Defaults to
+``False``.

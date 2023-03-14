@@ -20,6 +20,7 @@ from pulpcore.plugin.models import (
     ProgressReport,
     PublishedArtifact,
     PublishedMetadata,
+    RepositoryContent,
 )
 
 from pulp_rpm.app.comps import dict_to_strdict
@@ -542,6 +543,18 @@ def generate_repo_metadata(
     fil_xml.set_num_of_pkgs(total_packages)
     oth_xml.set_num_of_pkgs(total_packages)
 
+    if settings.RPM_METADATA_USE_REPO_PACKAGE_TIME:
+        # gather the times the packages were added to the repo
+        repo_content = (
+            RepositoryContent.objects.filter(
+                repository=publication.repository,
+                version_added__number__lte=publication.repository_version.number,
+            )
+            .exclude(version_removed__number__lte=publication.repository_version.number)
+            .values_list("content", "pulp_created")
+        )
+        repo_pkg_times = {pk: created.timestamp() for pk, created in repo_content}
+
     # Process all packages
     for package in packages.order_by("name", "evr").iterator():
         if package.pk in pkg_pks_to_ignore:  # Temporary!
@@ -557,6 +570,10 @@ def generate_repo_metadata(
         # this can cause an issue when two same RPM package names appears
         # a/name1.rpm b/name1.rpm
         pkg.location_href = os.path.join(PACKAGES_DIRECTORY, pkg_filename[0].lower(), pkg_filename)
+
+        if settings.RPM_METADATA_USE_REPO_PACKAGE_TIME:
+            pkg.time_file = repo_pkg_times[package.pk]
+
         pri_xml.add_pkg(pkg)
         fil_xml.add_pkg(pkg)
         oth_xml.add_pkg(pkg)
