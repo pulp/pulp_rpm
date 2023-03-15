@@ -1,7 +1,6 @@
 """Utilities for tests for the rpm plugin."""
 import gzip
 import os
-import requests
 import subprocess
 
 from functools import partial
@@ -16,13 +15,12 @@ from pulp_rpm.tests.functional.constants import (
     PRIVATE_GPG_KEY_URL,
     RPM_COPY_PATH,
     RPM_PACKAGE_CONTENT_NAME,
-    RPM_SIGNED_URL,
     RPM_UNSIGNED_FIXTURE_URL,
     RPM_PUBLICATION_PATH,
     PACKAGES_DIRECTORY,
 )
 
-from pulpcore.client.pulpcore import ApiClient as CoreApiClient, ArtifactsApi, TasksApi
+from pulpcore.client.pulpcore import ApiClient as CoreApiClient, TasksApi
 from pulpcore.client.pulp_rpm import ApiClient as RpmApiClient
 
 
@@ -172,16 +170,6 @@ def gen_yum_config_file(cfg, repositoryid, baseurl, name, **kwargs):
             )
         )
     return path
-
-
-def gen_artifact(url=RPM_SIGNED_URL):
-    """Creates an artifact."""
-    response = requests.get(url)
-    with NamedTemporaryFile() as temp_file:
-        temp_file.write(response.content)
-        temp_file.flush()
-        artifact = ArtifactsApi(core_client).create(file=temp_file.name)
-        return artifact.to_dict()
 
 
 def init_signed_repo_configuration():

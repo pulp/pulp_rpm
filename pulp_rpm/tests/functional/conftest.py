@@ -25,7 +25,11 @@ from pulpcore.client.pulp_rpm import (
     RpmRepositorySyncURL,
 )
 
-from pulp_rpm.tests.functional.constants import RPM_UNSIGNED_FIXTURE_URL, RPM_KICKSTART_FIXTURE_URL
+from pulp_rpm.tests.functional.constants import (
+    RPM_KICKSTART_FIXTURE_URL,
+    RPM_SIGNED_URL,
+    RPM_UNSIGNED_FIXTURE_URL,
+)
 
 
 @pytest.fixture(scope="session")
@@ -138,6 +142,13 @@ def rpm_content_distribution_trees_api(rpm_client):
 @pytest.fixture(scope="session")
 def rpm_copy_api(rpm_client):
     return RpmCopyApi(rpm_client)
+
+
+@pytest.fixture
+def signed_artifact(http_get, artifacts_api_client, gen_object_with_cleanup, tmp_path):
+    temp_file = tmp_path / str(uuid.uuid4())
+    temp_file.write_bytes(http_get(RPM_SIGNED_URL))
+    return gen_object_with_cleanup(artifacts_api_client, temp_file).to_dict()
 
 
 @pytest.fixture(scope="class")
