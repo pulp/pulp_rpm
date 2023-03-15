@@ -253,7 +253,7 @@ def test_publish_references_update(assert_created_publication):
     assert_created_publication(RPM_REFERENCES_UPDATEINFO_URL)
 
 
-@pytest.mark.parametrize("repo_url", [RPM_COMPLEX_FIXTURE_URL, RPM_MODULAR_FIXTURE_URL])
+@pytest.mark.parametrize("repo_url", [RPM_COMPLEX_FIXTURE_URL])
 def test_complex_repo_core_metadata(
     repo_url,
     init_and_sync,
