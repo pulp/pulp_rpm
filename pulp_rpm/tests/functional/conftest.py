@@ -21,6 +21,7 @@ from pulpcore.client.pulp_rpm import (
     RepositoriesRpmApi,
     RepositoriesRpmVersionsApi,
     RpmCopyApi,
+    RpmCompsApi,
     RpmRepositorySyncURL,
 )
 
@@ -121,6 +122,12 @@ def rpm_modulemd_defaults_api(rpm_client):
 def rpm_modulemd_obsoletes_api(rpm_client):
     """Fixture for RPM ModulemdObsolete API."""
     return ContentModulemdObsoletesApi(rpm_client)
+
+
+@pytest.fixture(scope="session")
+def rpm_comps_api(rpm_client):
+    """Fixture for RPM Comps API."""
+    return RpmCompsApi(rpm_client)
 
 
 @pytest.fixture(scope="session")
