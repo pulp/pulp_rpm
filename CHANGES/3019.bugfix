@@ -1,0 +1,1 @@
+Fix import/export not importing modulemd_packages data with ManyToMany relationship.
