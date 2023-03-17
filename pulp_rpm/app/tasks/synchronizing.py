@@ -997,7 +997,7 @@ class RpmFirstStage(Stage):
 
             # dc.content.artifacts are Modulemd artifacts
             if dc.content.artifacts:
-                for artifact in dc.content.artifacts["rpms"]:
+                for artifact in dc.content.artifacts:
                     self.nevra_to_module.setdefault(artifact, set()).add(dc)
 
         # Parsing module-defaults happens all at one time, and from here on no useful
@@ -1167,7 +1167,7 @@ class RpmFirstStage(Stage):
         # Module artifacts are divided by a type, here we need packages
         for modulemd in modulemd_list:
             if modulemd[PULP_MODULE_ATTR.ARTIFACTS]:
-                modular_artifact_nevras |= set(modulemd[PULP_MODULE_ATTR.ARTIFACTS].get("rpms"))
+                modular_artifact_nevras |= set(modulemd[PULP_MODULE_ATTR.ARTIFACTS])
 
         package_skip_nevras = set()
         # The repository can contain packages of arbitrary arches, and they are not comparable.
