@@ -1,7 +1,7 @@
 from itertools import chain
 
 from import_export import fields
-from import_export.widgets import ForeignKeyWidget
+from import_export.widgets import ForeignKeyWidget, ManyToManyWidget
 
 from pulpcore.plugin.importexport import BaseContentResource, QueryModelResource
 from pulpcore.plugin.modelresources import RepositoryResource
@@ -79,6 +79,25 @@ class ModulemdResource(RpmContentResource):
     """
     Resource for import/export of rpm_modulemd entities.
     """
+
+    packages = fields.Field(
+        column_name="package_ids",
+        attribute="packages",
+        widget=ManyToManyWidget(model=Package, separator=",", field="pkgId"),
+    )
+
+    def before_import_row(self, row, row_number=None, **kwargs):
+        super().before_import_row(row, row_number=row_number, **kwargs)
+
+        if "packages" in row:
+            pulp_ids = row["packages"].split(",")
+            pkgids = (
+                Package.objects.select_related("content_ptr")
+                .filter(content_ptr__upstream_id__in=pulp_ids)
+                .values_list("pkgId", flat=True)
+            )
+            row["package_ids"] = ",".join(pkgids)
+            del row["packages"]
 
     class Meta:
         model = Modulemd
