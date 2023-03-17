@@ -356,7 +356,7 @@ def module_to_solvable(solv_repo, unit):
 
         module_artifacts_conversion(pool, solvable, artifact_name, artifact_evr, artifact_arch)
 
-    module_dependencies_conversion(pool, solvable, unit.get("dependencies", {}))
+    module_dependencies_conversion(pool, solvable, unit.get("dependencies", []))
     pool.createwhatprovides()  # TODO: It would be great to do this less often
 
     return solvable
@@ -415,6 +415,11 @@ def module_dependencies_conversion(pool, module_solvable, dependency_list):
     reqs = None
     for dep_dict in dependency_list:
         require = None
+        if "requires" not in dep_dict:
+            continue
+
+        dep_dict = dep_dict["requires"]
+
         for name, streams in dep_dict.items():
             if name == "platform":
                 # no need to fake the platform (streams) later on
@@ -428,6 +433,7 @@ def module_dependencies_conversion(pool, module_solvable, dependency_list):
             # For each stream in `streams` for this dependency, generate the
             # module(name:stream) solv.Dep and add REL_OR relations between them.
             for stream in streams:
+                stream = str(stream)
                 if stream.startswith("-"):
                     req_neg = dep_or_rel(req_neg, solv.REL_OR, stream_dep(name, stream[1:]))
                 else:

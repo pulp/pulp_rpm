@@ -29,6 +29,9 @@ class ModulemdFilter(ContentFilter):
         fields = {
             "name": ["exact", "in"],
             "stream": ["exact", "in"],
+            "version": ["exact", "in"],
+            "context": ["exact", "in"],
+            "arch": ["exact", "in"],
         }
 
 
