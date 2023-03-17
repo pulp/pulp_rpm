@@ -95,12 +95,12 @@ def create_modulemd(modulemd, snippet):
     """
     new_module = dict()
     new_module[PULP_MODULE_ATTR.NAME] = modulemd["data"].get("name")
-    new_module[PULP_MODULE_ATTR.STREAM] = modulemd["data"].get("stream")
+    new_module[PULP_MODULE_ATTR.STREAM] = str(modulemd["data"].get("stream"))
     new_module[PULP_MODULE_ATTR.VERSION] = str(modulemd["data"].get("version"))
     new_module[PULP_MODULE_ATTR.STATIC_CONTEXT] = modulemd["data"].get("static_context")
     new_module[PULP_MODULE_ATTR.CONTEXT] = modulemd["data"].get("context")
     new_module[PULP_MODULE_ATTR.ARCH] = modulemd["data"].get("arch")
-    new_module[PULP_MODULE_ATTR.ARTIFACTS] = modulemd["data"].get("artifacts", [])
+    new_module[PULP_MODULE_ATTR.ARTIFACTS] = modulemd["data"].get("artifacts", {}).get("rpms", [])
     new_module[PULP_MODULE_ATTR.DESCRIPTION] = modulemd["data"].get("description")
     new_module[PULP_MODULE_ATTR.PROFILES] = modulemd["data"].get("profiles", {})
     new_module[PULP_MODULE_ATTR.DEPENDENCIES] = modulemd["data"].get("dependencies", [])
@@ -115,7 +115,7 @@ def create_modulemd_defaults(default, snippet):
     """
     new_default = dict()
     new_default[PULP_MODULEDEFAULTS_ATTR.MODULE] = default["data"].get("module")
-    new_default[PULP_MODULEDEFAULTS_ATTR.STREAM] = default["data"].get("stream", "")
+    new_default[PULP_MODULEDEFAULTS_ATTR.STREAM] = str(default["data"].get("stream", ""))
     new_default[PULP_MODULEDEFAULTS_ATTR.PROFILES] = default["data"].get("profiles")
     new_default["snippet"] = snippet
     new_default[PULP_MODULEDEFAULTS_ATTR.DIGEST] = hashlib.sha256(snippet.encode()).hexdigest()
@@ -131,7 +131,7 @@ def create_modulemd_obsoletes(obsolete, snippet):
 
     new_obsolete[PULP_MODULEOBSOLETES_ATTR.MODIFIED] = obsolete["data"].get("modified")
     new_obsolete[PULP_MODULEOBSOLETES_ATTR.MODULE] = obsolete["data"].get("module")
-    new_obsolete[PULP_MODULEOBSOLETES_ATTR.STREAM] = obsolete["data"].get("stream")
+    new_obsolete[PULP_MODULEOBSOLETES_ATTR.STREAM] = str(obsolete["data"].get("stream"))
     new_obsolete[PULP_MODULEOBSOLETES_ATTR.MESSAGE] = obsolete["data"].get("message")
     new_obsolete[PULP_MODULEOBSOLETES_ATTR.RESET] = obsolete["data"].get("reset")
     new_obsolete[PULP_MODULEOBSOLETES_ATTR.CONTEXT] = obsolete["data"].get("context")
