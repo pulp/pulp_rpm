@@ -1,1 +1,0 @@
-Loosen modulemd validation to allow version numbers that have string type but represent integers
