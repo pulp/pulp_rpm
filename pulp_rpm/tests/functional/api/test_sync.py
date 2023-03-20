@@ -202,7 +202,6 @@ def test_kickstart(policy, init_and_sync, rpm_content_distribution_trees_api):
     assert "RHEL" == distribution_tree.release_short
 
 
-@pytest.mark.parallel
 def test_mutated_packages(init_and_sync):
     """Sync two copies of the same packages.
 
@@ -266,7 +265,6 @@ def test_mutated_packages(init_and_sync):
         assert original_packages[nevra]["pkgId"] != mutated_packages[nevra]["pkgId"]
 
 
-@pytest.mark.parallel
 def test_sync_diff_checksum_packages(init_and_sync):
     """Sync two fixture content with same NEVRA and different checksum.
 
