@@ -252,8 +252,10 @@ def test_rbac_acs(gen_user, rpm_acs_api, rpm_rpmremote_api, monitor_task):
     assert exc.value.status == 403
 
     with user_creator:
-        rpm_acs_api.delete(acs.pulp_href)
-        rpm_rpmremote_api.delete(remote.pulp_href)
+        response = rpm_acs_api.delete(acs.pulp_href)
+        monitor_task(response.task)
+        response = rpm_rpmremote_api.delete(remote.pulp_href)
+        monitor_task(response.task)
         assert rpm_acs_api.list(name=acs.name).count == 0
 
 
