@@ -13,6 +13,28 @@ Changelog
 
 .. towncrier release notes start
 
+3.19.2 (2023-03-20)
+===================
+
+
+Bugfixes
+--------
+
+- Loosen modulemd validation to allow version numbers that have string type but represent integers
+  `#2998 <https://github.com/pulp/pulp_rpm/issues/2998>`__
+- Fixed a regression in 3.19 which resulted in unintentional API changes and problems with "depsolving" repo copy.
+  `#3012 <https://github.com/pulp/pulp_rpm/issues/3012>`__
+
+
+Misc
+----
+
+- `#2242 <https://github.com/pulp/pulp_rpm/issues/2242>`__, `#2876 <https://github.com/pulp/pulp_rpm/issues/2876>`__
+
+
+----
+
+
 3.19.1 (2023-03-06)
 ===================
 
