@@ -196,6 +196,7 @@ class ChecksumResource(QueryModelResource):
             kwargs: args passed along from the import() call.
 
         """
+        super().before_import_row(row, **kwargs)
         tree = DistributionTree.objects.get(upstream_id=row["distribution_tree"])
         row["distribution_tree"] = str(tree.pk)
 
@@ -232,6 +233,8 @@ class ImageResource(QueryModelResource):
             kwargs: args passed along from the import() call.
 
         """
+        super().before_import_row(row, **kwargs)
+
         tree = DistributionTree.objects.get(upstream_id=row["distribution_tree"])
         row["distribution_tree"] = str(tree.pk)
 
@@ -274,6 +277,8 @@ class AddonResource(QueryModelResource):
             kwargs: args passed along from the import() call.
 
         """
+        super().before_import_row(row, **kwargs)
+
         tree = DistributionTree.objects.get(upstream_id=row["distribution_tree"])
         row["distribution_tree"] = str(tree.pk)
 
@@ -316,6 +321,8 @@ class VariantResource(QueryModelResource):
             kwargs: args passed along from the import() call.
 
         """
+        super().before_import_row(row, **kwargs)
+
         tree = DistributionTree.objects.get(upstream_id=row["distribution_tree"])
         row["distribution_tree"] = str(tree.pk)
 
@@ -459,6 +466,8 @@ class UpdateCollectionPackageResource(QueryModelResource):
             row (tablib.Dataset row): import-row representing a single UpdateCollectionPackage.
             kwargs: args passed along from the import() call.
         """
+        super().before_import_row(row, **kwargs)
+
         (uc_name, uc_updrec_digest) = row["update_collection"].split("|")
         uc_updrecord = UpdateRecord.objects.filter(digest=uc_updrec_digest).first()
         uc = UpdateCollection.objects.filter(name=uc_name, update_record=uc_updrecord).first()
