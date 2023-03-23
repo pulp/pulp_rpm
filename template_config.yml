@@ -1,7 +1,7 @@
 # This config represents the latest values used when running the plugin-template. Any settings that
 # were not present before running plugin-template have been added with their default values.
 
-# generated with plugin_template@2021.08.26-192-gba67a84
+# generated with plugin_template@2021.08.26-198-g8f49b35
 
 additional_plugins: []
 additional_repos: []
@@ -15,13 +15,13 @@ check_openapi_schema: true
 check_stray_pulpcore_imports: true
 ci_env: {}
 ci_trigger: '{pull_request: {branches: [''*'']}}'
-ci_update_branches: [3.18, 3.19]
+ci_update_branches:
+- 3.18
+- 3.19
 core_import_allowed: []
 coverage: false
 deploy_client_to_pypi: true
 deploy_client_to_rubygems: true
-deploy_daily_client_to_pypi: true
-deploy_daily_client_to_rubygems: true
 deploy_to_pypi: true
 disabled_redis_runners: []
 docker_fixtures: true
@@ -81,7 +81,6 @@ stalebot_days_until_close: 30
 stalebot_days_until_stale: 90
 stalebot_limit_to_pulls: true
 sync_ci: true
-tasking_allow_async_unsafe: true
 test_azure: true
 test_bindings: false
 test_cli: true
@@ -98,8 +97,5 @@ test_reroute: true
 test_s3: true
 test_stream: false
 update_github: true
-upgrade_range:
-- pulp_rpm_branch: '3.10'
-  pulpcore_branch: 3.11
 use_issue_template: true
 
