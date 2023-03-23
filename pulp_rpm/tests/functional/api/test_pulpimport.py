@@ -184,7 +184,6 @@ def perform_import(
     return _perform_import
 
 
-@pytest.mark.parallel
 def test_import(
     pulp_importer_factory, import_export_repositories, perform_import, rpm_repository_api
 ):
@@ -199,7 +198,6 @@ def test_import(
         assert f"{repo.pulp_href}versions/1/" == repo.latest_version_href
 
 
-@pytest.mark.parallel
 def test_double_import(
     pulp_importer_factory,
     importers_pulp_imports_api_client,
@@ -223,7 +221,6 @@ def test_double_import(
         assert f"{repo.pulp_href}versions/1/" == repo.latest_version_href
 
 
-@pytest.mark.parallel
 def test_distribution_tree_import(
     import_export_repositories,
     pulp_importer_factory,
