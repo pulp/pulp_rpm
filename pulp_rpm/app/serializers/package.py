@@ -252,7 +252,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
             log.info(traceback.format_exc())
             raise NotAcceptable(detail="RPM file cannot be parsed for metadata")
 
-        new_pkg["location_href"] = (
+        filename = (
             format_nevra_short(
                 new_pkg["name"],
                 new_pkg["epoch"],
@@ -263,7 +263,10 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
             + ".rpm"
         )
         if not data.get("relative_path"):
-            data["relative_path"] = new_pkg["location_href"]
+            data["relative_path"] = filename
+            new_pkg["location_href"] = filename
+        else:
+            new_pkg["location_href"] = data["relative_path"]
 
         data.update(new_pkg)
         return data
