@@ -17,7 +17,7 @@ create type pulp_evr_t as (
   release pulp_evr_array_item[]
 );
 
-CREATE FUNCTION pulp_evr_trigger() RETURNS trigger AS $$
+CREATE OR REPLACE FUNCTION pulp_evr_trigger() RETURNS trigger AS $$
   BEGIN
     NEW.evr = (select ROW(coalesce(NEW.epoch::numeric,0),
                           pulp_rpmver_array(coalesce(NEW.version,'pulp_isempty'))::pulp_evr_array_item[],
