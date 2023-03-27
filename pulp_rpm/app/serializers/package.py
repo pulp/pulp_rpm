@@ -12,7 +12,7 @@ from pulpcore.plugin.serializers import (
 )
 
 from pulp_rpm.app.models import Package
-from pulp_rpm.app.shared_utils import read_crpackage_from_artifact, format_nevra_short
+from pulp_rpm.app.shared_utils import read_crpackage_from_artifact, format_nvra
 
 
 log = logging.getLogger(__name__)
@@ -274,10 +274,9 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
                 _("There is already a package with: {values}.").format(values=error_data)
             )
 
-        new_pkg["location_href"] = (
-            format_nevra_short(
+        filename = (
+            format_nvra(
                 new_pkg["name"],
-                new_pkg["epoch"],
                 new_pkg["version"],
                 new_pkg["release"],
                 new_pkg["arch"],
@@ -285,7 +284,10 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
             + ".rpm"
         )
         if not data.get("relative_path"):
-            data["relative_path"] = new_pkg["location_href"]
+            data["relative_path"] = filename
+            new_pkg["location_href"] = filename
+        else:
+            new_pkg["location_href"] = data["relative_path"]
 
         data.update(new_pkg)
         return data
