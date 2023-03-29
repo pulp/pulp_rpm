@@ -13,6 +13,26 @@ Changelog
 
 .. towncrier release notes start
 
+3.19.3 (2023-03-29)
+===================
+
+
+Bugfixes
+--------
+
+- Fix relative path and location href mismatch of the uploaded rpm caused by filename and rpm header mismatch. Clients are getting HTTP 404 Not Found error when downloading the rpm.
+  `#3039 <https://github.com/pulp/pulp_rpm/issues/3039>`__
+
+
+Misc
+----
+
+- `#2867 <https://github.com/pulp/pulp_rpm/issues/2867>`__, `#2868 <https://github.com/pulp/pulp_rpm/issues/2868>`__, `#2870 <https://github.com/pulp/pulp_rpm/issues/2870>`__, `#2871 <https://github.com/pulp/pulp_rpm/issues/2871>`__, `#2878 <https://github.com/pulp/pulp_rpm/issues/2878>`__, `#2879 <https://github.com/pulp/pulp_rpm/issues/2879>`__, `#2882 <https://github.com/pulp/pulp_rpm/issues/2882>`__
+
+
+----
+
+
 3.19.2 (2023-03-20)
 ===================
 

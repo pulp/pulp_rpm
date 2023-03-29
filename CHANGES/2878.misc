@@ -1,1 +1,0 @@
-Refactored test_download_content to use pytest fixtures.
