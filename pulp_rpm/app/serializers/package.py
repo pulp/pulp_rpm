@@ -12,7 +12,7 @@ from pulpcore.plugin.serializers import (
 )
 
 from pulp_rpm.app.models import Package
-from pulp_rpm.app.shared_utils import read_crpackage_from_artifact, format_nevra_short
+from pulp_rpm.app.shared_utils import read_crpackage_from_artifact, format_nvra
 
 
 log = logging.getLogger(__name__)
@@ -253,9 +253,8 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
             raise NotAcceptable(detail="RPM file cannot be parsed for metadata")
 
         filename = (
-            format_nevra_short(
+            format_nvra(
                 new_pkg["name"],
-                new_pkg["epoch"],
                 new_pkg["version"],
                 new_pkg["release"],
                 new_pkg["arch"],
