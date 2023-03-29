@@ -1,21 +1,5 @@
 """Tests distribution trees."""
-
-from pulp_smash import config
-from pulp_smash.pulp3.bindings import (
-    delete_orphans,
-    monitor_task,
-    PulpTestCase,
-)
-from pulp_rpm.tests.functional.utils import rpm_copy
-from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-
-from pulp_smash.pulp3.utils import (
-    gen_repo,
-    get_added_content_summary,
-    get_content,
-)
-
-from pulp_rpm.tests.functional.utils import gen_rpm_client, gen_rpm_remote
+import pytest
 
 from pulp_rpm.tests.functional.constants import (
     PULP_TYPE_DISTRIBUTION_TREE,
@@ -25,305 +9,154 @@ from pulp_rpm.tests.functional.constants import (
     RPM_DISTRIBUTION_TREE_CHANGED_VARIANT_URL,
 )
 
-from pulpcore.client.pulp_rpm import (
-    ContentDistributionTreesApi,
-    ContentPackagesApi,
-    RepositoriesRpmApi,
-    RpmRepositorySyncURL,
-    RemotesRpmApi,
-)
+
+@pytest.mark.parallel
+def test_simple_copy_distribution_tree(
+    rpm_kickstart_repo_immediate,
+    rpm_repository_factory,
+    rpm_repository_version_api,
+    rpm_copy_api,
+    monitor_task,
+):
+    """Sync repository with a distribution tree."""
+    dest_repo = rpm_repository_factory()
+    config = [
+        {
+            "source_repo_version": rpm_kickstart_repo_immediate.latest_version_href,
+            "dest_repo": dest_repo.pulp_href,
+        }
+    ]
+
+    response = rpm_copy_api.copy_content({"config": config, "dependency_solving": True})
+    task = monitor_task(response.task)
+    assert len(task.created_resources) == 1
+    assert task.created_resources[0] == f"{dest_repo.versions_href}1/"
+
+    dest_repo_ver = rpm_repository_version_api.read(task.created_resources[0])
+    assert dest_repo_ver.content_summary.added[PULP_TYPE_DISTRIBUTION_TREE]["count"] == 1
 
 
-class DistributionTreeCopyTestCase(PulpTestCase):
-    """Test copy of distribution tree."""
+@pytest.mark.parallel
+def test_dist_tree_copy_as_content(
+    rpm_kickstart_repo_immediate,
+    rpm_repository_factory,
+    rpm_content_distribution_trees_api,
+    rpm_copy_api,
+    monitor_task,
+):
+    """Test sync distribution tree repository and copy it."""
+    assert rpm_kickstart_repo_immediate.latest_version_href.endswith("/1/")
+    source_content = rpm_content_distribution_trees_api.list(
+        repository_version=rpm_kickstart_repo_immediate.latest_version_href
+    )
+    distribution_tree_href = source_content.results[0].pulp_href
+    repo_copy = rpm_repository_factory()
 
-    @classmethod
-    def setUpClass(cls):
-        """Create class-wide variables."""
-        cls.cfg = config.get_config()
-        cls.client = gen_rpm_client()
-        cls.dist_tree_api = ContentDistributionTreesApi(cls.client)
-        cls.repo_api = RepositoriesRpmApi(cls.client)
-        cls.remote_api = RemotesRpmApi(cls.client)
-        delete_orphans()
+    copy_config = [
+        {
+            "source_repo_version": rpm_kickstart_repo_immediate.latest_version_href,
+            "dest_repo": repo_copy.pulp_href,
+            "content": [distribution_tree_href],
+        }
+    ]
+    response = rpm_copy_api.copy_content({"config": copy_config, "dependency_solving": True})
+    task = monitor_task(response.task)
+    assert len(task.created_resources) == 1
+    dest_repo_ver = task.created_resources[0]
+    assert dest_repo_ver == f"{repo_copy.versions_href}1/"
 
-    def do_sync(self, remote_url):
-        """Create and sync repository with remote_url.
-
-        Returns (dict): created repository url
-        """
-        repo = self.repo_api.create(gen_repo())
-        self.addCleanup(self.repo_api.delete, repo.pulp_href)
-
-        body = gen_rpm_remote(url=remote_url)
-        remote = self.remote_api.create(body)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
-
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
-        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
-        monitor_task(sync_response.task)
-
-        return self.repo_api.read(repo.pulp_href).to_dict()
-
-    def test_simple_copy_distribution_tree(self):
-        """Sync repository with a distribution tree."""
-        source_repo = self.do_sync(RPM_KICKSTART_FIXTURE_URL)
-        dest_repo = self.repo_api.create(gen_repo()).to_dict()
-        self.addCleanup(self.repo_api.delete, dest_repo["pulp_href"])
-
-        config = [
-            {
-                "source_repo_version": source_repo["latest_version_href"],
-                "dest_repo": dest_repo["pulp_href"],
-            }
-        ]
-
-        rpm_copy(self.cfg, config, recursive=True)
-        dest_repo = self.repo_api.read(dest_repo["pulp_href"]).to_dict()
-
-        self.assertEqual(get_added_content_summary(dest_repo)[PULP_TYPE_DISTRIBUTION_TREE], 1)
-
-    def test_dist_tree_copy_as_content(self):
-        """Test sync distribution tree repository and copy it."""
-        repo = self.do_sync(RPM_KICKSTART_FIXTURE_URL)
-        repo_copy = self.repo_api.create(gen_repo()).to_dict()
-        self.addCleanup(self.repo_api.delete, repo_copy["pulp_href"])
-        distribution_tree_href = get_content(repo)[PULP_TYPE_DISTRIBUTION_TREE][0]["pulp_href"]
-
-        copy_config = [
-            {
-                "source_repo_version": repo["latest_version_href"],
-                "dest_repo": repo_copy["pulp_href"],
-                "content": [distribution_tree_href],
-            }
-        ]
-        rpm_copy(self.cfg, copy_config, recursive=True)
-
-        repo_copy = self.repo_api.read(repo_copy["pulp_href"]).to_dict()
-
-        self.assertEqual(
-            get_content(repo)[PULP_TYPE_DISTRIBUTION_TREE],
-            get_content(repo_copy)[PULP_TYPE_DISTRIBUTION_TREE],
-        )
-        self.assertEqual(repo["latest_version_href"].rstrip("/")[-1], "1")
-        self.assertEqual(repo_copy["latest_version_href"].rstrip("/")[-1], "1")
-        self.assertEqual(len(get_content(repo)[PULP_TYPE_DISTRIBUTION_TREE]), 1)
-        self.assertEqual(len(get_content(repo_copy)[PULP_TYPE_DISTRIBUTION_TREE]), 1)
+    dest_content = rpm_content_distribution_trees_api.list(repository_version=dest_repo_ver)
+    assert source_content.count == dest_content.count == 1
+    assert {p.pulp_href for p in source_content.results} == {
+        p.pulp_href for p in dest_content.results
+    }
 
 
-class SkipDistributionTreeTest(PulpTestCase):
-    """Test Distribution Trees."""
+@pytest.mark.parallel
+def test_skip_treeinfo(init_and_sync):
+    # Sync repo. Should create only main repo, not subrepos
+    _, _, task = init_and_sync(
+        url=RPM_KICKSTART_FIXTURE_URL, skip_types=["treeinfo"], return_task=True
+    )
+    rsrvd_repos = [r for r in task.reserved_resources_record if "/repositories/rpm/rpm/" in r]
+    assert 1 == len(rsrvd_repos)
 
-    @classmethod
-    def setUpClass(cls):
-        """Create class-wide variables."""
-        cls.client = gen_rpm_client()
-        cls.dist_tree_api = ContentDistributionTreesApi(cls.client)
-        cls.packages_api = ContentPackagesApi(cls.client)
-        cls.repo_api = RepositoriesRpmApi(cls.client)
-        cls.remote_api = RemotesRpmApi(cls.client)
-        delete_orphans()
-
-    def do_test(self, repository=None, remote=None, skip_treeinfo=False):
-        """Sync a repository.
-
-        Args:
-            repository (pulp_rpm.app.models.repository.RpmRepository):
-                object of RPM repository
-            remote (pulp_rpm.app.models.repository.RpmRemote):
-                object of RPM Remote
-            skip_treeinfo(bool):
-                True if we should skip treeinfo in sync, False otherwise
-        Returns (pulpcore.app.models.task.Task):
-            completed sync-task
-        """
-        if repository:
-            repo = self.repo_api.read(repository.pulp_href)
-        else:
-            repo = self.repo_api.create(gen_repo())
-            self.assertEqual(repo.latest_version_href, f"{repo.pulp_href}versions/0/")
-        self.addCleanup(self.repo_api.delete, repo.pulp_href)
-
-        if not remote:
-            body = gen_rpm_remote()
-            remote = self.remote_api.create(body)
-        else:
-            remote = self.remote_api.read(remote.pulp_href)
-        if skip_treeinfo:
-            repository_sync_data = RpmRepositorySyncURL(
-                remote=remote.pulp_href, skip_types=["treeinfo"]
-            )
-        else:
-            repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
-        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
-        return monitor_task(sync_response.task)
-
-    def test_skip_treeinfo(self):
-        body = gen_rpm_remote(RPM_KICKSTART_FIXTURE_URL)
-        remote = self.remote_api.create(body)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
-
-        # Sync repo. Should create only main repo, not subrepos
-        task = self.do_test(remote=remote, skip_treeinfo=True)
-        rsrvd_repos = [r for r in task.reserved_resources_record if "/repositories/rpm/rpm/" in r]
-        self.assertEqual(1, len(rsrvd_repos))
-
-        # Sync again, including kstree. Should end up w/ 5 repos reserved.
-        task = self.do_test(remote=remote, skip_treeinfo=False)
-        rsrvd_repos = [r for r in task.reserved_resources_record if "/repositories/rpm/rpm/" in r]
-        self.assertEqual(5, len(rsrvd_repos))
+    # Sync again, including kstree. Should end up w/ 5 repos reserved.
+    _, _, task = init_and_sync(url=RPM_KICKSTART_FIXTURE_URL, return_task=True)
+    rsrvd_repos = [r for r in task.reserved_resources_record if "/repositories/rpm/rpm/" in r]
+    assert 5 == len(rsrvd_repos)
 
 
-class DistributionTreeTest(PulpTestCase):
-    """Test Distribution Trees."""
+def test_sync_dist_tree_change_addon_repo(init_and_sync, rpm_package_api, delete_orphans_pre):
+    """Test changed addon repository."""
+    addon_test_pkg_name = "test-srpm02"
+    repo, remote = init_and_sync(url=RPM_KICKSTART_FIXTURE_URL)
 
-    @classmethod
-    def setUpClass(cls):
-        """Create class-wide variables."""
-        cls.client = gen_rpm_client()
-        cls.dist_tree_api = ContentDistributionTreesApi(cls.client)
-        cls.packages_api = ContentPackagesApi(cls.client)
-        cls.repo_api = RepositoriesRpmApi(cls.client)
-        cls.remote_api = RemotesRpmApi(cls.client)
-        delete_orphans()
+    # check testing package is not present
+    packages = rpm_package_api.list().results
+    assert addon_test_pkg_name not in [p.name for p in packages]
 
-    def do_test(self, repository=None, remote=None):
-        """Sync a repository.
+    # re-sync w/ new remote & update repo object
+    init_and_sync(repository=repo, url=RPM_DISTRIBUTION_TREE_CHANGED_ADDON_URL)
 
-        Args:
-            repository (pulp_rpm.app.models.repository.RpmRepository):
-                object of RPM repository
-            remote (pulp_rpm.app.models.repository.RpmRemote):
-                object of RPM Remote
-        Returns (tuple):
-            tuple of instances of
-            pulp_rpm.app.models.repository.RpmRepository, pulp_rpm.app.models.repository.RpmRemote
-        """
-        if repository:
-            repo = self.repo_api.read(repository.pulp_href)
-        else:
-            repo = self.repo_api.create(gen_repo())
-            self.assertEqual(repo.latest_version_href, f"{repo.pulp_href}versions/0/")
+    # check new pacakge is synced to subrepo
+    packages = rpm_package_api.list().results
+    assert addon_test_pkg_name in [p.name for p in packages]
 
-        if not remote:
-            body = gen_rpm_remote()
-            remote = self.remote_api.create(body)
-        else:
-            remote = self.remote_api.read(remote.pulp_href)
-        repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href)
-        sync_response = self.repo_api.sync(repo.pulp_href, repository_sync_data)
-        monitor_task(sync_response.task)
-        return self.repo_api.read(repo.pulp_href), self.remote_api.read(remote.pulp_href)
 
-    def test_sync_dist_tree_change_addon_repo(self):
-        """Test changed addon repository."""
-        addon_test_pkg_name = "test-srpm02"
-        body = gen_rpm_remote(RPM_KICKSTART_FIXTURE_URL)
-        remote = self.remote_api.create(body)
+def test_sync_dist_tree_change_main_repo(init_and_sync, rpm_package_api, delete_orphans_pre):
+    """Test changed main repository."""
+    main_repo_test_pkg_name = "test-srpm01"
+    repo, remote = init_and_sync(url=RPM_KICKSTART_FIXTURE_URL)
+    repo_version_num = repo.latest_version_href.rstrip("/")[-1]
 
-        # sync & update repo object
-        repo, remote = self.do_test(remote=remote)
-        repo = self.repo_api.read(repo.pulp_href)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
-        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+    # re-sync w/ new remote & update repo object
+    repo, remote = init_and_sync(repository=repo, url=RPM_DISTRIBUTION_TREE_CHANGED_MAIN_URL)
+    updated_repo_version_num = repo.latest_version_href.rstrip("/")[-1]
 
-        # check testing package is not present
-        self.assertNotIn(
-            addon_test_pkg_name,
-            [pkg["name"] for pkg in self.packages_api.list().to_dict()["results"]],
-        )
+    # Assert new content was added and repo version was increased
+    assert repo_version_num < updated_repo_version_num
+    packages = rpm_package_api.list().results
+    assert main_repo_test_pkg_name in [p.name for p in packages]
 
-        # new remote
-        body = gen_rpm_remote(RPM_DISTRIBUTION_TREE_CHANGED_ADDON_URL)
-        remote = self.remote_api.create(body)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
-        # re-sync & update repo object
-        repo, remote = self.do_test(repo, remote)
-        repo = self.repo_api.read(repo.pulp_href)
+def test_sync_dist_tree_change_variant_repo(init_and_sync, rpm_package_api, delete_orphans_pre):
+    """Test changed variant repository."""
+    variant_test_pkg_name = "test-srpm03"
+    repo, remote = init_and_sync(url=RPM_KICKSTART_FIXTURE_URL)
 
-        # check new pacakge is synced to subrepo
-        self.assertIn(
-            addon_test_pkg_name,
-            [pkg["name"] for pkg in self.packages_api.list().to_dict()["results"]],
-        )
+    # check testing package is not present
+    packages = rpm_package_api.list().results
+    assert variant_test_pkg_name not in [p.name for p in packages]
 
-    def test_sync_dist_tree_change_main_repo(self):
-        """Test changed main repository."""
-        main_repo_test_pkg_name = "test-srpm01"
-        body = gen_rpm_remote(RPM_KICKSTART_FIXTURE_URL)
-        remote = self.remote_api.create(body)
+    # re-sync w/ new remote & update repo object
+    init_and_sync(repository=repo, url=RPM_DISTRIBUTION_TREE_CHANGED_VARIANT_URL)
 
-        # sync & update repo object
-        repo, remote = self.do_test(remote=remote)
-        repo = self.repo_api.read(repo.pulp_href)
-        repo_version = repo.latest_version_href.rstrip("/")[-1]
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
-        self.addCleanup(self.repo_api.delete, repo.pulp_href)
+    # check new pacakge is synced to subrepo
+    packages = rpm_package_api.list().results
+    assert variant_test_pkg_name in [p.name for p in packages]
 
-        # new remote
-        body = gen_rpm_remote(RPM_DISTRIBUTION_TREE_CHANGED_MAIN_URL)
-        remote = self.remote_api.create(body)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
 
-        # re-sync & update repo object
-        repo, remote = self.do_test(repo, remote)
-        repo = self.repo_api.read(repo.pulp_href)
-        updated_repo_version = repo.latest_version_href.rstrip("/")[-1]
+def test_remove_repo_with_distribution_tree(
+    init_and_sync,
+    rpm_repository_api,
+    rpm_content_distribution_trees_api,
+    orphans_cleanup_api_client,
+    monitor_task,
+):
+    """Sync repository with distribution tree and remove the repository."""
+    response = orphans_cleanup_api_client.cleanup({"orphan_protection_time": 0})
+    monitor_task(response.task)
 
-        # Assert new content was added and repo version was increased
-        self.assertNotEqual(repo_version, updated_repo_version)
-        self.assertIn(
-            main_repo_test_pkg_name,
-            [pkg["name"] for pkg in self.packages_api.list().to_dict()["results"]],
-        )
+    num_repos_start = rpm_repository_api.list().count
+    num_disttrees_start = rpm_content_distribution_trees_api.list().count
 
-    def test_sync_dist_tree_change_variant_repo(self):
-        """Test changed variant repository."""
-        variant_test_pkg_name = "test-srpm03"
-        body = gen_rpm_remote(RPM_KICKSTART_FIXTURE_URL)
-        remote = self.remote_api.create(body)
+    repo, _ = init_and_sync(url=RPM_KICKSTART_FIXTURE_URL)
+    task = rpm_repository_api.delete(repo.pulp_href)
+    monitor_task(task.task)
 
-        # sync & update repo object
-        repo, remote = self.do_test(remote=remote)
-        repo = self.repo_api.read(repo.pulp_href)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
-        self.addCleanup(self.repo_api.delete, repo.pulp_href)
-
-        # check testing package is not present
-        self.assertNotIn(
-            variant_test_pkg_name,
-            [pkg["name"] for pkg in self.packages_api.list().to_dict()["results"]],
-        )
-
-        # new remote
-        body = gen_rpm_remote(RPM_DISTRIBUTION_TREE_CHANGED_VARIANT_URL)
-        remote = self.remote_api.create(body)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
-
-        # re-sync & update repo object
-        repo, remote = self.do_test(repo, remote)
-        repo = self.repo_api.read(repo.pulp_href)
-
-        # check new pacakge is synced to subrepo
-        self.assertIn(
-            variant_test_pkg_name,
-            [pkg["name"] for pkg in self.packages_api.list().to_dict()["results"]],
-        )
-
-    def test_remove_repo_with_distribution_tree(self):
-        """Sync repository with distribution tree and remove the repository."""
-        body = gen_rpm_remote(RPM_KICKSTART_FIXTURE_URL)
-        remote = self.remote_api.create(body)
-        self.addCleanup(self.remote_api.delete, remote.pulp_href)
-        num_repos_start = self.repo_api.list().count
-        num_disttrees_start = self.dist_tree_api.list().count
-
-        repo, _ = self.do_test(remote=remote)
-        task = self.repo_api.delete(repo.pulp_href)
-        monitor_task(task.task)
-
-        self.assertEqual(self.repo_api.list().count, num_repos_start)
-        # Remove orphans and check if distribution tree was removed.
-        delete_orphans()
-        self.assertEqual(self.dist_tree_api.list().count, num_disttrees_start)
+    assert rpm_repository_api.list().count == num_repos_start
+    # Remove orphans and check if distribution tree was removed.
+    response = orphans_cleanup_api_client.cleanup({"orphan_protection_time": 0})
+    monitor_task(response.task)
+    assert rpm_content_distribution_trees_api.list().count == num_disttrees_start
