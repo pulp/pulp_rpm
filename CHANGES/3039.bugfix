@@ -1,1 +1,0 @@
-Fix relative path and location href mismatch of the uploaded rpm caused by filename and rpm header mismatch. Clients are getting HTTP 404 Not Found error when downloading the rpm.
