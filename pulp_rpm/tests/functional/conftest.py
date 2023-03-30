@@ -165,6 +165,18 @@ def rpm_rpmremote_factory(rpm_rpmremote_api, gen_object_with_cleanup):
 
 
 @pytest.fixture(scope="class")
+def rpm_publication_factory(rpm_publication_api, gen_object_with_cleanup):
+    """A factory to generate an RPM Publication with auto-deletion after the test run."""
+
+    def _rpm_publication_factory(**kwargs):
+        # XOR check on repository and repository_version
+        assert bool("repository" in kwargs) ^ bool("repository_version" in kwargs)
+        return gen_object_with_cleanup(rpm_publication_api, kwargs)
+
+    return _rpm_publication_factory
+
+
+@pytest.fixture(scope="class")
 def rpm_distribution_factory(rpm_distribution_api, gen_object_with_cleanup):
     """A factory to generate an RPM Distribution with auto-deletion after the test run."""
 

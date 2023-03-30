@@ -1,98 +1,63 @@
-import requests
+import pytest
+
+from aiohttp import ClientResponseError
 
 
-from pulp_smash.pulp3.bindings import (
-    delete_orphans,
-    monitor_task,
-    PulpTestCase,
-)
-from pulp_smash.pulp3.utils import (
-    gen_distribution,
-    gen_repo,
-)
+@pytest.fixture
+def setup_empty_distribution(
+    rpm_repository_factory, rpm_publication_factory, rpm_distribution_factory
+):
+    repo = rpm_repository_factory()
+    publication = rpm_publication_factory(repository=repo.pulp_href)
+    distribution = rpm_distribution_factory(publication=publication.pulp_href)
 
-from pulp_rpm.tests.functional.utils import gen_rpm_client
-
-from pulpcore.client.pulp_rpm import (
-    DistributionsRpmApi,
-    RepositoriesRpmApi,
-    PublicationsRpmApi,
-    RpmRpmPublication,
-)
+    return repo, publication, distribution
 
 
-class ContentHandlerTests(PulpTestCase):
-    """Whether the RpmDistribution.content_handler* methods work."""
+@pytest.mark.parallel
+def test_config_repo_in_listing_unsigned(setup_empty_distribution, http_get):
+    """Whether the served resources are in the directory listing."""
+    _, _, dist = setup_empty_distribution
+    content = http_get(dist.base_url)
 
-    @classmethod
-    def tearDownClass(cls) -> None:
-        """Clean up after testing."""
-        delete_orphans()
+    assert b"config.repo" in content
+    assert b"repomd.xml.key" not in content
 
-    @classmethod
-    def setUpClass(cls) -> None:
-        """Set up the class."""
-        cls.client = gen_rpm_client()
-        cls.repo_api = RepositoriesRpmApi(cls.client)
-        cls.publications_api = PublicationsRpmApi(cls.client)
-        cls.distributions_api = DistributionsRpmApi(cls.client)
-        delete_orphans()
 
-    def setUp(self):
-        """Setup method."""
-        self.repo = self.repo_api.create(gen_repo())
+@pytest.mark.parallel
+def test_config_repo_unsigned(setup_empty_distribution, http_get):
+    """Whether config.repo can be downloaded and has the right content."""
+    _, _, dist = setup_empty_distribution
+    content = http_get(f"{dist.base_url}config.repo")
 
-        publish_data = RpmRpmPublication(repository=self.repo.pulp_href)
-        publish_response = self.publications_api.create(publish_data)
-        created_resources = monitor_task(publish_response.task).created_resources
-        self.publication = self.publications_api.read(created_resources[0])
+    assert bytes(f"[{dist.name}]\n", "utf-8") in content
+    assert bytes(f"baseurl={dist.base_url}\n", "utf-8") in content
+    assert bytes("gpgcheck=0\n", "utf-8") in content
+    assert bytes("repo_gpgcheck=0", "utf-8") in content
 
-        dist_data = gen_distribution(publication=self.publication.pulp_href)
-        dist_response = self.distributions_api.create(dist_data)
-        created_resources = monitor_task(dist_response.task).created_resources
-        self.dist = self.distributions_api.read(created_resources[0])
 
-    def tearDown(self):
-        """Tearddown method."""
-        if self.publication:
-            self.publications_api.delete(self.publication.pulp_href)
-        self.repo_api.delete(self.repo.pulp_href)
-        self.distributions_api.delete(self.dist.pulp_href)
+@pytest.mark.parallel
+def test_config_repo_auto_distribute(
+    setup_empty_distribution, http_get, rpm_publication_api, rpm_distribution_api, monitor_task
+):
+    """Whether config.repo is properly served using auto-distribute."""
+    repo, pub, dist = setup_empty_distribution
 
-    def test_config_repo_in_listing_unsigned(self):
-        """Whether the served resources are in the directory listing."""
-        resp = requests.get(self.dist.base_url)
+    body = {"repository": repo.pulp_href, "publication": None}
+    monitor_task(rpm_distribution_api.partial_update(dist.pulp_href, body).task)
+    # Check that distribution is now using repository to auto-distribute
+    dist = rpm_distribution_api.read(dist.pulp_href)
+    assert repo.pulp_href == dist.repository
+    assert dist.publication is None
+    content = http_get(f"{dist.base_url}config.repo")
 
-        self.assertEqual(resp.status_code, 200)
-        self.assertIn(b"config.repo", resp.content)
-        self.assertNotIn(b"repomd.xml.key", resp.content)
+    assert bytes(f"[{dist.name}]\n", "utf-8") in content
+    assert bytes(f"baseurl={dist.base_url}\n", "utf-8") in content
+    assert bytes("gpgcheck=0\n", "utf-8") in content
+    assert bytes("repo_gpgcheck=0", "utf-8") in content
 
-    def test_config_repo_unsigned(self):
-        """Whether config.repo can be downloaded and has the right content."""
-        self.config_repo_check()
-
-    def test_config_repo_auto_distribute(self):
-        """Whether config.repo is properly served using auto-distribute."""
-        publication_href = self.dist.publication
-        body = {"repository": self.repo.pulp_href, "publication": None}
-        monitor_task(self.distributions_api.partial_update(self.dist.pulp_href, body).task)
-        # Check that distribution is now using repository to auto-distribute
-        self.dist = self.distributions_api.read(self.dist.pulp_href)
-        self.assertEqual(self.repo.pulp_href, self.dist.repository)
-        self.assertIsNone(self.dist.publication)
-        self.config_repo_check()
-        # Delete publication and check that 404 is now returned
-        self.publications_api.delete(publication_href)
-        self.publication = None
-        resp = requests.get(f"{self.dist.base_url}config.repo")
-        self.assertEqual(resp.status_code, 404)
-
-    def config_repo_check(self):
-        """Helper to do the tests on config.repo."""
-        resp = requests.get(f"{self.dist.base_url}config.repo")
-
-        self.assertEqual(resp.status_code, 200)
-        self.assertIn(bytes(f"[{self.dist.name}]\n", "utf-8"), resp.content)
-        self.assertIn(bytes(f"baseurl={self.dist.base_url}\n", "utf-8"), resp.content)
-        self.assertIn(bytes("gpgcheck=0\n", "utf-8"), resp.content)
-        self.assertIn(bytes("repo_gpgcheck=0", "utf-8"), resp.content)
+    # Delete publication and check that 404 is now returned
+    rpm_publication_api.delete(pub.pulp_href)
+    with pytest.raises(ClientResponseError) as ctx:
+        http_get(f"{dist.base_url}config.repo")
+    assert ctx.value.status == 404
