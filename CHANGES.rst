@@ -13,6 +13,26 @@ Changelog
 
 .. towncrier release notes start
 
+3.19.3 (2023-03-29)
+===================
+
+
+Bugfixes
+--------
+
+- Fix relative path and location href mismatch of the uploaded rpm caused by filename and rpm header mismatch. Clients are getting HTTP 404 Not Found error when downloading the rpm.
+  `#3039 <https://github.com/pulp/pulp_rpm/issues/3039>`__
+
+
+Misc
+----
+
+- `#2867 <https://github.com/pulp/pulp_rpm/issues/2867>`__, `#2868 <https://github.com/pulp/pulp_rpm/issues/2868>`__, `#2870 <https://github.com/pulp/pulp_rpm/issues/2870>`__, `#2871 <https://github.com/pulp/pulp_rpm/issues/2871>`__, `#2878 <https://github.com/pulp/pulp_rpm/issues/2878>`__, `#2879 <https://github.com/pulp/pulp_rpm/issues/2879>`__, `#2882 <https://github.com/pulp/pulp_rpm/issues/2882>`__
+
+
+----
+
+
 3.19.2 (2023-03-20)
 ===================
 
@@ -121,6 +141,26 @@ Misc
 ----
 
 - `#2718 <https://github.com/pulp/pulp_rpm/issues/2718>`__, `#2791 <https://github.com/pulp/pulp_rpm/issues/2791>`__, `#2805 <https://github.com/pulp/pulp_rpm/issues/2805>`__, `#2832 <https://github.com/pulp/pulp_rpm/issues/2832>`__, `#2886 <https://github.com/pulp/pulp_rpm/issues/2886>`__, `#2905 <https://github.com/pulp/pulp_rpm/issues/2905>`__
+
+
+----
+
+
+3.18.13 (2023-03-29)
+====================
+
+
+Bugfixes
+--------
+
+- Fix relative path and location href mismatch of the uploaded rpm caused by filename and rpm header mismatch. Clients are getting HTTP 404 Not Found error when downloading the rpm.
+  `#3039 <https://github.com/pulp/pulp_rpm/issues/3039>`__
+
+
+Misc
+----
+
+- `#2242 <https://github.com/pulp/pulp_rpm/issues/2242>`__, `#2867 <https://github.com/pulp/pulp_rpm/issues/2867>`__, `#2868 <https://github.com/pulp/pulp_rpm/issues/2868>`__, `#2870 <https://github.com/pulp/pulp_rpm/issues/2870>`__, `#2871 <https://github.com/pulp/pulp_rpm/issues/2871>`__, `#2876 <https://github.com/pulp/pulp_rpm/issues/2876>`__, `#2878 <https://github.com/pulp/pulp_rpm/issues/2878>`__, `#2879 <https://github.com/pulp/pulp_rpm/issues/2879>`__, `#2882 <https://github.com/pulp/pulp_rpm/issues/2882>`__
 
 
 ----
