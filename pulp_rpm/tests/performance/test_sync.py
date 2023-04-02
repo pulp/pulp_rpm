@@ -1,268 +1,173 @@
 """Tests that sync rpm plugin repositories."""
+import pytest
 import os
-import unittest
 from datetime import datetime
-from urllib.parse import urljoin
-
-from pulp_smash import api, config
-from pulp_smash.pulp3.bindings import delete_orphans, monitor_task
-from pulp_smash.pulp3.utils import (
-    gen_repo,
-    get_added_content_summary,
-    get_content,
-    get_content_summary,
-)
 
 from pulp_rpm.tests.functional.constants import (
     PULP_TYPE_REPOMETADATA,
     RHEL8_APPSTREAM_CDN_URL,
     RHEL8_BASEOS_CDN_URL,
-    RPM_KICKSTART_FIXTURE_SUMMARY,
-    RPM_KICKSTART_FIXTURE_URL,
-    RPM_REMOTE_PATH,
-    RPM_REPO_PATH,
+    RPM_KICKSTART_CONTENT_NAME,
+    RPM_KICKSTART_COUNT,
     CENTOS7_URL,
     CENTOS8_STREAM_APPSTREAM_URL,
     CENTOS8_STREAM_BASEOS_URL,
     EPEL8_MIRRORLIST_URL,
     F36_KICKSTART_URL,
 )
-from pulp_rpm.tests.functional.utils import gen_rpm_client, skip_if
-from pulpcore.client.pulp_rpm import (
-    ContentRepoMetadataFilesApi,
-    RemotesRpmApi,
-    RepositoriesRpmApi,
-    RpmRepositorySyncURL,
+
+
+def parse_date_from_string(s, parse_format="%Y-%m-%dT%H:%M:%S.%fZ"):
+    """Parse string to datetime object.
+
+    :param s: str like '2018-11-18T21:03:32.493697Z'
+    :param parse_format: str defaults to %Y-%m-%dT%H:%M:%S.%fZ
+    :return: datetime.datetime
+    """
+    return datetime.strptime(s, parse_format)
+
+
+@pytest.mark.parametrize(
+    "url,policy,check_dist_tree,resync",
+    [
+        (CENTOS7_URL, "on_demand", True, True),
+        pytest.param(
+            CENTOS7_URL,
+            "immediate",
+            True,
+            True,
+            marks=pytest.mark.skip("Skip to avoid failing due to running out of disk space"),
+        ),
+        (CENTOS8_STREAM_BASEOS_URL, "on_demand", True, True),
+        (CENTOS8_STREAM_APPSTREAM_URL, "on_demand", True, True),
+        (EPEL8_MIRRORLIST_URL, "on_demand", False, False),
+        (F36_KICKSTART_URL, "on_demand", True, True),
+    ],
 )
-from pulp_rpm.tests.functional.utils import gen_rpm_remote
-from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-
-
-class SyncTestCase(unittest.TestCase):
+def test_rpm_sync(
+    url,
+    policy,
+    check_dist_tree,
+    resync,
+    init_and_sync,
+    rpm_repository_version_api,
+    pre_delete_orphans,
+):
     """Sync repositories with the rpm plugin."""
+    # Create repository & remote and sync
+    repo, remote, task = init_and_sync(url=url, policy=policy, return_task=True)
 
-    @classmethod
-    def setUpClass(cls):
-        """Create class-wide variables."""
-        cls.cfg = config.get_config()
-        cls.client = api.Client(cls.cfg, api.json_handler)
-
-        delete_orphans()
-
-    def parse_date_from_string(self, s, parse_format="%Y-%m-%dT%H:%M:%S.%fZ"):
-        """Parse string to datetime object.
-
-        :param s: str like '2018-11-18T21:03:32.493697Z'
-        :param parse_format: str defaults to %Y-%m-%dT%H:%M:%S.%fZ
-        :return: datetime.datetime
-        """
-        return datetime.strptime(s, parse_format)
-
-    def rpm_sync(
-        self, url=RPM_KICKSTART_FIXTURE_URL, policy="on_demand", check_dist_tree=True, resync=True
-    ):
-        """Sync repositories with the rpm plugin.
-
-        This test targets the following issue:
-        `Pulp #5506 <https://pulp.plan.io/issues/5506>`_.
-
-        In order to sync a repository a remote has to be associated within
-        this repository. When a repository is created this version field is set
-        as None. After a sync the repository version is updated.
-
-        Do the following:
-
-        1. Create a repository and a remote.
-        2. Assert that repository version is None.
-        3. Sync the remote.
-        4. Assert that repository version is not None.
-        5. Assert that distribution_tree units were added and are present in the repo.
-        """
-        delete_orphans()
-        repo = self.client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo["pulp_href"])
-
-        # Create a remote with the standard test fixture url.
-        body = gen_rpm_remote(url=url, policy=policy)
-        remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote["pulp_href"])
-
-        # Sync the repository.
-        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
-        data = {"remote": remote["pulp_href"]}
-        response = self.client.using_handler(api.json_handler).post(
-            urljoin(repo["pulp_href"], "sync/"), data
+    created_at = parse_date_from_string(task.pulp_created)
+    started_at = parse_date_from_string(task.started_at)
+    finished_at = parse_date_from_string(task.finished_at)
+    task_duration = finished_at - started_at
+    waiting_time = started_at - created_at
+    print(
+        "\n->     Sync => Waiting time (s): {wait} | Service time (s): {service}".format(
+            wait=waiting_time.total_seconds(), service=task_duration.total_seconds()
         )
-        sync_task = self.client.get(response["task"])
-        created_at = self.parse_date_from_string(sync_task["pulp_created"])
-        started_at = self.parse_date_from_string(sync_task["started_at"])
-        finished_at = self.parse_date_from_string(sync_task["finished_at"])
+    )
+
+    # Check that we have the correct content counts.
+    if check_dist_tree:
+        repo_ver = rpm_repository_version_api.read(repo.latest_version_href)
+        present_summary = repo_ver.content_summary.present
+        assert RPM_KICKSTART_CONTENT_NAME in present_summary
+        assert present_summary[RPM_KICKSTART_CONTENT_NAME]["count"] == RPM_KICKSTART_COUNT
+        added_summary = repo_ver.content_summary.added
+        assert RPM_KICKSTART_CONTENT_NAME in added_summary
+        assert added_summary[RPM_KICKSTART_CONTENT_NAME]["count"] == RPM_KICKSTART_COUNT
+
+    if resync:
+        # Sync the repository again.
+        latest_version_href = repo.latest_version_href
+        repo, remote, task = init_and_sync(repository=repo, remote=remote, return_task=True)
+        created_at = parse_date_from_string(task.pulp_created)
+        started_at = parse_date_from_string(task.started_at)
+        finished_at = parse_date_from_string(task.finished_at)
         task_duration = finished_at - started_at
         waiting_time = started_at - created_at
         print(
-            "\n->     Sync => Waiting time (s): {wait} | Service time (s): {service}".format(
+            "\n->  Re-sync => Waiting time (s): {wait} | Service time (s): {service}".format(
                 wait=waiting_time.total_seconds(), service=task_duration.total_seconds()
             )
         )
 
-        repo = self.client.get(repo["pulp_href"])
-
-        # Check that we have the correct content counts.
-        self.assertIsNotNone(repo["latest_version_href"])
-
-        if check_dist_tree:
-            self.assertIn(
-                list(RPM_KICKSTART_FIXTURE_SUMMARY.items())[0],
-                get_content_summary(repo).items(),
-            )
-            self.assertIn(
-                list(RPM_KICKSTART_FIXTURE_SUMMARY.items())[0],
-                get_added_content_summary(repo).items(),
-            )
-
-        if resync:
-            # Sync the repository again.
-            latest_version_href = repo["latest_version_href"]
-            response = self.client.using_handler(api.json_handler).post(
-                urljoin(repo["pulp_href"], "sync/"), data
-            )
-            sync_task = self.client.get(response["task"])
-            created_at = self.parse_date_from_string(sync_task["pulp_created"])
-            started_at = self.parse_date_from_string(sync_task["started_at"])
-            finished_at = self.parse_date_from_string(sync_task["finished_at"])
-            task_duration = finished_at - started_at
-            waiting_time = started_at - created_at
-            print(
-                "\n->  Re-sync => Waiting time (s): {wait} | Service time (s): {service}".format(
-                    wait=waiting_time.total_seconds(), service=task_duration.total_seconds()
-                )
-            )
-            repo = self.client.get(repo["pulp_href"])
-
-            # Check that nothing has changed since the last sync.
-            self.assertEqual(latest_version_href, repo["latest_version_href"])
-
-    def test_centos7_on_demand(self):
-        """Sync CentOS 7."""
-        self.rpm_sync(url=CENTOS7_URL)
-
-    @unittest.skip("Skip to avoid failing due to running out of disk space")
-    def test_centos7_immediate(self):
-        """Sync CentOS 7 with the immediate policy."""
-        self.rpm_sync(url=CENTOS7_URL, policy="immediate")
-
-    def test_centos8_baseos_on_demand(self):
-        """Sync CentOS 8 BaseOS."""
-        self.rpm_sync(url=CENTOS8_STREAM_BASEOS_URL)
-
-    def test_centos8_appstream_on_demand(self):
-        """Sync CentOS 8 AppStream."""
-        self.rpm_sync(url=CENTOS8_STREAM_APPSTREAM_URL)
-
-    def test_epel8_mirrorlist_with_comment(self):
-        """Kickstart Sync EPEL 8 (which includes a comment line)."""
-        # EPEL8 doesn't contain distribution tree
-        # Different mirrors may have different content, which
-        # will cause the resync in rpm_sync to result in a new repo-version.
-        # Don't fail a test due to outside data concerns...
-        self.rpm_sync(url=EPEL8_MIRRORLIST_URL, check_dist_tree=False, resync=False)
-
-    def test_f36_kickstart_on_demand(self):
-        """Kickstart Sync Epel 8 playground."""
-        self.rpm_sync(url=F36_KICKSTART_URL)
+        # Check that nothing has changed since the last sync.
+        assert latest_version_href == repo.latest_version_href
 
 
-class CDNTestCase(unittest.TestCase):
-    """Sync a repository from CDN."""
+@pytest.fixture
+def cdn_certs_and_keys():
+    cdn_client_cert = os.getenv("CDN_CLIENT_CERT", "").replace("\\n", "\n")
+    cdn_client_key = os.getenv("CDN_CLIENT_KEY", "").replace("\\n", "\n")
+    cdn_ca_cert = os.getenv("CDN_CA_CERT", "").replace("\\n", "\n")
 
-    @classmethod
-    def setUpClass(cls):
-        """Create class-wide variables."""
-        cls.client = gen_rpm_client()
-        cls.repo_api = RepositoriesRpmApi(cls.client)
-        cls.remote_api = RemotesRpmApi(cls.client)
-        cls.repometadatafiles = ContentRepoMetadataFilesApi(cls.client)
-        delete_orphans()
-        # Certificates processing
-        cls.cdn_client_cert = False
-        if (
-            os.getenv("CDN_CLIENT_CERT")
-            and os.getenv("CDN_CLIENT_KEY")
-            and os.getenv("CDN_CA_CERT")
-        ):
-            # strings have escaped newlines from environmental variable
-            cls.cdn_client_cert = os.environ["CDN_CLIENT_CERT"].replace("\\n", "\n")
-            cls.cdn_client_key = os.environ["CDN_CLIENT_KEY"].replace("\\n", "\n")
-            cls.cdn_ca_cert = os.environ["CDN_CA_CERT"].replace("\\n", "\n")
+    return cdn_client_cert, cdn_client_key, cdn_ca_cert
 
-    @skip_if(bool, "cdn_client_cert", False)
-    def test_sync_with_certificate(self):
-        """Test sync against CDN.
 
-        1. create repository, appstream remote and sync
-            - remote using certificates and tls validation
-        2. create repository, baseos remote and sync
-            - remote using certificates without tls validation
-        3. Check both repositories were synced and both have its own 'productid' content
-            - this test covering checking same repo metadata files with different relative paths
-        """
-        # 1. create repo, remote and sync them
-        repo_appstream = self.repo_api.create(gen_repo())
-        self.addCleanup(self.repo_api.delete, repo_appstream.pulp_href)
+def test_sync_with_certificate(
+    cdn_certs_and_keys,
+    init_and_sync,
+    rpm_rpmremote_factory,
+    rpm_content_repometadata_files_api,
+    rpm_repository_version_api,
+    pre_orphan_delete,
+):
+    """Test sync against CDN.
 
-        body = gen_rpm_remote(
-            url=RHEL8_APPSTREAM_CDN_URL,
-            client_cert=self.cdn_client_cert,
-            client_key=self.cdn_client_key,
-            ca_cert=self.cdn_ca_cert,
-            policy="on_demand",
-        )
-        appstream_remote = self.remote_api.create(body)
-        self.addCleanup(self.remote_api.delete, appstream_remote.pulp_href)
+    1. create repository, appstream remote and sync
+        - remote using certificates and tls validation
+    2. create repository, baseos remote and sync
+        - remote using certificates without tls validation
+    3. Check both repositories were synced and both have its own 'productid' content
+        - this test covering checking same repo metadata files with different relative paths
+    """
+    client_cert, client_key, ca_cert = cdn_certs_and_keys
+    if not all(cdn_certs_and_keys):
+        pytest.skip("CDN Client Cert & Key and CA Cert were not set")
 
-        repository_sync_data = RpmRepositorySyncURL(remote=appstream_remote.pulp_href)
-        sync_response = self.repo_api.sync(repo_appstream.pulp_href, repository_sync_data)
-        monitor_task(sync_response.task)
+    # 1. create repo, remote and sync them
+    appstream_remote = rpm_rpmremote_factory(
+        url=RHEL8_APPSTREAM_CDN_URL,
+        client_cert=client_cert,
+        client_key=client_key,
+        ca_cert=ca_cert,
+        policy="on_demand",
+    )
+    repo_appstream, _ = init_and_sync(remote=appstream_remote)
 
-        # 2. create remote and re-sync
-        repo_baseos = self.repo_api.create(gen_repo())
-        self.addCleanup(self.repo_api.delete, repo_baseos.pulp_href)
+    # 2. create remote and re-sync
+    baseos_remote = rpm_rpmremote_factory(
+        url=RHEL8_BASEOS_CDN_URL,
+        tls_validation=False,
+        client_cert=client_cert,
+        client_key=client_key,
+        policy="on_demand",
+    )
+    repo_baseos, _ = init_and_sync(remote=baseos_remote)
 
-        body = gen_rpm_remote(
-            url=RHEL8_BASEOS_CDN_URL,
-            tls_validation=False,
-            client_cert=self.cdn_client_cert,
-            client_key=self.cdn_client_key,
-            policy="on_demand",
-        )
-        baseos_remote = self.remote_api.create(body)
-        self.addCleanup(self.remote_api.delete, baseos_remote.pulp_href)
+    # Get all 'productid' repo metadata files
+    productids = [
+        productid
+        for productid in rpm_content_repometadata_files_api.list().results
+        if productid.data_type == "productid"
+    ]
 
-        repository_sync_data = RpmRepositorySyncURL(remote=baseos_remote.pulp_href)
-        sync_response = self.repo_api.sync(repo_baseos.pulp_href, repository_sync_data)
-        monitor_task(sync_response.task)
+    # Assert there are two productid content units and they have same checksum
+    assert len(productids) == 2
+    assert productids[0].checksum == productids[1].checksum
 
-        # Get all 'productid' repo metadata files
-        productids = [
-            productid
-            for productid in self.repometadatafiles.list().results
-            if productid.data_type == "productid"
-        ]
+    # Assert each repository has its own productid file
+    appstream_repo_ver = rpm_repository_version_api.read(repo_appstream.latest_version_href)
+    assert appstream_repo_ver.content_summary.present[PULP_TYPE_REPOMETADATA]["count"] == 1
+    baseos_repo_ver = rpm_repository_version_api.read(repo_baseos.latest_version_href)
+    assert baseos_repo_ver.content_summary.present[PULP_TYPE_REPOMETADATA]["count"] == 1
 
-        # Update repositories info
-        repo_baseos_dict = self.repo_api.read(repo_baseos.pulp_href).to_dict()
-        repo_appstream_dict = self.repo_api.read(repo_appstream.pulp_href).to_dict()
-
-        # Assert there are two productid content units and they have same checksum
-        self.assertEqual(len(productids), 2)
-        self.assertEqual(productids[0].checksum, productids[1].checksum)
-        # Assert each repository has latest version 1 (it was synced)
-        self.assertEqual(repo_appstream_dict["latest_version_href"].rstrip("/")[-1], "1")
-        self.assertEqual(repo_baseos_dict["latest_version_href"].rstrip("/")[-1], "1")
-        # Assert each repository has its own productid file
-        self.assertEqual(get_content_summary(repo_appstream_dict)[PULP_TYPE_REPOMETADATA], 1)
-        self.assertEqual(get_content_summary(repo_baseos_dict)[PULP_TYPE_REPOMETADATA], 1)
-        self.assertNotEqual(
-            get_content(repo_appstream_dict)[PULP_TYPE_REPOMETADATA][0]["relative_path"],
-            get_content(repo_baseos_dict)[PULP_TYPE_REPOMETADATA][0]["relative_path"],
-        )
+    appstream_metadata = rpm_content_repometadata_files_api.list(
+        repository_version=appstream_repo_ver.pulp_href
+    )
+    baseos_metadata = rpm_content_repometadata_files_api.list(
+        repository_version=baseos_repo_ver.pulp_href
+    )
+    assert appstream_metadata.results[0].relative_path != baseos_metadata.results[0].relative_path

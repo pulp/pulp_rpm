@@ -11,6 +11,7 @@ from pulpcore.client.pulp_rpm import (
     ContentPackagegroupsApi,
     ContentPackagelangpacksApi,
     ContentPackagesApi,
+    ContentRepoMetadataFilesApi,
     DistributionsRpmApi,
     ContentModulemdsApi,
     ContentModulemdDefaultsApi,
@@ -137,6 +138,11 @@ def rpm_comps_api(rpm_client):
 @pytest.fixture(scope="session")
 def rpm_content_distribution_trees_api(rpm_client):
     return ContentDistributionTreesApi(rpm_client)
+
+
+@pytest.fixture(scope="session")
+def rpm_content_repometadata_files_api(rpm_client):
+    return ContentRepoMetadataFilesApi(rpm_client)
 
 
 @pytest.fixture(scope="session")
