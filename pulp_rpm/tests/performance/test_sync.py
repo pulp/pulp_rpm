@@ -51,7 +51,7 @@ def test_rpm_sync(
     resync,
     init_and_sync,
     rpm_repository_version_api,
-    pre_delete_orphans,
+    delete_orphans_pre,
 ):
     """Sync repositories with the rpm plugin."""
     # Create repository & remote and sync
@@ -112,7 +112,7 @@ def test_sync_with_certificate(
     rpm_rpmremote_factory,
     rpm_content_repometadata_files_api,
     rpm_repository_version_api,
-    pre_orphan_delete,
+    delete_orphans_pre,
 ):
     """Test sync against CDN.
 
