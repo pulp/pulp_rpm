@@ -1,5 +1,5 @@
 """Tests that publish rpm plugin repositories."""
-import unittest
+import pytest
 from datetime import datetime
 from html.parser import HTMLParser
 from tempfile import NamedTemporaryFile
@@ -7,28 +7,13 @@ from urllib.parse import urljoin
 
 from productmd.treeinfo import TreeInfo
 
-from pulp_smash import api, config, utils
-from pulp_smash.pulp3.bindings import delete_orphans
-from pulp_smash.pulp3.utils import (
-    gen_repo,
-    get_added_content_summary,
-    get_content_summary,
-)
-
 from pulp_rpm.tests.functional.constants import (
-    RPM_DISTRIBUTION_PATH,
     RPM_PACKAGE_CONTENT_NAME,
-    RPM_KICKSTART_FIXTURE_URL,
-    RPM_PUBLICATION_PATH,
-    RPM_REMOTE_PATH,
-    RPM_REPO_PATH,
     CENTOS7_URL,
     CENTOS8_STREAM_APPSTREAM_URL,
     CENTOS8_STREAM_BASEOS_URL,
     EPEL7_URL,
 )
-from pulp_rpm.tests.functional.utils import gen_rpm_remote
-from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 
 class PackagesHtmlParser(HTMLParser):
@@ -49,123 +34,22 @@ class PackagesHtmlParser(HTMLParser):
             super().handle_starttag(tag, attrs)
 
 
-class PublishTestCase(unittest.TestCase):
-    """Publish repositories with the rpm plugin."""
+def parse_date_from_string(s, parse_format="%Y-%m-%dT%H:%M:%S.%fZ"):
+    """Parse string to datetime object.
 
-    @classmethod
-    def setUpClass(cls):
-        """Create class-wide variables."""
-        cls.cfg = config.get_config()
-        cls.client = api.Client(cls.cfg, api.json_handler)
+    :param s: str like '2018-11-18T21:03:32.493697Z'
+    :param parse_format: str defaults to %Y-%m-%dT%H:%M:%S.%fZ
+    :return: datetime.datetime
+    """
+    return datetime.strptime(s, parse_format)
 
-        delete_orphans()
 
-    def parse_date_from_string(self, s, parse_format="%Y-%m-%dT%H:%M:%S.%fZ"):
-        """Parse string to datetime object.
-
-        :param s: str like '2018-11-18T21:03:32.493697Z'
-        :param parse_format: str defaults to %Y-%m-%dT%H:%M:%S.%fZ
-        :return: datetime.datetime
-        """
-        return datetime.strptime(s, parse_format)
-
-    def rpm_publish(self, url=RPM_KICKSTART_FIXTURE_URL, policy="on_demand"):
-        """Publish repositories with the rpm plugin.
-
-        This test targets the following issue:
-        `Pulp #5630 <https://pulp.plan.io/issues/5630>`_.
-
-        In order to sync a repository a remote has to be associated within
-        this repository. When a repository is created this version field is set
-        as None. After a sync the repository version is updated.
-
-        Do the following:
-
-        1. Create a repository and a remote.
-        2. Assert that repository version is None.
-        3. Sync the remote.
-        4. Assert that repository version is not None.
-        5. Assert that distribution_tree units were added and are present in the repo.
-        6. Publish
-        """
-        delete_orphans()
-        repo = self.client.post(RPM_REPO_PATH, gen_repo())
-        self.addCleanup(self.client.delete, repo["pulp_href"])
-
-        # Create a remote with the standard test fixture url.
-        body = gen_rpm_remote(url=url, policy=policy)
-        remote = self.client.post(RPM_REMOTE_PATH, body)
-        self.addCleanup(self.client.delete, remote["pulp_href"])
-
-        # Sync the repository.
-        self.assertEqual(repo["latest_version_href"], f"{repo['pulp_href']}versions/0/")
-        data = {"remote": remote["pulp_href"]}
-        response = self.client.using_handler(api.json_handler).post(
-            urljoin(repo["pulp_href"], "sync/"), data
-        )
-        sync_task = self.client.get(response["task"])
-        created_at = self.parse_date_from_string(sync_task["pulp_created"])
-        started_at = self.parse_date_from_string(sync_task["started_at"])
-        finished_at = self.parse_date_from_string(sync_task["finished_at"])
-        task_duration = finished_at - started_at
-        waiting_time = started_at - created_at
-        print(
-            "\n->     Sync => Waiting time (s): {wait} | Service time (s): {service}".format(
-                wait=waiting_time.total_seconds(), service=task_duration.total_seconds()
-            )
-        )
-
-        repo = self.client.get(repo["pulp_href"])
-
-        # Check that we have the correct content counts.
-        self.assertIsNotNone(repo["latest_version_href"])
-
-        self.assertIn(
-            RPM_PACKAGE_CONTENT_NAME,
-            get_content_summary(repo).keys(),
-        )
-        self.assertIn(
-            RPM_PACKAGE_CONTENT_NAME,
-            get_added_content_summary(repo).keys(),
-        )
-
-        repo = self.client.get(repo["pulp_href"])
-
-        # Publishing
-        body = {"repository": repo["pulp_href"]}
-        response = self.client.using_handler(api.json_handler).post(RPM_PUBLICATION_PATH, body)
-        publish_task = self.client.get(response["task"])
-        created_at = self.parse_date_from_string(publish_task["pulp_created"])
-        started_at = self.parse_date_from_string(publish_task["started_at"])
-        finished_at = self.parse_date_from_string(publish_task["finished_at"])
-        task_duration = finished_at - started_at
-        waiting_time = started_at - created_at
-        print(
-            "\n->     Publish => Waiting time (s): {wait} | Service time (s): {service}".format(
-                wait=waiting_time.total_seconds(), service=task_duration.total_seconds()
-            )
-        )
-        return publish_task["created_resources"][0]
-
-    def test_epel7(self):
-        """Publish EPEL 7."""
-        self.rpm_publish(url=EPEL7_URL)
-
-    def test_centos7(self):
-        """Publish CentOS 7."""
-        self.rpm_publish(url=CENTOS7_URL)
-
-    def test_centos_8stream_baseos(self):
-        """Publish CentOS 8 BaseOS."""
-        publication_href = self.rpm_publish(url=CENTOS8_STREAM_BASEOS_URL)
+@pytest.fixture
+def centos_8stream_baseos_extra_tests(rpm_distribution_factory, http_get):
+    def _extra_test(publication_href):
         # Test that the .treeinfo file is available and AppStream sub-repo is published correctly
-        body = {"publication": publication_href, "name": "centos8", "base_path": "centos8"}
-        response = self.client.using_handler(api.json_handler).post(RPM_DISTRIBUTION_PATH, body)
-        distribution_task = self.client.get(response["task"])
-        distribution_href = distribution_task["created_resources"][0]
-        self.addCleanup(self.client.delete, distribution_href)
-        distribution = self.client.get(distribution_href)
-        treeinfo_file = utils.http_get(urljoin(distribution["base_url"], ".treeinfo"))
+        distribution = rpm_distribution_factory(publication=publication_href)
+        treeinfo_file = http_get(urljoin(distribution.base_url, ".treeinfo"))
         treeinfo = TreeInfo()
         with NamedTemporaryFile("wb") as temp_file:
             temp_file.write(treeinfo_file)
@@ -173,25 +57,83 @@ class PublishTestCase(unittest.TestCase):
             treeinfo.load(f=temp_file.name)
         for variant_name, variant in treeinfo.variants.variants.items():
             if variant_name == "BaseOS":
-                self.assertEqual(variant.paths.repository, ".")
-                self.assertEqual(variant.paths.packages, "Packages")
+                assert variant.paths.repository == "."
+                assert variant.paths.packages == "Packages"
             elif variant_name == "AppStream":
-                self.assertEqual(variant.paths.repository, "AppStream")
-                self.assertEqual(variant.paths.packages, "AppStream/Packages")
+                assert variant.paths.repository == "AppStream"
+                assert variant.paths.packages == "AppStream/Packages"
                 # Find the first package in the 'AppStream/Packages/a/' directory and download it
                 parser = PackagesHtmlParser()
                 a_packages_href = urljoin(
-                    distribution["base_url"], "{}/a/".format(variant.paths.packages)
+                    distribution.base_url, "{}/a/".format(variant.paths.packages)
                 )
-                a_packages_listing = utils.http_get(a_packages_href)
+                a_packages_listing = http_get(a_packages_href)
                 parser.feed(a_packages_listing.__str__())
                 full_package_path = urljoin(a_packages_href, parser.package_href)
-                utils.http_get(full_package_path)
+                http_get(full_package_path)
 
-    def test_centos8_appstream(self):
-        """Publish CentOS 8 AppStream."""
-        self.rpm_publish(url=CENTOS8_STREAM_APPSTREAM_URL)
+    return _extra_test
 
-    def test_centos8_baseos(self):
-        """Publish CentOS 8 BaseOS."""
-        self.rpm_publish(url=CENTOS8_STREAM_BASEOS_URL)
+
+@pytest.mark.parametrize(
+    "url,extra_tests",
+    [
+        (EPEL7_URL, None),
+        (CENTOS7_URL, None),
+        (CENTOS8_STREAM_BASEOS_URL, centos_8stream_baseos_extra_tests),
+        (CENTOS8_STREAM_APPSTREAM_URL, None),
+        (CENTOS8_STREAM_BASEOS_URL, None),
+    ],
+)
+def test_rpm_publish(
+    url,
+    extra_tests,
+    init_and_sync,
+    rpm_repository_version_api,
+    rpm_publication_api,
+    monitor_task,
+    delete_orphans_pre,
+):
+    """Publish repositories with the rpm plugin.
+
+    Do the following:
+
+    1. Create a repository and a remote.
+    2. Assert that repository version is None.
+    3. Sync the remote.
+    4. Assert that repository version is not None.
+    5. Assert that distribution_tree units were added and are present in the repo.
+    6. Publish
+    """
+    repo, remote, task = init_and_sync(url=url, policy="on_demand", return_task=True)
+    created_at = parse_date_from_string(task.pulp_created)
+    started_at = parse_date_from_string(task.started_at)
+    finished_at = parse_date_from_string(task.finished_at)
+    task_duration = finished_at - started_at
+    waiting_time = started_at - created_at
+    print(
+        "\n->     Sync => Waiting time (s): {wait} | Service time (s): {service}".format(
+            wait=waiting_time.total_seconds(), service=task_duration.total_seconds()
+        )
+    )
+
+    # Check that we have the correct content counts.
+    repo_ver = rpm_repository_version_api.read(repo.latest_version_href)
+    assert RPM_PACKAGE_CONTENT_NAME in repo_ver.content_summary.present.keys()
+    assert RPM_PACKAGE_CONTENT_NAME in repo_ver.content_summary.added.keys()
+
+    # Publishing
+    response = rpm_publication_api.create({"repository": repo.pulp_href})
+    task = monitor_task(response.task)
+    created_at = parse_date_from_string(task.pulp_created)
+    started_at = parse_date_from_string(task.started_at)
+    finished_at = parse_date_from_string(task.finished_at)
+    task_duration = finished_at - started_at
+    waiting_time = started_at - created_at
+    print(
+        "\n->     Publish => Waiting time (s): {wait} | Service time (s): {service}".format(
+            wait=waiting_time.total_seconds(), service=task_duration.total_seconds()
+        )
+    )
+    if extra_tests:
+        extra_tests(task.created_resources[0])

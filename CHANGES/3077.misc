@@ -1,0 +1,1 @@
+Refactored performance/test_publish to use pytest fixtures.
