@@ -42,7 +42,9 @@ def test_pulp_to_pulp(
     distribution = rpm_distribution_factory(publication=publication.pulp_href)
 
     # Create another repo pointing to distribution base_url
-    repo2, remote2, task = init_and_sync(url=distribution.base_url, policy="on_demand")
+    repo2, remote2, task = init_and_sync(
+        url=distribution.base_url, policy="on_demand", return_task=True
+    )
     task_duration = task.finished_at - task.started_at
     waiting_time = task.started_at - task.pulp_created
     print(

@@ -24,7 +24,10 @@ def parse_date_from_string(s, parse_format="%Y-%m-%dT%H:%M:%S.%fZ"):
     :param parse_format: str defaults to %Y-%m-%dT%H:%M:%S.%fZ
     :return: datetime.datetime
     """
-    return datetime.strptime(s, parse_format)
+    if isinstance(s, datetime):
+        return s
+    else:
+        return datetime.strptime(s, parse_format)
 
 
 @pytest.mark.parametrize(
