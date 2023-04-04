@@ -41,7 +41,10 @@ def parse_date_from_string(s, parse_format="%Y-%m-%dT%H:%M:%S.%fZ"):
     :param parse_format: str defaults to %Y-%m-%dT%H:%M:%S.%fZ
     :return: datetime.datetime
     """
-    return datetime.strptime(s, parse_format)
+    if isinstance(s, datetime):
+        return s
+    else:
+        return datetime.strptime(s, parse_format)
 
 
 @pytest.fixture
@@ -80,7 +83,7 @@ def centos_8stream_baseos_extra_tests(rpm_distribution_factory, http_get):
     [
         (EPEL7_URL, None),
         (CENTOS7_URL, None),
-        (CENTOS8_STREAM_BASEOS_URL, centos_8stream_baseos_extra_tests),
+        (CENTOS8_STREAM_BASEOS_URL, "centos_8stream_baseos_extra_tests"),
         (CENTOS8_STREAM_APPSTREAM_URL, None),
         (CENTOS8_STREAM_BASEOS_URL, None),
     ],
@@ -93,6 +96,7 @@ def test_rpm_publish(
     rpm_publication_api,
     monitor_task,
     delete_orphans_pre,
+    request,
 ):
     """Publish repositories with the rpm plugin.
 
@@ -136,4 +140,6 @@ def test_rpm_publish(
         )
     )
     if extra_tests:
-        extra_tests(task.created_resources[0])
+        # fixtures and parameterization don't like each other - this hack gets us around that
+        xtra_fn = request.getfixturevalue(extra_tests)
+        xtra_fn(task.created_resources[0])
