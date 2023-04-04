@@ -206,7 +206,7 @@ def init_signed_repo_configuration():
     utils_dir_path = os.path.dirname(os.path.realpath(__file__))
     signing_script_path = os.path.join(utils_dir_path, "sign-metadata.sh")
 
-    subprocess.run(
+    return subprocess.run(
         (
             "pulpcore-manager",
             "add-signing-service",
