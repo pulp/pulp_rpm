@@ -26,6 +26,7 @@ from pulpcore.client.pulp_rpm import (
 )
 
 from pulp_rpm.tests.functional.constants import RPM_UNSIGNED_FIXTURE_URL, RPM_KICKSTART_FIXTURE_URL
+from pulp_rpm.tests.functional.utils import init_signed_repo_configuration
 
 
 @pytest.fixture(scope="session")
@@ -238,3 +239,17 @@ def rpm_unsigned_repo_on_demand(init_and_sync):
 def rpm_kickstart_repo_immediate(init_and_sync):
     repo, _ = init_and_sync(url=RPM_KICKSTART_FIXTURE_URL)
     return repo
+
+
+@pytest.fixture(scope="session")
+def rpm_metadata_signing_service(signing_service_api_client):
+    results = signing_service_api_client.list(name="sign-metadata")
+    signing_service = None
+    if results.count == 0:
+        result = init_signed_repo_configuration()
+        if result.returncode == 0:
+            results = signing_service_api_client.list(name="sign-metadata")
+    if results.count == 1:
+        signing_service = results.results[0]
+
+    return signing_service
