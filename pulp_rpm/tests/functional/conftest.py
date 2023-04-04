@@ -199,6 +199,7 @@ def init_and_sync(rpm_repository_factory, rpm_repository_api, rpm_rpmremote_fact
         policy="immediate",
         sync_policy="additive",
         skip_types=None,
+        optimize=True,
         return_task=False,
     ):
         if repository is None:
@@ -207,7 +208,10 @@ def init_and_sync(rpm_repository_factory, rpm_repository_api, rpm_rpmremote_fact
             remote = rpm_rpmremote_factory(url=url, policy=policy)
 
         repository_sync_data = RpmRepositorySyncURL(
-            remote=remote.pulp_href, sync_policy=sync_policy, skip_types=skip_types
+            remote=remote.pulp_href,
+            sync_policy=sync_policy,
+            skip_types=skip_types,
+            optimize=optimize,
         )
         sync_response = rpm_repository_api.sync(repository.pulp_href, repository_sync_data)
         task = monitor_task(sync_response.task)
