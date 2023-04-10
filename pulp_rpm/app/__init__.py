@@ -8,5 +8,5 @@ class PulpRpmPluginAppConfig(PulpPluginAppConfig):
 
     name = "pulp_rpm.app"
     label = "rpm"
-    version = "3.19.4"
+    version = "3.19.5.dev"
     python_package_name = "pulp-rpm"
