@@ -1,1 +1,0 @@
-Refactored test_advisory_upload to use pytest fixtures.

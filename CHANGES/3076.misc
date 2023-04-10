@@ -1,1 +1,0 @@
-Refactored test_config_repo to use pytest fixtures.
