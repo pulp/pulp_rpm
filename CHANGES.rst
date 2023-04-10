@@ -13,6 +13,20 @@ Changelog
 
 .. towncrier release notes start
 
+3.17.17 (2023-04-10)
+====================
+
+
+Bugfixes
+--------
+
+- Fix import/export not importing modulemd_packages data with ManyToMany relationship.
+  `#3019 <https://github.com/pulp/pulp_rpm/issues/3019>`__
+
+
+----
+
+
 3.17.16 (2023-02-16)
 ====================
 
