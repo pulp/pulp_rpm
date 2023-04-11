@@ -13,6 +13,26 @@ Changelog
 
 .. towncrier release notes start
 
+3.19.4 (2023-04-10)
+===================
+
+
+Bugfixes
+--------
+
+- Fix import/export not importing modulemd_packages data with ManyToMany relationship.
+  `#3019 <https://github.com/pulp/pulp_rpm/issues/3019>`__
+
+
+Misc
+----
+
+- `#2869 <https://github.com/pulp/pulp_rpm/issues/2869>`__, `#2873 <https://github.com/pulp/pulp_rpm/issues/2873>`__, `#2877 <https://github.com/pulp/pulp_rpm/issues/2877>`__, `#2880 <https://github.com/pulp/pulp_rpm/issues/2880>`__, `#2883 <https://github.com/pulp/pulp_rpm/issues/2883>`__, `#2884 <https://github.com/pulp/pulp_rpm/issues/2884>`__, `#2885 <https://github.com/pulp/pulp_rpm/issues/2885>`__, `#2887 <https://github.com/pulp/pulp_rpm/issues/2887>`__, `#3076 <https://github.com/pulp/pulp_rpm/issues/3076>`__
+
+
+----
+
+
 3.19.3 (2023-03-29)
 ===================
 
@@ -141,6 +161,26 @@ Misc
 ----
 
 - `#2718 <https://github.com/pulp/pulp_rpm/issues/2718>`__, `#2791 <https://github.com/pulp/pulp_rpm/issues/2791>`__, `#2805 <https://github.com/pulp/pulp_rpm/issues/2805>`__, `#2832 <https://github.com/pulp/pulp_rpm/issues/2832>`__, `#2886 <https://github.com/pulp/pulp_rpm/issues/2886>`__, `#2905 <https://github.com/pulp/pulp_rpm/issues/2905>`__
+
+
+----
+
+
+3.18.14 (2023-04-10)
+====================
+
+
+Bugfixes
+--------
+
+- Fix import/export not importing modulemd_packages data with ManyToMany relationship.
+  `#3019 <https://github.com/pulp/pulp_rpm/issues/3019>`__
+
+
+Misc
+----
+
+- `#2869 <https://github.com/pulp/pulp_rpm/issues/2869>`__, `#2873 <https://github.com/pulp/pulp_rpm/issues/2873>`__, `#2877 <https://github.com/pulp/pulp_rpm/issues/2877>`__, `#2880 <https://github.com/pulp/pulp_rpm/issues/2880>`__, `#2885 <https://github.com/pulp/pulp_rpm/issues/2885>`__, `#2887 <https://github.com/pulp/pulp_rpm/issues/2887>`__, `#3076 <https://github.com/pulp/pulp_rpm/issues/3076>`__
 
 
 ----
@@ -465,6 +505,20 @@ Misc
 ----
 
 - `#2245 <https://github.com/pulp/pulp_rpm/issues/2245>`__, `#2276 <https://github.com/pulp/pulp_rpm/issues/2276>`__, `#2302 <https://github.com/pulp/pulp_rpm/issues/2302>`__, `#2560 <https://github.com/pulp/pulp_rpm/issues/2560>`__, `#2565 <https://github.com/pulp/pulp_rpm/issues/2565>`__, `#2599 <https://github.com/pulp/pulp_rpm/issues/2599>`__, `#2620 <https://github.com/pulp/pulp_rpm/issues/2620>`__
+
+
+----
+
+
+3.17.17 (2023-04-10)
+====================
+
+
+Bugfixes
+--------
+
+- Fix import/export not importing modulemd_packages data with ManyToMany relationship.
+  `#3019 <https://github.com/pulp/pulp_rpm/issues/3019>`__
 
 
 ----
