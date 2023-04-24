@@ -23,6 +23,7 @@ deploy_client_to_rubygems: true
 deploy_to_pypi: true
 disabled_redis_runners: []
 docker_fixtures: true
+doc_requirements_from_pulpcore: false
 docs_test: true
 flake8: true
 flake8_ignore: []
