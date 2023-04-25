@@ -25,7 +25,12 @@ from pulpcore.client.pulp_rpm import (
     RpmRepositorySyncURL,
 )
 
-from pulp_rpm.tests.functional.constants import RPM_UNSIGNED_FIXTURE_URL, RPM_KICKSTART_FIXTURE_URL
+from pulp_rpm.tests.functional.constants import (
+    RPM_KICKSTART_FIXTURE_URL,
+    RPM_UNSIGNED_FIXTURE_URL,
+    RPM_MODULAR_FIXTURE_URL,
+)
+
 from pulp_rpm.tests.functional.utils import init_signed_repo_configuration
 
 
@@ -232,6 +237,12 @@ def rpm_unsigned_repo_immediate(init_and_sync):
 @pytest.fixture(scope="class")
 def rpm_unsigned_repo_on_demand(init_and_sync):
     repo, _ = init_and_sync(policy="on_demand")
+    return repo
+
+
+@pytest.fixture(scope="class")
+def rpm_modular_repo_on_demand(init_and_sync):
+    repo, _ = init_and_sync(url=RPM_MODULAR_FIXTURE_URL, policy="on_demand")
     return repo
 
 

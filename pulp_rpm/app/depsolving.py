@@ -409,7 +409,7 @@ def module_dependencies_conversion(pool, module_solvable, dependency_list):
           dep_or_rel(solv.Dep, solve.REL_WITH, stream_dep(name, stream))
           dep_or_rel(solv.Dep, solve.REL_WITHOUT, stream_dep(name, stream))
         """
-        dep.Rel(op, rel) if dep is not None else rel
+        return dep.Rel(op, rel) if dep is not None else rel
 
     # Check each dependency dict in dependency_list and generate the solv requirements.
     reqs = None
