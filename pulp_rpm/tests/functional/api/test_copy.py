@@ -456,6 +456,55 @@ class TestCopyWithKickstartRepoSyncedImmediate:
         assert get_added_content_summary(dest.to_dict()) == RPM_KICKSTART_FIXTURE_SUMMARY
 
 
+def test_strict_copy_module_to_empty_repo(
+    monitor_task,
+    rpm_copy_api,
+    rpm_modulemd_api,
+    rpm_repository_api,
+    rpm_repository_factory,
+    rpm_modular_repo_on_demand,
+):
+    """Test copy module and its dependencies to empty repository.
+
+    - Create repository and populate it
+    - Create empty repository
+    - Use 'copy' to copy 'nodejs' module with dependencies
+    - assert module and its dependencies and relevant artifacts were copied
+    """
+    empty_repo = rpm_repository_factory()
+    repo = rpm_modular_repo_on_demand
+
+    modules = rpm_modulemd_api.list(
+        repository_version=repo.latest_version_href,
+        name="nodejs",
+        stream="11",
+        version="20180920144611",
+    )
+    module_to_copy = [modules.results[0].pulp_href]
+
+    data = Copy(
+        config=[
+            {
+                "source_repo_version": repo.latest_version_href,
+                "dest_repo": empty_repo.pulp_href,
+                "content": module_to_copy,
+            }
+        ],
+        dependency_solving=True,
+    )
+    monitor_task(rpm_copy_api.copy_content(data).task)
+
+    empty_repo = rpm_repository_api.read(empty_repo.pulp_href)
+    modules = rpm_modulemd_api.list(repository_version=empty_repo.latest_version_href).results
+    module_names = [module.name for module in modules]
+
+    # assert that only 3 modules are copied (original and one dependency)
+    assert len(modules) == 2
+    # assert dependencies package names
+    for dependency in ["nodejs", "postgresql"]:
+        assert dependency in module_names
+
+
 @pytest.mark.parallel
 def test_advisory_copy_child_detection(
     init_and_sync,
