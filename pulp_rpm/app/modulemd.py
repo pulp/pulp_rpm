@@ -67,21 +67,9 @@ def split_modulemd_file(file):
         decompressed_path = os.path.join(tf, "modulemd.yaml")
         cr.decompress_file(file.path, decompressed_path, cr.AUTO_DETECT_COMPRESSION)
         with open(decompressed_path) as modulemd_file:
-            module = ""
-            first = True
-            for line in modulemd_file:
-                # some modulemd documents, unfortunately, don't start with a document separator.
-                # that is valid yaml although most linters will correct it.
-                if first:
-                    if not line.startswith("---"):
-                        module = "---\n"
-                    first = False
-                if line.startswith("---"):
-                    if module:  # avoid first empty yield in the beginning of document
-                        yield module.strip("\n")
-                        module = ""
-                module += line
-            yield module.strip("\n")
+            documents = modulemd_file.read().split("---")
+            documents = ["---\n{}".format(doc.strip()) for doc in documents if doc.strip()]
+            return documents
 
 
 def check_mandatory_module_fields(module, required_fields):
