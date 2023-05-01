@@ -67,9 +67,14 @@ def split_modulemd_file(file):
         decompressed_path = os.path.join(tf, "modulemd.yaml")
         cr.decompress_file(file.path, decompressed_path, cr.AUTO_DETECT_COMPRESSION)
         with open(decompressed_path) as modulemd_file:
-            documents = modulemd_file.read().split("---")
-            documents = ["---\n{}".format(doc.strip()) for doc in documents if doc.strip()]
-            return documents
+            for doc in modulemd_file.read().split("---"):
+                # strip any spaces or newlines from either side, strip the document end marking,
+                # then strip again so we have only the document text w/o newlines
+                stripped = doc.strip().rstrip("...").rstrip()
+                if stripped:
+                    # add the document begin/end markers backs
+                    normalized = "---\n{}\n...".format(stripped)
+                    yield normalized
 
 
 def check_mandatory_module_fields(module, required_fields):
