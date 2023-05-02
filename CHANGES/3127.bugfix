@@ -1,0 +1,1 @@
+Fix an issue where the name of `UpdateCollection` is not defined and might affect import/export, and added a data repair script (`pulpcore-manager rpm-datarepair 3127`).
