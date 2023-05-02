@@ -6,6 +6,7 @@ import logging
 import os
 import re
 import tempfile
+import uuid
 
 from collections import defaultdict
 from gettext import gettext as _  # noqa:F401
@@ -1351,6 +1352,8 @@ class RpmFirstStage(Stage):
 
                 for collection in update.collections:
                     coll_dict = UpdateCollection.createrepo_to_dict(collection)
+                    if coll_dict["name"] is None:
+                        coll_dict["name"] = "collection-autofill-" + uuid.uuid4().hex[:12]
                     coll = UpdateCollection(**coll_dict)
 
                     for package in collection.packages:
