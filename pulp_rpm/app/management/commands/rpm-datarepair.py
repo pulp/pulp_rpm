@@ -1,8 +1,10 @@
+import uuid
 from gettext import gettext as _
 
 from django.core.management import BaseCommand, CommandError
 
 from pulp_rpm.app.models import Package  # noqa
+from pulp_rpm.app.models.advisory import UpdateCollection, UpdateRecord  # noqa
 
 
 class Command(BaseCommand):
@@ -22,6 +24,8 @@ class Command(BaseCommand):
 
         if issue == "2460":
             self.repair_2460()
+        if issue == "3127":
+            self.repair_3127()
         else:
             raise CommandError(_("Unknown issue: '{}'").format(issue))
 
@@ -45,3 +49,10 @@ class Command(BaseCommand):
         for package in packages:
             fix_package(package)
             package.save()
+
+    def repair_3127(self):
+        """Perform data repair for issue #3127."""
+        update_collections = UpdateCollection.objects.exclude(name__isnull=False)
+        for collection in update_collections:
+            collection.name = "collection-autofill-" + uuid.uuid4().hex[:12]
+            collection.save()
