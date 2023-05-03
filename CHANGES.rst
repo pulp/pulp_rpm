@@ -13,6 +13,22 @@ Changelog
 
 .. towncrier release notes start
 
+3.19.5 (2023-05-02)
+===================
+
+
+Bugfixes
+--------
+
+- Fix a bug with copying modules with depsolving enabled - dependencies were not copied.
+  `#3119 <https://github.com/pulp/pulp_rpm/issues/3119>`__
+- Fix a bug for certain repos (e.g. mercurial) relating to how modules are handled.
+  `#3121 <https://github.com/pulp/pulp_rpm/issues/3121>`__
+
+
+----
+
+
 3.19.4 (2023-04-10)
 ===================
 
@@ -161,6 +177,20 @@ Misc
 ----
 
 - `#2718 <https://github.com/pulp/pulp_rpm/issues/2718>`__, `#2791 <https://github.com/pulp/pulp_rpm/issues/2791>`__, `#2805 <https://github.com/pulp/pulp_rpm/issues/2805>`__, `#2832 <https://github.com/pulp/pulp_rpm/issues/2832>`__, `#2886 <https://github.com/pulp/pulp_rpm/issues/2886>`__, `#2905 <https://github.com/pulp/pulp_rpm/issues/2905>`__
+
+
+----
+
+
+3.18.15 (2023-05-02)
+====================
+
+
+Bugfixes
+--------
+
+- Fix a bug with copying modules with depsolving enabled - dependencies were not copied.
+  `#3119 <https://github.com/pulp/pulp_rpm/issues/3119>`__
 
 
 ----
