@@ -36,7 +36,7 @@ which is provided only by RedHat family distributions like Fedora.
 ``pulp_rpm`` plugin requires either to be:
 
 * install on Fedora 29+, CentOS 7+ (with EPEL repository enabled)
-* install inside a container with ``pulplift``
+* install from the official Pulp image (https://pulpproject.org/pulp-in-one-container/)
 
 Get Started
 -----------
@@ -59,7 +59,6 @@ Table of Contents
 
    installation
    settings
-   quickstart
    workflows/index
    bindings
    rbac
