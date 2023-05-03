@@ -1,0 +1,1 @@
+Fixes an accidental change that was made to how "profiles" are formatted in the modulemd API.

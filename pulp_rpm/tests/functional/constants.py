@@ -1644,9 +1644,9 @@ RPM_MODULEMDS_DATA = [
             "postgresql-test-0:9.6.8-1.module_1710+b535a823.x86_64",
         ],
         "profiles": {
-            "client": {"rpms": ["postgresql"]},
-            "server": {"rpms": ["postgresql-server"]},
-            "default": {"rpms": ["postgresql-server"]},
+            "client": ["postgresql"],
+            "server": ["postgresql-server"],
+            "default": ["postgresql-server"],
         },
         "description": "PostgreSQL is an advanced Object-Relational database management system (DBMS). The PostgreSQL server can be found in the postgresql-server sub-package.",
         "dependencies": [
@@ -1668,9 +1668,9 @@ RPM_MODULEMDS_DATA = [
             "postgresql-test-0:6.1-1.module_2514+aa9aadc5.x86_64",
         ],
         "profiles": {
-            "client": {"rpms": ["postgresql"]},
-            "server": {"rpms": ["postgresql-server"]},
-            "default": {"rpms": ["postgresql-server"]},
+            "client": ["postgresql"],
+            "server": ["postgresql-server"],
+            "default": ["postgresql-server"],
         },
         "description": "PostgreSQL is an advanced Object-Relational database management system (DBMS). The PostgreSQL server can be found in the postgresql-server sub-package.",
         "dependencies": [
@@ -1692,9 +1692,9 @@ RPM_MODULEMDS_DATA = [
             "npm-1:8.11.4-1.module_2030+42747d40.x86_64",
         ],
         "profiles": {
-            "default": {"rpms": ["nodejs", "npm"]},
-            "minimal": {"rpms": ["nodejs"]},
-            "development": {"rpms": ["nodejs", "nodejs-devel", "npm"]},
+            "default": ["nodejs", "npm"],
+            "minimal": ["nodejs"],
+            "development": ["nodejs", "nodejs-devel", "npm"],
         },
         "description": "Node.js is a platform built on Chrome''s JavaScript runtime for easily building fast, scalable network applications. Node.js uses an event-driven, non-blocking I/O model that makes it lightweight and efficient, perfect for data-intensive real-time applications that run across distributed devices.",
         "dependencies": [
@@ -1716,9 +1716,9 @@ RPM_MODULEMDS_DATA = [
             "npm-1:5.3.1-1.module_2011+41787af0.x86_64",
         ],
         "profiles": {
-            "default": {"rpms": ["nodejs", "npm"]},
-            "minimal": {"rpms": ["nodejs"]},
-            "development": {"rpms": ["nodejs", "nodejs-devel", "npm"]},
+            "default": ["nodejs", "npm"],
+            "minimal": ["nodejs"],
+            "development": ["nodejs", "nodejs-devel", "npm"],
         },
         "description": "Node.js is a platform built on Chrome''s JavaScript runtime for easily building fast, scalable network applications. Node.js uses an event-driven, non-blocking I/O model that makes it lightweight and efficient, perfect for data-intensive real-time applications that run across distributed devices.",
         "dependencies": [
@@ -1740,9 +1740,9 @@ RPM_MODULEMDS_DATA = [
             "npm-1:11.0.0-1.module_2311+8d497411.x86_64",
         ],
         "profiles": {
-            "default": {"rpms": ["nodejs", "npm"]},
-            "minimal": {"rpms": ["nodejs"]},
-            "development": {"rpms": ["nodejs", "nodejs-devel", "npm"]},
+            "default": ["nodejs", "npm"],
+            "minimal": ["nodejs"],
+            "development": ["nodejs", "nodejs-devel", "npm"],
         },
         "description": "Node.js is a platform built on Chrome''s JavaScript runtime for easily building fast, scalable network applications. Node.js uses an event-driven, non-blocking I/O model that makes it lightweight and efficient, perfect for data-intensive real-time applications that run across distributed devices.",
         "dependencies": [
@@ -1767,9 +1767,9 @@ RPM_MODULEMDS_DATA = [
             "npm-1:10.11.0-1.module_2200+adbac02b.x86_64",
         ],
         "profiles": {
-            "default": {"rpms": ["nodejs", "npm"]},
-            "minimal": {"rpms": ["nodejs"]},
-            "development": {"rpms": ["nodejs", "nodejs-devel", "npm"]},
+            "default": ["nodejs", "npm"],
+            "minimal": ["nodejs"],
+            "development": ["nodejs", "nodejs-devel", "npm"],
         },
         "description": "Node.js is a platform built on Chrome''s JavaScript runtime for easily building fast, scalable network applications. Node.js uses an event-driven, non-blocking I/O model that makes it lightweight and efficient, perfect for data-intensive real-time applications that run across distributed devices.",
         "dependencies": [
@@ -1789,7 +1789,7 @@ RPM_MODULEMDS_DATA = [
             "ninja-build-debugsource-0:1.8.2-4.module_1991+4e5efe2f.x86_64",
             "ninja-build-0:1.8.2-4.module_1991+4e5efe2f.src",
         ],
-        "profiles": {"default": {"rpms": ["ninja-build"]}},
+        "profiles": {"default": ["ninja-build"]},
         "description": "This module includes Ninja build system. Ninja is a small build system with a focus on speed. It differs from other build systems in two major respects: it is designed to have its input files generated by a higher-level build system, and it is designed to run builds as fast as possible.",
         "dependencies": [
             {"requires": {"platform": ["f29"]}, "buildrequires": {"platform": ["f29"]}}
@@ -1806,7 +1806,7 @@ RPM_MODULEMDS_DATA = [
             "ninja-build-0:1.5.2-1.module_1991+4e5efe2f.x86_64",
             "ninja-build-0:1.5.2-1.module_1991+4e5efe2f.src",
         ],
-        "profiles": {"default": {"rpms": ["ninja-build"]}},
+        "profiles": {"default": ["ninja-build"]},
         "description": "This module includes Ninja build system. Ninja is a small build system with a focus on speed. It differs from other build systems in two major respects: it is designed to have its input files generated by a higher-level build system, and it is designed to run builds as fast as possible.",
         "dependencies": [
             {"requires": {"platform": ["f29"]}, "buildrequires": {"platform": ["f29"]}}
@@ -1820,7 +1820,7 @@ RPM_MODULEMDS_DATA = [
         "context": "6c81f848",
         "arch": "x86_64",
         "artifacts": ["ninja-build-0:1.9.2-1.module_1991+4e5efe2f.x86_64"],
-        "profiles": {"default": {"rpms": ["ninja-build"]}},
+        "profiles": {"default": ["ninja-build"]},
         "description": "This module includes Ninja build system. Ninja is a small build system with a focus on speed. It differs from other build systems in two major respects: it is designed to have its input files generated by a higher-level build system, and it is designed to run builds as fast as possible.",
         "dependencies": [
             {"requires": {"platform": ["f29"]}, "buildrequires": {"platform": ["f29"]}}
@@ -1842,7 +1842,7 @@ RPM_MODULEMDS_DATA = [
         "dependencies": [
             {"requires": {"platform": ["f29"], "ninja": []}, "buildrequires": {"platform": ["f29"]}}
         ],
-        "profiles": {"default": {"rpms": ["meson"]}},
+        "profiles": {"default": ["meson"]},
         "description": "Meson is an open source build system meant to be both extremely fast, and, even more importantly, as user friendly as possible.\nThe main design point of Meson is that every moment a developer spends writing or debugging build definitions is a second wasted. So is every second spent waiting for the build system to actually start compiling code.",
     },
     {
@@ -1857,10 +1857,7 @@ RPM_MODULEMDS_DATA = [
             "dwm-0:6.0-1.module_1997+c375c79c.src",
         ],
         "profiles": {
-            "default": {
-                "rpms": ["dwm"],
-                "description": "The minimal, distribution-compiled dwm binary.",
-            }
+            "default": ["dwm"],
         },
         "description": "dwm is a dynamic window manager for X.  It manages windows in tiled, monocle, and floating layouts.  All of the layouts can be applied dynamically, optimizing the environment for the application in use and the task performed.",
         "dependencies": [
