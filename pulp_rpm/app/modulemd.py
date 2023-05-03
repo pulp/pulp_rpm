@@ -18,6 +18,8 @@ from pulp_rpm.app.constants import (
 )
 from pulp_rpm.app.schema import MODULEMD_SCHEMA
 
+log = logging.getLogger(__name__)
+
 
 def resolve_module_packages(version, previous_version):
     """
@@ -102,8 +104,30 @@ def create_modulemd(modulemd, snippet):
     new_module[PULP_MODULE_ATTR.ARCH] = modulemd["data"].get("arch")
     new_module[PULP_MODULE_ATTR.ARTIFACTS] = modulemd["data"].get("artifacts", {}).get("rpms", [])
     new_module[PULP_MODULE_ATTR.DESCRIPTION] = modulemd["data"].get("description")
-    new_module[PULP_MODULE_ATTR.PROFILES] = modulemd["data"].get("profiles", {})
     new_module[PULP_MODULE_ATTR.DEPENDENCIES] = modulemd["data"].get("dependencies", [])
+
+    # keep data formatted the same as it was with previous parsing implementation
+    unprocessed_profiles = modulemd["data"].get("profiles", {})
+    profiles = {}
+    if unprocessed_profiles:
+        for name, data in unprocessed_profiles.items():
+            rpms = data.get("rpms")
+            if not rpms:
+                msg = (
+                    "Got unexpected data for module {}-{}-{}-{}-{}: "
+                    "profiles failed to parse properly"
+                ).format(
+                    data[PULP_MODULE_ATTR.NAME],
+                    data[PULP_MODULE_ATTR.STREAM],
+                    data[PULP_MODULE_ATTR.VERSION],
+                    data[PULP_MODULE_ATTR.CONTEXT],
+                    data[PULP_MODULE_ATTR.ARCH],
+                )
+                log.warn(msg)
+            else:
+                profiles[name] = rpms
+
+    new_module[PULP_MODULE_ATTR.PROFILES] = profiles
     new_module["snippet"] = snippet
 
     return new_module
