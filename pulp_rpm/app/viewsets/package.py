@@ -24,11 +24,11 @@ class PackageFilter(ContentFilter):
     class Meta:
         model = Package
         fields = {
-            "name": ["exact", "in", "ne"],
+            "name": ["exact", "in", "ne", "contains", "startswith"],
             "epoch": ["exact", "in", "ne"],
             "version": ["exact", "in", "ne"],
-            "release": ["exact", "in", "ne"],
-            "arch": ["exact", "in", "ne"],
+            "release": ["exact", "in", "ne", "contains", "startswith"],
+            "arch": ["exact", "in", "ne", "contains", "startswith"],
             "pkgId": ["exact", "in"],
             "checksum_type": ["exact", "in", "ne"],
         }
