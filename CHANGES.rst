@@ -13,6 +13,20 @@ Changelog
 
 .. towncrier release notes start
 
+3.18.16 (2023-05-05)
+====================
+
+
+Bugfixes
+--------
+
+- Fix an issue where the name of `UpdateCollection` is not defined and might affect import/export, and added a data repair script (`pulpcore-manager rpm-datarepair 3127`).
+  `#3127 <https://github.com/pulp/pulp_rpm/issues/3127>`__
+
+
+----
+
+
 3.18.15 (2023-05-02)
 ====================
 
