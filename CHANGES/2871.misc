@@ -1,1 +1,0 @@
-Refactored test_character_encoding to use pytest fixtures.
