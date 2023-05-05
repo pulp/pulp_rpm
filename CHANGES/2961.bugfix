@@ -1,1 +1,0 @@
-Fix a minor module metadata parsing regression that broke Pulp-to-Pulp sync in some scenarios.

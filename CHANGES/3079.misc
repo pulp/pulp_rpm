@@ -1,1 +1,0 @@
-Refactored performance/test_sync to use pytest fixtures.
