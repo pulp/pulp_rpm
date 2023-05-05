@@ -1,1 +1,0 @@
-Fix a bug with copying modules with depsolving enabled - dependencies were not copied.

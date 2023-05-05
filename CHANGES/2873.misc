@@ -1,1 +1,0 @@
-Refactored test_consume_content to use pytest fixtures.
