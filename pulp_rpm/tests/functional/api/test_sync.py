@@ -1042,7 +1042,6 @@ def test_modular_metadata(
                 "packages",
                 "pulp_created",
                 "pulp_href",
-                "profiles",
             },
         )
         assert list(diff) == [], list(diff)
