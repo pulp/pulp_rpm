@@ -13,6 +13,83 @@ Changelog
 
 .. towncrier release notes start
 
+3.20.0 (2023-05-05)
+===================
+
+
+Features
+--------
+
+- The package upload feature was changed to allow the upload of packages which are already
+  uploaded - in this scenario, the API will display the existing package as if it had just
+  been created.
+  `#2764 <https://github.com/pulp/pulp_rpm/issues/2764>`__
+- Added the ability to replicate RPM distributions/repositories from an upstream Pulp instance.
+  `#2995 <https://github.com/pulp/pulp_rpm/issues/2995>`__
+- Added a new setting ``RPM_METADATA_USE_REPO_PACKAGE_TIME`` that will set the primary.xml timestamp
+  of each package to when the package was added to the repo rather than when the package first
+  appeared in Pulp.
+  `#3009 <https://github.com/pulp/pulp_rpm/issues/3009>`__
+- Added more filter options on the packages API.
+  `#3135 <https://github.com/pulp/pulp_rpm/issues/3135>`__
+
+
+Bugfixes
+--------
+
+- Publish all metadata with a stable sort order. This should reduce artifact churn when certain metadata files are published repeatedly unchanged.
+  `#2752 <https://github.com/pulp/pulp_rpm/issues/2752>`__
+- Fixed a failure that can occur during migration from 3.17 to 3.18
+  `#2952 <https://github.com/pulp/pulp_rpm/issues/2952>`__
+- Fix a minor module metadata parsing regression that broke Pulp-to-Pulp sync in some scenarios.
+  `#2961 <https://github.com/pulp/pulp_rpm/issues/2961>`__
+- Stopped publishing updateinfo.xml when there are no advisories.
+  `#2967 <https://github.com/pulp/pulp_rpm/issues/2967>`__
+- Fixed 0044_noartifact_modules migration that was failing with object storage.
+  `#2988 <https://github.com/pulp/pulp_rpm/issues/2988>`__
+- Loosen modulemd validation to allow version numbers that have string type but represent integers
+  `#2998 <https://github.com/pulp/pulp_rpm/issues/2998>`__
+- Fixed a regression in 3.19 which resulted in unintentional API changes and problems with "depsolving" repo copy.
+  `#3012 <https://github.com/pulp/pulp_rpm/issues/3012>`__
+- Fix import/export not importing modulemd_packages data with ManyToMany relationship.
+  `#3019 <https://github.com/pulp/pulp_rpm/issues/3019>`__
+- Fix relative path and location href mismatch of the uploaded rpm caused by filename and rpm header mismatch. Clients are getting HTTP 404 Not Found error when downloading the rpm.
+  `#3039 <https://github.com/pulp/pulp_rpm/issues/3039>`__
+- Fix a bug with copying modules with depsolving enabled - dependencies were not copied.
+  `#3119 <https://github.com/pulp/pulp_rpm/issues/3119>`__
+- Fix a bug for certain repos (e.g. mercurial) relating to how modules are handled.
+  `#3121 <https://github.com/pulp/pulp_rpm/issues/3121>`__
+- Fix an issue where the name of `UpdateCollection` is not defined and might affect import/export, and added a data repair script (`pulpcore-manager rpm-datarepair 3127`).
+  `#3127 <https://github.com/pulp/pulp_rpm/issues/3127>`__
+- Fixes an accidental change that was made to how "profiles" are formatted in the modulemd API.
+  `#3131 <https://github.com/pulp/pulp_rpm/issues/3131>`__
+
+
+Misc
+----
+
+- `#2242 <https://github.com/pulp/pulp_rpm/issues/2242>`__, `#2867 <https://github.com/pulp/pulp_rpm/issues/2867>`__, `#2868 <https://github.com/pulp/pulp_rpm/issues/2868>`__, `#2869 <https://github.com/pulp/pulp_rpm/issues/2869>`__, `#2870 <https://github.com/pulp/pulp_rpm/issues/2870>`__, `#2871 <https://github.com/pulp/pulp_rpm/issues/2871>`__, `#2873 <https://github.com/pulp/pulp_rpm/issues/2873>`__, `#2874 <https://github.com/pulp/pulp_rpm/issues/2874>`__, `#2875 <https://github.com/pulp/pulp_rpm/issues/2875>`__, `#2876 <https://github.com/pulp/pulp_rpm/issues/2876>`__, `#2877 <https://github.com/pulp/pulp_rpm/issues/2877>`__, `#2878 <https://github.com/pulp/pulp_rpm/issues/2878>`__, `#2879 <https://github.com/pulp/pulp_rpm/issues/2879>`__, `#2880 <https://github.com/pulp/pulp_rpm/issues/2880>`__, `#2881 <https://github.com/pulp/pulp_rpm/issues/2881>`__, `#2882 <https://github.com/pulp/pulp_rpm/issues/2882>`__, `#2883 <https://github.com/pulp/pulp_rpm/issues/2883>`__, `#2884 <https://github.com/pulp/pulp_rpm/issues/2884>`__, `#2885 <https://github.com/pulp/pulp_rpm/issues/2885>`__, `#2887 <https://github.com/pulp/pulp_rpm/issues/2887>`__, `#3076 <https://github.com/pulp/pulp_rpm/issues/3076>`__, `#3077 <https://github.com/pulp/pulp_rpm/issues/3077>`__, `#3078 <https://github.com/pulp/pulp_rpm/issues/3078>`__, `#3079 <https://github.com/pulp/pulp_rpm/issues/3079>`__, `#3095 <https://github.com/pulp/pulp_rpm/issues/3095>`__
+
+
+----
+
+
+3.19.6 (2023-05-05)
+===================
+
+
+Bugfixes
+--------
+
+- Fix an issue where the name of `UpdateCollection` is not defined and might affect import/export, and added a data repair script (`pulpcore-manager rpm-datarepair 3127`).
+  `#3127 <https://github.com/pulp/pulp_rpm/issues/3127>`__
+- Fixes an accidental change that was made to how "profiles" are formatted in the modulemd API.
+  `#3131 <https://github.com/pulp/pulp_rpm/issues/3131>`__
+
+
+----
+
+
 3.19.5 (2023-05-02)
 ===================
 
@@ -177,6 +254,20 @@ Misc
 ----
 
 - `#2718 <https://github.com/pulp/pulp_rpm/issues/2718>`__, `#2791 <https://github.com/pulp/pulp_rpm/issues/2791>`__, `#2805 <https://github.com/pulp/pulp_rpm/issues/2805>`__, `#2832 <https://github.com/pulp/pulp_rpm/issues/2832>`__, `#2886 <https://github.com/pulp/pulp_rpm/issues/2886>`__, `#2905 <https://github.com/pulp/pulp_rpm/issues/2905>`__
+
+
+----
+
+
+3.18.16 (2023-05-05)
+====================
+
+
+Bugfixes
+--------
+
+- Fix an issue where the name of `UpdateCollection` is not defined and might affect import/export, and added a data repair script (`pulpcore-manager rpm-datarepair 3127`).
+  `#3127 <https://github.com/pulp/pulp_rpm/issues/3127>`__
 
 
 ----
