@@ -74,6 +74,22 @@ Misc
 ----
 
 
+3.19.6 (2023-05-05)
+===================
+
+
+Bugfixes
+--------
+
+- Fix an issue where the name of `UpdateCollection` is not defined and might affect import/export, and added a data repair script (`ulpcore-manager rpm-datarepair 3127`).
+  `#3127 <https://github.com/pulp/pulp_rpm/issues/3127>`__
+- Fixes an accidental change that was made to how "profiles" are formatted in the modulemd API.
+  `#3131 <https://github.com/pulp/pulp_rpm/issues/3131>`__
+
+
+----
+
+
 3.19.5 (2023-05-02)
 ===================
 
