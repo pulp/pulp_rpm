@@ -37,7 +37,7 @@ except ImportError:
 
 # Add any Sphinx extension module names here, as strings. They can be extensions
 # coming with Sphinx (named 'sphinx.ext.*') or your custom ones.
-extensions = ['sphinx.ext.extlinks']
+extensions = ['sphinx.ext.extlinks', 'sphinxcontrib.jquery']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -111,7 +111,7 @@ html_theme = 'sphinx_rtd_theme' if sphinx_rtd_theme else 'default'
 #html_theme_options = {}
 
 # Add any paths that contain custom themes here, relative to this directory.
-html_theme_path = [sphinx_rtd_theme.get_html_theme_path()] if sphinx_rtd_theme else []
+#html_theme_path = [sphinx_rtd_theme.get_html_theme_path()] if sphinx_rtd_theme else []
 
 # The name for this set of Sphinx documents.  If None, it defaults to
 # "<project> v<release> documentation".
