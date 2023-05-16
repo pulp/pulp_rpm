@@ -13,6 +13,22 @@ Changelog
 
 .. towncrier release notes start
 
+3.17.18 (2023-05-16)
+====================
+
+
+Bugfixes
+--------
+
+- Fixed concurrent-overlapping-sync of subrepos by making them repository-unique.
+
+  This change is transparent to end-users.
+  `#2278 <https://github.com/pulp/pulp_rpm/issues/2278>`__
+
+
+----
+
+
 3.17.17 (2023-04-10)
 ====================
 
