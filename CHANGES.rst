@@ -13,6 +13,27 @@ Changelog
 
 .. towncrier release notes start
 
+3.21.0 (2023-05-17)
+===================
+
+
+Features
+--------
+
+- Declares (and requires at least) pulpcore/3.25 compatibility.
+  `#3151 <https://github.com/pulp/pulp_rpm/issues/3151>`__
+
+
+Improved Documentation
+----------------------
+
+- Fixed infinite loading when searching for specific terms.
+  `#3150 <https://github.com/pulp/pulp_rpm/issues/3150>`__
+
+
+----
+
+
 3.20.0 (2023-05-05)
 ===================
 
