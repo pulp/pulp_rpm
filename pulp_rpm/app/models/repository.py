@@ -1,4 +1,5 @@
 import re
+import os
 import textwrap
 
 from gettext import gettext as _
@@ -491,6 +492,14 @@ class RpmDistribution(Distribution, AutoAddObjPermsMixin):
                 val += f"gpgkey={gpgkey_path}\n"
 
             return Response(body=val)
+
+    def content_headers_for(self, path):
+        """Return per-file http-headers."""
+        headers = super().content_headers_for(path)
+        base = os.path.basename(path)  # path.strip("/").split("/")[-1]
+        if base in settings.NOCACHE_LIST:
+            headers.update({"Cache-Control": "no-cache"})
+        return headers
 
     def content_handler_list_directory(self, rel_path):
         """Return the extra dir entries."""

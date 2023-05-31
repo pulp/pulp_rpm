@@ -15,3 +15,4 @@ DEFAULT_ULN_SERVER_BASE_URL = "https://linux-update.oracle.com/"
 KEEP_CHANGELOG_LIMIT = 10
 SOLVER_DEBUG_LOGS = True
 RPM_METADATA_USE_REPO_PACKAGE_TIME = False
+NOCACHE_LIST = ["repomd.xml", "repomd.xml.asc", "repomd.xml.key"]
