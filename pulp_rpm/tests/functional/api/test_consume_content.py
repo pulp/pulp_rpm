@@ -207,3 +207,24 @@ def test_config_dot_repo(
 
     if has_signing_service:
         assert f"gpgkey={distribution.base_url}repodata/repomd.xml.key" in content
+
+
+@pytest.mark.parallel
+def test_repomd_headers(
+    create_distribution,
+    http_get_headers,
+):
+    """Test if repomd.xml is returned with Cache-control: no-cache header."""
+    distribution = create_distribution(gpgcheck=1, repo_gpgcheck=1, has_signing_service=True)
+    assert (
+        http_get_headers(f"{distribution.base_url}repodata/repomd.xml").get("Cache-control", "")
+        == "no-cache"
+    )
+    assert (
+        not http_get_headers(f"{distribution.base_url}config.repo").get("Cache-control", "")
+        == "no-cache"
+    )
+    assert (
+        http_get_headers(f"{distribution.base_url}repodata/repomd.xml.key").get("Cache-control", "")
+        == "no-cache"
+    )

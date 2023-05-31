@@ -1,7 +1,9 @@
+import asyncio
 import json
 import uuid
 from tempfile import NamedTemporaryFile
 
+import aiohttp
 import pytest
 
 from pulpcore.client.pulp_rpm import (
@@ -342,3 +344,17 @@ def cleanup_domains(orphans_cleanup_api_client, monitor_task, rpm_repository_api
                     assert content_api_client.list(pulp_domain=domain.name).count == 0
 
     return _cleanup_domains
+
+
+@pytest.fixture(scope="session")
+def http_get_headers():
+    def _http_get_headers(url, **kwargs):
+        async def _send_request():
+            async with aiohttp.ClientSession(raise_for_status=True) as session:
+                async with session.get(url) as response:
+                    return response.headers
+
+        headers = asyncio.run(_send_request())
+        return headers
+
+    return _http_get_headers
