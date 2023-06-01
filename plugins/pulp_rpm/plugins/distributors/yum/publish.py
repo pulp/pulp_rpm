@@ -471,6 +471,17 @@ class PublishRpmStep(platform_steps.UnitModelPluginStep):
         for context in (self.file_lists_context, self.other_context, self.primary_context):
             context.initialize()
 
+    @property
+    def unit_querysets(self):
+        """
+           Return querysets sorted by name, which helps gzip with compression
+
+           :return:    generator of mongoengine.QuerySet objects
+           :rtype:     generator
+        """
+        querysets = super(PublishRpmStep, self).unit_querysets
+        return (qs.order_by('+name') for qs in querysets)
+
     def finalize(self):
         """
         Close each context and write it to the repomd file
