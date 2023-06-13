@@ -13,6 +13,20 @@ Changelog
 
 .. towncrier release notes start
 
+3.22.0 (2023-06-12)
+===================
+
+
+Features
+--------
+
+- Added support for Domains.
+  `#3008 <https://github.com/pulp/pulp_rpm/issues/3008>`__
+
+
+----
+
+
 3.21.0 (2023-05-17)
 ===================
 
