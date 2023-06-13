@@ -1,3 +1,4 @@
+import re
 import textwrap
 
 from gettext import gettext as _
@@ -445,6 +446,7 @@ class RpmDistribution(Distribution, AutoAddObjPermsMixin):
     TYPE = "rpm"
     SERVE_FROM_PUBLICATION = True
     repository_config_file_name = "config.repo"
+    INVALID_REPO_ID_CHARS = r"[^\w\-_.:]"
 
     def content_handler(self, path):
         """Serve config.repo and repomd.xml.key."""
@@ -471,7 +473,7 @@ class RpmDistribution(Distribution, AutoAddObjPermsMixin):
                 )
             val = textwrap.dedent(
                 f"""\
-                [{self.name}]
+                [{re.sub(self.INVALID_REPO_ID_CHARS, "", self.name)}]
                 name={self.name}
                 enabled=1
                 baseurl={base_url}
