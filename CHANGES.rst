@@ -13,6 +13,22 @@ Changelog
 
 .. towncrier release notes start
 
+3.22.1 (2023-06-14)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed a deadlock during concurrent syncs of rpm-repos that need data fixups.
+  `#2980 <https://github.com/pulp/pulp_rpm/issues/2980>`__
+- Don't write invalid characters to a repo id, even if the distro name contains them.
+  `#3170 <https://github.com/pulp/pulp_rpm/issues/3170>`__
+
+
+----
+
+
 3.22.0 (2023-06-12)
 ===================
 
