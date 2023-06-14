@@ -13,6 +13,20 @@ Changelog
 
 .. towncrier release notes start
 
+3.19.7 (2023-06-14)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed a deadlock during concurrent syncs of rpm-repos that need data fixups.
+  `#2980 <https://github.com/pulp/pulp_rpm/issues/2980>`__
+
+
+----
+
+
 3.19.6 (2023-05-05)
 ===================
 
