@@ -271,15 +271,11 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         data.update(new_pkg)
         return data
 
-    def retrieve(self, data):
-        try:
-            pkg = Package.createrepo_to_dict(read_crpackage_from_artifact(data["artifact"]))
-        except OSError:
-            log.info(traceback.format_exc())
-            raise NotAcceptable(detail="RPM file cannot be parsed for metadata")
-
-        package = Package(**pkg)
-        return Package.objects.filter(pkgId=package.pkgId, pulp_domain=get_domain_pk()).first()
+    def retrieve(self, validated_data):
+        return Package.objects.filter(
+            pkgId=validated_data["pkgId"],
+            pulp_domain=get_domain_pk(),
+        ).first()
 
     class Meta:
         fields = (
