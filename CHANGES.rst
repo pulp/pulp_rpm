@@ -13,6 +13,20 @@ Changelog
 
 .. towncrier release notes start
 
+3.22.2 (2023-07-06)
+===================
+
+
+Bugfixes
+--------
+
+- Made 0048 migration more robust in the face of unexpected data.
+  `#3177 <https://github.com/pulp/pulp_rpm/issues/3177>`__
+
+
+----
+
+
 3.22.1 (2023-06-14)
 ===================
 
