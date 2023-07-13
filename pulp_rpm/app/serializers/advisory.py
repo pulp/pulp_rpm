@@ -10,7 +10,6 @@ from pulpcore.plugin.serializers import (
     ModelSerializer,
     NoArtifactContentUploadSerializer,
 )
-from pulpcore.plugin.util import get_domain_pk
 
 from pulp_rpm.app.advisory import hash_update_record
 from pulp_rpm.app.fields import (
@@ -232,15 +231,10 @@ class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
         validated_data = super().validate(update_record_data)
         return validated_data
 
-    # pulpcore 3.22 feature
-    # TODO upload has to be able to "find" a unique advisory, and id is Not It?
-    # when uploading content second time I don't get error but already existing content
     def retrieve(self, validated_data):
-        content = UpdateRecord.objects.filter(
-            id=validated_data["id"],
-            pulp_domain=get_domain_pk(),
-        )
-        return content.first()
+        # This feature cannot be implemented until we can reliably calculate the digest of the
+        # advisory before saving anything to the database. By current standards, we can't.
+        return None
 
     class Meta:
         fields = NoArtifactContentUploadSerializer.Meta.fields + (
