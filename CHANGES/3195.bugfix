@@ -1,0 +1,2 @@
+Remove the non functional ``retrieve`` logic from advisories upload, fixing a bug that appeared
+with pulpcore >= 3.29.
