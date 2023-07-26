@@ -13,6 +13,25 @@ Changelog
 
 .. towncrier release notes start
 
+3.22.3 (2023-07-26)
+===================
+
+
+Bugfixes
+--------
+
+- Stopped package upload to parse the artifact twice.
+  `#3183 <https://github.com/pulp/pulp_rpm/issues/3183>`__
+- Remove the non functional ``retrieve`` logic from advisories upload, fixing a bug that appeared
+  with pulpcore >= 3.29.
+  `#3195 <https://github.com/pulp/pulp_rpm/issues/3195>`__
+- Made 0049 migration more robust in the face of unexpected data.
+  `#3196 <https://github.com/pulp/pulp_rpm/issues/3196>`__
+
+
+----
+
+
 3.22.2 (2023-07-06)
 ===================
 
