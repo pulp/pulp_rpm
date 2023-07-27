@@ -20,6 +20,7 @@ class PackageFilter(ContentFilter):
     """
 
     sha256 = CharFilter(field_name="_artifacts__sha256")
+    filename = CharFilter(field_name="content_artifact__relative_path")
 
     class Meta:
         model = Package
