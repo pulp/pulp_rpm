@@ -124,10 +124,8 @@ class PublicationData:
         published_artifacts = []
 
         # Special case for Packages
-        contentartifact_qs = (
-            ContentArtifact.objects.filter(content__in=content)
-            .filter(content__pulp_type=Package.get_pulp_type())
-            .select_related("content__rpm_package__time_build")
+        contentartifact_qs = ContentArtifact.objects.filter(content__in=content).filter(
+            content__pulp_type=Package.get_pulp_type()
         )
 
         rel_path_mapping = defaultdict(list)
@@ -470,8 +468,6 @@ def generate_repo_metadata(
         fil_db = cr.FilelistsSqlite(fil_db_path)
         oth_db = cr.OtherSqlite(oth_db_path)
 
-    packages = Package.objects.filter(pk__in=content)
-
     # We want to support publishing with a different checksum type than the one built-in to the
     # package itself, so we need to get the correct checksums somehow if there is an override.
     # We must also take into consideration that if the package has not been downloaded the only
@@ -482,45 +478,48 @@ def generate_repo_metadata(
     # simple foreign keys and avoid messing with the many-to-many relationship, which doesn't
     # work with select_related() and performs poorly with prefetch_related(). This is fine
     # because we know that Packages should only ever have one artifact per content.
-    contentartifact_qs = (
-        ContentArtifact.objects.filter(content__in=packages.only("pk"))
-        .select_related(
-            # content__rpm_package is a bit of a hack, exploiting the way django sets up model
-            # inheritance, but it works and is unlikely to break. All content artifacts being
-            # accessed here have an associated Package since they originally came from the
-            # Package queryset.
-            "artifact",
-            "content__rpm_package",
-        )
-        .only("artifact", "content__rpm_package__checksum_type", "content__rpm_package__pkgId")
-    )
+    fields = [
+        "artifact__sha256",
+        "artifact__sha1",
+        "artifact__sha512",
+        "artifact__md5",
+        "artifact__sha224",
+        "artifact__sha384",
+        "content_id",
+        "content__rpm_package__checksum_type",
+        "content__rpm_package__pkgId",
+    ]
+    contentartifact_qs = ContentArtifact.objects.filter(
+        content__in=content, content__pulp_type=Package.get_pulp_type()
+    ).values(*fields)
 
     pkg_to_hash = {}
     for ca in contentartifact_qs.iterator():
         if package_checksum_type:
             package_checksum_type = package_checksum_type.lower()
-            pkgid = getattr(ca.artifact, package_checksum_type, None)
+            pkgid = ca.get(f"artifact__{package_checksum_type}", None)
 
         if not package_checksum_type or not pkgid:
-            if ca.content.rpm_package.checksum_type not in settings.ALLOWED_CONTENT_CHECKSUMS:
+            if ca["content__rpm_package__checksum_type"] not in settings.ALLOWED_CONTENT_CHECKSUMS:
                 raise ValueError(
-                    "Package {} as content unit {} contains forbidden checksum type '{}', "
-                    "thus can't be published. {}".format(
-                        ca.content.rpm_package.nevra,
-                        ca.content.pk,
-                        ca.content.rpm_package.checksum_type,
+                    "Package with pkgId {} as content unit {} contains forbidden checksum type "
+                    "'{}', thus can't be published. {}".format(
+                        ca["content__rpm_package__pkgId"],
+                        ca["content_id"],
+                        ca["content__rpm_package__checksum_type"],
                         ALLOWED_CHECKSUM_ERROR_MSG,
                     )
                 )
-            package_checksum_type = ca.content.rpm_package.checksum_type
-            pkgid = ca.content.rpm_package.pkgId
+            package_checksum_type = ca["content__rpm_package__checksum_type"]
+            pkgid = ca["content__rpm_package__pkgId"]
 
-        pkg_to_hash[ca.content_id] = (package_checksum_type, pkgid)
+        pkg_to_hash[ca["content_id"]] = (package_checksum_type, pkgid)
 
     # TODO: this is meant to be a !! *temporary* !! fix for
     # https://github.com/pulp/pulp_rpm/issues/2407
     pkg_pks_to_ignore = set()
     latest_build_time_by_nevra = defaultdict(list)
+    packages = Package.objects.filter(pk__in=content)
     for pkg in packages.only(
         "pk", "name", "epoch", "version", "release", "arch", "time_build"
     ).iterator():
