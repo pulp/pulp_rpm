@@ -173,19 +173,15 @@ def add_metadata_to_publication(publication, version, prefix=""):
     published_artifacts = []
 
     # Handle packages
-    pkg_data = (
-        ContentArtifact.objects.filter(
-            content__in=version.content, content__pulp_type=Package.get_pulp_type()
-        )
-        .select_related("content__rpm_package")
-        .only("pk", "artifact", "content", "content__rpm_package__pkgId")
-    )
+    pkg_data = ContentArtifact.objects.filter(
+        content__in=version.content, content__pulp_type=Package.get_pulp_type()
+    ).values("pk", "content__rpm_package__pkgId")
     for ca in pkg_data.iterator():
         for relative_path in pkgid_to_location_href[str(version.repository.pk)][
-            ca.content.rpm_package.pkgId
+            ca["content__rpm_package__pkgId"]
         ]:
             pa = PublishedArtifact(
-                content_artifact=ca,
+                content_artifact_id=ca["pk"],
                 relative_path=os.path.join(prefix, relative_path),
                 publication=publication,
             )
