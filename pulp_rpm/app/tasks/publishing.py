@@ -478,16 +478,16 @@ def generate_repo_metadata(
     # work with select_related() and performs poorly with prefetch_related(). This is fine
     # because we know that Packages should only ever have one artifact per content.
     fields = [
-        "artifact__sha256",
-        "artifact__sha1",
-        "artifact__sha512",
-        "artifact__md5",
-        "artifact__sha224",
-        "artifact__sha384",
         "content_id",
         "content__rpm_package__checksum_type",
         "content__rpm_package__pkgId",
     ]
+    artifact_checksum = None
+    if package_checksum_type:
+        package_checksum_type = package_checksum_type.lower()
+        artifact_checksum = f"artifact__{package_checksum_type}"
+        fields.append(artifact_checksum)
+
     contentartifact_qs = ContentArtifact.objects.filter(
         content__in=content, content__pulp_type=Package.get_pulp_type()
     ).values(*fields)
@@ -495,8 +495,7 @@ def generate_repo_metadata(
     pkg_to_hash = {}
     for ca in contentartifact_qs.iterator():
         if package_checksum_type:
-            package_checksum_type = package_checksum_type.lower()
-            pkgid = ca.get(f"artifact__{package_checksum_type}", None)
+            pkgid = ca.get(artifact_checksum, None)
 
         if not package_checksum_type or not pkgid:
             if ca["content__rpm_package__checksum_type"] not in settings.ALLOWED_CONTENT_CHECKSUMS:
