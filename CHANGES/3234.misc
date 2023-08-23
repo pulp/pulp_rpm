@@ -1,0 +1,1 @@
+Removed all content mutability in favor of moving towards immutable content. The data fixups which were the original purpose are less necessary now than they initially were, and in the future we probably ought to handle such issues via replacements of immutable content rather than mutating existing content.
