@@ -65,13 +65,14 @@ services:
       - ../../../pulp-openapi-generator:/root/pulp-openapi-generator
     env:
       PULP_WORKERS: "4"
+      PULP_HTTPS: "true"
 VARSYAML
 
 cat >> vars/main.yaml << VARSYAML
 pulp_settings: {"allowed_content_checksums": ["sha1", "sha224", "sha256", "sha384", "sha512"], "allowed_export_paths": ["/tmp"], "allowed_import_paths": ["/tmp"], "orphan_protection_time": 0}
 pulp_scheme: https
 
-pulp_container_tag: https
+pulp_container_tag: "latest"
 
 VARSYAML
 
