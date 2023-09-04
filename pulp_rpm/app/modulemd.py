@@ -129,6 +129,7 @@ def create_modulemd(modulemd, snippet):
 
     new_module[PULP_MODULE_ATTR.PROFILES] = profiles
     new_module["snippet"] = snippet
+    new_module["digest"] = hashlib.sha256(snippet.encode()).hexdigest()
 
     return new_module
 
