@@ -45,7 +45,10 @@ class Modulemd(Content):
         packages (Text):
             List of Packages connected to this modulemd.
         snippet (Text):
-            A string to hold modulemd-obsolete snippet
+            A string to hold modulemd snippet
+        digest (Text):
+            Modulemd snippet digest
+
     """
 
     TYPE = "modulemd"
@@ -63,14 +66,16 @@ class Modulemd(Content):
     packages = models.ManyToManyField(Package)
     profiles = models.JSONField(default=dict)
     description = models.TextField()
+    digest = models.TextField()
 
     snippet = models.TextField()
+    repo_key_fields = ("name", "stream", "version", "context", "arch")
 
     _pulp_domain = models.ForeignKey("core.Domain", default=get_domain_pk, on_delete=models.PROTECT)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
-        unique_together = ("_pulp_domain", "name", "stream", "version", "context", "arch")
+        unique_together = ("_pulp_domain", "name", "stream", "version", "context", "arch", "digest")
 
 
 class ModulemdDefaults(Content):
@@ -85,9 +90,9 @@ class ModulemdDefaults(Content):
         profiles (Json):
             Default profiles for modulemd streams.
         digest (Text):
-            Modulemd digest
+            Modulemd defaults snippet digest
         snippet (Text):
-            A string to hold modulemd-obsolete snippet
+            A string to hold modulemd-defaults snippet
     """
 
     TYPE = "modulemd_defaults"
