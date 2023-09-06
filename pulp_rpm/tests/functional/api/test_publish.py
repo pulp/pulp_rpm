@@ -734,9 +734,8 @@ def test_directory_layout_distribute_with_modules(generate_distribution, http_ge
     # Trailing '/' is present for easier check
     assert "Packages/" in repository_root_items
     assert "repodata/" in repository_root_items
-    assert "config.repo" in repository_root_items
     # Only these three items should be present
-    assert len(repository_root_items) == 3
+    assert len(repository_root_items) == 2
 
 
 @pytest.mark.parallel
@@ -757,10 +756,9 @@ def test_directory_layout_distribute_with_treeinfo(generate_distribution, http_g
         assert directory in repository_root_items
 
     assert "repodata/" in repository_root_items
-    assert "config.repo" in repository_root_items
     # assert how many items are present altogether
-    # here is '+2' for 'repodata' and 'config.repo'
-    assert len(repository_root_items) == len(RPM_KICKSTART_REPOSITORY_ROOT_CONTENT) + 2
+    # here is '+1' for 'repodata'
+    assert len(repository_root_items) == len(RPM_KICKSTART_REPOSITORY_ROOT_CONTENT) + 1
 
 
 @pytest.fixture(scope="class")

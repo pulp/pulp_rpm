@@ -9,7 +9,9 @@ def setup_empty_distribution(
 ):
     repo = rpm_repository_factory()
     publication = rpm_publication_factory(repository=repo.pulp_href)
-    distribution = rpm_distribution_factory(publication=publication.pulp_href)
+    distribution = rpm_distribution_factory(
+        publication=publication.pulp_href, generate_repo_config=True
+    )
 
     return repo, publication, distribution
 

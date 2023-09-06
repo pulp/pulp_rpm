@@ -63,6 +63,7 @@ def create_distribution(
         gpgcheck=None,
         repo_gpgcheck=None,
         has_signing_service=False,
+        generate_repo_config=False,
         repo_body=None,
         url=RPM_UNSIGNED_FIXTURE_URL,
         policy="on_demand",
@@ -81,7 +82,9 @@ def create_distribution(
             pub_body["repo_gpgcheck"] = repo_gpgcheck
         publication = rpm_publication_factory(**pub_body)
 
-        return rpm_distribution_factory(publication=publication.pulp_href)
+        return rpm_distribution_factory(
+            publication=publication.pulp_href, generate_repo_config=generate_repo_config
+        )
 
     return _create_distribution
 
@@ -177,16 +180,20 @@ test_options = {
     "gpgcheck": [0, 1],
     "repo_gpgcheck": [0, 1],
     "has_signing_service": [True, False],
+    "generate_repo_config": [True, False],
 }
 func_params = itertools.product(*test_options.values())
 
 
 @pytest.mark.parallel
-@pytest.mark.parametrize("gpgcheck,repo_gpgcheck,has_signing_service", func_params)
+@pytest.mark.parametrize(
+    "gpgcheck,repo_gpgcheck,has_signing_service,generate_repo_config", func_params
+)
 def test_config_dot_repo(
     gpgcheck,
     repo_gpgcheck,
     has_signing_service,
+    generate_repo_config,
     rpm_metadata_signing_service,
     create_distribution,
     http_get,
@@ -194,9 +201,14 @@ def test_config_dot_repo(
     """Test if the generated config.repo has the right content."""
     if has_signing_service and rpm_metadata_signing_service is None:
         pytest.skip("Need a signing service for this test")
+    if not generate_repo_config:
+        pytest.skip("Generation of config.repo file was disabled")
 
     distribution = create_distribution(
-        gpgcheck=gpgcheck, repo_gpgcheck=repo_gpgcheck, has_signing_service=has_signing_service
+        gpgcheck=gpgcheck,
+        repo_gpgcheck=repo_gpgcheck,
+        has_signing_service=has_signing_service,
+        generate_repo_config=generate_repo_config,
     )
     content = http_get(f"{distribution.base_url}config.repo").decode("utf-8")
 
@@ -215,7 +227,9 @@ def test_repomd_headers(
     http_get_headers,
 ):
     """Test if repomd.xml is returned with Cache-control: no-cache header."""
-    distribution = create_distribution(gpgcheck=1, repo_gpgcheck=1, has_signing_service=True)
+    distribution = create_distribution(
+        gpgcheck=1, repo_gpgcheck=1, has_signing_service=True, generate_repo_config=True
+    )
     assert (
         http_get_headers(f"{distribution.base_url}repodata/repomd.xml").get("Cache-control", "")
         == "no-cache"
