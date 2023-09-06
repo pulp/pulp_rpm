@@ -45,7 +45,7 @@ Download GET response:
 
 Install a package from Pulp
 ---------------------------
-Download the config.repo file from the server at distribution's
+If available, download the config.repo file from the server at distribution's
 base_path and store it in /etc/yum.repos.d::
 
   curl http://localhost:24816/pulp/content/foo/config.repo > /etc/yum.repos.d/foo.repo
@@ -53,6 +53,23 @@ base_path and store it in /etc/yum.repos.d::
 Now use dnf to install a package::
 
   sudo dnf install walrus
+
+If config.repo file is not served by the distribution, it is necessary to manually set up the
+configuration for the repository. One may initialize the configuration by leveraging the utility
+``dnf config-manager`` like shown below. Afterwards, the user should be able to install the packages
+by running dnf install packages.
+
+.. code:: shell
+
+    BASE_URL=$(pulp rpm distribution show --name "${DIST_NAME}" | jq -r '.base_url')
+    BASE_PATH=$(pulp rpm distribution show --name "${DIST_NAME}" | jq -r '.base_path')
+
+    sudo dnf config-manager --add-repo "${BASE_URL}"
+    sudo dnf config-manager --save \
+        --setopt=*"${BASE_PATH}".gpgcheck=0 \
+        --setopt=*"${BASE_PATH}".repo_gpgcheck=0 \
+
+    sudo dnf install walrus
 
 List and Install applicable Advisories
 --------------------------------------

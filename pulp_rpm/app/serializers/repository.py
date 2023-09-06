@@ -281,9 +281,14 @@ class RpmDistributionSerializer(DistributionSerializer):
         queryset=Publication.objects.exclude(complete=False),
         allow_null=True,
     )
+    generate_repo_config = serializers.BooleanField(
+        default=False,
+        required=False,
+        help_text=_("An option specifying whether Pulp should generate *.repo files."),
+    )
 
     class Meta:
-        fields = DistributionSerializer.Meta.fields + ("publication",)
+        fields = DistributionSerializer.Meta.fields + ("publication", "generate_repo_config")
         model = RpmDistribution
 
 

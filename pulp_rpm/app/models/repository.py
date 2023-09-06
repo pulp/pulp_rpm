@@ -449,9 +449,11 @@ class RpmDistribution(Distribution, AutoAddObjPermsMixin):
     repository_config_file_name = "config.repo"
     INVALID_REPO_ID_CHARS = r"[^\w\-_.:]"
 
+    generate_repo_config = models.BooleanField(default=False)
+
     def content_handler(self, path):
         """Serve config.repo and repomd.xml.key."""
-        if path == self.repository_config_file_name:
+        if self.generate_repo_config and path == self.repository_config_file_name:
             repository, publication = self.get_repository_and_publication()
             if not publication:
                 return
@@ -504,7 +506,7 @@ class RpmDistribution(Distribution, AutoAddObjPermsMixin):
     def content_handler_list_directory(self, rel_path):
         """Return the extra dir entries."""
         retval = set()
-        if rel_path == "":
+        if self.generate_repo_config and rel_path == "":
             retval.add(self.repository_config_file_name)
         return retval
 
