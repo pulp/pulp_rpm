@@ -77,7 +77,7 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin, Roles
                 ],
             },
             {
-                "action": ["update", "partial_update"],
+                "action": ["update", "partial_update", "set_label", "unset_label"],
                 "principal": "authenticated",
                 "effect": "allow",
                 "condition": [
@@ -325,7 +325,7 @@ class RpmRemoteViewSet(RemoteViewSet, RolesMixin):
                 "condition": "has_model_or_domain_perms:rpm.add_rpmremote",
             },
             {
-                "action": ["update", "partial_update"],
+                "action": ["update", "partial_update", "set_label", "unset_label"],
                 "principal": "authenticated",
                 "effect": "allow",
                 "condition": [
@@ -404,7 +404,7 @@ class UlnRemoteViewSet(RemoteViewSet, RolesMixin):
                 "condition": "has_model_or_domain_perms:rpm.add_ulnremote",
             },
             {
-                "action": ["update", "partial_update"],
+                "action": ["update", "partial_update", "set_label", "unset_label"],
                 "principal": "authenticated",
                 "effect": "allow",
                 "condition": [
@@ -613,7 +613,7 @@ class RpmDistributionViewSet(DistributionViewSet, RolesMixin):
                 ],
             },
             {
-                "action": ["update", "partial_update"],
+                "action": ["update", "partial_update", "set_label", "unset_label"],
                 "principal": "authenticated",
                 "effect": "allow",
                 "condition": [
