@@ -106,6 +106,14 @@ class RpmRepositorySerializer(RepositorySerializer):
             "DEPRECATED: An option specifying whether Pulp should generate SQLite metadata."
         ),
     )
+    skip_if_unavailable = serializers.BooleanField(
+        default=False,
+        required=False,
+        help_text=_(
+            "An option specifying whether client will continue running and disable the repository "
+            "that couldn’t be synchronized for any reason."
+        ),
+    )
 
     def validate(self, data):
         """Validate data."""
@@ -130,6 +138,7 @@ class RpmRepositorySerializer(RepositorySerializer):
             "gpgcheck",
             "repo_gpgcheck",
             "sqlite_metadata",
+            "skip_if_unavailable",
         )
         model = RpmRepository
 
@@ -244,6 +253,14 @@ class RpmPublicationSerializer(PublicationSerializer):
             "DEPRECATED: An option specifying whether Pulp should generate SQLite metadata."
         ),
     )
+    skip_if_unavailable = serializers.BooleanField(
+        default=False,
+        required=False,
+        help_text=_(
+            "An option specifying whether client will continue running and disable the repository "
+            "that couldn’t be synchronized for any reason."
+        ),
+    )
 
     def validate(self, data):
         """Validate data."""
@@ -265,6 +282,7 @@ class RpmPublicationSerializer(PublicationSerializer):
             "gpgcheck",
             "repo_gpgcheck",
             "sqlite_metadata",
+            "skip_if_unavailable",
         )
         model = RpmPublication
 

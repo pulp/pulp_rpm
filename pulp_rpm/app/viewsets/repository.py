@@ -559,6 +559,9 @@ class RpmPublicationViewSet(PublicationViewSet, RolesMixin):
                 "Support for sqlite metadata generation will be removed from a future release "
                 "of pulp_rpm. See https://tinyurl.com/sqlite-removal for more details"
             )
+        skip_if_unavailable = serializer.validated_data.get(
+            "skip_if_unavailable", repository.skip_if_unavailable
+        )
 
         if repository.metadata_signing_service:
             signing_service_pk = repository.metadata_signing_service.pk
@@ -574,6 +577,7 @@ class RpmPublicationViewSet(PublicationViewSet, RolesMixin):
                 "checksum_types": checksum_types,
                 "gpgcheck_options": gpgcheck_options,
                 "sqlite_metadata": sqlite_metadata,
+                "skip_if_unavailable": skip_if_unavailable,
             },
         )
         return OperationPostponedResponse(result, request)

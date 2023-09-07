@@ -204,6 +204,8 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
             1 or 0 corresponding to whether repo_gpgcheck should be enabled in the generated
             .repo file.
         sqlite_metadata (Boolean): Whether to generate sqlite metadata files on publish.
+        skip_if_unavailable (Boolean): Whether repo should be skipped by the client in the generated
+            .repo file.
     """
 
     TYPE = "rpm"
@@ -236,6 +238,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
     gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
     repo_gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
     sqlite_metadata = models.BooleanField(default=False)
+    skip_if_unavailable = models.BooleanField(default=False)
 
     def on_new_version(self, version):
         """
@@ -265,6 +268,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
                     "package": self.package_checksum_type,
                 },
                 sqlite_metadata=self.sqlite_metadata,
+                skip_if_unavailable=self.skip_if_unavailable,
             )
 
     @staticmethod
@@ -431,6 +435,7 @@ class RpmPublication(Publication, AutoAddObjPermsMixin):
     gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
     repo_gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
     sqlite_metadata = models.BooleanField(default=False)
+    skip_if_unavailable = models.BooleanField(default=False)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
@@ -480,6 +485,7 @@ class RpmDistribution(Distribution, AutoAddObjPermsMixin):
                 baseurl={base_url}
                 gpgcheck={publication.gpgcheck}
                 repo_gpgcheck={publication.repo_gpgcheck}
+                skip_if_unavailable={publication.skip_if_unavailable}
                 """
             )
 
