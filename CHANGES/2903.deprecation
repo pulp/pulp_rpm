@@ -1,0 +1,1 @@
+Deprecated ``gpgcheck`` and ``repo_gpgcheck`` options in favour of ``repo_config``.

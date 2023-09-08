@@ -315,14 +315,10 @@ Publication GET response (when task complete):
         "repository_version": "/pulp/api/v3/repositories/rpm/rpm/a02ace53-d490-458d-8b93-604fbcd23a9c/versions/1/"
     }
 
-The GPG signature check options are configurable from this REST API endpoint as well. This can be
-done via the following options:
+The GPG signature check options, like ``gpgcheck`` and ``repo_gpgcheck`` are configurable via the ``repo_config`` option.
+This option has a json format and can contain any of the configuration for the ``.repo`` file.
 
-- gpgcheck: perform a GPG signature check on the packages retrieved from this repository.
-
-- repo_gpgcheck: perform a GPG signature check on the repodata.
-
-Additionally, an option is provided to let the user decide whether or not to generate sqlite metadata
+A separate option is provided to let the user decide whether or not to generate sqlite metadata
 (defaults to 'false'). Sqlite metadata not commonly used.
 
 - sqlite_metadata: generate sqlite metadata in addition to standard XML metadata

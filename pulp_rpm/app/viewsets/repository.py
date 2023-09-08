@@ -547,10 +547,21 @@ class RpmPublicationViewSet(PublicationViewSet, RolesMixin):
             metadata=metadata_checksum_type,
             package=package_checksum_type,
         )
-        gpgcheck_options = dict(
-            gpgcheck=serializer.validated_data.get("gpgcheck", repository.gpgcheck),
-            repo_gpgcheck=serializer.validated_data.get("repo_gpgcheck", repository.repo_gpgcheck),
-        )
+        # gpg options are deprecated in favour of repo_config
+        # acting as shim layer between old and new api
+        gpgcheck = serializer.validated_data.get("gpgcheck")
+        repo_gpgcheck = serializer.validated_data.get("repo_gpgcheck")
+        gpgcheck_options = {}
+        if gpgcheck is not None:
+            gpgcheck_options["gpgcheck"] = gpgcheck
+        if repo_gpgcheck is not None:
+            gpgcheck_options["repo_gpgcheck"] = repo_gpgcheck
+        if gpgcheck_options.keys():
+            logging.getLogger("pulp_rpm.deprecation").info(
+                "Support for gpg options  will be removed from a future release of pulp_rpm."
+            )
+        repo_config = serializer.validated_data.get("repo_config", repository.repo_config)
+        repo_config = gpgcheck_options if gpgcheck_options else repo_config
         sqlite_metadata = serializer.validated_data.get(
             "sqlite_metadata", repository.sqlite_metadata
         )
@@ -572,7 +583,7 @@ class RpmPublicationViewSet(PublicationViewSet, RolesMixin):
                 "repository_version_pk": repository_version.pk,
                 "metadata_signing_service": signing_service_pk,
                 "checksum_types": checksum_types,
-                "gpgcheck_options": gpgcheck_options,
+                "repo_config": repo_config,
                 "sqlite_metadata": sqlite_metadata,
             },
         )
