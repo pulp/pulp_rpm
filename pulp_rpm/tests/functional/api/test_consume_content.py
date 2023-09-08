@@ -60,8 +60,7 @@ def create_distribution(
     rpm_distribution_factory,
 ):
     def _create_distribution(
-        gpgcheck=None,
-        repo_gpgcheck=None,
+        repo_config=None,
         has_signing_service=False,
         generate_repo_config=False,
         repo_body=None,
@@ -76,10 +75,8 @@ def create_distribution(
         repo, _ = init_and_sync(repository=repo, url=url, policy=policy, sync_policy=sync_policy)
 
         pub_body = {"repository": repo.pulp_href}
-        if gpgcheck is not None:
-            pub_body["gpgcheck"] = gpgcheck
-        if repo_gpgcheck is not None:
-            pub_body["repo_gpgcheck"] = repo_gpgcheck
+        if repo_config is not None:
+            pub_body["repo_config"] = repo_config
         publication = rpm_publication_factory(**pub_body)
 
         return rpm_distribution_factory(
@@ -160,7 +157,7 @@ def test_publish_signed_repo_metadata(
     if rpm_metadata_signing_service is None:
         pytest.skip("Need a signing service for this test")
 
-    distribution = create_distribution(gpgcheck=0, repo_gpgcheck=0, has_signing_service=True)
+    distribution = create_distribution(repo_config={}, has_signing_service=True)
     dnf_config_add_repo(distribution, has_signing_service=True)
 
     rpm_name = "walrus"
@@ -175,10 +172,9 @@ def test_publish_signed_repo_metadata(
     assert rpm_name == rpm[0]
 
 
-# Test all possible combinations of gpgcheck options made to a publication.
+# Test all possible combinations of options made to a publication.
 test_options = {
-    "gpgcheck": [0, 1],
-    "repo_gpgcheck": [0, 1],
+    "repo_config": [{}, {"assumeyes": True, "gpgcheck": 1}],
     "has_signing_service": [True, False],
     "generate_repo_config": [True, False],
 }
@@ -186,12 +182,9 @@ func_params = itertools.product(*test_options.values())
 
 
 @pytest.mark.parallel
-@pytest.mark.parametrize(
-    "gpgcheck,repo_gpgcheck,has_signing_service,generate_repo_config", func_params
-)
+@pytest.mark.parametrize("repo_config,has_signing_service,generate_repo_config", func_params)
 def test_config_dot_repo(
-    gpgcheck,
-    repo_gpgcheck,
+    repo_config,
     has_signing_service,
     generate_repo_config,
     rpm_metadata_signing_service,
@@ -205,8 +198,7 @@ def test_config_dot_repo(
         pytest.skip("Generation of config.repo file was disabled")
 
     distribution = create_distribution(
-        gpgcheck=gpgcheck,
-        repo_gpgcheck=repo_gpgcheck,
+        repo_config=repo_config,
         has_signing_service=has_signing_service,
         generate_repo_config=generate_repo_config,
     )
@@ -214,11 +206,15 @@ def test_config_dot_repo(
 
     assert f"[{distribution.name}]\n" in content
     assert f"baseurl={distribution.base_url}\n" in content
-    assert f"gpgcheck={gpgcheck}\n" in content
-    assert f"repo_gpgcheck={repo_gpgcheck}\n" in content
+    assert "gpgcheck=0\n" in content
+    assert "repo_gpgcheck=0\n" in content
 
     if has_signing_service:
         assert f"gpgkey={distribution.base_url}repodata/repomd.xml.key" in content
+
+    if repo_config:
+        assert "assumeyes=True\n" in content
+        assert "gpgcheck=1\n" in content
 
 
 @pytest.mark.parallel
@@ -228,7 +224,7 @@ def test_repomd_headers(
 ):
     """Test if repomd.xml is returned with Cache-control: no-cache header."""
     distribution = create_distribution(
-        gpgcheck=1, repo_gpgcheck=1, has_signing_service=True, generate_repo_config=True
+        repo_config={}, has_signing_service=True, generate_repo_config=True
     )
     assert (
         http_get_headers(f"{distribution.base_url}repodata/repomd.xml").get("Cache-control", "")

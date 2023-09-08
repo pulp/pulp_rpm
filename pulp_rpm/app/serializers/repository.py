@@ -1,5 +1,7 @@
 from gettext import gettext as _
 
+import logging
+
 from django.conf import settings
 from jsonschema import Draft7Validator
 from rest_framework import serializers
@@ -82,20 +84,20 @@ class RpmRepositorySerializer(RepositorySerializer):
     gpgcheck = serializers.IntegerField(
         max_value=1,
         min_value=0,
-        default=0,
         required=False,
+        allow_null=True,
         help_text=_(
-            "An option specifying whether a client should perform "
+            "DEPRECATED: An option specifying whether a client should perform "
             "a GPG signature check on packages."
         ),
     )
     repo_gpgcheck = serializers.IntegerField(
         max_value=1,
         min_value=0,
-        default=0,
         required=False,
+        allow_null=True,
         help_text=_(
-            "An option specifying whether a client should perform "
+            "DEPRECATED: An option specifying whether a client should perform "
             "a GPG signature check on the repodata."
         ),
     )
@@ -105,6 +107,10 @@ class RpmRepositorySerializer(RepositorySerializer):
         help_text=_(
             "DEPRECATED: An option specifying whether Pulp should generate SQLite metadata."
         ),
+    )
+    repo_config = serializers.JSONField(
+        required=False,
+        help_text=_("A JSON document describing config.repo file"),
     )
 
     def validate(self, data):
@@ -118,7 +124,46 @@ class RpmRepositorySerializer(RepositorySerializer):
                 raise serializers.ValidationError({field: _(ALLOWED_CHECKSUM_ERROR_MSG)})
 
         validated_data = super().validate(data)
+        if (data.get("gpgcheck") or data.get("repo_gpgcheck")) and data.get("repo_config"):
+            raise serializers.ValidationError(
+                _(
+                    "Cannot use gpg options and 'repo_config' options simultaneously. "
+                    "The 'gpgcheck' and 'repo_gpgcheck' options are deprecated, please use "
+                    "'repo_config' only."
+                )
+            )
         return validated_data
+
+    def create(self, validated_data):
+        """
+        Save the repo and handle gpg options
+
+        Args:
+            validated_data (dict): A dict of validated data to create the repo
+
+        Returns:
+            repo: the created repo
+        """
+        # gpg options are deprecated in favour of repo_config
+        # acting as shim layer between old and new api
+        gpgcheck = validated_data.get("gpgcheck")
+        repo_gpgcheck = validated_data.get("repo_gpgcheck")
+
+        gpgcheck_options = {}
+        if gpgcheck is not None:
+            gpgcheck_options["gpgcheck"] = gpgcheck
+        if repo_gpgcheck is not None:
+            gpgcheck_options["repo_gpgcheck"] = repo_gpgcheck
+        if gpgcheck_options.keys():
+            logging.getLogger("pulp_rpm.deprecation").info(
+                "Support for gpg options will be removed from a future release of pulp_rpm."
+            )
+        repo_config = (
+            gpgcheck_options if gpgcheck_options else validated_data.get("repo_config", {})
+        )
+        repo = super().create(validated_data)
+        repo.repo_config = repo_config
+        return repo
 
     class Meta:
         fields = RepositorySerializer.Meta.fields + (
@@ -130,6 +175,7 @@ class RpmRepositorySerializer(RepositorySerializer):
             "gpgcheck",
             "repo_gpgcheck",
             "sqlite_metadata",
+            "repo_config",
         )
         model = RpmRepository
 
@@ -223,8 +269,9 @@ class RpmPublicationSerializer(PublicationSerializer):
         max_value=1,
         min_value=0,
         required=False,
+        allow_null=True,
         help_text=_(
-            "An option specifying whether a client should perform "
+            "DEPRECATED: An option specifying whether a client should perform "
             "a GPG signature check on packages."
         ),
     )
@@ -232,8 +279,9 @@ class RpmPublicationSerializer(PublicationSerializer):
         max_value=1,
         min_value=0,
         required=False,
+        allow_null=True,
         help_text=_(
-            "An option specifying whether a client should perform "
+            "DEPRECATED: An option specifying whether a client should perform "
             "a GPG signature check on the repodata."
         ),
     )
@@ -243,6 +291,10 @@ class RpmPublicationSerializer(PublicationSerializer):
         help_text=_(
             "DEPRECATED: An option specifying whether Pulp should generate SQLite metadata."
         ),
+    )
+    repo_config = serializers.JSONField(
+        required=False,
+        help_text=_("A JSON document describing config.repo file"),
     )
 
     def validate(self, data):
@@ -256,6 +308,14 @@ class RpmPublicationSerializer(PublicationSerializer):
         ):
             raise serializers.ValidationError(_(ALLOWED_CHECKSUM_ERROR_MSG))
         validated_data = super().validate(data)
+        if (data.get("gpgcheck") or data.get("repo_gpgcheck")) and data.get("repo_config"):
+            raise serializers.ValidationError(
+                _(
+                    "Cannot use gpg options and 'repo_config' options simultaneously. "
+                    "The 'gpgcheck' and 'repo_gpgcheck' options are deprecated, please use "
+                    "'repo_config' only."
+                )
+            )
         return validated_data
 
     class Meta:
@@ -265,6 +325,7 @@ class RpmPublicationSerializer(PublicationSerializer):
             "gpgcheck",
             "repo_gpgcheck",
             "sqlite_metadata",
+            "repo_config",
         )
         model = RpmPublication
 

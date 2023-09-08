@@ -158,8 +158,7 @@ def add_metadata_to_publication(publication, version, prefix=""):
 
     publication.package_checksum_type = CHECKSUM_TYPES.UNKNOWN
     publication.metadata_checksum_type = CHECKSUM_TYPES.UNKNOWN
-    publication.gpgcheck = 0
-    publication.repo_gpgcheck = has_repomd_signature
+    publication.repo_config = {"repo_gpgcheck": has_repomd_signature, "gpgcheck": 0}
     publication.sqlite_metadata = has_sqlite
 
     for relative_path, metadata_file_path in repo_metadata_files.items():

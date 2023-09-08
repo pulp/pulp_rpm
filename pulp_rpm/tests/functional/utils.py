@@ -97,16 +97,14 @@ def rpm_copy(cfg, config, recursive=False):
     return client.post(RPM_COPY_PATH, data)
 
 
-def publish(cfg, repo, version_href=None, gpgcheck=0, repo_gpgcheck=0):
+def publish(cfg, repo, version_href=None, repo_config=None):
     """Publish a repository.
 
     :param pulp_smash.config.PulpSmashConfig cfg: Information about the Pulp
         host.
     :param repo: A dict of information about the repository.
     :param version_href: A href for the repo version to be published.
-    :param gpgcheck: An option specifying whether to perform a GPG signature check on packages.
-    :param repo_gpgcheck: An option specifying whether to perform a GPG signature check on
-        the repodata.
+    :param repo_config: An option specifying config for .repo file
     :returns: A publication. A dict of information about the just created
         publication.
     """
@@ -115,7 +113,7 @@ def publish(cfg, repo, version_href=None, gpgcheck=0, repo_gpgcheck=0):
     else:
         body = {"repository": repo["pulp_href"]}
 
-    body.update({"gpgcheck": gpgcheck, "repo_gpgcheck": repo_gpgcheck})
+    body.update({"repo_config": repo_config})
 
     client = api.Client(cfg, api.json_handler)
     call_report = client.post(RPM_PUBLICATION_PATH, body)

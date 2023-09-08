@@ -320,21 +320,21 @@ def cr_checksum_type_from_string(checksum_type):
 
 def publish(
     repository_version_pk,
-    gpgcheck_options=None,
     metadata_signing_service=None,
     checksum_types=None,
     sqlite_metadata=False,
+    repo_config=None,
 ):
     """
     Create a Publication based on a RepositoryVersion.
 
     Args:
         repository_version_pk (str): Create a publication from this repository version.
-        gpgcheck_options (dict): GPG signature check options.
         metadata_signing_service (pulpcore.app.models.AsciiArmoredDetachedSigningService):
             A reference to an associated signing service.
         checksum_types (dict): Checksum types for metadata and packages.
         sqlite_metadata (bool): Whether to generate metadata files in sqlite format.
+        repo_config (JSON): repo config that will be served by distribution
 
     """
     repository_version = RepositoryVersion.objects.get(pk=repository_version_pk)
@@ -361,12 +361,10 @@ def publish(
                 checksum_types.get("package") or publication.metadata_checksum_type
             )
 
-            if gpgcheck_options is not None:
-                publication.gpgcheck = gpgcheck_options.get("gpgcheck")
-                publication.repo_gpgcheck = gpgcheck_options.get("repo_gpgcheck")
-
             if sqlite_metadata:
                 publication.sqlite_metadata = True
+
+            publication.repo_config = repo_config
 
             publication_data = PublicationData(publication)
             publication_data.populate()

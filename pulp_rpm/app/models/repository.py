@@ -198,12 +198,8 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
             The name of a checksum type to use for metadata when generating metadata.
         package_checksum_type (String):
             The name of a default checksum type to use for packages when generating metadata.
-        gpgcheck (Integer):
-            1 or 0 corresponding to whether gpgcheck should be enabled in the generated .repo file.
-        repo_gpgcheck (Integer):
-            1 or 0 corresponding to whether repo_gpgcheck should be enabled in the generated
-            .repo file.
         sqlite_metadata (Boolean): Whether to generate sqlite metadata files on publish.
+        repo_config (JSON): repo configuration that will be served by distribution
     """
 
     TYPE = "rpm"
@@ -221,7 +217,6 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
         ModulemdObsolete,
     ]
     REMOTE_TYPES = [RpmRemote, UlnRemote]
-    GPGCHECK_CHOICES = [(0, 0), (1, 1)]
 
     metadata_signing_service = models.ForeignKey(
         AsciiArmoredDetachedSigningService, on_delete=models.SET_NULL, null=True
@@ -233,9 +228,8 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
     autopublish = models.BooleanField(default=False)
     metadata_checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
     package_checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
-    gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
-    repo_gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
     sqlite_metadata = models.BooleanField(default=False)
+    repo_config = models.JSONField(default=dict)
 
     def on_new_version(self, version):
         """
@@ -258,13 +252,13 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
         if self.autopublish:
             tasks.publish(
                 repository_version_pk=version.pk,
-                gpgcheck_options={"gpgcheck": self.gpgcheck, "repo_gpgcheck": self.repo_gpgcheck},
                 metadata_signing_service=self.metadata_signing_service,
                 checksum_types={
                     "metadata": self.metadata_checksum_type,
                     "package": self.package_checksum_type,
                 },
                 sqlite_metadata=self.sqlite_metadata,
+                repo_config=self.repo_config,
             )
 
     @staticmethod
@@ -427,14 +421,11 @@ class RpmPublication(Publication, AutoAddObjPermsMixin):
     Publication for "rpm" content.
     """
 
-    GPGCHECK_CHOICES = [(0, 0), (1, 1)]
-
     TYPE = "rpm"
     metadata_checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
     package_checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
-    gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
-    repo_gpgcheck = models.IntegerField(default=0, choices=GPGCHECK_CHOICES)
     sqlite_metadata = models.BooleanField(default=False)
+    repo_config = models.JSONField(default=dict)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
@@ -478,16 +469,27 @@ class RpmDistribution(Distribution, AutoAddObjPermsMixin):
                         self.base_path,
                     )
                 )
+            repo_config = publication.repo_config
+            repo_config.pop("name", None)
+            repo_config.pop("baseurl", None)
             val = textwrap.dedent(
                 f"""\
                 [{re.sub(self.INVALID_REPO_ID_CHARS, "", self.name)}]
                 name={self.name}
-                enabled=1
                 baseurl={base_url}
-                gpgcheck={publication.gpgcheck}
-                repo_gpgcheck={publication.repo_gpgcheck}
                 """
             )
+            for k, v in repo_config.items():
+                val += f"{k}={v}\n"
+
+            if "repo_gpgcheck" not in repo_config:
+                val += "repo_gpgcheck=0\n"
+
+            if "gpgcheck" not in repo_config:
+                val += "gpgcheck=0\n"
+
+            if "enabled" not in repo_config:
+                val += "enabled=1\n"
 
             signing_service = repository.metadata_signing_service
             if signing_service:
