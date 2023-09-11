@@ -1,4 +1,5 @@
 import asyncio
+import hashlib
 import json
 import uuid
 from tempfile import NamedTemporaryFile
@@ -111,10 +112,17 @@ def rpm_copy_api(rpm_client):
 
 
 @pytest.fixture
-def signed_artifact(http_get, artifacts_api_client, gen_object_with_cleanup, tmp_path):
+def signed_artifact(http_get, artifacts_api_client, tmp_path):
+    data = http_get(RPM_SIGNED_URL)
+    artifacts = artifacts_api_client.list(sha256=hashlib.sha256(data).hexdigest(), limit=1)
+    try:
+        return artifacts.results[0].to_dict()
+    except IndexError:
+        pass
+
     temp_file = tmp_path / str(uuid.uuid4())
-    temp_file.write_bytes(http_get(RPM_SIGNED_URL))
-    return gen_object_with_cleanup(artifacts_api_client, temp_file).to_dict()
+    temp_file.write_bytes(data)
+    return artifacts_api_client.create(temp_file).to_dict()
 
 
 @pytest.fixture
