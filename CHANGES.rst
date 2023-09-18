@@ -13,6 +13,19 @@ Changelog
 
 .. towncrier release notes start
 
+3.22.4 (2023-09-18)
+===================
+
+
+Misc
+----
+
+- `#3225 <https://github.com/pulp/pulp_rpm/issues/3225>`__, `#3226 <https://github.com/pulp/pulp_rpm/issues/3226>`__
+
+
+----
+
+
 3.22.3 (2023-07-26)
 ===================
 
