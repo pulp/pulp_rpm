@@ -454,9 +454,9 @@ def generate_repo_metadata(
     mod_yml_path = os.path.join(cwd, "modules.yaml")
     comps_xml_path = os.path.join(cwd, "comps.xml")
 
-    pri_xml = cr.PrimaryXmlFile(pri_xml_path)
-    fil_xml = cr.FilelistsXmlFile(fil_xml_path)
-    oth_xml = cr.OtherXmlFile(oth_xml_path)
+    pri_xml = cr.PrimaryXmlFile(pri_xml_path, compressiontype=cr.GZ)
+    fil_xml = cr.FilelistsXmlFile(fil_xml_path, compressiontype=cr.GZ)
+    oth_xml = cr.OtherXmlFile(oth_xml_path, compressiontype=cr.GZ)
     upd_xml = None
 
     if publication.sqlite_metadata:
@@ -567,7 +567,7 @@ def generate_repo_metadata(
     update_records = UpdateRecord.objects.filter(pk__in=content).order_by("id", "digest")
     for update_record in update_records.iterator():
         if not upd_xml:
-            upd_xml = cr.UpdateInfoXmlFile(upd_xml_path)
+            upd_xml = cr.UpdateInfoXmlFile(upd_xml_path, compressiontype=cr.GZ)
         upd_xml.add_chunk(cr.xml_dump_updaterecord(update_record.to_createrepo_c()))
 
     # Process modulemd, modulemd_defaults and obsoletes
