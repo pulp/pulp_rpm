@@ -279,11 +279,15 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
             django.db.models.QuerySet: The artifacts that are contained within this version.
 
         """
-        qs = Artifact.objects.filter(content__pk__in=version.content)
+        artifacts_pk = set(
+            Artifact.objects.filter(content__pk__in=version.content).values_list(
+                "pulp_id", flat=True
+            )
+        )
         for tree in DistributionTree.objects.filter(pk__in=version.content):
-            qs |= tree.artifacts()
+            artifacts_pk |= set(tree.artifacts().values_list("pulp_id", flat=True))
 
-        return qs
+        return Artifact.objects.filter(pk__in=artifacts_pk)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
