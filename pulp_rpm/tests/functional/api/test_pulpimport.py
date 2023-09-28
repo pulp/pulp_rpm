@@ -177,7 +177,11 @@ def perform_import(
             if "toc" not in body:
                 body["toc"] = filenames[0]
         else:
-            filenames = [f for f in list(an_export.output_file_info.keys()) if f.endswith("tar.gz")]
+            filenames = [
+                f
+                for f in list(an_export.output_file_info.keys())
+                if f.endswith("tar") or f.endswith(".tar.gz")
+            ]
             if "path" not in body:
                 body["path"] = filenames[0]
 
@@ -262,7 +266,11 @@ def test_clean_import(
     # the import happen
     import_repos, exported_repos = import_export_repositories()
     export = create_export(import_repos, exported_repos)
-    filenames = [f for f in list(export.output_file_info.keys()) if f.endswith("tar.gz")]
+    filenames = [
+        f
+        for f in list(export.output_file_info.keys())
+        if f.endswith("tar") or f.endswith(".tar.gz")
+    ]
     importer = pulp_importer_factory(import_repos, exported_repos)
 
     an_export = ExportFileInfo(export.output_file_info)
@@ -339,7 +347,11 @@ def test_create_missing_repos(
     export_response = exporters_pulp_exports_api_client.create(exporter.pulp_href, {})
     export_href = monitor_task(export_response.task).created_resources[0]
     export = exporters_pulp_exports_api_client.read(export_href)
-    filenames = [f for f in list(export.output_file_info.keys()) if f.endswith("tar.gz")]
+    filenames = [
+        f
+        for f in list(export.output_file_info.keys())
+        if f.endswith("tar") or f.endswith(".tar.gz")
+    ]
     entity_map["export-filename"] = filenames[0]
 
     assert len(exporter.repositories) == len(export.exported_resources)
