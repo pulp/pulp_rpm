@@ -13,6 +13,20 @@ Changelog
 
 .. towncrier release notes start
 
+3.22.5 (2023-09-29)
+===================
+
+
+Bugfixes
+--------
+
+- Improved performance of exports significantly in some circumstances by optimizing a query.
+  `#3259 <https://github.com/pulp/pulp_rpm/issues/3259>`__
+
+
+----
+
+
 3.22.4 (2023-09-18)
 ===================
 
