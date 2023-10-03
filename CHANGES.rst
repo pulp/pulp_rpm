@@ -854,6 +854,22 @@ Misc
 ----
 
 
+3.17.19 (2023-10-02)
+====================
+
+
+Bugfixes
+--------
+
+- Fixed a deadlock during concurrent syncs of rpm-repos that need data fixups.
+  `#2980 <https://github.com/pulp/pulp_rpm/issues/2980>`__
+- Improved performance of exports significantly in some circumstances by optimizing a query.
+  `#3259 <https://github.com/pulp/pulp_rpm/issues/3259>`__
+
+
+----
+
+
 3.17.18 (2023-05-16)
 ====================
 
