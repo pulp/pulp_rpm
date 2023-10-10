@@ -1,0 +1,1 @@
+Fixed sporadic error due to to set domain on non-Content objects at sync time.
