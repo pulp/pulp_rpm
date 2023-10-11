@@ -74,6 +74,9 @@ class RpmContentResource(BaseContentResource):
 
         return content
 
+    def dehydrate__pulp_domain(self, content):
+        return str(content._pulp_domain_id)
+
 
 class ModulemdResource(RpmContentResource):
     """
@@ -402,9 +405,13 @@ class UpdateCollectionResource(QueryModelResource):
             UpdateCollections belonging to UpdateRecords for a specified repo-version.
 
         """
-        return UpdateCollection.objects.filter(
-            update_record__in=UpdateRecord.objects.filter(pk__in=self.repo_version.content)
-        ).order_by("pulp_id")
+        return (
+            UpdateCollection.objects.filter(
+                update_record__in=UpdateRecord.objects.filter(pk__in=self.repo_version.content)
+            )
+            .order_by("pulp_id")
+            .select_related("update_record")
+        )
 
     class Meta:
         model = UpdateCollection
@@ -431,9 +438,13 @@ class UpdateReferenceResource(QueryModelResource):
             UpdateReferences belonging to UpdateRecords for a specified repo-version.
 
         """
-        return UpdateReference.objects.filter(
-            update_record__in=UpdateRecord.objects.filter(pk__in=self.repo_version.content)
-        ).order_by("pulp_id")
+        return (
+            UpdateReference.objects.filter(
+                update_record__in=UpdateRecord.objects.filter(pk__in=self.repo_version.content)
+            )
+            .order_by("pulp_id")
+            .select_related("update_record")
+        )
 
     class Meta:
         model = UpdateReference
@@ -520,6 +531,7 @@ class UpdateCollectionPackageResource(QueryModelResource):
             )
             .distinct("name", "epoch", "version", "release", "arch")
             .order_by("name", "epoch", "version", "release", "arch")
+            .select_related("update_collection", "update_collection__update_record")
         )
 
     class Meta:
