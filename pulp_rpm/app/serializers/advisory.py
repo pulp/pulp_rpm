@@ -187,23 +187,21 @@ class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
 
         return update_record
 
-    def validate(self, data):
+    def deferred_validate(self, data):
         """
         Read a file for a JSON data and validate a UpdateRecord data.
 
         Also change few fields to match Pulp internals if exists as this is usually handle by
         createrepo_c which is not used here.
         """
+        data = super().deferred_validate(data)
+
         update_record_data = dict()
-        if "file" in data:
-            try:
-                update_record_data.update(json.loads(data["file"].read()))
-            except UnicodeDecodeError:
-                raise serializers.ValidationError("JSON file is expected")
-            else:
-                update_record_data.update(data)
-        else:
-            raise serializers.ValidationError("Only creation with file or artifact is allowed.")
+        try:
+            update_record_data.update(json.loads(data["file"].read()))
+        except UnicodeDecodeError:
+            raise serializers.ValidationError("JSON file is expected")
+        update_record_data.update(data)
 
         update_record_data[PULP_UPDATE_RECORD_ATTRS.FROMSTR] = update_record_data.pop(
             "from", update_record_data.get(PULP_UPDATE_RECORD_ATTRS.FROMSTR, "")
@@ -228,8 +226,7 @@ class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
                 )
             )
 
-        validated_data = super().validate(update_record_data)
-        return validated_data
+        return update_record_data
 
     def retrieve(self, validated_data):
         # This feature cannot be implemented until we can reliably calculate the digest of the
