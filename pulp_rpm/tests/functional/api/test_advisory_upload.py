@@ -14,16 +14,14 @@ from pulp_rpm.tests.functional.constants import (
     RPM_UNSIGNED_FIXTURE_URL,
 )
 
-from pulpcore.client.pulp_rpm.exceptions import ApiException
-
 
 @pytest.mark.parallel
-def test_upload_wrong_type(upload_wrong_file_type):
+def test_upload_wrong_type(upload_wrong_file_type, monitor_task):
     """Test that a proper error is raised when wrong file content type is uploaded."""
     bad_file_to_use = os.path.join(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
-    with pytest.raises(ApiException) as e:
-        upload_wrong_file_type(bad_file_to_use)
-    assert "JSON" in e.value.body
+    with pytest.raises(PulpTaskError) as e:
+        monitor_task(upload_wrong_file_type(bad_file_to_use).task)
+    assert "JSON" in e.value.task.error["description"]
 
 
 @pytest.mark.parallel
