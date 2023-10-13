@@ -1,1 +1,0 @@
-Don't write invalid characters to a repo id, even if the distro name contains them.

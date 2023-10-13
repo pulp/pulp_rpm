@@ -1,1 +1,0 @@
-ContentArtifact query performance impovement. Use values() instead of select_related().
