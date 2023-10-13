@@ -13,6 +13,60 @@ Changelog
 
 .. towncrier release notes start
 
+3.23.0 (2023-10-13)
+===================
+
+
+Features
+--------
+
+- Added NOCACHE_LIST config to enable specifying files to be served with a no-cache header.
+
+  By default, repomd.xml, repomd.key, and repomd.key.asc are served with
+  Cache-control: no-cache.
+  `#2947 <https://github.com/pulp/pulp_rpm/issues/2947>`__
+- Added to the distribution generate_repo_config field specifying whether Pulp should generate
+  ``*.repo`` files. Defaults to False.
+  `#2985 <https://github.com/pulp/pulp_rpm/issues/2985>`__
+- Added a ``filename`` filter to package list endpoint.
+  `#3215 <https://github.com/pulp/pulp_rpm/issues/3215>`__
+- Adjusted default access policies for new labels api.
+  `#3243 <https://github.com/pulp/pulp_rpm/issues/3243>`__
+
+
+Bugfixes
+--------
+
+- Fixed a deadlock during concurrent syncs of rpm-repos that need data fixups.
+  `#2980 <https://github.com/pulp/pulp_rpm/issues/2980>`__
+- Don't write invalid characters to a repo id, even if the distro name contains them.
+  `#3170 <https://github.com/pulp/pulp_rpm/issues/3170>`__
+- Made 0048 migration more robust in the face of unexpected data.
+  `#3177 <https://github.com/pulp/pulp_rpm/issues/3177>`__
+- Stopped package upload to parse the artifact twice.
+  `#3183 <https://github.com/pulp/pulp_rpm/issues/3183>`__
+- Remove the non functional ``retrieve`` logic from advisories upload, fixing a bug that appeared
+  with pulpcore >= 3.29.
+  `#3195 <https://github.com/pulp/pulp_rpm/issues/3195>`__
+- Made 0049 migration more robust in the face of unexpected data.
+  `#3196 <https://github.com/pulp/pulp_rpm/issues/3196>`__
+- Adjust modules uniqueness to allow two modules with same NSVCA but different snippet content.
+  `#3241 <https://github.com/pulp/pulp_rpm/issues/3241>`__
+- Improved performance of exports significantly in some circumstances by optimizing a query.
+  `#3259 <https://github.com/pulp/pulp_rpm/issues/3259>`__
+- Fixed sporadic error due to to set domain on non-Content objects at sync time.
+  `#3275 <https://github.com/pulp/pulp_rpm/issues/3275>`__
+
+
+Misc
+----
+
+- `#3217 <https://github.com/pulp/pulp_rpm/issues/3217>`__, `#3225 <https://github.com/pulp/pulp_rpm/issues/3225>`__, `#3226 <https://github.com/pulp/pulp_rpm/issues/3226>`__, `#3234 <https://github.com/pulp/pulp_rpm/issues/3234>`__, `#3254 <https://github.com/pulp/pulp_rpm/issues/3254>`__
+
+
+----
+
+
 3.22.5 (2023-09-29)
 ===================
 
