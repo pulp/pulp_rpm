@@ -13,6 +13,28 @@ Changelog
 
 .. towncrier release notes start
 
+3.22.6 (2023-10-16)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed sporadic error due to to set domain on non-Content objects at sync time.
+  `#3275 <https://github.com/pulp/pulp_rpm/issues/3275>`__
+- Improved performance by reducing the number of small queries during exports.
+  `#3286 <https://github.com/pulp/pulp_rpm/issues/3286>`__
+
+
+Misc
+----
+
+- `#3254 <https://github.com/pulp/pulp_rpm/issues/3254>`__
+
+
+----
+
+
 3.22.5 (2023-09-29)
 ===================
 
