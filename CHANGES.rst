@@ -67,6 +67,28 @@ Misc
 ----
 
 
+3.22.6 (2023-10-16)
+===================
+
+
+Bugfixes
+--------
+
+- Fixed sporadic error due to to set domain on non-Content objects at sync time.
+  `#3275 <https://github.com/pulp/pulp_rpm/issues/3275>`__
+- Improved performance by reducing the number of small queries during exports.
+  `#3286 <https://github.com/pulp/pulp_rpm/issues/3286>`__
+
+
+Misc
+----
+
+- `#3254 <https://github.com/pulp/pulp_rpm/issues/3254>`__
+
+
+----
+
+
 3.22.5 (2023-09-29)
 ===================
 
@@ -250,6 +272,26 @@ Misc
 ----
 
 - `#2242 <https://github.com/pulp/pulp_rpm/issues/2242>`__, `#2867 <https://github.com/pulp/pulp_rpm/issues/2867>`__, `#2868 <https://github.com/pulp/pulp_rpm/issues/2868>`__, `#2869 <https://github.com/pulp/pulp_rpm/issues/2869>`__, `#2870 <https://github.com/pulp/pulp_rpm/issues/2870>`__, `#2871 <https://github.com/pulp/pulp_rpm/issues/2871>`__, `#2873 <https://github.com/pulp/pulp_rpm/issues/2873>`__, `#2874 <https://github.com/pulp/pulp_rpm/issues/2874>`__, `#2875 <https://github.com/pulp/pulp_rpm/issues/2875>`__, `#2876 <https://github.com/pulp/pulp_rpm/issues/2876>`__, `#2877 <https://github.com/pulp/pulp_rpm/issues/2877>`__, `#2878 <https://github.com/pulp/pulp_rpm/issues/2878>`__, `#2879 <https://github.com/pulp/pulp_rpm/issues/2879>`__, `#2880 <https://github.com/pulp/pulp_rpm/issues/2880>`__, `#2881 <https://github.com/pulp/pulp_rpm/issues/2881>`__, `#2882 <https://github.com/pulp/pulp_rpm/issues/2882>`__, `#2883 <https://github.com/pulp/pulp_rpm/issues/2883>`__, `#2884 <https://github.com/pulp/pulp_rpm/issues/2884>`__, `#2885 <https://github.com/pulp/pulp_rpm/issues/2885>`__, `#2887 <https://github.com/pulp/pulp_rpm/issues/2887>`__, `#3076 <https://github.com/pulp/pulp_rpm/issues/3076>`__, `#3077 <https://github.com/pulp/pulp_rpm/issues/3077>`__, `#3078 <https://github.com/pulp/pulp_rpm/issues/3078>`__, `#3079 <https://github.com/pulp/pulp_rpm/issues/3079>`__, `#3095 <https://github.com/pulp/pulp_rpm/issues/3095>`__
+
+
+----
+
+
+3.19.11 (2023-10-16)
+====================
+
+
+Bugfixes
+--------
+
+- Improved performance by reducing the number of small queries during exports.
+  `#3286 <https://github.com/pulp/pulp_rpm/issues/3286>`__
+
+
+Misc
+----
+
+- `#3254 <https://github.com/pulp/pulp_rpm/issues/3254>`__
 
 
 ----
@@ -497,6 +539,26 @@ Misc
 ----
 
 - `#2718 <https://github.com/pulp/pulp_rpm/issues/2718>`__, `#2791 <https://github.com/pulp/pulp_rpm/issues/2791>`__, `#2805 <https://github.com/pulp/pulp_rpm/issues/2805>`__, `#2832 <https://github.com/pulp/pulp_rpm/issues/2832>`__, `#2886 <https://github.com/pulp/pulp_rpm/issues/2886>`__, `#2905 <https://github.com/pulp/pulp_rpm/issues/2905>`__
+
+
+----
+
+
+3.18.19 (2023-10-16)
+====================
+
+
+Bugfixes
+--------
+
+- Improved performance by reducing the number of small queries during exports.
+  `#3286 <https://github.com/pulp/pulp_rpm/issues/3286>`__
+
+
+Misc
+----
+
+- `#3254 <https://github.com/pulp/pulp_rpm/issues/3254>`__
 
 
 ----
