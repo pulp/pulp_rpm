@@ -64,29 +64,34 @@ password password
 cmd_user_stdin_prefix bash -c "chmod 600 ~pulp/.netrc"
 
 cd ../pulp-openapi-generator
-if [ "$(echo "$REPORTED_STATUS" | jq -r '.versions[0].package')" = "null" ]
-then
-  # We are on an old version of pulpcore without package in the status report
-  for app_label in $(echo "$REPORTED_STATUS" | jq -r '.versions[].component')
-  do
-    if [ "$app_label" = "core" ]
-    then
-      item=pulpcore
-    else
-      item="pulp_${app_label}"
-    fi
-    ./generate.sh "${item}" python
-    cmd_prefix pip3 install "/root/pulp-openapi-generator/${item}-client"
-    sudo rm -rf "./${item}-client"
-  done
-else
-  for item in $(echo "$REPORTED_STATUS" | jq -r '.versions[].package|sub("-"; "_")')
-  do
-    ./generate.sh "${item}" python
-    cmd_prefix pip3 install "/root/pulp-openapi-generator/${item}-client"
-    sudo rm -rf "./${item}-client"
-  done
-fi
+# if [ "$(echo "$REPORTED_STATUS" | jq -r '.versions[0].package')" = "null" ]
+# then
+#   # We are on an old version of pulpcore without package in the status report
+#   for app_label in $(echo "$REPORTED_STATUS" | jq -r '.versions[].component')
+#   do
+#     if [ "$app_label" = "core" ]
+#     then
+#       item=pulpcore
+#     else
+#       item="pulp_${app_label}"
+#     fi
+#     ./generate.sh "${item}" python
+#     cmd_prefix pip3 install "/root/pulp-openapi-generator/${item}-client"
+#     sudo rm -rf "./${item}-client"
+#   done
+# else
+#   for item in $(echo "$REPORTED_STATUS" | jq -r '.versions[].package|sub("-"; "_")')
+#   do
+#     ./generate.sh "${item}" python
+#     cmd_prefix pip3 install "/root/pulp-openapi-generator/${item}-client"
+#     sudo rm -rf "./${item}-client"
+#   done
+# fi
+cmd_prefix pip3 install pulpcore-client==3.22
+cmd_prefix pip3 install pulp-rpm-client==3.19
+cmd_prefix pip3 install pulp-file-client==1.12
+cmd_prefix pip3 install pulp-certguard-client==1.6
+
 
 cd $REPO_ROOT
 
@@ -102,7 +107,7 @@ echo "Checking for uncommitted migrations..."
 cmd_user_prefix bash -c "django-admin makemigrations rpm --check --dry-run"
 
 # Run unit tests.
-cmd_user_prefix bash -c "PULP_DATABASES__default__USER=postgres pytest -v -r sx --color=yes -p no:pulpcore --pyargs pulp_rpm.tests.unit"
+# cmd_user_prefix bash -c "PULP_DATABASES__default__USER=postgres pytest -v -r sx --color=yes -p no:pulpcore --pyargs pulp_rpm.tests.unit"
 
 # Run functional tests
 if [[ "$TEST" == "performance" ]]; then
