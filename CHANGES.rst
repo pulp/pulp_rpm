@@ -13,6 +13,33 @@ Changelog
 
 .. towncrier release notes start
 
+3.24.0 (2023-11-03)
+===================
+
+
+Features
+--------
+
+- Added pulpcore 3.40 compatibility.
+  `#40 <https://github.com/pulp/pulp_rpm/issues/40>`__
+- Added ability to customize config .repo file.
+  `#2295 <https://github.com/pulp/pulp_rpm/issues/2295>`__
+- Added new json field repo_config that can be used to configure .repo file
+  `#2902 <https://github.com/pulp/pulp_rpm/issues/2902>`__
+- Added new json field ``repo_config`` that can be used to configure .repo file.
+  `#2903 <https://github.com/pulp/pulp_rpm/issues/2903>`__
+
+
+Bugfixes
+--------
+
+- Improved performance by reducing the number of small queries during exports.
+  `#3286 <https://github.com/pulp/pulp_rpm/issues/3286>`__
+
+
+----
+
+
 3.23.0 (2023-10-13)
 ===================
 
