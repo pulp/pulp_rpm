@@ -303,8 +303,10 @@ def get_checksum_type(name, checksum_types, default=CHECKSUM_TYPES.SHA256):
         default: The checksum type used if there is no specified nor original checksum type.
     """
     original = checksum_types.get("original")
+    general = checksum_types.get("general")
     metadata = checksum_types.get("metadata")
-    checksum_type = metadata if metadata else original.get(name, default)
+    # fallback order
+    checksum_type = general or metadata or original.get(name) or default
     # "sha" -> "SHA" -> "CHECKSUM_TYPES.SHA" -> "sha1"
     normalized_checksum_type = getattr(CHECKSUM_TYPES, checksum_type.upper())
     return normalized_checksum_type
@@ -354,10 +356,10 @@ def publish(
     )
     with tempfile.TemporaryDirectory(dir="."):
         with RpmPublication.create(repository_version) as publication:
-            publication.metadata_checksum_type = get_checksum_type("primary", checksum_types)
-            publication.package_checksum_type = (
-                checksum_types.get("package") or publication.metadata_checksum_type
-            )
+            checksum_type = get_checksum_type("primary", checksum_types)
+            publication.checksum_type = checksum_type
+            publication.metadata_checksum_type = checksum_type
+            publication.package_checksum_type = checksum_types.get("package") or checksum_type
 
             publication.repo_config = repo_config
 
@@ -653,7 +655,7 @@ def generate_repo_metadata(
     for name, path in repomdrecords:
         record = cr.RepomdRecord(name, path)
         checksum_type = cr_checksum_type_from_string(
-            get_checksum_type(name, checksum_types, default=publication.metadata_checksum_type)
+            get_checksum_type(name, checksum_types, default=publication.checksum_type)
         )
         record.fill(checksum_type)
         record.rename_file()

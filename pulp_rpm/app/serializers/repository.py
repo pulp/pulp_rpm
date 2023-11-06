@@ -69,14 +69,20 @@ class RpmRepositorySerializer(RepositorySerializer):
         min_value=0,
         required=False,
     )
+    checksum_type = serializers.ChoiceField(
+        help_text=_("The preferred checksum type during repo publish."),
+        choices=CHECKSUM_CHOICES,
+        required=False,
+        allow_null=True,
+    )
     metadata_checksum_type = serializers.ChoiceField(
-        help_text=_("The checksum type for metadata."),
+        help_text=_("DEPRECATED: use CHECKSUM_TYPE instead."),
         choices=CHECKSUM_CHOICES,
         required=False,
         allow_null=True,
     )
     package_checksum_type = serializers.ChoiceField(
-        help_text=_("The checksum type for packages."),
+        help_text=_("DEPRECATED: use CHECKSUM_TYPE instead."),
         choices=CHECKSUM_CHOICES,
         required=False,
         allow_null=True,
@@ -117,13 +123,27 @@ class RpmRepositorySerializer(RepositorySerializer):
 
     def validate(self, data):
         """Validate data."""
-        for field in ("metadata_checksum_type", "package_checksum_type"):
+        for field in ("checksum_type", "metadata_checksum_type", "package_checksum_type"):
             if (
                 field in data
                 and data[field]
                 and data[field] not in settings.ALLOWED_CONTENT_CHECKSUMS
             ):
                 raise serializers.ValidationError({field: _(ALLOWED_CHECKSUM_ERROR_MSG)})
+
+        if data.get("package_checksum_type") or data.get("metadata_checksum_type"):
+            logging.getLogger("pulp_rpm.deprecation").info(
+                "Support for '*_checksum_type' options will be removed from a future release "
+                "of pulp_rpm."
+            )
+            if data.get("checksum_type"):
+                raise serializers.ValidationError(
+                    _(
+                        "Cannot use '*_checksum_type' options and 'checksum_type' options "
+                        "simultaneously. The 'package_checksum_type' and 'metadata_checksum_type' "
+                        "options are deprecated, please use 'checksum_type' only."
+                    )
+                )
 
         validated_data = super().validate(data)
         if (data.get("gpgcheck") or data.get("repo_gpgcheck")) and data.get("repo_config"):
@@ -172,6 +192,7 @@ class RpmRepositorySerializer(RepositorySerializer):
             "autopublish",
             "metadata_signing_service",
             "retain_package_versions",
+            "checksum_type",
             "metadata_checksum_type",
             "package_checksum_type",
             "gpgcheck",
@@ -258,12 +279,17 @@ class RpmPublicationSerializer(PublicationSerializer):
     """
 
     metadata_checksum_type = serializers.ChoiceField(
-        help_text=_("The checksum type for metadata."),
+        help_text=_("DEPRECATED: The checksum type for metadata."),
         choices=CHECKSUM_CHOICES,
         required=False,
     )
     package_checksum_type = serializers.ChoiceField(
-        help_text=_("The checksum type for packages."),
+        help_text=_("DEPRECATED: The checksum type for packages."),
+        choices=CHECKSUM_CHOICES,
+        required=False,
+    )
+    checksum_type = serializers.ChoiceField(
+        help_text=_("The preferred checksum type used during repo publishes."),
         choices=CHECKSUM_CHOICES,
         required=False,
     )
@@ -311,6 +337,21 @@ class RpmPublicationSerializer(PublicationSerializer):
             and data["package_checksum_type"] not in settings.ALLOWED_CONTENT_CHECKSUMS
         ):
             raise serializers.ValidationError(_(ALLOWED_CHECKSUM_ERROR_MSG))
+
+        if data.get("package_checksum_type") or data.get("metadata_checksum_type"):
+            logging.getLogger("pulp_rpm.deprecation").info(
+                "Support for '*_checksum_type' options will be removed from a future release "
+                "of pulp_rpm."
+            )
+            if data.get("checksum_type"):
+                raise serializers.ValidationError(
+                    _(
+                        "Cannot use '*_checksum_type' options and 'checksum_type' options "
+                        "simultaneously. The 'package_checksum_type' and 'metadata_checksum_type' "
+                        "options are deprecated, please use 'checksum_type' only."
+                    )
+                )
+
         validated_data = super().validate(data)
         if (data.get("gpgcheck") or data.get("repo_gpgcheck")) and data.get("repo_config"):
             raise serializers.ValidationError(
@@ -324,6 +365,7 @@ class RpmPublicationSerializer(PublicationSerializer):
 
     class Meta:
         fields = PublicationSerializer.Meta.fields + (
+            "checksum_type",
             "metadata_checksum_type",
             "package_checksum_type",
             "gpgcheck",

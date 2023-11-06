@@ -225,6 +225,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
     retain_package_versions = models.PositiveIntegerField(default=0)
 
     autopublish = models.BooleanField(default=False)
+    checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
     metadata_checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
     package_checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
     repo_config = models.JSONField(default=dict)
@@ -248,6 +249,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
                 checksum_types={
                     "metadata": self.metadata_checksum_type,
                     "package": self.package_checksum_type,
+                    "general": self.checksum_type,
                 },
                 repo_config=self.repo_config,
             )
@@ -413,6 +415,7 @@ class RpmPublication(Publication, AutoAddObjPermsMixin):
     """
 
     TYPE = "rpm"
+    checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
     metadata_checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
     package_checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
     repo_config = models.JSONField(default=dict)
