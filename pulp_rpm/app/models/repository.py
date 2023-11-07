@@ -247,9 +247,9 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
                 repository_version_pk=version.pk,
                 metadata_signing_service=self.metadata_signing_service,
                 checksum_types={
+                    "general": self.checksum_type,
                     "metadata": self.metadata_checksum_type,
                     "package": self.package_checksum_type,
-                    "general": self.checksum_type,
                 },
                 repo_config=self.repo_config,
             )

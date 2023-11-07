@@ -25,6 +25,8 @@ from pulpcore.plugin.serializers import (
 
 from pulp_rpm.app.constants import (
     ALLOWED_CHECKSUM_ERROR_MSG,
+    ALLOWED_PUBLISH_CHECKSUMS,
+    ALLOWED_PUBLISH_CHECKSUM_ERROR_MSG,
     CHECKSUM_CHOICES,
     SKIP_TYPES,
     SYNC_POLICY_CHOICES,
@@ -124,12 +126,14 @@ class RpmRepositorySerializer(RepositorySerializer):
     def validate(self, data):
         """Validate data."""
         for field in ("checksum_type", "metadata_checksum_type", "package_checksum_type"):
-            if (
-                field in data
-                and data[field]
-                and data[field] not in settings.ALLOWED_CONTENT_CHECKSUMS
-            ):
-                raise serializers.ValidationError({field: _(ALLOWED_CHECKSUM_ERROR_MSG)})
+            if field in data and data[field]:
+                if data[field] not in settings.ALLOWED_CONTENT_CHECKSUMS:
+                    raise serializers.ValidationError({field: _(ALLOWED_CHECKSUM_ERROR_MSG)})
+
+                if data[field] not in ALLOWED_PUBLISH_CHECKSUMS:
+                    raise serializers.ValidationError(
+                        {field: _(ALLOWED_PUBLISH_CHECKSUM_ERROR_MSG)}
+                    )
 
         if data.get("package_checksum_type") or data.get("metadata_checksum_type"):
             logging.getLogger("pulp_rpm.deprecation").info(
@@ -329,14 +333,15 @@ class RpmPublicationSerializer(PublicationSerializer):
 
     def validate(self, data):
         """Validate data."""
-        if (
-            data.get("metadata_checksum_type")
-            and data["metadata_checksum_type"] not in settings.ALLOWED_CONTENT_CHECKSUMS
-        ) or (
-            data.get("package_checksum_type")
-            and data["package_checksum_type"] not in settings.ALLOWED_CONTENT_CHECKSUMS
-        ):
-            raise serializers.ValidationError(_(ALLOWED_CHECKSUM_ERROR_MSG))
+        for field in ("checksum_type", "metadata_checksum_type", "package_checksum_type"):
+            if field in data and data[field]:
+                if data[field] not in settings.ALLOWED_CONTENT_CHECKSUMS:
+                    raise serializers.ValidationError({field: _(ALLOWED_CHECKSUM_ERROR_MSG)})
+
+                if data[field] not in ALLOWED_PUBLISH_CHECKSUMS:
+                    raise serializers.ValidationError(
+                        {field: _(ALLOWED_PUBLISH_CHECKSUM_ERROR_MSG)}
+                    )
 
         if data.get("package_checksum_type") or data.get("metadata_checksum_type"):
             logging.getLogger("pulp_rpm.deprecation").info(

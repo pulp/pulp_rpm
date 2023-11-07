@@ -8,16 +8,6 @@ from pulp_rpm.tests.functional.constants import (
 from pulpcore.client.pulp_rpm import RpmRpmPublication
 
 
-"""Sync a repository with different download policies.
-
-This test targets the following issue:
-
-`Pulp #4126 <https://pulp.plan.io/issues/4126>`_
-`Pulp #4213 <https://pulp.plan.io/issues/4213>`_
-`Pulp #4418 <https://pulp.plan.io/issues/4418>`_
-"""
-
-
 @pytest.mark.parametrize("download_policy", DOWNLOAD_POLICIES)
 def test_download_policies(
     download_policy,
