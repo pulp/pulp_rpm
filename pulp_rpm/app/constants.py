@@ -26,6 +26,12 @@ CHECKSUM_CHOICES = (
 ALLOWED_CHECKSUM_ERROR_MSG = """Checksum must be one of the allowed checksum types.
 You can adjust these with the 'ALLOWED_CONTENT_CHECKSUMS' setting."""
 
+ALLOWED_PUBLISH_CHECKSUMS = {CHECKSUM_TYPES.SHA256, CHECKSUM_TYPES.SHA384, CHECKSUM_TYPES.SHA512}
+
+ALLOWED_PUBLISH_CHECKSUM_ERROR_MSG = (
+    """Checksum must be one of the allowed checksum types: sha256, sha384, or sha512."""
+)
+
 SYNC_POLICIES = SimpleNamespace(
     ADDITIVE="additive",
     MIRROR_COMPLETE="mirror_complete",

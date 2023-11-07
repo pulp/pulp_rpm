@@ -34,34 +34,6 @@ from pulpcore.client.pulp_rpm import RpmRepositorySyncURL, RpmRpmPublication
 from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 
-class TestPublishWithUnsignedRepoSyncedOnDemand:
-    @pytest.mark.parallel
-    def test_publish_with_unsupported_checksum_type(
-        self, rpm_unsigned_repo_on_demand, rpm_publication_api
-    ):
-        """
-        Sync and try to publish an RPM repository.
-
-        - Sync repository with on_demand policy
-        - Try to publish with 'md5' checksum type
-        - Publish should fail because 'md5' is not allowed
-
-        This test require disallowed 'MD5' checksum type from ALLOWED_CONTENT_CHECKSUMS settings.
-        """
-        if "md5" in settings.ALLOWED_CONTENT_CHECKSUMS:
-            pytest.skip(
-                reason="Cannot verify the expected hasher error if the 'MD5' checksum is allowed."
-            )
-
-        publish_data = RpmRpmPublication(
-            repository=rpm_unsigned_repo_on_demand.pulp_href, package_checksum_type="md5"
-        )
-        with pytest.raises(ApiException) as ctx:
-            rpm_publication_api.create(publish_data)
-
-        assert "Checksum must be one of the allowed checksum types." in ctx.value.body
-
-
 class TestPublishWithUnsignedRepoSyncedImmediate:
     @pytest.mark.parallel
     def test_publish_any_repo_version(
@@ -542,6 +514,50 @@ def get_checksum_types(
 
 
 @pytest.mark.parallel
+def test_publish_with_disallowed_checksum_type(rpm_unsigned_repo_on_demand, rpm_publication_api):
+    """
+    Sync and try to publish an RPM repository.
+
+    - Sync repository with on_demand policy
+    - Try to publish with 'sha384' checksum type
+    - Publish should fail because 'sha384' is not allowed
+
+    This test require disallowed 'sha384' checksum type from ALLOWED_CONTENT_CHECKSUMS settings.
+    """
+    if "sha384" in settings.ALLOWED_CONTENT_CHECKSUMS:
+        pytest.skip(
+            reason="Cannot check for the expected error if the 'sha384' checksum is allowed."
+        )
+
+    publish_data = RpmRpmPublication(
+        repository=rpm_unsigned_repo_on_demand.pulp_href, package_checksum_type="sha384"
+    )
+    with pytest.raises(ApiException) as ctx:
+        rpm_publication_api.create(publish_data)
+
+    assert "Checksum must be one of the allowed checksum types" in ctx.value.body
+
+
+@pytest.mark.parallel
+def test_publish_with_unsupported_checksum_type(rpm_unsigned_repo_on_demand, rpm_publication_api):
+    """
+    Sync and try to publish an RPM repository.
+
+    - Sync repository with on_demand policy
+    - Try to publish with 'sha1' checksum type
+    - Publish should fail because 'sha1' is not allowed
+      (even though it is in ALLOWED_CONTENT_CHECKSUMS)
+    """
+    publish_data = RpmRpmPublication(
+        repository=rpm_unsigned_repo_on_demand.pulp_href, package_checksum_type="sha1"
+    )
+    with pytest.raises(ApiException) as ctx:
+        rpm_publication_api.create(publish_data)
+
+    assert "Checksum must be one of the allowed checksum types" in ctx.value.body
+
+
+@pytest.mark.parallel
 def test_on_demand_unspecified_checksum_types(get_checksum_types):
     """Sync and publish an RPM repository and verify the checksum types."""
     repomd_checksum_types, primary_checksum_types = get_checksum_types(
@@ -580,14 +596,14 @@ def test_immediate_unspecified_checksum_types(get_checksum_types):
 def test_on_demand_specified_package_checksum_type(get_checksum_types, delete_orphans_pre):
     """Sync and publish an RPM repository and verify the checksum types."""
     repomd_checksum_types, primary_checksum_types = get_checksum_types(
-        package_checksum_type="sha384", policy="on_demand"
+        package_checksum_type="sha512", policy="on_demand"
     )
 
     for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
         assert repomd_checksum_type == "sha256"
 
     for package, package_checksum_type in primary_checksum_types.items():
-        # since none of the packages in question have sha384 checksums, the
+        # since none of the packages in question have sha512 checksums, the
         # checksums they do have will be used instead. In this case, sha256.
         assert package_checksum_type == "sha256"
 
@@ -596,11 +612,11 @@ def test_on_demand_specified_package_checksum_type(get_checksum_types, delete_or
 def test_on_demand_specified_metadata_checksum_type(get_checksum_types):
     """Sync and publish an RPM repository and verify the checksum types."""
     repomd_checksum_types, primary_checksum_types = get_checksum_types(
-        metadata_checksum_type="sha384", policy="on_demand"
+        metadata_checksum_type="sha512", policy="on_demand"
     )
 
     for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
-        assert repomd_checksum_type == "sha384"
+        assert repomd_checksum_type == "sha512"
 
     for package, package_checksum_type in primary_checksum_types.items():
         assert package_checksum_type == "sha256"
@@ -611,14 +627,14 @@ def test_on_demand_specified_metadata_and_package_checksum_type(
 ):
     """Sync and publish an RPM repository and verify the checksum types."""
     repomd_checksum_types, primary_checksum_types = get_checksum_types(
-        package_checksum_type="sha224", metadata_checksum_type="sha224", policy="on_demand"
+        package_checksum_type="sha512", metadata_checksum_type="sha512", policy="on_demand"
     )
 
     for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
-        assert repomd_checksum_type == "sha224"
+        assert repomd_checksum_type == "sha512"
 
     for package, package_checksum_type in primary_checksum_types.items():
-        # since none of the packages in question have sha224 checksums, the
+        # since none of the packages in question have sha512 checksums, the
         # checksums they do have will be used instead. In this case, sha256.
         assert package_checksum_type == "sha256"
 
@@ -627,25 +643,25 @@ def test_on_demand_specified_metadata_and_package_checksum_type(
 def test_immediate_specified_package_checksum_type(get_checksum_types):
     """Sync and publish an RPM repository and verify the checksum types."""
     repomd_checksum_types, primary_checksum_types = get_checksum_types(
-        package_checksum_type="sha384", policy="immediate"
+        package_checksum_type="sha512", policy="immediate"
     )
 
     for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
         assert repomd_checksum_type == "sha256"
 
     for package, package_checksum_type in primary_checksum_types.items():
-        assert package_checksum_type == "sha384"
+        assert package_checksum_type == "sha512"
 
 
 @pytest.mark.parallel
 def test_immediate_specified_metadata_checksum_type(get_checksum_types):
     """Sync and publish an RPM repository and verify the checksum types."""
     repomd_checksum_types, primary_checksum_types = get_checksum_types(
-        metadata_checksum_type="sha384", policy="immediate"
+        metadata_checksum_type="sha512", policy="immediate"
     )
 
     for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
-        assert repomd_checksum_type == "sha384"
+        assert repomd_checksum_type == "sha512"
 
     for package, package_checksum_type in primary_checksum_types.items():
         assert package_checksum_type == "sha256"
@@ -655,14 +671,14 @@ def test_immediate_specified_metadata_checksum_type(get_checksum_types):
 def test_immediate_specified_metadata_and_package_checksum_type(get_checksum_types):
     """Sync and publish an RPM repository and verify the checksum types."""
     repomd_checksum_types, primary_checksum_types = get_checksum_types(
-        package_checksum_type="sha224", metadata_checksum_type="sha224", policy="immediate"
+        package_checksum_type="sha512", metadata_checksum_type="sha512", policy="immediate"
     )
 
     for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
-        assert repomd_checksum_type == "sha224"
+        assert repomd_checksum_type == "sha512"
 
     for package, package_checksum_type in primary_checksum_types.items():
-        assert package_checksum_type == "sha224"
+        assert package_checksum_type == "sha512"
 
 
 @pytest.mark.parallel

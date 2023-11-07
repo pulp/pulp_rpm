@@ -32,8 +32,7 @@ def test_pulp_pulp_sync(
     # Create a publication.
     publish_data = RpmRpmPublication(
         repository=repo.pulp_href,
-        metadata_checksum_type="sha384",
-        package_checksum_type="sha224",
+        checksum_type="sha512",
     )
     publication = gen_object_with_cleanup(rpm_publication_api, publish_data)
 
