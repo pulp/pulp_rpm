@@ -124,6 +124,9 @@ standard repositories, i.e. :data:`RPM_SIGNED_FIXTURE_URL` and
 "content_summary" field on "../repositories/../versions/../".
 """
 
+RPM_UNSIGNED_FIXTURE_SIZE = 79260
+"""Size in bytes of all the packages in the :data:`RPM_UNSIGNED_FIXTURE_URL`."""
+
 FEDORA_MIRRORLIST_BASE = "https://mirrors.fedoraproject.org/mirrorlist"
 FEDORA_MIRRORLIST_PARAMS = "?repo=epel-modular-8&arch=x86_64&infra=stock&content=centos"
 RPM_EPEL_MIRROR_URL = FEDORA_MIRRORLIST_BASE + FEDORA_MIRRORLIST_PARAMS
@@ -461,6 +464,8 @@ RPM_KICKSTART_FIXTURE_SUMMARY = {
     RPM_PACKAGEGROUP_CONTENT_NAME: 1,
     RPM_PACKAGELANGPACKS_CONTENT_NAME: 1,
 }
+
+RPM_KICKSTART_FIXTURE_SIZE = 9917733
 
 RPM_KICKSTART_REPOSITORY_ROOT_CONTENT = [
     ".treeinfo",

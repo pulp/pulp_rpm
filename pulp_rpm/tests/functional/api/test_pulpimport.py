@@ -305,6 +305,7 @@ def test_create_missing_repos(
     gen_object_with_cleanup,
     importers_pulp_imports_api_client,
     monitor_task_group,
+    add_to_cleanup,
 ):
     """
     Tests for PulpImporter and create-missing-repos.
@@ -392,6 +393,8 @@ def test_create_missing_repos(
     # Find the repos we just created
     rpm_repo = rpm_repository_api.list(name=saved_entities["rpm-repo"].name).results[0]
     ks_repo = rpm_repository_api.list(name=saved_entities["ks-repo"].name).results[0]
+    add_to_cleanup(rpm_repository_api, rpm_repo.pulp_href)
+    add_to_cleanup(rpm_repository_api, ks_repo.pulp_href)
 
     # 7. Inspect the results
     # Step 7a
