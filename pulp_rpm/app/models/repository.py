@@ -15,8 +15,11 @@ from pulpcore.plugin.models import (
     Artifact,
     AsciiArmoredDetachedSigningService,
     Content,
+    ContentArtifact,
     Remote,
+    RemoteArtifact,
     Repository,
+    RepositoryContent,
     RepositoryVersion,
     Publication,
     Distribution,
@@ -257,6 +260,62 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
                 repo_config=self.repo_config,
                 compression_type=self.compression_type,
             )
+
+    def all_content_pks(self):
+        """Returns a list of pks for all content stored across all versions."""
+        all_content = (
+            RepositoryContent.objects.filter(repository=self)
+            .distinct("content")
+            .values_list("content")
+        )
+        repos = {self.pk}
+        for dt in DistributionTree.objects.only().filter(pk__in=all_content):
+            repos.update(dt.repositories().values_list("pk", flat=True))
+        return (
+            RepositoryContent.objects.filter(repository__in=repos)
+            .distinct("content")
+            .values_list("content")
+        )
+
+    @property
+    def disk_size(self):
+        """Returns the approximate size on disk for all artifacts stored across all versions."""
+        return (
+            Artifact.objects.filter(content__in=self.all_content_pks())
+            .distinct()
+            .aggregate(size=models.Sum("size", default=0))["size"]
+        )
+
+    @property
+    def on_demand_size(self):
+        """Returns the approximate size of all on-demand artifacts stored across all versions."""
+        on_demand_ca = ContentArtifact.objects.filter(
+            content__in=self.all_content_pks(), artifact=None
+        )
+        # Aggregate does not work with distinct("fields") so sum must be done manually
+        ras = RemoteArtifact.objects.filter(
+            content_artifact__in=on_demand_ca, size__isnull=False
+        ).distinct("content_artifact")
+        return sum(ras.values_list("size", flat=True))
+
+    @staticmethod
+    def on_demand_artifacts_for_version(version):
+        """
+        Returns the remote artifacts of on-demand content for a repository version.
+
+        Override the default behavior to include DistributionTree artifacts from nested repos.
+        Note: this only returns remote artifacts that have a non-null size.
+
+        Args:
+            version (pulpcore.app.models.RepositoryVersion): to get the remote artifacts for.
+        Returns:
+            django.db.models.QuerySet: The remote artifacts that are contained within this version.
+        """
+        content_pks = set(version.content.values_list("pk", flat=True))
+        for tree in DistributionTree.objects.filter(pk__in=content_pks):
+            content_pks.update(tree.content().values_list("pk", flat=True))
+        on_demand_ca = ContentArtifact.objects.filter(content__in=content_pks, artifact=None)
+        return RemoteArtifact.objects.filter(content_artifact__in=on_demand_ca, size__isnull=False)
 
     @staticmethod
     def artifacts_for_version(version):
