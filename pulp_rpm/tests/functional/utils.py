@@ -198,7 +198,7 @@ def init_signed_repo_configuration():
     subprocess.run(("gpg", "--import"), input=priv_key)
 
     # set the imported key to the maximum trust level
-    key_fingerprint = "6EDF301256480B9B801EBA3D05A5E6DA269D9D98"
+    key_fingerprint = "0C1A894EBB86AFAE218424CADDEF3019C2D4A8CF"
     completed_process = subprocess.run(("echo", f"{key_fingerprint}:6:"), stdout=subprocess.PIPE)
     subprocess.run(("gpg", "--import-ownertrust"), input=completed_process.stdout)
 
@@ -212,7 +212,7 @@ def init_signed_repo_configuration():
             "add-signing-service",
             "sign-metadata",
             f"{signing_script_path}",
-            "Pulp QE",
+            "pulp-fixture-signing-key",
         )
     )
 
