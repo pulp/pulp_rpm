@@ -3,7 +3,7 @@
 FILE_PATH=$1
 SIGNATURE_PATH="$1.asc"
 
-GPG_KEY_ID="Pulp QE"
+GPG_KEY_ID="pulp-fixture-signing-key"
 
 # Create a detached signature
 gpg --quiet --batch --homedir ~/.gnupg/ --detach-sign --local-user "${GPG_KEY_ID}" \
