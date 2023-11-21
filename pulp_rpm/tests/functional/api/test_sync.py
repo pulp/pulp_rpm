@@ -69,6 +69,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_MODULEMD_DEFAULTS_DATA,
     RPM_MODULEMD_OBSOLETES_DATA,
     RPM_MODULEMDS_DATA,
+    RPM_ZSTD_METADATA_FIXTURE_URL,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_remote
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
@@ -79,35 +80,30 @@ from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 @pytest.mark.parallel
 def test_sync(init_and_sync):
-    """Sync repositories with the rpm plugin.
-
-    In order to sync a repository a remote has to be associated within
-    this repository. When a repository is created this version field is set
-    as version '0'. After a sync the repository version is updated.
-
-    Do the following:
-
-    1. Create a repository, and a remote.
-    2. Assert that repository version is None.
-    3. Sync the remote.
-    4. Assert that repository version is not None.
-    5. Assert that the correct number of units were added and are present
-       in the repo.
-    6. Sync the remote one more time.
-    7. Assert that repository version is different from the previous one.
-    8. Assert that the same number of are present and that no units were
-       added.
-    """
+    """Sync repositories with the rpm plugin."""
+    # Create a remote (default) and empty repository
     repository, remote = init_and_sync()
 
+    # Assert that it's synced properly
     latest_version_href = repository.latest_version_href
     assert get_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
     assert get_added_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
 
+    # Sync the same repository again
     repository, _ = init_and_sync(repository=repository, remote=remote)
 
+    # Assert that the repository has not changed, the latest version stays the same
     assert latest_version_href == repository.latest_version_href
     assert get_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
+
+
+@pytest.mark.parallel
+def test_sync_zstd(init_and_sync):
+    """Test syncing non-gzip metadata."""
+    repository, _ = init_and_sync(url=RPM_ZSTD_METADATA_FIXTURE_URL)
+
+    assert get_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
+    assert get_added_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
 
 
 @pytest.mark.parallel
