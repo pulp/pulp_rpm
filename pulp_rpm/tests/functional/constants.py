@@ -19,9 +19,6 @@ PULP_FIXTURES_BASE_URL = config.get_config().get_fixtures_url()
 
 DOWNLOAD_POLICIES = ["immediate", "on_demand", "streamed"]
 
-DRPM_UNSIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "drpm-unsigned/")
-"""The URL to a repository with unsigned DRPM packages."""
-
 RPM_PACKAGE_CONTENT_NAME = "rpm.package"
 
 RPM_PACKAGECATEGORY_CONTENT_NAME = "rpm.packagecategory"
