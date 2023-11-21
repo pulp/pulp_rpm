@@ -87,7 +87,8 @@ RPM_COMPLEX_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-complex-pkg/")
 RPM_SINGLE_REQUEST_UPLOAD = urljoin(BASE_PATH, "content/rpm/packages/")
 
 RPM_UNSIGNED_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-unsigned/")
-"""The URL to a repository with unsigned RPM packages."""
+
+RPM_ZSTD_METADATA_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-zstd-metadata/")
 
 RPM_INVALID_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-missing-filelists/")
 
