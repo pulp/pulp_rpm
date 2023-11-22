@@ -107,6 +107,7 @@ class RpmRepositorySerializer(RepositorySerializer):
         help_text=_(
             "DEPRECATED: An option specifying whether Pulp should generate SQLite metadata."
         ),
+        read_only=True,
     )
     repo_config = serializers.JSONField(
         required=False,
@@ -291,6 +292,7 @@ class RpmPublicationSerializer(PublicationSerializer):
         help_text=_(
             "DEPRECATED: An option specifying whether Pulp should generate SQLite metadata."
         ),
+        read_only=True,
     )
     repo_config = serializers.JSONField(
         required=False,

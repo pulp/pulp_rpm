@@ -36,55 +36,6 @@ from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 class TestPublishWithUnsignedRepoSyncedOnDemand:
     @pytest.mark.parallel
-    @pytest.mark.parametrize("with_sqlite", [True, False], ids=["with_sqlite", "without_sqlite"])
-    def test_sqlite_metadata(
-        self,
-        with_sqlite,
-        rpm_unsigned_repo_on_demand,
-        rpm_publication_api,
-        gen_object_with_cleanup,
-        rpm_distribution_api,
-        monitor_task,
-    ):
-        """Publish repository and validate the updateinfo.
-
-        This Test does the following:
-
-        1. Create a rpm repo and a remote.
-        2. Sync the repo with the remote.
-        3. Publish with and without sqlite metadata and distribute the repo.
-        4. Verify that the sqlite metadata files are/not present when expected.
-        """
-        publish_data = RpmRpmPublication(
-            repository=rpm_unsigned_repo_on_demand.pulp_href, sqlite_metadata=with_sqlite
-        )
-        publish_response = rpm_publication_api.create(publish_data)
-        created_resources = monitor_task(publish_response.task).created_resources
-        publication_href = created_resources[0]
-
-        body = gen_distribution(publication=publication_href)
-        distribution = gen_object_with_cleanup(rpm_distribution_api, body)
-
-        repomd = ElementTree.fromstring(
-            requests.get(os.path.join(distribution.base_url, "repodata/repomd.xml")).text
-        )
-
-        data_xpath = "{{{}}}data".format(RPM_NAMESPACES["metadata/repo"])
-        data_elems = [elem for elem in repomd.findall(data_xpath)]
-
-        sqlite_files = [elem for elem in data_elems if elem.get("type").endswith("_db")]
-
-        if with_sqlite:
-            assert 3 == len(sqlite_files)
-
-            for db_elem in sqlite_files:
-                location_xpath = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
-                db_href = db_elem.find(location_xpath).get("href")
-                assert requests.get(os.path.join(distribution.base_url, db_href)).status_code == 200
-        else:
-            assert 0 == len(sqlite_files)
-
-    @pytest.mark.parallel
     def test_publish_with_unsupported_checksum_type(
         self, rpm_unsigned_repo_on_demand, rpm_publication_api
     ):

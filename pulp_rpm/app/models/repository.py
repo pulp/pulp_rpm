@@ -198,7 +198,6 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
             The name of a checksum type to use for metadata when generating metadata.
         package_checksum_type (String):
             The name of a default checksum type to use for packages when generating metadata.
-        sqlite_metadata (Boolean): Whether to generate sqlite metadata files on publish.
         repo_config (JSON): repo configuration that will be served by distribution
     """
 
@@ -228,7 +227,6 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
     autopublish = models.BooleanField(default=False)
     metadata_checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
     package_checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
-    sqlite_metadata = models.BooleanField(default=False)
     repo_config = models.JSONField(default=dict)
 
     def on_new_version(self, version):
@@ -243,12 +241,6 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
         # avoid circular import issues
         from pulp_rpm.app import tasks
 
-        if self.sqlite_metadata:
-            getLogger("pulp_rpm.deprecation").info(
-                "Support for sqlite metadata generation will be removed from a future release "
-                "of pulp_rpm. See https://tinyurl.com/sqlite-removal for more details"
-            )
-
         if self.autopublish:
             tasks.publish(
                 repository_version_pk=version.pk,
@@ -257,7 +249,6 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
                     "metadata": self.metadata_checksum_type,
                     "package": self.package_checksum_type,
                 },
-                sqlite_metadata=self.sqlite_metadata,
                 repo_config=self.repo_config,
             )
 
@@ -424,7 +415,6 @@ class RpmPublication(Publication, AutoAddObjPermsMixin):
     TYPE = "rpm"
     metadata_checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
     package_checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
-    sqlite_metadata = models.BooleanField(default=False)
     repo_config = models.JSONField(default=dict)
 
     class Meta:

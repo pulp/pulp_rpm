@@ -318,11 +318,6 @@ Publication GET response (when task complete):
 The GPG signature check options, like ``gpgcheck`` and ``repo_gpgcheck`` are configurable via the ``repo_config`` option.
 This option has a json format and can contain any of the configuration for the ``.repo`` file.
 
-A separate option is provided to let the user decide whether or not to generate sqlite metadata
-(defaults to 'false'). Sqlite metadata not commonly used.
-
-- sqlite_metadata: generate sqlite metadata in addition to standard XML metadata
-
 We encourage users to take a look at the `pulp_rpm API documentation <../restapi.html#operation/publications_rpm_rpm_create>`_
 to see the default values for these options.
 

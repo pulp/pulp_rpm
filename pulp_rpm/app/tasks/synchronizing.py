@@ -154,12 +154,10 @@ def add_metadata_to_publication(publication, version, prefix=""):
     repo_metadata_files = metadata_files_for_mirroring[str(version.repository.pk)]
 
     has_repomd_signature = "repodata/repomd.xml.asc" in repo_metadata_files.keys()
-    has_sqlite = any([".sqlite" in href for href in repo_metadata_files.keys()])
 
     publication.package_checksum_type = CHECKSUM_TYPES.UNKNOWN
     publication.metadata_checksum_type = CHECKSUM_TYPES.UNKNOWN
     publication.repo_config = {"repo_gpgcheck": has_repomd_signature, "gpgcheck": 0}
-    publication.sqlite_metadata = has_sqlite
 
     for relative_path, metadata_file_path in repo_metadata_files.items():
         with open(metadata_file_path, "rb") as metadata_fd:
