@@ -322,7 +322,6 @@ def publish(
     repository_version_pk,
     metadata_signing_service=None,
     checksum_types=None,
-    sqlite_metadata=False,
     repo_config=None,
 ):
     """
@@ -333,7 +332,6 @@ def publish(
         metadata_signing_service (pulpcore.app.models.AsciiArmoredDetachedSigningService):
             A reference to an associated signing service.
         checksum_types (dict): Checksum types for metadata and packages.
-        sqlite_metadata (bool): Whether to generate metadata files in sqlite format.
         repo_config (JSON): repo config that will be served by distribution
 
     """
@@ -360,9 +358,6 @@ def publish(
             publication.package_checksum_type = (
                 checksum_types.get("package") or publication.metadata_checksum_type
             )
-
-            if sqlite_metadata:
-                publication.sqlite_metadata = True
 
             publication.repo_config = repo_config
 
@@ -457,14 +452,6 @@ def generate_repo_metadata(
     fil_xml = cr.FilelistsXmlFile(fil_xml_path, compressiontype=cr.GZ)
     oth_xml = cr.OtherXmlFile(oth_xml_path, compressiontype=cr.GZ)
     upd_xml = None
-
-    if publication.sqlite_metadata:
-        pri_db_path = os.path.join(cwd, "primary.sqlite")
-        fil_db_path = os.path.join(cwd, "filelists.sqlite")
-        oth_db_path = os.path.join(cwd, "other.sqlite")
-        pri_db = cr.PrimarySqlite(pri_db_path)
-        fil_db = cr.FilelistsSqlite(fil_db_path)
-        oth_db = cr.OtherSqlite(oth_db_path)
 
     # We want to support publishing with a different checksum type than the one built-in to the
     # package itself, so we need to get the correct checksums somehow if there is an override.
@@ -573,10 +560,6 @@ def generate_repo_metadata(
         pri_xml.add_pkg(pkg)
         fil_xml.add_pkg(pkg)
         oth_xml.add_pkg(pkg)
-        if publication.sqlite_metadata:
-            pri_db.add_pkg(pkg)
-            fil_db.add_pkg(pkg)
-            oth_db.add_pkg(pkg)
 
     # Process update records
     update_records = UpdateRecord.objects.filter(pk__in=content).order_by("id", "digest")
@@ -650,21 +633,11 @@ def generate_repo_metadata(
     if not content.exists():
         repomd.revision = "0"
 
-    if publication.sqlite_metadata:
-        repomdrecords = [
-            ("primary", pri_xml_path, pri_db),
-            ("filelists", fil_xml_path, fil_db),
-            ("other", oth_xml_path, oth_db),
-            ("primary_db", pri_db_path, None),
-            ("filelists_db", fil_db_path, None),
-            ("other_db", oth_db_path, None),
-        ]
-    else:
-        repomdrecords = [
-            ("primary", pri_xml_path, None),
-            ("filelists", fil_xml_path, None),
-            ("other", oth_xml_path, None),
-        ]
+    repomdrecords = [
+        ("primary", pri_xml_path, None),
+        ("filelists", fil_xml_path, None),
+        ("other", oth_xml_path, None),
+    ]
 
     if upd_xml:
         repomdrecords.append(("updateinfo", upd_xml_path, None))
@@ -677,27 +650,18 @@ def generate_repo_metadata(
 
     repomdrecords.extend(extra_repomdrecords)
 
-    sqlite_files = ("primary_db", "filelists_db", "other_db")
-
     for name, path, db_to_update in repomdrecords:
         record = cr.RepomdRecord(name, path)
         checksum_type = cr_checksum_type_from_string(
             get_checksum_type(name, checksum_types, default=publication.metadata_checksum_type)
         )
-        if name in sqlite_files:
-            record_bz = record.compress_and_fill(checksum_type, cr.BZ2)
-            record_bz.type = name
-            record_bz.rename_file()
-            path = record_bz.location_href.split("/")[-1]
-            repomd.set_record(record_bz)
-        else:
-            record.fill(checksum_type)
-            if db_to_update:
-                db_to_update.dbinfo_update(record.checksum)
-                db_to_update.close()
-            record.rename_file()
-            path = record.location_href.split("/")[-1]
-            repomd.set_record(record)
+        record.fill(checksum_type)
+        if db_to_update:
+            db_to_update.dbinfo_update(record.checksum)
+            db_to_update.close()
+        record.rename_file()
+        path = record.location_href.split("/")[-1]
+        repomd.set_record(record)
 
         if sub_folder:
             path = os.path.join(sub_folder, path)
