@@ -634,31 +634,28 @@ def generate_repo_metadata(
         repomd.revision = "0"
 
     repomdrecords = [
-        ("primary", pri_xml_path, None),
-        ("filelists", fil_xml_path, None),
-        ("other", oth_xml_path, None),
+        ("primary", pri_xml_path),
+        ("filelists", fil_xml_path),
+        ("other", oth_xml_path),
     ]
 
     if upd_xml:
-        repomdrecords.append(("updateinfo", upd_xml_path, None))
+        repomdrecords.append(("updateinfo", upd_xml_path))
 
     if has_modules:
-        repomdrecords.append(("modules", mod_yml_path, None))
+        repomdrecords.append(("modules", mod_yml_path))
 
     if has_comps:
-        repomdrecords.append(("group", comps_xml_path, None))
+        repomdrecords.append(("group", comps_xml_path))
 
     repomdrecords.extend(extra_repomdrecords)
 
-    for name, path, db_to_update in repomdrecords:
+    for name, path in repomdrecords:
         record = cr.RepomdRecord(name, path)
         checksum_type = cr_checksum_type_from_string(
             get_checksum_type(name, checksum_types, default=publication.metadata_checksum_type)
         )
         record.fill(checksum_type)
-        if db_to_update:
-            db_to_update.dbinfo_update(record.checksum)
-            db_to_update.close()
         record.rename_file()
         path = record.location_href.split("/")[-1]
         repomd.set_record(record)
