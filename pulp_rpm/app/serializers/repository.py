@@ -105,7 +105,8 @@ class RpmRepositorySerializer(RepositorySerializer):
         default=False,
         required=False,
         help_text=_(
-            "DEPRECATED: An option specifying whether Pulp should generate SQLite metadata."
+            "REMOVED: An option specifying whether Pulp should generate SQLite metadata. "
+            "Not operation since pulp_rpm 3.25.0 release"
         ),
         read_only=True,
     )
@@ -290,7 +291,8 @@ class RpmPublicationSerializer(PublicationSerializer):
         default=False,
         required=False,
         help_text=_(
-            "DEPRECATED: An option specifying whether Pulp should generate SQLite metadata."
+            "REMOVED: An option specifying whether Pulp should generate SQLite metadata. "
+            "Not operation since pulp_rpm 3.25.0 release"
         ),
         read_only=True,
     )
