@@ -40,11 +40,6 @@ def test_all(
     2. Select a random content unit in the distribution. Download that
        content unit from Pulp, and verify that the content unit has the
        same checksum when fetched directly from Pulp-Fixtures.
-
-    This test targets the following issues:
-
-    * `Pulp #2895 <https://pulp.plan.io/issues/2895>`_
-    * `Pulp Smash #872 <https://github.com/pulp/pulp-smash/issues/872>`_
     """
     # Sync a Repository
     repo = rpm_unsigned_repo_immediate
