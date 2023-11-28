@@ -6,7 +6,7 @@ if [[ "$TEST" == "upgrade" ]]; then
     exit
 fi
 
-cmd_stdin_prefix bash -c "cat > /var/lib/pulp/scripts/sign-metadata.sh" < "$GITHUB_WORKSPACE"/pulp_rpm/tests/functional/sign-metadata.sh
+cmd_stdin_prefix bash -c "cat > /var/lib/pulp/scripts/sign-metadata.sh" < pulp_rpm/tests/functional/sign-metadata.sh
 
 curl -L https://github.com/pulp/pulp-fixtures/raw/master/common/GPG-KEY-fixture-signing | cmd_stdin_prefix su pulp -c "cat > /tmp/GPG-KEY-fixture-signing"
 curl -L https://github.com/pulp/pulp-fixtures/raw/master/common/GPG-PRIVATE-KEY-fixture-signing | cmd_stdin_prefix su pulp -c "gpg --import"
