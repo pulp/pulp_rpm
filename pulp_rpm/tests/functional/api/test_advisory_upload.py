@@ -1,7 +1,9 @@
 """Tests that perform actions over advisory content unit upload."""
-import pytest
 import os
 import json
+
+import pytest
+import requests
 from tempfile import NamedTemporaryFile
 
 from pulpcore.tests.functional.utils import PulpTaskError
@@ -426,10 +428,10 @@ CESA_2020_4910 = """{
 
 
 @pytest.fixture
-def upload_wrong_file_type(rpm_advisory_api, http_get):
+def upload_wrong_file_type(rpm_advisory_api):
     def _upload(remote_path):
         with NamedTemporaryFile() as file_to_upload:
-            file_to_upload.write(http_get(remote_path))
+            file_to_upload.write(requests.get(remote_path).content)
             upload_attrs = {
                 "file": file_to_upload.name,
             }

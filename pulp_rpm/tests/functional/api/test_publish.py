@@ -6,6 +6,7 @@ import collections
 from lxml import etree
 from django.conf import settings
 from xml.etree import ElementTree
+import requests
 
 import xmltodict
 import dictdiffer
@@ -40,7 +41,6 @@ class TestPublishWithUnsignedRepoSyncedOnDemand:
         self,
         with_sqlite,
         rpm_unsigned_repo_on_demand,
-        http_get,
         rpm_publication_api,
         gen_object_with_cleanup,
         rpm_distribution_api,
@@ -66,7 +66,7 @@ class TestPublishWithUnsignedRepoSyncedOnDemand:
         distribution = gen_object_with_cleanup(rpm_distribution_api, body)
 
         repomd = ElementTree.fromstring(
-            http_get(os.path.join(distribution.base_url, "repodata/repomd.xml"))
+            requests.get(os.path.join(distribution.base_url, "repodata/repomd.xml")).text
         )
 
         data_xpath = "{{{}}}data".format(RPM_NAMESPACES["metadata/repo"])
@@ -80,7 +80,7 @@ class TestPublishWithUnsignedRepoSyncedOnDemand:
             for db_elem in sqlite_files:
                 location_xpath = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
                 db_href = db_elem.find(location_xpath).get("href")
-                http_get(os.path.join(distribution.base_url, db_href))
+                assert requests.get(os.path.join(distribution.base_url, db_href)).status_code == 200
         else:
             assert 0 == len(sqlite_files)
 
@@ -154,7 +154,6 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
         rpm_unsigned_repo_immediate,
         rpm_publication_api,
         gen_object_with_cleanup,
-        http_get,
         rpm_distribution_api,
         monitor_task,
     ):
@@ -173,7 +172,7 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
 
         # 2. check the tag 'sum' is not present in updateinfo.xml
         repomd = ElementTree.fromstring(
-            http_get(os.path.join(distribution.base_url, "repodata/repomd.xml"))
+            requests.get(os.path.join(distribution.base_url, "repodata/repomd.xml")).text
         )
 
         update_xml_url = self._get_updateinfo_xml_path(repomd)
@@ -260,7 +259,6 @@ def test_complex_repo_core_metadata(
     init_and_sync,
     rpm_publication_api,
     gen_object_with_cleanup,
-    http_get,
     rpm_distribution_api,
     monitor_task,
     delete_orphans_pre,
@@ -287,11 +285,11 @@ def test_complex_repo_core_metadata(
 
     # Download and parse the metadata.
     original_repomd = ElementTree.fromstring(
-        http_get(os.path.join(repo_url, "repodata/repomd.xml"))
+        requests.get(os.path.join(repo_url, "repodata/repomd.xml")).text
     )
 
     reproduced_repomd = ElementTree.fromstring(
-        http_get(os.path.join(distribution.base_url, "repodata/repomd.xml"))
+        requests.get(os.path.join(distribution.base_url, "repodata/repomd.xml")).text
     )
 
     def get_metadata_content(base_url, repomd_elem, meta_type):
@@ -445,7 +443,6 @@ def _compare_xml_metadata_file(original_metadata_text, generated_metadata_text, 
 def test_distribution_tree_metadata_publish(
     mirror,
     gen_object_with_cleanup,
-    http_get,
     rpm_repository_api,
     rpm_rpmremote_api,
     rpm_distribution_api,
@@ -477,17 +474,17 @@ def test_distribution_tree_metadata_publish(
     distribution = gen_object_with_cleanup(rpm_distribution_api, body)
 
     # 4. Download and parse the metadata.
-    original_treeinfo = http_get(os.path.join(RPM_KICKSTART_FIXTURE_URL, ".treeinfo"))
-    generated_treeinfo = http_get(os.path.join(distribution.base_url, ".treeinfo"))
+    original_treeinfo = requests.get(os.path.join(RPM_KICKSTART_FIXTURE_URL, ".treeinfo")).text
+    generated_treeinfo = requests.get(os.path.join(distribution.base_url, ".treeinfo")).text
 
     config = ConfigParser()
     config.optionxform = str  # by default it will cast keys to lower case
-    config.read_string(original_treeinfo.decode("utf-8"))
+    config.read_string(original_treeinfo)
     original_treeinfo = config._sections
 
     config = ConfigParser()
     config.optionxform = str  # by default it will cast keys to lower case
-    config.read_string(generated_treeinfo.decode("utf-8"))
+    config.read_string(generated_treeinfo)
     generated_treeinfo = config._sections
 
     # 5, 6. Re-arrange the metadata so that it can be compared, and do the comparison.
@@ -528,13 +525,12 @@ def test_distribution_tree_metadata_publish(
             continue
 
         checksum_type, checksum = checksum.split(":")
-        http_get(os.path.join(distribution.base_url, path))
+        assert requests.get(os.path.join(distribution.base_url, path)).status_code == 200
 
 
 @pytest.fixture
 def get_checksum_types(
     init_and_sync,
-    http_get,
     rpm_publication_api,
     gen_object_with_cleanup,
     rpm_distribution_api,
@@ -565,7 +561,7 @@ def get_checksum_types(
         distribution = gen_object_with_cleanup(rpm_distribution_api, body)
 
         repomd = ElementTree.fromstring(
-            http_get(os.path.join(distribution.base_url, "repodata/repomd.xml"))
+            requests.get(os.path.join(distribution.base_url, "repodata/repomd.xml")).text
         )
 
         data_xpath = "{{{}}}data".format(RPM_NAMESPACES["metadata/repo"])
@@ -719,11 +715,11 @@ def test_immediate_specified_metadata_and_package_checksum_type(get_checksum_typ
 
 
 @pytest.mark.parallel
-def test_directory_layout_distribute_with_modules(generate_distribution, http_get):
+def test_directory_layout_distribute_with_modules(generate_distribution):
     """Ensure no more files or folders are present when distribute repository with modules."""
     distribution = generate_distribution(RPM_MODULAR_FIXTURE_URL)
     parser = etree.XMLParser(recover=True)
-    repository = etree.fromstring(http_get(distribution), parser=parser)
+    repository = etree.fromstring(requests.get(distribution).text, parser=parser)
     # Get links from repository HTML
     # Each link is an item (file or directory) in repository root
     repository_root_items = []
@@ -741,11 +737,11 @@ def test_directory_layout_distribute_with_modules(generate_distribution, http_ge
 
 
 @pytest.mark.parallel
-def test_directory_layout_distribute_with_treeinfo(generate_distribution, http_get):
+def test_directory_layout_distribute_with_treeinfo(generate_distribution):
     """Ensure no more files or folders are present when distribute repository with treeinfo."""
     distribution = generate_distribution(RPM_KICKSTART_FIXTURE_URL)
     parser = etree.XMLParser(recover=True)
-    repository = etree.fromstring(http_get(distribution), parser=parser)
+    repository = etree.fromstring(requests.get(distribution).text, parser=parser)
     # Get links from repository HTML
     # Each link is an item (file or directory) in repository root
     repository_root_items = []

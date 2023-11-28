@@ -18,6 +18,7 @@ from pulp_rpm.tests.functional.utils import (
     gen_rpm_remote,
     skip_if,
 )
+
 from pulp_rpm.tests.functional.constants import (
     RPM_KICKSTART_FIXTURE_URL,
     RPM_MODULAR_FIXTURE_URL,
@@ -175,7 +176,6 @@ class ContentUnitRemoveTestCase(PulpTestCase):
             response = requests.delete(
                 urljoin(base_addr, repo_content[content_type][0]["pulp_href"])
             )
-            # check that '405' (method not allowed) is returned
             self.assertEqual(response.status_code, 405)
 
     def test_all(self):

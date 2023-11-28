@@ -1,8 +1,9 @@
 """Tests that perform actions over content unit."""
 import os
-import pytest
-
 from tempfile import NamedTemporaryFile
+
+import pytest
+import requests
 
 from pulpcore.tests.functional.utils import PulpTaskError
 from pulp_rpm.tests.functional.constants import (
@@ -30,7 +31,7 @@ CENTOS8_CONTENT = BIG_GROUPS + BIG_CATEGORY + BIG_LANGPACK + BIG_ENVIRONMENTS
 
 
 def test_single_request_unit_and_duplicate_unit(
-    delete_orphans_pre, http_get, rpm_package_api, monitor_task, tasks_api_client
+    delete_orphans_pre, rpm_package_api, monitor_task, tasks_api_client
 ):
     """Test single request upload unit.
 
@@ -41,7 +42,7 @@ def test_single_request_unit_and_duplicate_unit(
     file_to_use = os.path.join(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
 
     with NamedTemporaryFile() as file_to_upload:
-        file_to_upload.write(http_get(file_to_use))
+        file_to_upload.write(requests.get(file_to_use).content)
         upload_attrs = {"file": file_to_upload.name}
         upload = rpm_package_api.create(**upload_attrs)
 
@@ -51,7 +52,7 @@ def test_single_request_unit_and_duplicate_unit(
 
     # Duplicate unit
     with NamedTemporaryFile() as file_to_upload:
-        file_to_upload.write(http_get(file_to_use))
+        file_to_upload.write(requests.get(file_to_use).content)
         upload_attrs = {"file": file_to_upload.name}
         upload = rpm_package_api.create(**upload_attrs)
 
@@ -65,11 +66,11 @@ def test_single_request_unit_and_duplicate_unit(
     assert msg in task_report.error["description"]
 
 
-def test_upload_non_ascii(delete_orphans_pre, rpm_package_api, http_get, monitor_task):
+def test_upload_non_ascii(delete_orphans_pre, rpm_package_api, monitor_task):
     """Test whether one can upload an RPM with non-ascii metadata."""
     packages_count = rpm_package_api.list().count
     with NamedTemporaryFile() as file_to_upload:
-        file_to_upload.write(http_get(RPM_WITH_NON_ASCII_URL))
+        file_to_upload.write(requests.get(RPM_WITH_NON_ASCII_URL).content)
         upload_attrs = {"file": file_to_upload.name}
         upload = rpm_package_api.create(**upload_attrs)
 
