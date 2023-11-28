@@ -26,7 +26,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_UNSIGNED_FIXTURE_URL,
     SRPM_UNSIGNED_FIXTURE_URL,
 )
-from pulp_rpm.tests.functional.utils import gen_rpm_remote, read_xml_gz
+from pulp_rpm.tests.functional.utils import gen_rpm_remote, download_and_decompress_file
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 from pulpcore.client.pulp_rpm import RpmRepositorySyncURL, RpmRpmPublication
@@ -177,8 +177,9 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
         )
 
         update_xml_url = self._get_updateinfo_xml_path(repomd)
-        update_xml_content = http_get(os.path.join(distribution.base_url, update_xml_url))
-        update_xml = read_xml_gz(update_xml_content)
+        update_xml = download_and_decompress_file(
+            os.path.join(distribution.base_url, update_xml_url)
+        )
         update_info_content = ElementTree.fromstring(update_xml)
 
         tags = {elem.tag for elem in update_info_content.iter()}
@@ -317,7 +318,7 @@ def test_complex_repo_core_metadata(
         xpath = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
         location_href = data_elems[0].find(xpath).get("href")
 
-        return read_xml_gz(http_get(os.path.join(base_url, location_href)))
+        return download_and_decompress_file(os.path.join(base_url, location_href))
 
     # Convert the metadata into a more workable form and then compare.
     for metadata_file in ["primary", "filelists", "other"]:
@@ -580,7 +581,7 @@ def get_checksum_types(
                 location_xpath = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
                 primary_href = data_elem.find(location_xpath).get("href")
                 primary = ElementTree.fromstring(
-                    read_xml_gz(http_get(os.path.join(distribution.base_url, primary_href)))
+                    download_and_decompress_file(os.path.join(distribution.base_url, primary_href))
                 )
                 package_checksum_xpath = "{{{}}}checksum".format(RPM_NAMESPACES["metadata/common"])
                 package_xpath = "{{{}}}package".format(RPM_NAMESPACES["metadata/common"])
