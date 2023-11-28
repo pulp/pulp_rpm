@@ -1,7 +1,9 @@
 """Tests that create/sync/distribute/publish MANY rpm plugin repositories."""
-import pytest
 import os
 import re
+
+import pytest
+import requests
 
 
 @pytest.fixture
@@ -178,7 +180,6 @@ def test_fips_workflow(
     rpm_publication_factory,
     rpm_distribution_factory,
     cdn_certs_and_keys,
-    http_get,
 ):
     # Convert a url into a name-string
     name = _name_from_url(url)
@@ -208,5 +209,5 @@ def test_fips_workflow(
     assert distribution is not None
 
     # Test we can access the index of the distribution
-    response = http_get(distribution.base_url)
+    response = requests.get(distribution.base_url)
     assert response is not None
