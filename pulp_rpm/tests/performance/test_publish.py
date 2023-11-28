@@ -1,10 +1,12 @@
 """Tests that publish rpm plugin repositories."""
-import pytest
+
 from datetime import datetime
-from html.parser import HTMLParser
 from tempfile import NamedTemporaryFile
 from urllib.parse import urljoin
 
+import pytest
+import requests
+from html.parser import HTMLParser
 from productmd.treeinfo import TreeInfo
 
 from pulp_rpm.tests.functional.constants import (
@@ -48,11 +50,11 @@ def parse_date_from_string(s, parse_format="%Y-%m-%dT%H:%M:%S.%fZ"):
 
 
 @pytest.fixture
-def centos_8stream_baseos_extra_tests(rpm_distribution_factory, http_get):
+def centos_8stream_baseos_extra_tests(rpm_distribution_factory):
     def _extra_test(publication_href):
         # Test that the .treeinfo file is available and AppStream sub-repo is published correctly
         distribution = rpm_distribution_factory(publication=publication_href)
-        treeinfo_file = http_get(urljoin(distribution.base_url, ".treeinfo"))
+        treeinfo_file = requests.get(urljoin(distribution.base_url, ".treeinfo")).content
         treeinfo = TreeInfo()
         with NamedTemporaryFile("wb") as temp_file:
             temp_file.write(treeinfo_file)
@@ -70,10 +72,10 @@ def centos_8stream_baseos_extra_tests(rpm_distribution_factory, http_get):
                 a_packages_href = urljoin(
                     distribution.base_url, "{}/a/".format(variant.paths.packages)
                 )
-                a_packages_listing = http_get(a_packages_href)
-                parser.feed(a_packages_listing.__str__())
+                a_packages_listing = requests.get(a_packages_href).text
+                parser.feed(a_packages_listing)
                 full_package_path = urljoin(a_packages_href, parser.package_href)
-                http_get(full_package_path)
+                assert requests.get(full_package_path).status_code == 200
 
     return _extra_test
 
