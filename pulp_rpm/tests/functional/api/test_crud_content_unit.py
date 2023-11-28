@@ -1,10 +1,8 @@
 """Tests that perform actions over content unit."""
-import aiohttp
-import asyncio
-import json
-import pytest
-
 from urllib.parse import urljoin
+
+import pytest
+import requests
 
 from pulp_rpm.tests.functional.utils import gen_rpm_content_attrs
 from pulp_rpm.tests.functional.constants import (
@@ -101,9 +99,7 @@ def test_crud_content_unit(
     [RPM_MODULAR_FIXTURE_URL, RPM_KICKSTART_FIXTURE_URL, RPM_REPO_METADATA_FIXTURE_URL],
     ids=["MODULAR_FIXTURE_URL", "KICKSTART_FIXTURE_URL", "REPO_METADATA_FIXTURE_URL"],
 )
-def test_remove_content_unit(
-    url, init_and_sync, rpm_repository_version_api, bindings_cfg, http_get
-):
+def test_remove_content_unit(url, init_and_sync, rpm_repository_version_api, bindings_cfg):
     """
     Sync a repository and test that content of any type cannot be removed directly.
 
@@ -123,21 +119,16 @@ def test_remove_content_unit(
     # Test remove content by types contained in repository.
     version = rpm_repository_version_api.read(repo.latest_version_href)
 
-    async def _delete_request(url, **kwargs):
-        async with aiohttp.ClientSession(raise_for_status=False) as session:
-            async with session.delete(url, **kwargs) as response:
-                return response.status
-
     # iterate over content filtered by repository versions
     for content_units in version.content_summary.added.values():
-        auth = aiohttp.BasicAuth(bindings_cfg.username, bindings_cfg.password)
+        auth = (bindings_cfg.username, bindings_cfg.password)
         url = urljoin(bindings_cfg.host, content_units["href"])
-        response = json.loads(http_get(url, auth=auth).decode())
+        response = requests.get(url, auth=auth).json()
 
         # iterate over particular content units and issue delete requests
         for content_unit in response["results"]:
             url = urljoin(bindings_cfg.host, content_unit["pulp_href"])
-            status = asyncio.run(_delete_request(url, auth=auth))
+            resp = requests.delete(url, auth=auth)
 
             # check that '405' (method not allowed) is returned
-            assert status == 405
+            assert resp.status_code == 405
