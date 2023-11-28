@@ -1,8 +1,10 @@
 """Tests that verify download of content served by Pulp."""
-import pytest
 import hashlib
 from random import choice
 from urllib.parse import urljoin
+
+import pytest
+import requests
 
 from pulp_rpm.tests.functional.constants import RPM_UNSIGNED_FIXTURE_URL
 from pulp_rpm.tests.functional.utils import (
@@ -18,7 +20,6 @@ def test_all(
     rpm_publication_api,
     rpm_distribution_factory,
     download_content_unit,
-    http_get,
     gen_object_with_cleanup,
 ):
     """Verify whether content served by pulp can be downloaded.
@@ -56,7 +57,7 @@ def test_all(
     package_paths = [p.location_href for p in packages.results]
     unit_path = choice(package_paths)
     fixture_hash = hashlib.sha256(
-        http_get(urljoin(RPM_UNSIGNED_FIXTURE_URL, unit_path))
+        requests.get(urljoin(RPM_UNSIGNED_FIXTURE_URL, unit_path)).content
     ).hexdigest()
 
     # …and Pulp.

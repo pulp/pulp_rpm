@@ -1,13 +1,14 @@
 """Verify whether package manager, yum/dnf, can consume content from Pulp."""
-import pytest
 import subprocess
 import itertools
+
+import pytest
+import requests
 
 from pulp_rpm.tests.functional.constants import (
     # REPO_WITH_XML_BASE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
 )
-
 
 dnf_installed = subprocess.run(("which", "dnf")).returncode == 0
 
@@ -189,7 +190,6 @@ def test_config_dot_repo(
     has_signing_service,
     rpm_metadata_signing_service,
     create_distribution,
-    http_get,
 ):
     """Test if the generated config.repo has the right content."""
     if has_signing_service and rpm_metadata_signing_service is None:
@@ -198,7 +198,7 @@ def test_config_dot_repo(
     distribution = create_distribution(
         gpgcheck=gpgcheck, repo_gpgcheck=repo_gpgcheck, has_signing_service=has_signing_service
     )
-    content = http_get(f"{distribution.base_url}config.repo").decode("utf-8")
+    content = requests.get(f"{distribution.base_url}config.repo").text
 
     assert f"[{distribution.name}]\n" in content
     assert f"baseurl={distribution.base_url}\n" in content
