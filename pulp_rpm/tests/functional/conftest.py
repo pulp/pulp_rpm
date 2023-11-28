@@ -1,11 +1,10 @@
-import asyncio
 import hashlib
 import json
 import uuid
 from tempfile import NamedTemporaryFile
 
-import aiohttp
 import pytest
+import requests
 
 from pulpcore.client.pulp_rpm import (
     AcsRpmApi,
@@ -31,7 +30,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_MODULAR_FIXTURE_URL,
     RPM_SIGNED_FIXTURE_URL,
 )
-
 from pulp_rpm.tests.functional.utils import init_signed_repo_configuration
 
 
@@ -112,8 +110,8 @@ def rpm_copy_api(rpm_client):
 
 
 @pytest.fixture
-def signed_artifact(http_get, artifacts_api_client, tmp_path):
-    data = http_get(RPM_SIGNED_URL)
+def signed_artifact(artifacts_api_client, tmp_path):
+    data = requests.get(RPM_SIGNED_URL).content
     artifacts = artifacts_api_client.list(sha256=hashlib.sha256(data).hexdigest(), limit=1)
     try:
         return artifacts.results[0].to_dict()
@@ -127,13 +125,13 @@ def signed_artifact(http_get, artifacts_api_client, tmp_path):
 
 @pytest.fixture
 def rpm_artifact_factory(
-    http_get, artifacts_api_client, gen_object_with_cleanup, pulp_domain_enabled, tmp_path
+    artifacts_api_client, gen_object_with_cleanup, pulp_domain_enabled, tmp_path
 ):
     """Return an artifact created from uploading an RPM file."""
 
     def _rpm_artifact_factory(url=RPM_SIGNED_URL, pulp_domain=None):
         temp_file = tmp_path / str(uuid.uuid4())
-        temp_file.write_bytes(http_get(url))
+        temp_file.write_bytes(requests.get(url).content)
         kwargs = {}
         if pulp_domain:
             if not pulp_domain_enabled:
@@ -147,7 +145,6 @@ def rpm_artifact_factory(
 @pytest.fixture
 def rpm_package_factory(
     gen_object_with_cleanup,
-    http_get,
     pulp_domain_enabled,
     rpm_package_api,
 ):
@@ -155,7 +152,7 @@ def rpm_package_factory(
 
     def _rpm_package_factory(url=RPM_SIGNED_URL, pulp_domain=None):
         with NamedTemporaryFile() as file_to_upload:
-            file_to_upload.write(http_get(url))
+            file_to_upload.write(requests.get(url).content)
             file_to_upload.flush()
             upload_attrs = {"file": file_to_upload.name}
 
@@ -209,13 +206,10 @@ def rpm_metadata_signing_service(signing_service_api_client):
 
 
 @pytest.fixture
-def upload_wrong_file_type(
-    rpm_advisory_api,
-    http_get,
-):
+def upload_wrong_file_type(rpm_advisory_api):
     def _upload(remote_path):
         with NamedTemporaryFile() as file_to_upload:
-            file_to_upload.write(http_get(remote_path))
+            file_to_upload.write(requests.get(remote_path).content)
             file_to_upload.flush()
             upload_attrs = {"file": file_to_upload.name}
             return rpm_advisory_api.create(**upload_attrs)
@@ -352,17 +346,3 @@ def cleanup_domains(orphans_cleanup_api_client, monitor_task, rpm_repository_api
                     assert content_api_client.list(pulp_domain=domain.name).count == 0
 
     return _cleanup_domains
-
-
-@pytest.fixture(scope="session")
-def http_get_headers():
-    def _http_get_headers(url, **kwargs):
-        async def _send_request():
-            async with aiohttp.ClientSession(raise_for_status=True) as session:
-                async with session.get(url) as response:
-                    return response.headers
-
-        headers = asyncio.run(_send_request())
-        return headers
-
-    return _http_get_headers

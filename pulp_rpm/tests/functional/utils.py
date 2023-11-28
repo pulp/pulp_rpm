@@ -2,11 +2,12 @@
 import gzip
 import os
 import subprocess
-
-from functools import partial
 from io import StringIO
+from functools import partial
 from unittest import SkipTest
-from tempfile import NamedTemporaryFile
+
+import pyzstd
+import requests
 
 from pulp_smash import api, cli, config, selectors
 from pulp_smash.pulp3.utils import gen_remote, get_content, require_pulp_3, require_pulp_plugins
@@ -216,20 +217,18 @@ def get_package_repo_path(package_filename):
     return os.path.join(PACKAGES_DIRECTORY, package_filename.lower()[0], package_filename)
 
 
-def read_xml_gz(content):
-    """
-    Read xml and xml.gz.
+def download_and_decompress_file(url):
+    # Tests work normally but fails for S3 due '.gz'
+    # Why is it only compressed for S3?
+    resp = requests.get(url)
+    decompression = None
+    if url.endswith(".gz"):
+        decompression = gzip.decompress
+    elif url.endswith(".zst"):
+        decompression = pyzstd.decompress
 
-    Tests work normally but fails for S3 due '.gz'
-    Why is it only compressed for S3?
-    """
-    with NamedTemporaryFile() as temp_file:
-        temp_file.write(content)
-        temp_file.seek(0)
-
-        try:
-            content_xml = gzip.open(temp_file.name).read()
-        except OSError:
-            # FIXME: fix this as in CI primary/update_info.xml has '.gz' but it is not gzipped
-            content_xml = temp_file.read()
-        return content_xml
+    if decompression:
+        return decompression(resp.content)
+    else:
+        # FIXME: fix this as in CI primary/update_info.xml has '.gz' but it is not gzipped
+        return resp.content
