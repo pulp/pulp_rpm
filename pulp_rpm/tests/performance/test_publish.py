@@ -1,13 +1,15 @@
 """Tests that publish rpm plugin repositories."""
 import unittest
+
 from datetime import datetime
-from html.parser import HTMLParser
 from tempfile import NamedTemporaryFile
 from urllib.parse import urljoin
 
+import requests
+from html.parser import HTMLParser
 from productmd.treeinfo import TreeInfo
 
-from pulp_smash import api, config, utils
+from pulp_smash import api, config
 from pulp_smash.pulp3.bindings import delete_orphans
 from pulp_smash.pulp3.utils import (
     gen_repo,
@@ -165,7 +167,7 @@ class PublishTestCase(unittest.TestCase):
         distribution_href = distribution_task["created_resources"][0]
         self.addCleanup(self.client.delete, distribution_href)
         distribution = self.client.get(distribution_href)
-        treeinfo_file = utils.http_get(urljoin(distribution["base_url"], ".treeinfo"))
+        treeinfo_file = requests.get(urljoin(distribution["base_url"], ".treeinfo")).content
         treeinfo = TreeInfo()
         with NamedTemporaryFile("wb") as temp_file:
             temp_file.write(treeinfo_file)
@@ -183,10 +185,11 @@ class PublishTestCase(unittest.TestCase):
                 a_packages_href = urljoin(
                     distribution["base_url"], "{}/a/".format(variant.paths.packages)
                 )
-                a_packages_listing = utils.http_get(a_packages_href)
-                parser.feed(a_packages_listing.__str__())
+
+                a_packages_listing = requests.get(a_packages_href).text
+                parser.feed(a_packages_listing)
                 full_package_path = urljoin(a_packages_href, parser.package_href)
-                utils.http_get(full_package_path)
+                assert requests.get(full_package_path).status_code == 200
 
     def test_centos8_appstream(self):
         """Publish CentOS 8 AppStream."""
