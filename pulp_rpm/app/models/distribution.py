@@ -2,7 +2,7 @@ from functools import reduce
 from logging import getLogger
 
 from django.db import models
-from django.db.models.signals import post_delete
+from django.db.models.signals import pre_delete, post_delete
 from django.dispatch import receiver
 
 from pulpcore.plugin.models import (
@@ -107,8 +107,8 @@ class DistributionTree(Content):
         """
         from pulp_rpm.app.models import RpmRepository
 
-        repo_ids = list(self.addons.values_list("repository__pk", flat=True))
-        repo_ids += list(self.variants.values_list("repository__pk", flat=True))
+        repo_ids = list(self.addons.values_list("repository_id", flat=True))
+        repo_ids += list(self.variants.values_list("repository_id", flat=True))
         return RpmRepository.objects.filter(pk__in=repo_ids)
 
     def content(self):
@@ -255,7 +255,7 @@ class Addon(BaseModel):
     distribution_tree = models.ForeignKey(
         DistributionTree, on_delete=models.CASCADE, related_name="addons"
     )
-    repository = models.ForeignKey(Repository, on_delete=models.PROTECT, related_name="addons")
+    repository = models.ForeignKey(Repository, on_delete=models.RESTRICT, related_name="addons")
 
     class Meta:
         unique_together = (
@@ -317,7 +317,7 @@ class Variant(BaseModel):
         DistributionTree, on_delete=models.CASCADE, related_name="variants"
     )
     repository = models.ForeignKey(
-        Repository, on_delete=models.PROTECT, related_name="variants", null=True
+        Repository, on_delete=models.RESTRICT, related_name="variants", null=True
     )
 
     class Meta:
@@ -331,19 +331,19 @@ class Variant(BaseModel):
         )
 
 
-@receiver(post_delete, sender=Addon)
-@receiver(post_delete, sender=Variant)
+@receiver(pre_delete, sender=DistributionTree)
+def setup_cleanup_subrepos(sender, instance, **kwargs):
+    """
+    Find subrepos when a DistributionTree is being removed.
+    """
+    repos = instance.repositories()
+    instance.repositories = lambda: repos.all()
+
+
+@receiver(post_delete, sender=DistributionTree)
 def cleanup_subrepos(sender, instance, **kwargs):
     """
-    Remove subrepos when a DistributionTree is being removed.
-
+    Delete the found subrepos of the deleted DistributionTree.
     """
-    subrepo = None
-    try:
-        subrepo = instance.repository
-    except Repository.DoesNotExist:
-        pass
-    if subrepo:
-        Variant.objects.filter(repository=subrepo).delete()
-        Addon.objects.filter(repository=subrepo).delete()
-        subrepo.delete()
+    repos = instance.repositories()
+    repos.delete()
