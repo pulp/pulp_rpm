@@ -1,10 +1,10 @@
 """Utilities for tests for the rpm plugin."""
 import gzip
 import os
-import requests
 import subprocess
 from io import StringIO
 from functools import partial
+from tempfile import NamedTemporaryFile
 from unittest import SkipTest
 
 import pyzstd
