@@ -38,6 +38,10 @@ RPM Repositories support several additional options.
     See :ref:`metadata_signing`.
 - retain_package_versions:
     The maximum number of versions of each package to keep; as new versions of packages are added by upload, sync, or copy, older versions of the same packages are automatically removed. A value of 0 means "unlimited".
+- autopublish:
+    If set to True, Pulp will automatically create publications for new repository versions. It is generally intended to be used with the `Distribution` pointing to the repository, i.e. set the `repository` field on the distribution. Newly created publications (from autopublish) will then be made available automatically upon creation.
+- retain_repo_versions:
+    Provided by pulpcore, specifies how many repository versions will be kept for a repository. For example, if set to 1, it will keep only the most-recent repository version; the rest will be automatically deleted, together with any associated publications. Note, however, that repository versions that are currently being distributed are "protected", and cannot be removed. This can result in more versions being retained than specified by `retain_repo_versions`.
 
 .. _create-remote:
 
