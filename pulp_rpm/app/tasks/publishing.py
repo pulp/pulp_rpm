@@ -107,7 +107,7 @@ class PublicationData:
                 path = os.path.join(folder, path)
             with open(path, "wb") as new_file:
                 shutil.copyfileobj(current_file, new_file)
-                repomdrecords.append((repo_metadata_file.data_type, new_file.name, None))
+                repomdrecords.append((repo_metadata_file.data_type, new_file.name))
 
         return repomdrecords
 
