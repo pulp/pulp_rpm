@@ -1,0 +1,1 @@
+Fixed bug about malformed tuple introduced on the removal of sqlite-metadata support (PR #3328).

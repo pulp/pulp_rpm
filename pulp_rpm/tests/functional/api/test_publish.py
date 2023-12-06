@@ -18,6 +18,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_COMPLEX_FIXTURE_URL,
     RPM_KICKSTART_FIXTURE_URL,
     RPM_KICKSTART_REPOSITORY_ROOT_CONTENT,
+    RPM_REPO_METADATA_FIXTURE_URL,
     RPM_LONG_UPDATEINFO_FIXTURE_URL,
     RPM_MODULAR_FIXTURE_URL,
     RPM_NAMESPACES,
@@ -149,6 +150,12 @@ def test_publish_rpm_rich_weak(assert_created_publication):
 def test_publish_rpm_long_updateinfo(assert_created_publication):
     """Sync and publish an RPM long updateinfo repository."""
     assert_created_publication(RPM_LONG_UPDATEINFO_FIXTURE_URL)
+
+
+@pytest.mark.parallel
+def test_publish_rpm_custom_metadata(assert_created_publication):
+    """Sync and publish an RPM with custom metadata files."""
+    assert_created_publication(RPM_REPO_METADATA_FIXTURE_URL)
 
 
 @pytest.mark.parallel
