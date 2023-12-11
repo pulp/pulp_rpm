@@ -972,8 +972,13 @@ class RpmFirstStage(Stage):
                 await self.put(dc)
 
     async def parse_modules_metadata(self, modulemd_result):
-        """Parse modules' metadata which define what packages are built for specific releases."""
-        modulemd_all, defaults_all, obsoletes_all = parse_modular(modulemd_result)
+        """
+        Parse modules' metadata which define what packages are built for specific releases.
+
+        Args:
+            modulemd_result(pulpcore.download.base.DownloadResult): downloaded modulemd file
+        """
+        modulemd_all, defaults_all, obsoletes_all = parse_modular(modulemd_result.path)
 
         modulemd_dcs = []
 
