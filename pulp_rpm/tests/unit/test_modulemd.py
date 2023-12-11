@@ -1,5 +1,4 @@
 from pulp_rpm.app.modulemd import parse_modular
-from types import SimpleNamespace
 import os
 
 sample_file_data = """
@@ -90,8 +89,7 @@ def test_parse_modular_preserves_literal_unquoted_values_3285(tmp_path):
     with open(file_name, "w") as file:
         file.write(sample_file_data)
 
-    mock_object = SimpleNamespace(path=file_name)
-    all, defaults, obsoletes = parse_modular(mock_object)
+    all, defaults, obsoletes = parse_modular(file_name)
 
     # check normal, defaults and obsoletes modulemds
     kangoroo1 = all[0]  # unquoted

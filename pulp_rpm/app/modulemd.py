@@ -62,13 +62,16 @@ def resolve_module_packages(version, previous_version):
     version.add_content(Package.objects.filter(pk__in=packages_to_add))
 
 
-def split_modulemd_file(file):
+def split_modulemd_file(file: str):
     """
     Helper method to preserve original formatting of modulemd.
+
+    Args:
+        file: Absolute path to file
     """
     with tempfile.TemporaryDirectory(dir=".") as tf:
         decompressed_path = os.path.join(tf, "modulemd.yaml")
-        cr.decompress_file(file.path, decompressed_path, cr.AUTO_DETECT_COMPRESSION)
+        cr.decompress_file(file, decompressed_path, cr.AUTO_DETECT_COMPRESSION)
         with open(decompressed_path) as modulemd_file:
             for doc in modulemd_file.read().split("---"):
                 # strip any spaces or newlines from either side, strip the document end marking,
@@ -94,7 +97,7 @@ def check_mandatory_module_fields(module, required_fields):
 
 def create_modulemd(modulemd, snippet):
     """
-    Create dict with modulemd data to can be saved to DB.
+    Create dict with modulemd data to be saved to DB.
     """
     new_module = dict()
     new_module[PULP_MODULE_ATTR.NAME] = modulemd["data"].get("name")
@@ -176,9 +179,12 @@ def create_modulemd_obsoletes(obsolete, snippet):
     return new_obsolete
 
 
-def parse_modular(file):
+def parse_modular(file: str):
     """
     Parse all modular metadata.
+
+    Args:
+        file: Absolute path to file
     """
     modulemd_all = []
     modulemd_defaults_all = []
