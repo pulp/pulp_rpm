@@ -127,4 +127,5 @@ def test_parse_modular_preserves_literal_unquoted_values_3285(tmp_path):
         modulemd_obsoletes["message"]
         == "Module stream perl:5.30 is no longer supported. Please switch to perl:5.32"
     )
-    assert modulemd_obsoletes["obsoleted_by_module_name"] == "5.40"
+    assert modulemd_obsoletes["obsoleted_by_module_name"] == "perl"
+    assert modulemd_obsoletes["obsoleted_by_module_stream"] == "5.40"

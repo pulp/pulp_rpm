@@ -1590,8 +1590,8 @@ RPM_MODULEMD_OBSOLETES_DATA = [
         "override_previous": None,
         "module_context": "6c81f848",
         "eol_date": None,
-        "obsoleted_by_module_name": "10",
-        "obsoleted_by_module_stream": None,
+        "obsoleted_by_module_name": "nodejs",
+        "obsoleted_by_module_stream": "10",
     },
     {
         "modified": "2020-05-01T00:00Z",
@@ -1623,8 +1623,8 @@ RPM_MODULEMD_OBSOLETES_DATA = [
         "override_previous": None,
         "module_context": None,
         "eol_date": None,
-        "obsoleted_by_module_name": "5",
-        "obsoleted_by_module_stream": None,
+        "obsoleted_by_module_name": "nodejs",
+        "obsoleted_by_module_stream": "5",
     },
 ]
 
