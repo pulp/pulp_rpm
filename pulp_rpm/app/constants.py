@@ -166,7 +166,7 @@ PULP_MODULEOBSOLETES_ATTR = SimpleNamespace(
     CONTEXT="module_context",
     EOL="eol_date",
     OBSOLETE_BY_MODULE="obsoleted_by_module_name",
-    OBSOLETE_BY_STREAM="obsoleted_by_module_name",
+    OBSOLETE_BY_STREAM="obsoleted_by_module_stream",
 )
 
 # Mandatory fields for Modulemd types

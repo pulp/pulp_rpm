@@ -4,6 +4,7 @@ import logging
 import os
 import tempfile
 import yaml
+import collections
 
 from jsonschema import Draft7Validator
 from gettext import gettext as _  # noqa:F401
@@ -61,13 +62,16 @@ def resolve_module_packages(version, previous_version):
     version.add_content(Package.objects.filter(pk__in=packages_to_add))
 
 
-def split_modulemd_file(file):
+def split_modulemd_file(file: str):
     """
     Helper method to preserve original formatting of modulemd.
+
+    Args:
+        file: Absolute path to file
     """
     with tempfile.TemporaryDirectory(dir=".") as tf:
         decompressed_path = os.path.join(tf, "modulemd.yaml")
-        cr.decompress_file(file.path, decompressed_path, cr.AUTO_DETECT_COMPRESSION)
+        cr.decompress_file(file, decompressed_path, cr.AUTO_DETECT_COMPRESSION)
         with open(decompressed_path) as modulemd_file:
             for doc in modulemd_file.read().split("---"):
                 # strip any spaces or newlines from either side, strip the document end marking,
@@ -93,7 +97,7 @@ def check_mandatory_module_fields(module, required_fields):
 
 def create_modulemd(modulemd, snippet):
     """
-    Create dict with modulemd data to can be saved to DB.
+    Create dict with modulemd data to be saved to DB.
     """
     new_module = dict()
     new_module[PULP_MODULE_ATTR.NAME] = modulemd["data"].get("name")
@@ -175,16 +179,19 @@ def create_modulemd_obsoletes(obsolete, snippet):
     return new_obsolete
 
 
-def parse_modular(file):
+def parse_modular(file: str):
     """
     Parse all modular metadata.
+
+    Args:
+        file: Absolute path to file
     """
     modulemd_all = []
     modulemd_defaults_all = []
     modulemd_obsoletes_all = []
 
     for module in split_modulemd_file(file):
-        parsed_data = yaml.safe_load(module)
+        parsed_data = yaml.load(module, Loader=ModularYamlLoader)
         # here we check the modulemd document as we don't store all info, so serializers
         # are not enough then we only need to take required data from dict which is
         # parsed by pyyaml library
@@ -211,3 +218,41 @@ def parse_modular(file):
             logging.warning(f"Unknown modular document type found: {parsed_data.get('document')}")
 
     return modulemd_all, modulemd_defaults_all, modulemd_obsoletes_all
+
+
+class ModularYamlLoader(yaml.SafeLoader):
+    """
+    Custom Loader that preserve unquoted float in specific fields (see #3285).
+
+    Motivation (for customizing YAML parsing) is that libmodulemd also implement safe-quoting:
+    https://github.com/fedora-modularity/libmodulemd/blob/main/modulemd/tests/test-modulemd-quoting.c
+
+    This class is based on https://stackoverflow.com/a/74334992
+    """
+
+    # Field to preserve (will bypass yaml casting)
+    PRESERVED_FIELDS = ("name", "stream", "version", "context", "arch")
+
+    def construct_mapping(self, node, deep=False):
+        if not isinstance(node, yaml.MappingNode):
+            raise yaml.constructor.ConstructorError(
+                None, None, "expected a mapping node, but found %s" % node.id, node.start_mark
+            )
+        mapping = {}
+        for key_node, value_node in node.value:
+            key = self.construct_object(key_node, deep=deep)
+            if not isinstance(key, collections.abc.Hashable):
+                raise yaml.constructor.ConstructorError(
+                    "while constructing a mapping",
+                    node.start_mark,
+                    "found unhashable key",
+                    key_node.start_mark,
+                )
+            if key in ModularYamlLoader.PRESERVED_FIELDS and isinstance(
+                value_node, yaml.ScalarNode
+            ):
+                value = value_node.value
+            else:
+                value = self.construct_object(value_node, deep=deep)
+            mapping[key] = value
+        return mapping
