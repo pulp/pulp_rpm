@@ -1,0 +1,1 @@
+Added support for preventing unquoted NSVCA numerical values (e.g. ``"stream": 2.10``) of having zeros stripped on modulemd YAML files.
