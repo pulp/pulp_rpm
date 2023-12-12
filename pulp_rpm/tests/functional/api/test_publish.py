@@ -72,6 +72,35 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
             }
             rpm_publication_api.create(body)
 
+    @pytest.mark.parametrize("compression_type,compression_ext", (("gz", ".gz"), ("zstd", ".zst")))
+    @pytest.mark.parallel
+    def test_publish_with_compression_types(
+        self,
+        compression_type,
+        compression_ext,
+        rpm_unsigned_repo_immediate,
+        rpm_publication_api,
+        gen_object_with_cleanup,
+        rpm_distribution_api,
+        monitor_task,
+    ):
+        """Sync and publish an RPM repository w/ zstd compression and verify it exists."""
+        # 1. Publish and distribute
+        publish_data = RpmRpmPublication(
+            repository=rpm_unsigned_repo_immediate.pulp_href, compression_type=compression_type
+        )
+        publish_response = rpm_publication_api.create(publish_data)
+        created_resources = monitor_task(publish_response.task).created_resources
+        publication_href = created_resources[0]
+
+        body = gen_distribution(publication=publication_href)
+        distribution = gen_object_with_cleanup(rpm_distribution_api, body)
+
+        # 2. Check "primary", "filelists", "other", "updatedinfo" have correct compression ext
+        for md_type, md_href in self.get_repomd_metadata_urls(distribution.base_url).items():
+            if md_type in ("primary", "filelists", "other", "updateinfo"):
+                assert md_href.endswith(compression_ext)
+
     @pytest.mark.parallel
     def test_validate_no_checksum_tag(
         self,
@@ -126,6 +155,39 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
         data_elems = [elem for elem in root_elem.findall(xpath) if elem.get("type") == "updateinfo"]
         xpath = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
         return data_elems[0].find(xpath).get("href")
+
+    @staticmethod
+    def get_repomd_metadata_urls(repomd_url: str):
+        """
+        Helper function to get data types and respective hrefs.
+
+        Example:
+            ```
+            >>> get_repomd_metadata(distribution.base_url)
+            {
+                "primary": "repodata/.../primary.xml.gz",
+                "filelists": "repodata/.../listfiles.xml.gz",
+                ...
+            }
+            ```
+        """
+        # XML Reference:
+        # <ns0:repomd xmlns:ns0="http://linux.duke.edu/metadata/repo">
+        #     <ns0:data type="primary">
+        #         <ns0:checksum type="sha256">[…]</ns0:checksum>
+        #         <ns0:location href="repodata/[…]-primary.xml.gz" />
+        #         …
+        #     </ns0:data>
+        #     …
+        repomd_xml = requests.get(os.path.join(repomd_url, "repodata/repomd.xml")).text
+        repomd = ElementTree.fromstring(repomd_xml)
+        xpath_data = "{{{}}}data".format(RPM_NAMESPACES["metadata/repo"])
+        xpath_location = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
+        hrefs = {}
+        for elem in repomd.findall(xpath_data):
+            md_type = elem.get("type")
+            hrefs[md_type] = elem.find(xpath_location).get("href")
+        return hrefs
 
 
 @pytest.fixture(scope="class")
