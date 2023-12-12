@@ -30,6 +30,7 @@ from pulp_rpm.app.constants import (
     CHECKSUM_CHOICES,
     SKIP_TYPES,
     SYNC_POLICY_CHOICES,
+    COMPRESSION_CHOICES,
 )
 from pulp_rpm.app.models import (
     RpmDistribution,
@@ -86,6 +87,12 @@ class RpmRepositorySerializer(RepositorySerializer):
     package_checksum_type = serializers.ChoiceField(
         help_text=_("DEPRECATED: use CHECKSUM_TYPE instead."),
         choices=CHECKSUM_CHOICES,
+        required=False,
+        allow_null=True,
+    )
+    compression_type = serializers.ChoiceField(
+        help_text=_("The compression type to use for metadata files."),
+        choices=COMPRESSION_CHOICES,
         required=False,
         allow_null=True,
     )
@@ -203,6 +210,7 @@ class RpmRepositorySerializer(RepositorySerializer):
             "repo_gpgcheck",
             "sqlite_metadata",
             "repo_config",
+            "compression_type",
         )
         model = RpmRepository
 
@@ -297,6 +305,11 @@ class RpmPublicationSerializer(PublicationSerializer):
         choices=CHECKSUM_CHOICES,
         required=False,
     )
+    compression_type = serializers.ChoiceField(
+        help_text=_("The compression type to use for metadata files."),
+        choices=COMPRESSION_CHOICES,
+        required=False,
+    )
     gpgcheck = serializers.IntegerField(
         max_value=1,
         min_value=0,
@@ -377,6 +390,7 @@ class RpmPublicationSerializer(PublicationSerializer):
             "repo_gpgcheck",
             "sqlite_metadata",
             "repo_config",
+            "compression_type",
         )
         model = RpmPublication
 

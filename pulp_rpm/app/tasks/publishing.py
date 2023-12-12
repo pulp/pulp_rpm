@@ -1,29 +1,32 @@
-from collections import defaultdict
-from gettext import gettext as _
-import os
 import logging
+import os
 import shutil
 import tempfile
+from collections import defaultdict
+from gettext import gettext as _
 
 import createrepo_c as cr
 import libcomps
-
 from django.conf import settings
 from django.core.files import File
 from django.db.models import Q
-
 from pulpcore.plugin.models import (
     AsciiArmoredDetachedSigningService,
     ContentArtifact,
-    RepositoryVersion,
     ProgressReport,
     PublishedArtifact,
     PublishedMetadata,
     RepositoryContent,
+    RepositoryVersion,
 )
 
 from pulp_rpm.app.comps import dict_to_strdict
-from pulp_rpm.app.constants import ALLOWED_CHECKSUM_ERROR_MSG, CHECKSUM_TYPES, PACKAGES_DIRECTORY
+from pulp_rpm.app.constants import (
+    ALLOWED_CHECKSUM_ERROR_MSG,
+    CHECKSUM_TYPES,
+    COMPRESSION_TYPES,
+    PACKAGES_DIRECTORY,
+)
 from pulp_rpm.app.kickstart.treeinfo import PulpTreeInfo, TreeinfoData
 from pulp_rpm.app.models import (
     DistributionTree,
@@ -325,6 +328,7 @@ def publish(
     metadata_signing_service=None,
     checksum_types=None,
     repo_config=None,
+    compression_type=COMPRESSION_TYPES.GZ,
 ):
     """
     Create a Publication based on a RepositoryVersion.
@@ -335,6 +339,8 @@ def publish(
             A reference to an associated signing service.
         checksum_types (dict): Checksum types for metadata and packages.
         repo_config (JSON): repo config that will be served by distribution
+        compression_type(pulp_rpm.app.constants.COMPRESSION_TYPES):
+            Compression type to use for metadata files.
 
     """
     repository_version = RepositoryVersion.objects.get(pk=repository_version_pk)
@@ -360,7 +366,7 @@ def publish(
             publication.checksum_type = checksum_type
             publication.metadata_checksum_type = checksum_type
             publication.package_checksum_type = checksum_types.get("package") or checksum_type
-
+            publication.compression_type = compression_type
             publication.repo_config = repo_config
 
             publication_data = PublicationData(publication)
@@ -382,6 +388,7 @@ def publish(
                     checksum_types,
                     publication_data.repomdrecords,
                     metadata_signing_service=metadata_signing_service,
+                    compression_type=compression_type,
                 )
                 publish_pb.increment()
 
@@ -397,6 +404,7 @@ def publish(
                         extra_repomdrecords,
                         name,
                         metadata_signing_service=metadata_signing_service,
+                        compression_type=compression_type,
                     )
                     publish_pb.increment()
 
@@ -412,6 +420,7 @@ def generate_repo_metadata(
     extra_repomdrecords,
     sub_folder=None,
     metadata_signing_service=None,
+    compression_type=COMPRESSION_TYPES.GZ,
 ):
     """
     Creates a repomd.xml file.
@@ -423,6 +432,8 @@ def generate_repo_metadata(
         sub_folder(str): name of the folder for sub repos
         metadata_signing_service (pulpcore.app.models.AsciiArmoredDetachedSigningService):
             A reference to an associated signing service.
+        compression_type(pulp_rpm.app.constants.COMPRESSION_TYPES):
+            Compression type to use for metadata files.
 
     """
     cwd = os.getcwd()
@@ -442,17 +453,20 @@ def generate_repo_metadata(
         )
 
     # Prepare metadata files
+    compression_extension = ".zst" if compression_type == COMPRESSION_TYPES.ZSTD else ".gz"
+    cr_compression_type = cr.ZSTD if compression_type == COMPRESSION_TYPES.ZSTD else cr.GZ
+
     repomd_path = os.path.join(cwd, "repomd.xml")
-    pri_xml_path = os.path.join(cwd, "primary.xml.gz")
-    fil_xml_path = os.path.join(cwd, "filelists.xml.gz")
-    oth_xml_path = os.path.join(cwd, "other.xml.gz")
-    upd_xml_path = os.path.join(cwd, "updateinfo.xml.gz")
+    pri_xml_path = os.path.join(cwd, "primary.xml") + compression_extension
+    fil_xml_path = os.path.join(cwd, "filelists.xml") + compression_extension
+    oth_xml_path = os.path.join(cwd, "other.xml") + compression_extension
+    upd_xml_path = os.path.join(cwd, "updateinfo.xml") + compression_extension
     mod_yml_path = os.path.join(cwd, "modules.yaml")
     comps_xml_path = os.path.join(cwd, "comps.xml")
 
-    pri_xml = cr.PrimaryXmlFile(pri_xml_path, compressiontype=cr.GZ)
-    fil_xml = cr.FilelistsXmlFile(fil_xml_path, compressiontype=cr.GZ)
-    oth_xml = cr.OtherXmlFile(oth_xml_path, compressiontype=cr.GZ)
+    pri_xml = cr.PrimaryXmlFile(pri_xml_path, compressiontype=cr_compression_type)
+    fil_xml = cr.FilelistsXmlFile(fil_xml_path, compressiontype=cr_compression_type)
+    oth_xml = cr.OtherXmlFile(oth_xml_path, compressiontype=cr_compression_type)
     upd_xml = None
 
     # We want to support publishing with a different checksum type than the one built-in to the
@@ -567,7 +581,7 @@ def generate_repo_metadata(
     update_records = UpdateRecord.objects.filter(pk__in=content).order_by("id", "digest")
     for update_record in update_records.iterator():
         if not upd_xml:
-            upd_xml = cr.UpdateInfoXmlFile(upd_xml_path, compressiontype=cr.GZ)
+            upd_xml = cr.UpdateInfoXmlFile(upd_xml_path, compressiontype=cr_compression_type)
         upd_xml.add_chunk(cr.xml_dump_updaterecord(update_record.to_createrepo_c()))
 
     # Process modulemd, modulemd_defaults and obsoletes

@@ -27,7 +27,7 @@ from pulpcore.plugin.repo_version_utils import (
     validate_version_paths,
 )
 
-from pulp_rpm.app.constants import CHECKSUM_CHOICES
+from pulp_rpm.app.constants import CHECKSUM_CHOICES, COMPRESSION_CHOICES
 from pulp_rpm.app.models import (
     DistributionTree,
     Package,
@@ -199,6 +199,8 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
         package_checksum_type (String):
             The name of a default checksum type to use for packages when generating metadata.
         repo_config (JSON): repo configuration that will be served by distribution
+        compression_type(pulp_rpm.app.constants.COMPRESSION_TYPES):
+            Compression type to use for metadata files.
     """
 
     TYPE = "rpm"
@@ -226,6 +228,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
 
     autopublish = models.BooleanField(default=False)
     checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
+    compression_type = models.TextField(null=True, choices=COMPRESSION_CHOICES)
     metadata_checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
     package_checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
     repo_config = models.JSONField(default=dict)
@@ -252,6 +255,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
                     "package": self.package_checksum_type,
                 },
                 repo_config=self.repo_config,
+                compression_type=self.compression_type,
             )
 
     @staticmethod
@@ -416,6 +420,7 @@ class RpmPublication(Publication, AutoAddObjPermsMixin):
 
     TYPE = "rpm"
     checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
+    compression_type = models.TextField(null=True, choices=COMPRESSION_CHOICES)
     metadata_checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
     package_checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
     repo_config = models.JSONField(default=dict)

@@ -564,6 +564,7 @@ class RpmPublicationViewSet(PublicationViewSet, RolesMixin):
             )
         repo_config = serializer.validated_data.get("repo_config", repository.repo_config)
         repo_config = gpgcheck_options if gpgcheck_options else repo_config
+        compression_type = serializer.validated_data.get("compression_type")
 
         if repository.metadata_signing_service:
             signing_service_pk = repository.metadata_signing_service.pk
@@ -578,6 +579,7 @@ class RpmPublicationViewSet(PublicationViewSet, RolesMixin):
                 "metadata_signing_service": signing_service_pk,
                 "checksum_types": checksum_types,
                 "repo_config": repo_config,
+                "compression_type": compression_type,
             },
         )
         return OperationPostponedResponse(result, request)

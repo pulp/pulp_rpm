@@ -1,5 +1,16 @@
 from types import SimpleNamespace
 
+# metadata compression types supported
+COMPRESSION_TYPES = SimpleNamespace(
+    ZSTD="zstd",
+    GZ="gz",
+)
+
+COMPRESSION_CHOICES = (
+    (COMPRESSION_TYPES.ZSTD, COMPRESSION_TYPES.ZSTD),
+    (COMPRESSION_TYPES.GZ, COMPRESSION_TYPES.GZ),
+)
+
 CHECKSUM_TYPES = SimpleNamespace(
     UNKNOWN="unknown",
     MD5="md5",
