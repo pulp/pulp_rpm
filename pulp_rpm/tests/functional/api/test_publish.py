@@ -96,7 +96,7 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
         body = gen_distribution(publication=publication_href)
         distribution = gen_object_with_cleanup(rpm_distribution_api, body)
 
-        # 2. Check "primary", "filelists", "other", "updatedinfo" have correct compression ext
+        # 2. Check "primary", "filelists", "other", "updateinfo" have correct compression ext
         for md_type, md_href in self.get_repomd_metadata_urls(distribution.base_url).items():
             if md_type in ("primary", "filelists", "other", "updateinfo"):
                 assert md_href.endswith(compression_ext)
@@ -124,11 +124,7 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
         distribution = gen_object_with_cleanup(rpm_distribution_api, body)
 
         # 2. check the tag 'sum' is not present in updateinfo.xml
-        repomd = ElementTree.fromstring(
-            requests.get(os.path.join(distribution.base_url, "repodata/repomd.xml")).text
-        )
-
-        update_xml_url = self._get_updateinfo_xml_path(repomd)
+        update_xml_url = self.get_repomd_metadata_urls(distribution.base_url)["updateinfo"]
         update_xml = download_and_decompress_file(
             os.path.join(distribution.base_url, update_xml_url)
         )
@@ -138,35 +134,16 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
         assert "sum" not in tags, update_info_content
 
     @staticmethod
-    def _get_updateinfo_xml_path(root_elem):
-        """Return the path to ``updateinfo.xml.gz``, relative to repository root.
-
-        Given a repomd.xml, this method parses the xml and returns the
-        location of updateinfo.xml.gz.
-        """
-        # <ns0:repomd xmlns:ns0="http://linux.duke.edu/metadata/repo">
-        #     <ns0:data type="primary">
-        #         <ns0:checksum type="sha256">[…]</ns0:checksum>
-        #         <ns0:location href="repodata/[…]-primary.xml.gz" />
-        #         …
-        #     </ns0:data>
-        #     …
-        xpath = "{{{}}}data".format(RPM_NAMESPACES["metadata/repo"])
-        data_elems = [elem for elem in root_elem.findall(xpath) if elem.get("type") == "updateinfo"]
-        xpath = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
-        return data_elems[0].find(xpath).get("href")
-
-    @staticmethod
     def get_repomd_metadata_urls(repomd_url: str):
         """
-        Helper function to get data types and respective hrefs.
+        Helper function to get hrefs of repomd types.
 
         Example:
             ```
-            >>> get_repomd_metadata(distribution.base_url)
+            >>> get_repomd_metadata_urls(distribution.base_url)
             {
                 "primary": "repodata/.../primary.xml.gz",
-                "filelists": "repodata/.../listfiles.xml.gz",
+                "filelists": "repodata/.../filelists.xml.gz",
                 ...
             }
             ```
