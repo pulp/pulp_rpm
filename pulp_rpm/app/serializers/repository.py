@@ -146,9 +146,8 @@ class RpmRepositorySerializer(RepositorySerializer):
         """
         # gpg options are deprecated in favour of repo_config
         # acting as shim layer between old and new api
-        gpgcheck = validated_data.get("gpgcheck")
-        repo_gpgcheck = validated_data.get("repo_gpgcheck")
-
+        gpgcheck = validated_data.pop("gpgcheck", None)
+        repo_gpgcheck = validated_data.pop("repo_gpgcheck", None)
         gpgcheck_options = {}
         if gpgcheck is not None:
             gpgcheck_options["gpgcheck"] = gpgcheck
@@ -164,6 +163,36 @@ class RpmRepositorySerializer(RepositorySerializer):
         repo = super().create(validated_data)
         repo.repo_config = repo_config
         return repo
+
+    def update(self, instance, validated_data):
+        """
+        Update the repo and handle gpg options
+
+        Args:
+            validated_data (dict): A dict of validated data to update the repo
+
+        Returns:
+            repo: the updated repo
+        """
+        # gpg options are deprecated in favour of repo_config
+        # acting as shim layer between old and new api
+        gpgcheck = validated_data.pop("gpgcheck", None)
+        repo_gpgcheck = validated_data.pop("repo_gpgcheck", None)
+        gpgcheck_options = {}
+        if gpgcheck is not None:
+            gpgcheck_options["gpgcheck"] = gpgcheck
+        if repo_gpgcheck is not None:
+            gpgcheck_options["repo_gpgcheck"] = repo_gpgcheck
+        if gpgcheck_options.keys():
+            logging.getLogger("pulp_rpm.deprecation").info(
+                "Support for gpg options will be removed from a future release of pulp_rpm."
+            )
+        repo_config = (
+            gpgcheck_options if gpgcheck_options else validated_data.get("repo_config", {})
+        )
+        instance.repo_config = repo_config
+        instance = super().update(instance, validated_data)
+        return instance
 
     class Meta:
         fields = RepositorySerializer.Meta.fields + (
