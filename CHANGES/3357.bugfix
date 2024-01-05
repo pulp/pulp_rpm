@@ -1,1 +1,0 @@
-Fixed server error when trying to create repository with deprecated `gpgcheck` and `repo_gpgcheck`.
