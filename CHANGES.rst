@@ -13,6 +13,22 @@ Changelog
 
 .. towncrier release notes start
 
+3.24.1 (2024-01-05)
+===================
+
+
+Bugfixes
+--------
+
+- Added support for preventing unquoted NSVCA numerical values (e.g. ``"stream": 2.10``) of having zeros stripped on modulemd YAML files.
+  `#3285 <https://github.com/pulp/pulp_rpm/issues/3285>`__
+- Fixed server error when trying to create repository with deprecated `gpgcheck` and `repo_gpgcheck`.
+  `#3357 <https://github.com/pulp/pulp_rpm/issues/3357>`__
+
+
+----
+
+
 3.24.0 (2023-11-03)
 ===================
 
