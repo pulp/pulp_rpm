@@ -482,7 +482,8 @@ class RpmPublicationViewSet(PublicationViewSet, RolesMixin):
                 "effect": "allow",
                 "condition": [
                     "has_model_or_domain_perms:rpm.add_rpmpublication",
-                    "has_repo_attr_model_or_domain_or_obj_perms:rpm.view_rpmrepository",
+                    "has_repo_or_repo_ver_param_model_or_domain_or_obj_perms:"
+                    "rpm.view_rpmrepository",
                 ],
             },
             {
@@ -615,7 +616,8 @@ class RpmDistributionViewSet(DistributionViewSet, RolesMixin):
                 "condition": [
                     "has_model_or_domain_perms:rpm.add_rpmdistribution",
                     "has_publication_param_model_or_domain_or_obj_perms:rpm.view_rpmpublication",
-                    "has_repo_attr_model_or_domain_or_obj_perms:rpm.view_rpmrepository",
+                    "has_repo_or_repo_ver_param_model_or_domain_or_obj_perms:"
+                    "rpm.view_rpmrepository",
                 ],
             },
             {
@@ -626,7 +628,8 @@ class RpmDistributionViewSet(DistributionViewSet, RolesMixin):
                     "has_model_or_domain_or_obj_perms:rpm.change_rpmdistribution",
                     "has_model_or_domain_or_obj_perms:rpm.view_rpmdistribution",
                     "has_publication_param_model_or_domain_or_obj_perms:rpm.view_rpmpublication",
-                    "has_repo_attr_model_or_domain_or_obj_perms:rpm.view_rpmrepository",
+                    "has_repo_or_repo_ver_param_model_or_domain_or_obj_perms:"
+                    "rpm.view_rpmrepository",
                 ],
             },
             {
