@@ -1,7 +1,7 @@
 import pytest
 import uuid
 
-from pulpcore.client.pulp_rpm import RpmRepositorySyncURL, RpmRpmPublication, RpmRpmDistribution
+from pulpcore.client.pulp_rpm import RpmRepositorySyncURL
 from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 from pulp_rpm.tests.functional.utils import gen_rpm_remote
@@ -265,6 +265,7 @@ def test_rbac_publication(
     rpm_rpmremote_api,
     rpm_repository_api,
     rpm_repository_factory,
+    rpm_publication_factory,
     rpm_publication_api,
     monitor_task,
 ):
@@ -272,49 +273,30 @@ def test_rbac_publication(
     user_creator = gen_user(
         model_roles=[
             "rpm.rpmpublication_creator",
-            "rpm.rpmremote_owner",
-            "rpm.rpmrepository_owner",
+            "rpm.rpmremote_creator",
+            "rpm.rpmrepository_creator",
         ]
     )
     user_viewer = gen_user(
         model_roles=[
             "rpm.viewer",
-            "rpm.rpmremote_owner",
-            "rpm.rpmrepository_owner",
         ]
     )
-    user_no = gen_user(
-        model_roles=[
-            "rpm.rpmremote_owner",
-            "rpm.rpmrepository_owner",
-        ]
-    )
-
-    publication = None
-    remote_data = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
-    remote = rpm_rpmremote_api.create(remote_data)
-    repo = rpm_repository_factory()
-    sync_url = RpmRepositorySyncURL(remote=remote.pulp_href)
-    sync_res = rpm_repository_api.sync(repo.pulp_href, sync_url)
-    monitor_task(sync_res.task)
-    repository = rpm_repository_api.read(repo.pulp_href)
+    user_no = gen_user(model_roles=[])
 
     # Create
     with user_creator:
-        publish_data = RpmRpmPublication(repository=repo.pulp_href)
-        publish_response = rpm_publication_api.create(publish_data)
-        created_resources = monitor_task(publish_response.task).created_resources
-        publication = rpm_publication_api.read(created_resources[0])
-        assert rpm_publication_api.list(repository=repository.pulp_href).count == 1
-
+        repo = rpm_repository_factory()
+        publication = rpm_publication_factory(repository=repo.pulp_href)
+        assert publication.repository == repo.pulp_href
+        pub_from_repo_version = rpm_publication_factory(repository_version=repo.latest_version_href)
+        assert pub_from_repo_version.repository_version == repo.latest_version_href
     with user_viewer, pytest.raises(ApiException) as exc:
-        publish_data = RpmRpmPublication(repository=repo.pulp_href)
-        rpm_publication_api.create(publish_data)
+        rpm_publication_factory(repository=repo.pulp_href)
     assert exc.value.status == 403
 
     with user_no, pytest.raises(ApiException) as exc:
-        publish_data = RpmRpmPublication(repository=repo.pulp_href)
-        rpm_publication_api.create(publish_data)
+        rpm_publication_factory(repository=repo.pulp_href)
     assert exc.value.status == 403
 
     # Remove
@@ -328,12 +310,10 @@ def test_rbac_publication(
 
     with user_creator:
         rpm_publication_api.delete(publication.pulp_href)
-        res = rpm_repository_api.delete(repository.pulp_href)
-        monitor_task(res.task)
-        res = rpm_rpmremote_api.delete(remote.pulp_href)
+        res = rpm_repository_api.delete(repo.pulp_href)
         monitor_task(res.task)
         publications = rpm_publication_api.list().results
-        assert not any(p.repository != repository.pulp_href for p in publications)
+        assert not any(p.repository != repo.pulp_href for p in publications)
 
 
 @pytest.mark.parallel
@@ -343,62 +323,40 @@ def test_rbac_distribution(
     rpm_repository_factory,
     rpm_rpmremote_api,
     rpm_publication_api,
+    rpm_publication_factory,
     rpm_distribution_api,
+    rpm_distribution_factory,
     monitor_task,
 ):
     """Test RPM distribution CRUD."""
     user_creator = gen_user(
         model_roles=[
+            "rpm.rpmrepository_creator",
+            "rpm.rpmpublication_creator",
             "rpm.rpmdistribution_creator",
-            "rpm.rpmpublication_owner",
-            "rpm.rpmremote_owner",
-            "rpm.rpmrepository_owner",
         ]
     )
     user_viewer = gen_user(
         model_roles=[
             "rpm.viewer",
-            "rpm.rpmpublication_owner",
-            "rpm.rpmremote_owner",
-            "rpm.rpmrepository_owner",
         ]
     )
-    user_no = gen_user(
-        model_roles=[
-            "rpm.rpmpublication_owner",
-            "rpm.rpmremote_owner",
-            "rpm.rpmrepository_owner",
-        ]
-    )
-
-    distribution = None
-    remote_data = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
-    remote = rpm_rpmremote_api.create(remote_data)
-    repo = rpm_repository_factory()
-    sync_url = RpmRepositorySyncURL(remote=remote.pulp_href)
-    sync_res = rpm_repository_api.sync(repo.pulp_href, sync_url)
-    monitor_task(sync_res.task)
-    publish_data = RpmRpmPublication(repository=repo.pulp_href)
-    publish_response = rpm_publication_api.create(publish_data)
-    created_resources = monitor_task(publish_response.task).created_resources
-    publication = rpm_publication_api.read(created_resources[0])
+    user_no = gen_user(model_roles=[])
 
     # Create
-    dist_data = RpmRpmDistribution(
-        name=str(uuid.uuid4()), publication=publication.pulp_href, base_path=str(uuid.uuid4())
-    )
     with user_no, pytest.raises(ApiException) as exc:
-        rpm_distribution_api.create(dist_data)
+        rpm_distribution_factory(name=str(uuid.uuid4()), base_path=str(uuid.uuid4()))
     assert exc.value.status == 403
 
     with user_viewer, pytest.raises(ApiException) as exc:
-        rpm_distribution_api.create(dist_data)
+        rpm_distribution_factory(name=str(uuid.uuid4()), base_path=str(uuid.uuid4()))
     assert exc.value.status == 403
 
     with user_creator:
-        res = rpm_distribution_api.create(dist_data)
-        distribution = rpm_distribution_api.read(monitor_task(res.task).created_resources[0])
-        assert rpm_distribution_api.list(name=distribution.name).count == 1
+        repo = rpm_repository_factory()
+        publication = rpm_publication_factory(repository=repo.pulp_href)
+        distribution = rpm_distribution_factory(publication=publication.pulp_href)
+        assert distribution.publication == publication.pulp_href
 
     # Update
     dist_data_to_update = rpm_distribution_api.read(distribution.pulp_href)
@@ -434,12 +392,8 @@ def test_rbac_distribution(
         res = rpm_repository_api.delete(repo.pulp_href)
         monitor_task(res.task)
 
-        res = rpm_rpmremote_api.delete(remote.pulp_href)
-        monitor_task(res.task)
-
         assert rpm_distribution_api.list(name=distribution.name).count == 0
         assert rpm_repository_api.list(name=repo.name).count == 0
-        assert rpm_rpmremote_api.list(name=remote.name).count == 0
 
 
 @pytest.mark.parallel
