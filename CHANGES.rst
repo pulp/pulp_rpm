@@ -13,6 +13,49 @@ Changelog
 
 .. towncrier release notes start
 
+3.25.0 (2024-01-18)
+===================
+
+Features
+--------
+
+- Added a ``compression_type`` option to allow publishing metadata files with zstd compression (in addition to the default gzip).
+  `#3316 <https://github.com/pulp/pulp_rpm/issues/3316>`__
+- Raised pulpcore requirement to 3.44.1 to fix an RBAC related bug.
+  `#3381 <https://github.com/pulp/pulp_rpm/issues/3381>`__
+
+
+Bugfixes
+--------
+
+- Added support for preventing unquoted NSVCA numerical values (e.g. ``"stream": 2.10``) of having zeros stripped on modulemd YAML files.
+  `#3285 <https://github.com/pulp/pulp_rpm/issues/3285>`__
+- Fixed bug about malformed tuple introduced on the removal of sqlite-metadata support (PR #3328).
+  `#3351 <https://github.com/pulp/pulp_rpm/issues/3351>`__
+- Fixed server error when trying to create repository with deprecated `gpgcheck` and `repo_gpgcheck`.
+  `#3357 <https://github.com/pulp/pulp_rpm/issues/3357>`__
+- Fixes bug where RpmPublications couldn't be created when using a non-admin user.
+  `#3381 <https://github.com/pulp/pulp_rpm/issues/3381>`__
+
+
+Deprecations and Removals
+-------------------------
+
+- Removed the ability to generate sqlite metadata during repository publish.
+  `#2457 <https://github.com/pulp/pulp_rpm/issues/2457>`__
+- Removed support for publishing repos with a checksum type of md5, sha1, or sha224
+  `#2488 <https://github.com/pulp/pulp_rpm/issues/2488>`__
+
+
+Misc
+----
+
+- `#3345 <https://github.com/pulp/pulp_rpm/issues/3345>`__
+
+
+----
+
+
 3.24.1 (2024-01-05)
 ===================
 
