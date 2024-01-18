@@ -1,3 +1,0 @@
-Deprecated the 'package_checksum_type' and 'metadata_checksum_type' options on the `RpmRepository`
-and `RpmPublication` models. A 'checksum_type' argument will be provided instead, which will
-control both settings (but they will no longer be individually controllable).
