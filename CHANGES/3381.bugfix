@@ -1,1 +1,0 @@
-Fixes bug where RpmPublications couldn't be created when using a non-admin user.
