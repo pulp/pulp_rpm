@@ -115,8 +115,9 @@ def resolve_advisories(version, previous_version):
         tmp_advisories = []
         for adv in conflict_advisories[1:]:
             pk_to_add, pk_to_remove, pk_to_exclude = resolve_advisory_conflict(new_advisory, adv)
-            new_advisory = UpdateRecord.objects.filter(pk=pk_to_add[0]).get()
-            tmp_advisories.append(new_advisory)
+            if pk_to_add:
+                new_advisory = UpdateRecord.objects.filter(pk=pk_to_add[0]).get()
+                tmp_advisories.append(new_advisory)
             content_pks_to_exclude.update(pk_to_exclude)
             content_pks_to_remove.update(pk_to_remove)
         added_advisories_by_id[adv_id] = [new_advisory]
@@ -360,38 +361,84 @@ def merge_advisories(previous_advisory, added_advisory):
     added_collections = added_advisory.collections.all()
     references = previous_advisory.references.all()
 
+    # First thing to do is ensure collection-name-uniqueness
+    # in the newly-merged advisory.
+
+    # If we've seen a collection-name already, create a new name
+    # by appending "_<index>" and rename the collection before
+    # merging.
+    # "index", in this context, is a monotonically-increasing INTEGER. In the code below, note
+    # the lines that insure that, when a new "index" is required, choosing (curr-max+1) is
+    # guaranteed.
+    # NOTE: keeping the collections separate is DELIBERATE:
+    # 1) after the fact, it's clear that an advisory merge happened, and that one set of
+    #    packages comes from one place, one from a different one
+    # 2) package-grouping can be *relevant* (e.g. base-rpms vs debuginfo-rpms)
+    # 3) package-grouping can be *required* (e.g., module-collections must be kept separate)
+
+    def get_new_name(collection, collection_group):
+        """
+        Generate a new collection-name based on the current one and a list of "indexes".
+
+        Collections are unique-ified by adding "_INTEGER" to their given names.
+        Collection-group is keyed by "original" name, with values of "all index-integers seen
+          so far".
+        New names are coined as "original name + max(index-integers seen so far for that name".
+        """
+        name_list = collection.name.split("_")
+        if name_list[-1].isdecimal():
+            name_list.pop(-1)
+            orig_name = "_".join(name_list)
+        else:
+            orig_name = collection.name
+
+        if orig_name in collection_group.keys():
+            index = max(collection_group[orig_name]) + 1
+        else:
+            index = 0
+        collection_group.setdefault(orig_name, []).append(index)
+        return f"{orig_name}_{index}"
+
+    # Set up the "collection-group" to an initial state - all the current-names, and a list
+    # of any "indices" they've been given, so we can know what our current-max-index is
+    # before we start renaming collections.
+    collection_group = {}
+    for collection in chain(previous_collections, added_collections):
+        # It's possible for a collection to have NO NAME (not even an empty string)
+        if not collection.name:
+            collection.name = ""
+        name_list = collection.name.split("_")
+        if name_list[-1].isdecimal():
+            index = name_list.pop(-1)
+            orig_name = "_".join(name_list)
+            collection_group.setdefault(orig_name, []).append(int(index))
+
+    # Now, prepare for, and merge, the two advisories
     with transaction.atomic():
-        # First thing to do is ensure collection-name-uniqueness
-        # in the newly-merged advisory.
-
-        # If we've seen a collection-name already, create a new name
-        # by appending "_<suffix>" and rename the collection before
-        # merging.
-        # NOTE: keeping the collections separate is DELIBERATE:
-        # 1) after the fact, it's clear that an advisory merge happened, and that one set of
-        #    packages comes from one place, one from a different one
-        # 2) package-grouping can be *relevant* (e.g. base-rpms vs debuginfo-rpms)
-        # 3) package-grouping can be *required* (e.g., module-collections must be kept separate)
-
-        # dictionary of collection-name:first-unused-suffix pairs
-        # if a collection has no name, we assign it the name "collection" and uniquify-it from there
-        names_seen = {"collection": 0}
+        # Finalize unique-ified collection names, to use in the event of concurrency-collisions
+        # if a collection has no name, we assign it the name "collection".
+        names_seen = ["collection"]
+        collections_to_merge = set([])
         for collection in chain(previous_collections, added_collections):
+            # No packages? ignore
+            if collection.packages.count() == 0:
+                continue
+
             # no-name? When merging, ILLEGAL! Give it a name
             if not collection.name:
                 collection.name = "collection"
 
-            if collection.name in names_seen.keys():
-                orig_name = collection.name
-                new_name = f"{orig_name}_{names_seen[orig_name]}"
-                names_seen[orig_name] += 1
-                collection.name = new_name
-            # if we've not seen it before, store in names-seen as name:0
-            else:
-                names_seen[collection.name] = 0
-        merged_advisory_cr = previous_advisory.to_createrepo_c(
-            collections=chain(previous_collections, added_collections)
-        )
+            # If we've seen a collection with "this" name - give it a unique one,
+            # and add that name to the "seen" list
+            if collection.name in names_seen:
+                collection.name = get_new_name(collection, collection_group)
+            # Either we've not seen it ever, or we've generated a new "indexed" name
+            names_seen.append(collection.name)
+            # add the collection to the "set of collections for the merged advisory"
+            collections_to_merge.add(collection)
+
+        # Compute digest for the new merged advisory and save it
+        merged_advisory_cr = previous_advisory.to_createrepo_c(collections=collections_to_merge)
         merged_digest = hash_update_record(merged_advisory_cr)
         merged_advisory = previous_advisory
         # Need to null both pk (content_ptr_id) and pulp_id here to insure django doesn't
@@ -408,9 +455,7 @@ def merge_advisories(previous_advisory, added_advisory):
         else:
             # For UpdateCollections, make sure we don't re-use the collections for either of the
             # advisories being merged
-            _copy_update_collections_for(
-                merged_advisory, chain(previous_collections, added_collections)
-            )
+            _copy_update_collections_for(merged_advisory, collections_to_merge)
             for reference in references:
                 # copy reference and add relation for advisory
                 reference.pk = None
