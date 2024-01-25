@@ -529,7 +529,6 @@ class UpdateCollectionPackageResource(QueryModelResource):
                     update_record__in=UpdateRecord.objects.filter(pk__in=self.repo_version.content)
                 )
             )
-            .distinct("name", "epoch", "version", "release", "arch")
             .order_by("name", "epoch", "version", "release", "arch")
             .select_related("update_collection", "update_collection__update_record")
         )
