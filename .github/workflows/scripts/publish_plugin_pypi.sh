@@ -7,23 +7,27 @@
 #
 # For more info visit https://github.com/pulp/plugin_template
 
+set -euv
+
 # make sure this script runs at the repo root
 cd "$(dirname "$(realpath -e "$0")")"/../../..
 
-set -euv
+VERSION="$1"
 
-export response=$(curl --write-out %{http_code} --silent --output /dev/null https://pypi.org/project/pulp-rpm/$1/)
-if [ "$response" == "200" ];
+if [[ -z "$VERSION" ]]; then
+  echo "No version specified."
+  exit 1
+fi
+
+RESPONSE="$(curl --write-out '%{http_code}' --silent --output /dev/null "https://pypi.org/project/pulp-rpm/$VERSION/")"
+
+if [ "$RESPONSE" == "200" ];
 then
-  echo "pulp_rpm $1 has already been released. Skipping."
+  echo "pulp_rpm $VERSION has already been released. Skipping."
   exit
 fi
 
-pip install twine
-
-twine check dist/pulp_rpm-$1-py3-none-any.whl || exit 1
-twine check dist/pulp-rpm-$1.tar.gz || exit 1
-twine upload dist/pulp_rpm-$1-py3-none-any.whl -u pulp -p $PYPI_PASSWORD
-twine upload dist/pulp-rpm-$1.tar.gz -u pulp -p $PYPI_PASSWORD
-
-exit $?
+twine upload -u __token__ -p "$PYPI_API_TOKEN" \
+"dist/pulp_rpm-$VERSION-py3-none-any.whl" \
+"dist/pulp-rpm-$VERSION.tar.gz" \
+;

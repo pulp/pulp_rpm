@@ -2,29 +2,22 @@ FROM {{ ci_base | default("ghcr.io/pulp/pulp-ci-centos:" + pulp_container_tag) }
 
 # Add source directories to container
 {% for item in plugins %}
-{% if item.source.startswith("./") or item.ci_requirements | default(false) %}
 ADD ./{{ item.name }} ./{{ item.name }}
-{% endif %}
 {% endfor %}
 
 # Install python packages
+# S3 botocore needs to be patched to handle responses from minio during 0-byte uploads
 # Hacking botocore (https://github.com/boto/botocore/pull/1990)
 
 RUN pip3 install
 {%- if s3_test | default(false) -%}
-{{ " " }}django-storages[boto3] git+https://github.com/fabricio-aguiar/botocore.git@fix-100-continue
-{%- endif -%}
-{%- if azure_test | default(false) -%}
-{{ " " }}django-storages[azure]>=1.12.2
-{%- endif -%}
-{%- if gcp_test | default(false) -%}
-{{ " " }}django-storages[google]>=1.13.2
+{{ " " }}git+https://github.com/fabricio-aguiar/botocore.git@fix-100-continue
 {%- endif -%}
 {%- for item in plugins -%}
-{%- if item.name == "pulp-certguard" -%}
-{{ " " }}python-dateutil rhsm
-{%- endif -%}
 {{ " " }}{{ item.source }}
+{%- if item.lowerbounds | default(false) -%}
+{{ " " }}-c ./{{ item.name }}/lowerbounds_constraints.txt
+{%- endif -%}
 {%- if item.ci_requirements | default(false) -%}
 {{ " " }}-r ./{{ item.name }}/ci_requirements.txt
 {%- endif -%}
