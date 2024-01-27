@@ -98,6 +98,20 @@ Bugfixes
 ----
 
 
+3.23.1 (2024-01-26)
+===================
+
+
+Bugfixes
+--------
+
+- Added support for preventing unquoted NSVCA numerical values (e.g. ``"stream": 2.10``) of having zeros stripped on modulemd YAML files.
+  `#3285 <https://github.com/pulp/pulp_rpm/issues/3285>`__
+
+
+----
+
+
 3.23.0 (2023-10-13)
 ===================
 
