@@ -13,6 +13,15 @@ Changelog
 
 .. towncrier release notes start
 
+3.23.2 (2024-01-27)
+===================
+
+No significant changes.
+
+
+----
+
+
 3.23.1 (2024-01-26)
 ===================
 
