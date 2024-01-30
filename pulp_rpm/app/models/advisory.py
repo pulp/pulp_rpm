@@ -356,7 +356,7 @@ class UpdateCollectionPackage(BaseModel):
             Source filename
         sum (Text):
             Checksum
-        sum_type (Text):
+        sum_type (PositiveInteger):
             Checksum type
         version (Text):
             Version
@@ -439,8 +439,7 @@ class UpdateCollectionPackage(BaseModel):
             or "",
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM_TYPE: getattr(
                 package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.SUM_TYPE
-            )
-            or None,
+            ),
             PULP_UPDATE_COLLECTION_PACKAGE_ATTRS.VERSION: getattr(
                 package, CR_UPDATE_COLLECTION_PACKAGE_ATTRS.VERSION
             )
@@ -469,7 +468,10 @@ class UpdateCollectionPackage(BaseModel):
             pkg.relogin_suggested = self.relogin_suggested
         if self.restart_suggested:
             pkg.restart_suggested = self.restart_suggested
-        if self.sum:
+        if self.sum and self.sum_type:
+            # Whether self.sum is None controls whether or not the <sum> tag will be serialized
+            # If self.sum_type is 0 the result will be createrepo_c printing "Unknown checksum",
+            # an invalid value, thus we don't want to set self.sum if this will happen.
             pkg.sum = self.sum
             pkg.sum_type = self.sum_type
 
