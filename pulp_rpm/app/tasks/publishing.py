@@ -148,6 +148,9 @@ class PublicationData:
         # Note that this only impacts user-created publications, which produce the "standard"
         # RPM layout of repo/Packages/f/foo.rpm. A publication created by mirror-sync retains
         # whatever layout their "upstream" repo-metadata dictates.
+        #
+        # Note, Jan 2024: As of now we are restricting new repository versions to only unique
+        # NEVRA, which means this hack can probably be phased out in a few years.
         fields = ["pk", "relative_path", "content__rpm_package__time_build"]
         for content_artifact in contentartifact_qs.values(*fields).iterator():
             relative_path = content_artifact["relative_path"]
