@@ -1,20 +1,17 @@
 import logging
 import traceback
-
 from gettext import gettext as _
-
-from rest_framework import serializers
-from rest_framework.exceptions import NotAcceptable
 
 from pulpcore.plugin.serializers import (
     ContentChecksumSerializer,
     SingleArtifactContentUploadSerializer,
 )
 from pulpcore.plugin.util import get_domain_pk
+from rest_framework import serializers
+from rest_framework.exceptions import NotAcceptable
 
 from pulp_rpm.app.models import Package
-from pulp_rpm.app.shared_utils import read_crpackage_from_artifact, format_nvra
-
+from pulp_rpm.app.shared_utils import format_nvra, read_crpackage_from_artifact
 
 log = logging.getLogger(__name__)
 
@@ -230,6 +227,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
 
     def __init__(self, *args, **kwargs):
         """Initializer for RpmPackageSerializer."""
+
         super().__init__(*args, **kwargs)
         if "relative_path" in self.fields:
             self.fields["relative_path"].required = False
@@ -321,6 +319,37 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
             )
         )
         model = Package
+
+    def validate(self, data):
+        validated_data = super().validate(data)
+        sign_package = self.context.get("sign_package", None)
+        # choose branch, if not set externally
+        if sign_package is None:
+            sign_package = bool(
+                validated_data.get("repository")
+                and validated_data["repository"].package_signing_service
+            )
+            self.context["sign_package"] = sign_package
+
+        # normal branch
+        if sign_package is False:
+            return validated_data
+
+        # signing branch
+        if not validated_data["repository"].package_signing_fingerprint:
+            raise serializers.ValidationError(
+                _(
+                    "To sign a package on upload, the associated Repository must set both"
+                    "'package_signing_service' and 'package_signing_fingerprint'."
+                )
+            )
+
+        if not validated_data.get("file"):
+            raise serializers.ValidationError(
+                _("To sign a package on upload, a file must be provided.")
+            )
+
+        return validated_data
 
 
 class MinimalPackageSerializer(PackageSerializer):

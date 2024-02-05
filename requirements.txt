@@ -6,3 +6,4 @@ productmd~=1.33.0
 pulpcore>=3.44.1,<3.55
 solv~=0.7.21
 aiohttp_xmlrpc~=1.5.0
+importlib-resources~=6.4.0

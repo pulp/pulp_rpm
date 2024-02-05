@@ -26,7 +26,14 @@ from pulp_rpm.app.constants import (
     SKIP_TYPES,
     SYNC_POLICY_CHOICES,
 )
-from pulp_rpm.app.models import RpmDistribution, RpmPublication, RpmRemote, RpmRepository, UlnRemote
+from pulp_rpm.app.models import (
+    RpmDistribution,
+    RpmPackageSigningService,
+    RpmPublication,
+    RpmRemote,
+    RpmRepository,
+    UlnRemote,
+)
 from pulp_rpm.app.schema import COPY_CONFIG_SCHEMA
 from urllib.parse import urlparse
 
@@ -51,6 +58,24 @@ class RpmRepositorySerializer(RepositorySerializer):
         many=False,
         required=False,
         allow_null=True,
+    )
+    package_signing_service = RelatedField(
+        help_text="A reference to an associated package signing service.",
+        view_name="signing-services-detail",
+        queryset=RpmPackageSigningService.objects.all(),
+        many=False,
+        required=False,
+        allow_null=True,
+    )
+    package_signing_fingerprint = serializers.CharField(
+        help_text=_(
+            "The pubkey V4 fingerprint (160 bits) to be passed to the package signing service."
+            "The signing service will use that on signing operations related to this repository."
+        ),
+        max_length=40,
+        required=False,
+        allow_blank=True,
+        default="",
     )
     retain_package_versions = serializers.IntegerField(
         help_text=_(
@@ -220,6 +245,8 @@ class RpmRepositorySerializer(RepositorySerializer):
         fields = RepositorySerializer.Meta.fields + (
             "autopublish",
             "metadata_signing_service",
+            "package_signing_service",
+            "package_signing_fingerprint",
             "retain_package_versions",
             "checksum_type",
             "metadata_checksum_type",

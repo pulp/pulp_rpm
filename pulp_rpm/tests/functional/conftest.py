@@ -1,34 +1,36 @@
 import hashlib
 import json
+import subprocess
 import uuid
+from dataclasses import dataclass
 from tempfile import NamedTemporaryFile
 
+import gnupg
 import pytest
 import requests
-
 from pulpcore.client.pulp_rpm import (
     AcsRpmApi,
     ContentAdvisoriesApi,
     ContentDistributionTreesApi,
+    ContentModulemdDefaultsApi,
+    ContentModulemdObsoletesApi,
+    ContentModulemdsApi,
     ContentPackagecategoriesApi,
     ContentPackagegroupsApi,
     ContentPackagelangpacksApi,
     ContentPackagesApi,
-    ContentModulemdsApi,
-    ContentModulemdDefaultsApi,
-    ContentModulemdObsoletesApi,
     RemotesUlnApi,
-    RpmCopyApi,
     RpmCompsApi,
+    RpmCopyApi,
     RpmRepositorySyncURL,
 )
 
 from pulp_rpm.tests.functional.constants import (
     BASE_TEST_JSON,
     RPM_KICKSTART_FIXTURE_URL,
-    RPM_SIGNED_URL,
     RPM_MODULAR_FIXTURE_URL,
     RPM_SIGNED_FIXTURE_URL,
+    RPM_SIGNED_URL,
 )
 from pulp_rpm.tests.functional.utils import init_signed_repo_configuration
 
@@ -346,3 +348,209 @@ def cleanup_domains(orphans_cleanup_api_client, monitor_task, rpm_repository_api
                     assert content_api_client.list(pulp_domain=domain.name).count == 0
 
     return _cleanup_domains
+
+
+# package signing
+
+SIGNING_SCRIPT_STRING = r"""#!/usr/bin/env bash
+# Rpm configuration:
+#     GPG_HOME: gpg home directory
+#     GPG_NAME: gpg user identity
+#     GPG_BIN: gpg binary path
+
+FILE_PATH=$1
+GPG_HOME=HOMEDIRHERE
+GPG_BIN=/usr/bin/gpg
+
+# user id can be specified by a fingerprint:
+# see https://www.gnupg.org/documentation/manuals/gnupg/Specify-a-User-ID.html
+GPG_NAME="${PULP_SIGNING_KEY_FINGERPRINT}"
+
+# Sign the package
+rpm \
+    --define "_signature gpg" \
+    --define "_gpg_path ${GPG_HOME}" \
+    --define "_gpg_name ${GPG_NAME}" \
+    --define "_gpgbin ${GPG_BIN}" \
+    --addsign "${FILE_PATH}" 1> /dev/null
+
+# Check the exit status
+STATUS=$?
+if [[ ${STATUS} -eq 0 ]]; then
+   echo {\"rpm_package\": \"${FILE_PATH}\"}
+else
+   exit ${STATUS}
+fi
+"""
+
+
+@pytest.fixture(scope="session")
+def signing_script_path(signing_script_temp_dir, signing_gpg_homedir_path):
+    signing_script_file = signing_script_temp_dir / "sign-rpm-package.sh"
+    signing_script_file.write_text(
+        SIGNING_SCRIPT_STRING.replace("HOMEDIRHERE", str(signing_gpg_homedir_path))
+    )
+
+    signing_script_file.chmod(0o755)
+
+    return signing_script_file
+
+
+@pytest.fixture(scope="session")
+def signing_script_temp_dir(tmp_path_factory):
+    return tmp_path_factory.mktemp("sigining_script_dir")
+
+
+@pytest.fixture(scope="session")
+def signing_gpg_homedir_path(tmp_path_factory):
+    return tmp_path_factory.mktemp("gpghome")
+
+
+@pytest.fixture
+def sign_with_rpm_package_signing_service(signing_script_path, signing_gpg_metadata):
+    """
+    Runs the test signing script manually, locally, and returns the signature file produced.
+    """
+
+    def _sign_with_rpm_package_signing_service(filename):
+        env = {"PULP_SIGNING_KEY_FINGERPRINT": signing_gpg_metadata[1]}
+        cmd = (signing_script_path, filename)
+        completed_process = subprocess.run(
+            cmd,
+            env=env,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+
+        if completed_process.returncode != 0:
+            raise RuntimeError(str(completed_process.stderr))
+
+        try:
+            return_value = json.loads(completed_process.stdout)
+        except json.JSONDecodeError:
+            raise RuntimeError("The signing script did not return valid JSON!")
+
+        return return_value
+
+    return _sign_with_rpm_package_signing_service
+
+
+@dataclass
+class GPGMetadata:
+    public_key: str
+    fingerprint: str
+    keyid: str
+
+
+@pytest.fixture(scope="session")
+def signing_gpg_metadata2(signing_gpg_homedir_path) -> tuple[gnupg.GPG, list[GPGMetadata]]:
+    """
+    A fixture that returns a GPG instance and related metadata (i.e., fingerprint, keyid).
+    """
+    PRIVATE_KEY_URLS = (
+        "https://raw.githubusercontent.com/pulp/pulp-fixtures/master/common/GPG-PRIVATE-KEY-fixture-signing",  # noqa: E501
+        "https://raw.githubusercontent.com/pulp/pulp-fixtures/master/common/GPG-PRIVATE-KEY-pulp-qe",  # noqa: E501
+    )
+
+    gpg = gnupg.GPG(gnupghome=signing_gpg_homedir_path)
+    keys = []
+    for privatekey_url in PRIVATE_KEY_URLS:
+        response_private = requests.get(privatekey_url)
+        response_private.raise_for_status()
+
+        gpg.import_keys(response_private.content)
+        key_info = gpg.list_keys()[-1]
+        gpg_md = GPGMetadata(
+            fingerprint=key_info["fingerprint"],
+            keyid=key_info["keyid"],
+            public_key=gpg.export_keys(key_info["keyid"]),
+        )
+        gpg.trust_keys(gpg_md.fingerprint, "TRUST_ULTIMATE")
+        keys.append(gpg_md)
+
+    return (gpg, keys)
+
+
+@pytest.fixture(scope="session")
+def signing_gpg_metadata(signing_gpg_homedir_path):
+    """
+    A fixture that returns a GPG instance and related metadata (i.e., fingerprint, keyid).
+    """
+    PRIVATE_KEY_URL = "https://raw.githubusercontent.com/pulp/pulp-fixtures/master/common/GPG-PRIVATE-KEY-fixture-signing"  # noqa: E501
+
+    response_private = requests.get(PRIVATE_KEY_URL)
+    response_private.raise_for_status()
+
+    gpg = gnupg.GPG(gnupghome=signing_gpg_homedir_path)
+    gpg.import_keys(response_private.content)
+
+    fingerprint = gpg.list_keys()[0]["fingerprint"]
+    keyid = gpg.list_keys()[0]["keyid"]
+
+    gpg.trust_keys(fingerprint, "TRUST_ULTIMATE")
+
+    return gpg, fingerprint, keyid
+
+
+@pytest.fixture(scope="session")
+def pulp_trusted_public_key(signing_gpg_metadata):
+    """Fixture to extract the ascii armored trusted public test key."""
+    gpg, _, keyid = signing_gpg_metadata
+    return gpg.export_keys([keyid])
+
+
+@pytest.fixture(scope="session")
+def pulp_trusted_public_key_fingerprint(signing_gpg_metadata):
+    """Fixture to extract the ascii armored trusted public test keys fingerprint."""
+    return signing_gpg_metadata[1]
+
+
+@pytest.fixture(scope="session")
+def _rpm_package_signing_service_name(
+    bindings_cfg,
+    signing_script_path,
+    signing_gpg_metadata,
+    signing_gpg_homedir_path,
+    pytestconfig,
+):
+    service_name = str(uuid.uuid4())
+    gpg, fingerprint, keyid = signing_gpg_metadata
+
+    cmd = (
+        "pulpcore-manager",
+        "add-signing-service",
+        service_name,
+        str(signing_script_path),
+        fingerprint,
+        "--class",
+        "rpm:RpmPackageSigningService",
+        "--gnupghome",
+        str(signing_gpg_homedir_path),
+    )
+    completed_process = subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert completed_process.returncode == 0
+
+    yield service_name
+
+    cmd = (
+        "pulpcore-manager",
+        "remove-signing-service",
+        service_name,
+        "--class",
+        "rpm:RpmPackageSigningService",
+    )
+    subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+
+@pytest.fixture
+def rpm_package_signing_service(_rpm_package_signing_service_name, signing_service_api_client):
+    return signing_service_api_client.list(name=_rpm_package_signing_service_name).results[0]
