@@ -1,29 +1,28 @@
-import re
 import os
+import re
 import textwrap
-
 from gettext import gettext as _
 from logging import getLogger
 
 from aiohttp.web_response import Response
-from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from pulpcore.plugin.download import DownloaderFactory
 from pulpcore.plugin.models import (
-    AutoAddObjPermsMixin,
     Artifact,
     AsciiArmoredDetachedSigningService,
+    AutoAddObjPermsMixin,
     Content,
     ContentArtifact,
+    Distribution,
+    Publication,
     Remote,
     RemoteArtifact,
     Repository,
     RepositoryContent,
     RepositoryVersion,
-    Publication,
     PublishedMetadata,
-    Distribution,
 )
 from pulpcore.plugin.repo_version_utils import (
     remove_duplicates,
@@ -32,22 +31,22 @@ from pulpcore.plugin.repo_version_utils import (
 )
 
 from pulp_rpm.app.constants import CHECKSUM_CHOICES, COMPRESSION_CHOICES
+from pulp_rpm.app.downloaders import RpmDownloader, RpmFileDownloader, UlnDownloader
+from pulp_rpm.app.exceptions import DistributionTreeConflict
 from pulp_rpm.app.models import (
     DistributionTree,
-    Package,
-    PackageCategory,
-    PackageGroup,
-    PackageEnvironment,
-    PackageLangpacks,
-    RepoMetadataFile,
     Modulemd,
     ModulemdDefaults,
     ModulemdObsolete,
+    Package,
+    PackageCategory,
+    PackageEnvironment,
+    PackageGroup,
+    PackageLangpacks,
+    RepoMetadataFile,
+    RpmPackageSigningService,
     UpdateRecord,
 )
-
-from pulp_rpm.app.downloaders import RpmDownloader, RpmFileDownloader, UlnDownloader
-from pulp_rpm.app.exceptions import DistributionTreeConflict
 from pulp_rpm.app.shared_utils import urlpath_sanitize
 
 log = getLogger(__name__)
@@ -202,6 +201,10 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
             The name of a checksum type to use for metadata when generating metadata.
         package_checksum_type (String):
             The name of a default checksum type to use for packages when generating metadata.
+        package_signing_service (RpmPackageSigningService):
+            Signing service to be used on package signing operations related to this repository.
+        package_signing_fingerprint (String):
+            The V4 fingerprint (160 bits) to be used by @package_signing_service.
         repo_config (JSON): repo configuration that will be served by distribution
         compression_type(pulp_rpm.app.constants.COMPRESSION_TYPES):
             Compression type to use for metadata files.
@@ -226,6 +229,10 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
     metadata_signing_service = models.ForeignKey(
         AsciiArmoredDetachedSigningService, on_delete=models.SET_NULL, null=True
     )
+    package_signing_service = models.ForeignKey(
+        RpmPackageSigningService, on_delete=models.SET_NULL, null=True
+    )
+    package_signing_fingerprint = models.TextField(null=True, max_length=40)
     original_checksum_types = models.JSONField(default=dict)
     last_sync_details = models.JSONField(default=dict)
     retain_package_versions = models.PositiveIntegerField(default=0)
