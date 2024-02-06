@@ -2,11 +2,23 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+import requests
 from django.conf import settings
 from pulpcore.app.models.content import SigningService
-from pulpcore.exceptions.validation import InvalidSignatureError, ValidationError
+from pulpcore.exceptions.validation import (InvalidSignatureError,
+                                            ValidationError)
 
 RPM_PACKAGE_FIXTURE = Path("some-rpm-package.rpm")
+
+
+def write_unsigned_rpm_package(temp_file: "BufferedRandom") -> Path:
+    RPM_PACKAGE_URL = "https://raw.githubusercontent.com/pulp/pulp-fixtures/master/rpm/assets/bear-4.1-1.noarch.rpm"  # noqa: E501
+    response = requests.get(RPM_PACKAGE_URL)
+    response.raise_for_status()
+    data = response.content
+    temp_file.write(data)
+    temp_file.flush()
+    return temp_file
 
 
 class RpmTool:
@@ -30,7 +42,7 @@ class RpmTool:
         raise InvalidSignatureError("Invalid signature")
 
 
-class RpmPacakgeSigningService(SigningService):
+class RpmPackageSigningService(SigningService):
     """
     A model used for signing RPM packages.
     """
@@ -53,8 +65,7 @@ class RpmPacakgeSigningService(SigningService):
         with tempfile.TemporaryDirectory(dir=settings.WORKING_DIRECTORY) as temp_directory_name:
             with tempfile.NamedTemporaryFile(dir=temp_directory_name) as temp_file:
                 # get rpm package file
-                with open(RPM_PACKAGE_FIXTURE) as rpm_fixture:
-                    temp_file.write(rpm_fixture.read())
+                write_unsigned_rpm_package(temp_file)
 
                 # sign it with this service
                 return_value = self.sign(temp_file.name)

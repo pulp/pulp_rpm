@@ -5,6 +5,7 @@ from .advisory import (  # noqa
     UpdateReference,
 )
 from .comps import PackageCategory, PackageEnvironment, PackageGroup, PackageLangpacks  # noqa
+from .content import RpmPackageSigningService  # noqa
 from .custom_metadata import RepoMetadataFile  # noqa
 from .distribution import Addon, Checksum, DistributionTree, Image, Variant  # noqa
 from .modulemd import Modulemd, ModulemdDefaults, ModulemdObsolete  # noqa
