@@ -27,19 +27,46 @@ class RpmTool:
     """
 
     def __init__(self):
-        completed_process = subprocess.run("rpm", "--version")
+        completed_process = subprocess.run(["which", "rpmsign"])
         if completed_process.returncode != 0:
             raise RuntimeError("Rpm cli tool is not installed on your system.")
 
     def import_pubkey(self, pubkey: str):
         """
         Parameters:
-            import_pubkey: The public key in ascii-armored format.
+            import_pubkey: The public key file in ascii-armored format.
         """
+        cmd = ("rpm", "--import", pubkey)
+        completed_process = subprocess.run(cmd)
+        if completed_process.returncode != 0:
+            raise RuntimeError(f"Could not import public key into rpm-tool: {repr(pubkey)}")
 
-    def verify(self, rpm_package_file: Path):
-        """Verify that an Rpm Package is signed by some of the imported pubkey."""
-        raise InvalidSignatureError("Invalid signature")
+    def verify(self, rpm_package_file: str):
+        """
+        Verify that an Rpm Package is signed by some of the imported pubkey.
+
+        $ rpm --checksig camel-0.1-1.noarch.rpm
+
+        unsigned:
+            returncode: 0
+            output: "camel-0.1-1.noarch.rpm: digests OK"
+
+        signed, but rpm doesnt have pubkey imported:
+            returncode: 1
+            output: "camel-0.1-1.noarch.rpm: digests SIGNATURES NOT OK"
+
+        signed and rpm can validate:
+            returncode: 0
+            output: "camel-0.1-1.noarch.rpm: digests signatures OK"
+        """
+        cmd = ("rpm", "--checksig", rpm_package_file)
+        completed_process = subprocess.run(cmd, capture_output=True)
+        exitcode = completed_process.returncode
+        output = completed_process.stdout.decode()
+        if exitcode != 0:
+            raise InvalidSignatureError(f"Signature is invalid or could not be verified: {output}")
+        elif "signatures" not in output:
+            raise InvalidSignatureError(f"The package is not signed: {output}")
 
 
 class RpmPackageSigningService(SigningService):
@@ -75,6 +102,9 @@ class RpmPackageSigningService(SigningService):
                     raise ValidationError(f"Malformed output from signing script: {return_value}")
 
                 # verify with rpm tool
-                rpm_tool = RpmTool()
-                rpm_tool.import_pubkey(self.public_key)
-                rpm_tool.verify(temp_file)
+                with tempfile.NamedTemporaryFile(dir=temp_directory_name) as pubkey_file:
+                    pubkey_file.write(self.public_key.encode())
+                    pubkey_file.flush()
+                    rpm_tool = RpmTool()
+                    rpm_tool.import_pubkey(pubkey_file.name)
+                    rpm_tool.verify(temp_file.name)

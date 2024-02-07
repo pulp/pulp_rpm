@@ -7,23 +7,30 @@ from tempfile import NamedTemporaryFile
 import gnupg
 import pytest
 import requests
-from pulpcore.client.pulp_rpm import (AcsRpmApi, ContentAdvisoriesApi,
-                                      ContentDistributionTreesApi,
-                                      ContentModulemdDefaultsApi,
-                                      ContentModulemdObsoletesApi,
-                                      ContentModulemdsApi,
-                                      ContentPackagecategoriesApi,
-                                      ContentPackagegroupsApi,
-                                      ContentPackagelangpacksApi,
-                                      ContentPackagesApi, RemotesUlnApi,
-                                      RpmCompsApi, RpmCopyApi,
-                                      RpmRepositorySyncURL)
+from pulpcore.client.pulp_rpm import (
+    AcsRpmApi,
+    ContentAdvisoriesApi,
+    ContentDistributionTreesApi,
+    ContentModulemdDefaultsApi,
+    ContentModulemdObsoletesApi,
+    ContentModulemdsApi,
+    ContentPackagecategoriesApi,
+    ContentPackagegroupsApi,
+    ContentPackagelangpacksApi,
+    ContentPackagesApi,
+    RemotesUlnApi,
+    RpmCompsApi,
+    RpmCopyApi,
+    RpmRepositorySyncURL,
+)
 
-from pulp_rpm.tests.functional.constants import (BASE_TEST_JSON,
-                                                 RPM_KICKSTART_FIXTURE_URL,
-                                                 RPM_MODULAR_FIXTURE_URL,
-                                                 RPM_SIGNED_FIXTURE_URL,
-                                                 RPM_SIGNED_URL)
+from pulp_rpm.tests.functional.constants import (
+    BASE_TEST_JSON,
+    RPM_KICKSTART_FIXTURE_URL,
+    RPM_MODULAR_FIXTURE_URL,
+    RPM_SIGNED_FIXTURE_URL,
+    RPM_SIGNED_URL,
+)
 from pulp_rpm.tests.functional.utils import init_signed_repo_configuration
 
 
@@ -346,12 +353,13 @@ def cleanup_domains(orphans_cleanup_api_client, monitor_task, rpm_repository_api
 
 SIGNING_SCRIPT_STRING = r"""#!/usr/bin/env bash
 # Rpm configuration:
-#     GPG_PATH: gpg home directory
+#     GPG_HOME: gpg home directory
 #     GPG_NAME: gpg user identity
 #     GPG_BIN: gpg binary path
 
 FILE_PATH=$1
 GPG_HOME=HOMEDIRHERE
+GPG_BIN=/usr/bin/gpg
 
 # user id can be specified by a fingerprint:
 # see https://www.gnupg.org/documentation/manuals/gnupg/Specify-a-User-ID.html
@@ -360,10 +368,10 @@ GPG_NAME="${PULP_SIGNING_KEY_FINGERPRINT}"
 # Sign the pacakge
 rpm \
     --define "_signature gpg" \
-    --define "_gpg_path ${GPG_PATH}" \
+    --define "_gpg_path ${GPG_HOME}" \
     --define "_gpg_name ${GPG_NAME}" \
     --define "_gpgbin ${GPG_BIN}" \
-    --addsign "${FILEPATH}"
+    --addsign "${FILE_PATH}" 1> /dev/null
 
 # Check the exit status
 STATUS=$?
