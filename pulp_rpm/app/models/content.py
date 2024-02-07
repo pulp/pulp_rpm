@@ -5,8 +5,7 @@ from pathlib import Path
 import requests
 from django.conf import settings
 from pulpcore.app.models.content import SigningService
-from pulpcore.exceptions.validation import (InvalidSignatureError,
-                                            ValidationError)
+from pulpcore.exceptions.validation import InvalidSignatureError, ValidationError
 
 RPM_PACKAGE_FIXTURE = Path("some-rpm-package.rpm")
 
