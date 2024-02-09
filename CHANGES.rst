@@ -13,6 +13,19 @@ Changelog
 
 .. towncrier release notes start
 
+3.23.3 (2024-02-09)
+===================
+
+Bugfixes
+--------
+
+- Addressed some edge-cases involving advisory-collection-naming and imports.
+  `#3380 <https://github.com/pulp/pulp_rpm/issues/3380>`__
+
+
+----
+
+
 3.23.2 (2024-01-27)
 ===================
 
