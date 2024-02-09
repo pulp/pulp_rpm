@@ -23,7 +23,7 @@ pip install twine
 
 twine check dist/pulp_rpm-$1-py3-none-any.whl || exit 1
 twine check dist/pulp-rpm-$1.tar.gz || exit 1
-twine upload dist/pulp_rpm-$1-py3-none-any.whl -u pulp -p $PYPI_PASSWORD
-twine upload dist/pulp-rpm-$1.tar.gz -u pulp -p $PYPI_PASSWORD
+twine upload dist/pulp_rpm-$1-py3-none-any.whl -u __token__ -p $PYPI_API_TOKEN
+twine upload dist/pulp-rpm-$1.tar.gz -u __token__ -p $PYPI_API_TOKEN
 
 exit $?
