@@ -13,6 +13,21 @@ Changelog
 
 .. towncrier release notes start
 
+3.19.12 (2024-02-09)
+====================
+
+Bugfixes
+--------
+
+- Added support for preventing unquoted NSVCA numerical values (e.g. ``"stream": 2.10``) of having zeros stripped on modulemd YAML files.
+  `#3285 <https://github.com/pulp/pulp_rpm/issues/3285>`__
+- Addressed some edge-cases involving advisory-collection-naming and imports.
+  `#3380 <https://github.com/pulp/pulp_rpm/issues/3380>`__
+
+
+----
+
+
 3.19.11 (2023-10-16)
 ====================
 
