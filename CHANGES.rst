@@ -13,6 +13,22 @@ Changelog
 
 .. towncrier release notes start
 
+3.17.21 (2024-02-09)
+====================
+
+
+Bugfixes
+--------
+
+- Taught RPM how to handle duplicate-advisory-ids at repository-version-create time.
+  `#2821 <https://github.com/pulp/pulp_rpm/issues/2821>`__
+- Addressed some edge-cases involving advisory-collection-naming and imports.
+  `#3380 <https://github.com/pulp/pulp_rpm/issues/3380>`__
+
+
+----
+
+
 3.17.20 (2023-10-13)
 ====================
 
