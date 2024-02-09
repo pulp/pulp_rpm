@@ -43,14 +43,14 @@ def test_sign_package_on_upload(
 
     # Create Repository with signing service
     repository = rpm_repository_factory(
-        package_siging_service=rpm_package_signing_service.pulp_href
+        package_signing_service=rpm_package_signing_service.pulp_href
     )
 
     # Upload Package to Repository with signing-option on
     upload_attrs = {
         "file": str(file_to_upload.absolute()),
         "repository": repository.pulp_href,
-        "sign-package": True,
+        "sign_package": True,
     }
     upload_task = rpm_package_api.create(**upload_attrs).task
     package_href = monitor_task(upload_task).created_resources[1]  # [0] is repository_version

@@ -1,42 +1,37 @@
-from gettext import gettext as _
-
 import logging
+from gettext import gettext as _
 
 from django.conf import settings
 from jsonschema import Draft7Validator
-from rest_framework import serializers
-
-from pulpcore.plugin.util import get_domain
-from pulpcore.plugin.models import (
-    AsciiArmoredDetachedSigningService,
-    Remote,
-    Publication,
-)
+from pulpcore.plugin.models import AsciiArmoredDetachedSigningService, Publication, Remote
 from pulpcore.plugin.serializers import (
-    RelatedField,
     DetailRelatedField,
     DistributionSerializer,
     PublicationSerializer,
+    RelatedField,
     RemoteSerializer,
     RepositorySerializer,
     RepositorySyncURLSerializer,
     ValidateFieldsMixin,
 )
+from pulpcore.plugin.util import get_domain
+from rest_framework import serializers
 
 from pulp_rpm.app.constants import (
     ALLOWED_CHECKSUM_ERROR_MSG,
-    ALLOWED_PUBLISH_CHECKSUMS,
     ALLOWED_PUBLISH_CHECKSUM_ERROR_MSG,
+    ALLOWED_PUBLISH_CHECKSUMS,
     CHECKSUM_CHOICES,
+    COMPRESSION_CHOICES,
     SKIP_TYPES,
     SYNC_POLICY_CHOICES,
-    COMPRESSION_CHOICES,
 )
 from pulp_rpm.app.models import (
     RpmDistribution,
+    RpmPackageSigningService,
+    RpmPublication,
     RpmRemote,
     RpmRepository,
-    RpmPublication,
     UlnRemote,
 )
 from pulp_rpm.app.schema import COPY_CONFIG_SCHEMA
@@ -59,6 +54,14 @@ class RpmRepositorySerializer(RepositorySerializer):
         help_text="A reference to an associated signing service.",
         view_name="signing-services-detail",
         queryset=AsciiArmoredDetachedSigningService.objects.all(),
+        many=False,
+        required=False,
+        allow_null=True,
+    )
+    package_signing_service = RelatedField(
+        help_text="A reference to an associated package signing service.",
+        view_name="signing-services-detail",
+        queryset=RpmPackageSigningService.objects.all(),
         many=False,
         required=False,
         allow_null=True,
@@ -231,6 +234,7 @@ class RpmRepositorySerializer(RepositorySerializer):
         fields = RepositorySerializer.Meta.fields + (
             "autopublish",
             "metadata_signing_service",
+            "package_signing_service",
             "retain_package_versions",
             "checksum_type",
             "metadata_checksum_type",
