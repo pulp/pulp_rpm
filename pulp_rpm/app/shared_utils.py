@@ -1,3 +1,4 @@
+import os
 import shutil
 import subprocess
 import tempfile
@@ -164,14 +165,48 @@ def parse_time(value):
     return int(value) if value.isdigit() else parse_datetime(value)
 
 
-def write_unsigned_rpm_package(temp_file: "BufferedRandom") -> Path:
+RPM_SPEC = b"""
+Name:           rpm-empty
+Version:        0
+License:        LGPL
+Release:        0
+Summary:        ""
+
+%description
+
+%build
+
+%install
+
+%clean
+
+%files
+
+%changelog
+"""
+
+
+def _download_unsigned_rpm_package(basedir: str) -> Path:
+    """Download a sample RPM from pulp fixtures"""
     RPM_PACKAGE_URL = "https://raw.githubusercontent.com/pulp/pulp-fixtures/master/rpm/assets/bear-4.1-1.noarch.rpm"  # noqa: E501
     response = requests.get(RPM_PACKAGE_URL)
     response.raise_for_status()
-    data = response.content
-    temp_file.write(data)
-    temp_file.flush()
+    temp_file = Path(os.path.join(basedir, "bear-4.1-1.noarch.rpm"))
+    temp_file.write_bytes(response.content)
     return temp_file
+
+
+def _build_empty_rpm(basedir: str) -> Path:
+    """Build an empty RPM an return its Path object."""
+    with tempfile.NamedTemporaryFile(dir=basedir) as file:
+        file.write(RPM_SPEC)
+        file.flush()
+        cmd = ["rpmbuild", "-D", f"_topdir {basedir}", "-bb", file.name]
+        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        if result.returncode != 0:
+            raise RuntimeError("Could not create rpm package.")
+    destfile = os.path.join(basedir, "RPMS/x86_64/rpm-empty-0-0.x86_64.rpm")
+    return Path(destfile).absolute()
 
 
 class RpmTool:
@@ -183,6 +218,9 @@ class RpmTool:
         completed_process = subprocess.run(["which", "rpmsign"])
         if completed_process.returncode != 0:
             raise RuntimeError("Rpm cli tool is not installed on your system.")
+
+    def get_empty_rpm(self, basedir: str) -> Path:
+        return _download_unsigned_rpm_package(basedir)
 
     def import_pubkey(self, pubkey: str):
         """
@@ -206,7 +244,7 @@ class RpmTool:
             pubkey_file.flush()
             self.import_pubkey(pubkey_file.name)
 
-    def verify_signature(self, rpm_package_file: str, raises=True):
+    def verify_signature(self, rpm_package_file: Path, raises=True):
         """
         Verify that an Rpm Package is signed by some of the imported pubkey.
 
@@ -235,7 +273,7 @@ class RpmTool:
                 returncode: 0
                 output: "camel-0.1-1.noarch.rpm: digests signatures OK"
         """
-        cmd = ("rpm", "--checksig", rpm_package_file)
+        cmd = ("rpm", "--checksig", str(rpm_package_file))
         completed_process = subprocess.run(cmd, capture_output=True)
         exitcode = completed_process.returncode
         output = completed_process.stdout.decode()

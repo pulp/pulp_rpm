@@ -1,10 +1,11 @@
 import tempfile
+import time
 
 from django.conf import settings
 from pulpcore.app.models.content import SigningService
 from pulpcore.exceptions.validation import ValidationError
 
-from pulp_rpm.app.shared_utils import RpmTool, write_unsigned_rpm_package
+from pulp_rpm.app.shared_utils import RpmTool
 
 
 class RpmPackageSigningService(SigningService):
@@ -28,21 +29,17 @@ class RpmPackageSigningService(SigningService):
         - verify with `rpm --checksig <file>` (uses imported keys)
         """
         with tempfile.TemporaryDirectory(dir=settings.WORKING_DIRECTORY) as temp_directory_name:
-            with tempfile.NamedTemporaryFile(dir=temp_directory_name) as temp_file:
-                # get rpm package file
-                write_unsigned_rpm_package(temp_file)
+            # get rpm package file
+            rpm_tool = RpmTool()
+            temp_file = rpm_tool.get_empty_rpm(temp_directory_name)
 
-                # sign it with this service
-                return_value = self.sign(temp_file.name)
-                try:
-                    return_value["rpm_package"]
-                except KeyError:
-                    raise ValidationError(f"Malformed output from signing script: {return_value}")
+            # sign it with this service
+            return_value = self.sign(temp_file)
+            try:
+                return_value["rpm_package"]
+            except KeyError:
+                raise ValidationError(f"Malformed output from signing script: {return_value}")
 
-                # verify with rpm tool
-                with tempfile.NamedTemporaryFile(dir=temp_directory_name) as pubkey_file:
-                    pubkey_file.write(self.public_key.encode())
-                    pubkey_file.flush()
-                    rpm_tool = RpmTool()
-                    rpm_tool.import_pubkey(pubkey_file.name)
-                    rpm_tool.verify_signature(temp_file.name)
+            # verify with rpm tool
+            rpm_tool.import_pubkey_string(self.public_key)
+            rpm_tool.verify_signature(temp_file)
