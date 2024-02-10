@@ -13,6 +13,19 @@ Changelog
 
 .. towncrier release notes start
 
+3.25.1 (2024-02-09)
+===================
+
+Bugfixes
+--------
+
+- Addressed some edge-cases involving advisory-collection-naming and imports.
+  `#3380 <https://github.com/pulp/pulp_rpm/issues/3380>`__
+
+
+----
+
+
 3.25.0 (2024-01-18)
 ===================
 
@@ -98,6 +111,19 @@ Bugfixes
 ----
 
 
+3.23.3 (2024-02-09)
+===================
+
+Bugfixes
+--------
+
+- Addressed some edge-cases involving advisory-collection-naming and imports.
+  `#3380 <https://github.com/pulp/pulp_rpm/issues/3380>`__
+
+
+----
+
+
 3.23.2 (2024-01-27)
 ===================
 
@@ -170,6 +196,21 @@ Misc
 ----
 
 - `#3217 <https://github.com/pulp/pulp_rpm/issues/3217>`__, `#3225 <https://github.com/pulp/pulp_rpm/issues/3225>`__, `#3226 <https://github.com/pulp/pulp_rpm/issues/3226>`__, `#3234 <https://github.com/pulp/pulp_rpm/issues/3234>`__, `#3254 <https://github.com/pulp/pulp_rpm/issues/3254>`__
+
+
+----
+
+
+3.22.7 (2024-02-09)
+===================
+
+Bugfixes
+--------
+
+- Added support for preventing unquoted NSVCA numerical values (e.g. ``"stream": 2.10``) of having zeros stripped on modulemd YAML files.
+  `#3285 <https://github.com/pulp/pulp_rpm/issues/3285>`__
+- Addressed some edge-cases involving advisory-collection-naming and imports.
+  `#3380 <https://github.com/pulp/pulp_rpm/issues/3380>`__
 
 
 ----
@@ -380,6 +421,21 @@ Misc
 ----
 
 - `#2242 <https://github.com/pulp/pulp_rpm/issues/2242>`__, `#2867 <https://github.com/pulp/pulp_rpm/issues/2867>`__, `#2868 <https://github.com/pulp/pulp_rpm/issues/2868>`__, `#2869 <https://github.com/pulp/pulp_rpm/issues/2869>`__, `#2870 <https://github.com/pulp/pulp_rpm/issues/2870>`__, `#2871 <https://github.com/pulp/pulp_rpm/issues/2871>`__, `#2873 <https://github.com/pulp/pulp_rpm/issues/2873>`__, `#2874 <https://github.com/pulp/pulp_rpm/issues/2874>`__, `#2875 <https://github.com/pulp/pulp_rpm/issues/2875>`__, `#2876 <https://github.com/pulp/pulp_rpm/issues/2876>`__, `#2877 <https://github.com/pulp/pulp_rpm/issues/2877>`__, `#2878 <https://github.com/pulp/pulp_rpm/issues/2878>`__, `#2879 <https://github.com/pulp/pulp_rpm/issues/2879>`__, `#2880 <https://github.com/pulp/pulp_rpm/issues/2880>`__, `#2881 <https://github.com/pulp/pulp_rpm/issues/2881>`__, `#2882 <https://github.com/pulp/pulp_rpm/issues/2882>`__, `#2883 <https://github.com/pulp/pulp_rpm/issues/2883>`__, `#2884 <https://github.com/pulp/pulp_rpm/issues/2884>`__, `#2885 <https://github.com/pulp/pulp_rpm/issues/2885>`__, `#2887 <https://github.com/pulp/pulp_rpm/issues/2887>`__, `#3076 <https://github.com/pulp/pulp_rpm/issues/3076>`__, `#3077 <https://github.com/pulp/pulp_rpm/issues/3077>`__, `#3078 <https://github.com/pulp/pulp_rpm/issues/3078>`__, `#3079 <https://github.com/pulp/pulp_rpm/issues/3079>`__, `#3095 <https://github.com/pulp/pulp_rpm/issues/3095>`__
+
+
+----
+
+
+3.19.12 (2024-02-09)
+====================
+
+Bugfixes
+--------
+
+- Added support for preventing unquoted NSVCA numerical values (e.g. ``"stream": 2.10``) of having zeros stripped on modulemd YAML files.
+  `#3285 <https://github.com/pulp/pulp_rpm/issues/3285>`__
+- Addressed some edge-cases involving advisory-collection-naming and imports.
+  `#3380 <https://github.com/pulp/pulp_rpm/issues/3380>`__
 
 
 ----
@@ -647,6 +703,19 @@ Misc
 ----
 
 - `#2718 <https://github.com/pulp/pulp_rpm/issues/2718>`__, `#2791 <https://github.com/pulp/pulp_rpm/issues/2791>`__, `#2805 <https://github.com/pulp/pulp_rpm/issues/2805>`__, `#2832 <https://github.com/pulp/pulp_rpm/issues/2832>`__, `#2886 <https://github.com/pulp/pulp_rpm/issues/2886>`__, `#2905 <https://github.com/pulp/pulp_rpm/issues/2905>`__
+
+
+----
+
+
+3.18.20 (2024-02-09)
+====================
+
+Bugfixes
+--------
+
+- Addressed some edge-cases involving advisory-collection-naming and imports.
+  `#3380 <https://github.com/pulp/pulp_rpm/issues/3380>`__
 
 
 ----
@@ -1073,6 +1142,32 @@ Misc
 ----
 
 - `#2245 <https://github.com/pulp/pulp_rpm/issues/2245>`__, `#2276 <https://github.com/pulp/pulp_rpm/issues/2276>`__, `#2302 <https://github.com/pulp/pulp_rpm/issues/2302>`__, `#2560 <https://github.com/pulp/pulp_rpm/issues/2560>`__, `#2565 <https://github.com/pulp/pulp_rpm/issues/2565>`__, `#2599 <https://github.com/pulp/pulp_rpm/issues/2599>`__, `#2620 <https://github.com/pulp/pulp_rpm/issues/2620>`__
+
+
+----
+
+
+3.17.22 (2024-02-09)
+====================
+
+
+No significant changes.
+
+
+----
+
+
+3.17.21 (2024-02-09)
+====================
+
+
+Bugfixes
+--------
+
+- Taught RPM how to handle duplicate-advisory-ids at repository-version-create time.
+  `#2821 <https://github.com/pulp/pulp_rpm/issues/2821>`__
+- Addressed some edge-cases involving advisory-collection-naming and imports.
+  `#3380 <https://github.com/pulp/pulp_rpm/issues/3380>`__
 
 
 ----
