@@ -1,17 +1,9 @@
 from django_filters import CharFilter
+from pulpcore.plugin.viewsets import ContentFilter, SingleArtifactContentUploadViewSet
 
-from pulpcore.plugin.viewsets import (
-    ContentFilter,
-    SingleArtifactContentUploadViewSet,
-)
-
-from pulp_rpm.app.models import (
-    Package,
-)
-from pulp_rpm.app.serializers import (
-    MinimalPackageSerializer,
-    PackageSerializer,
-)
+from pulpcore.app.files import PulpTemporaryUploadedFile
+from pulp_rpm.app.models import Package
+from pulp_rpm.app.serializers import MinimalPackageSerializer, PackageSerializer
 
 
 class PackageFilter(ContentFilter):
@@ -71,3 +63,13 @@ class PackageViewSet(SingleArtifactContentUploadViewSet):
         ],
         "queryset_scoping": {"function": "scope_queryset"},
     }
+
+    def init_content_data(self, serializer, request):
+        # Handle package signing on file-upload
+        sign_package = serializer.validated_data.get("sign_package")
+        pulp_tmp_file = serializer.validated_data.get("file")
+        if sign_package and pulp_tmp_file:
+            repo = serializer.validated_data["repository"]
+            repo.package_signing_service.sign(pulp_tmp_file.temporary_file_path())
+            request.data["file"] = PulpTemporaryUploadedFile.from_file(pulp_tmp_file)
+        return super().init_content_data(serializer, request)

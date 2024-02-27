@@ -230,9 +230,11 @@ class RpmTool:
             import_pubkey: The public key file in ascii-armored format.
         """
         cmd = ("rpm", "--import", pubkey)
-        completed_process = subprocess.run(cmd)
+        completed_process = subprocess.run(cmd, capture_output=True)
         if completed_process.returncode != 0:
-            raise RuntimeError(f"Could not import public key into rpm-tool: {repr(pubkey)}")
+            raise RuntimeError(
+                f"Could not import public key into rpm-tool:\n{completed_process.stderr.decode()}"
+            )
 
     def import_pubkey_string(self, pubkey: str):
         """

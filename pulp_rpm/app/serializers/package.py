@@ -236,6 +236,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
 
     def __init__(self, *args, **kwargs):
         """Initializer for RpmPackageSerializer."""
+
         super().__init__(*args, **kwargs)
         if "relative_path" in self.fields:
             self.fields["relative_path"].required = False
@@ -328,6 +329,11 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
             )
         )
         model = Package
+
+    def create(self, validated_data):
+        # clean api-only option before creating model
+        validated_data.pop("sign_package", None)
+        return super().create(validated_data)
 
 
 class MinimalPackageSerializer(PackageSerializer):
