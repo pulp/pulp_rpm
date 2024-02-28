@@ -1,7 +1,7 @@
 from django_filters import CharFilter
 from pulpcore.plugin.viewsets import ContentFilter, SingleArtifactContentUploadViewSet
 
-from pulpcore.app.files import PulpTemporaryUploadedFile
+from pulpcore.plugin.files import PulpTemporaryUploadedFile
 from pulp_rpm.app.models import Package
 from pulp_rpm.app.serializers import MinimalPackageSerializer, PackageSerializer
 

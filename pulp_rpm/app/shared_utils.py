@@ -10,7 +10,7 @@ import createrepo_c as cr
 import requests
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
-from pulpcore.exceptions.validation import InvalidSignatureError
+from pulpcore.plugin.exceptions import InvalidSignatureError
 
 
 def format_nevra(name=None, epoch=0, version=None, release=None, arch=None):
@@ -226,6 +226,12 @@ class RpmTool:
 
     @staticmethod
     def get_empty_rpm(basedir: str) -> Path:
+        """
+        Get an empty rpm package.
+
+        Args:
+            basedir: The dir where the rpm will be placed.
+        """
         return _download_unsigned_rpm_package(basedir)
 
     def import_pubkey_file(self, pubkey: str):

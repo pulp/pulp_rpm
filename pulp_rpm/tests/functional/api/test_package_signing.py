@@ -18,7 +18,6 @@ def test_register_rpm_package_signing_service(rpm_package_signing_service):
 
 @pytest.mark.parallel
 def test_sign_package_on_upload(
-    # rpm_package_factory, rpm_package_signing_service, pulpcore_bindings
     rpm_package_factory,
     rpm_repository_factory,
     rpm_package_signing_service,
@@ -27,7 +26,7 @@ def test_sign_package_on_upload(
     monitor_task,
     tmp_path,
 ):
-    """Sign an Rpm Package on upload."""
+    """Sign an Rpm Package with the Package Upload endpoint."""
     # Setup rpm package file to upload
     rpm_tool = RpmTool(tmp_path)
     rpm_tool.import_pubkey_string(rpm_package_signing_service.public_key)
