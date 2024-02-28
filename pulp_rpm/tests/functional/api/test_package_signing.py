@@ -1,10 +1,7 @@
-import subprocess
-
 import pytest
 import requests
 from django.core.files.storage import default_storage
 from pulpcore.exceptions.validation import InvalidSignatureError
-from rich import print
 
 from pulp_rpm.app.shared_utils import RpmTool
 from pulp_rpm.tests.functional.constants import RPM_PACKAGE_FILENAME, RPM_UNSIGNED_URL
@@ -32,7 +29,7 @@ def test_sign_package_on_upload(
 ):
     """Sign an Rpm Package on upload."""
     # Setup rpm package file to upload
-    rpm_tool = RpmTool()
+    rpm_tool = RpmTool(tmp_path)
     rpm_tool.import_pubkey_string(rpm_package_signing_service.public_key)
     file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
     file_to_upload.write_bytes(requests.get(RPM_UNSIGNED_URL).content)

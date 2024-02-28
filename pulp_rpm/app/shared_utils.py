@@ -2,6 +2,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+import typing as t
 from hashlib import sha256
 from pathlib import Path
 
@@ -212,24 +213,29 @@ def _build_empty_rpm(basedir: str) -> Path:
 class RpmTool:
     """
     A wrapper utility for rpm cli tool.
+
+    Args:
+        root: Alternative root directory passed to `rpm --root`
     """
 
-    def __init__(self):
+    def __init__(self, root: t.Optional[Path] = None):
         completed_process = subprocess.run(["which", "rpmsign"])
+        self.opts = ["--root", str(root.absolute())] if root else []
         if completed_process.returncode != 0:
             raise RuntimeError("Rpm cli tool is not installed on your system.")
 
-    def get_empty_rpm(self, basedir: str) -> Path:
+    @staticmethod
+    def get_empty_rpm(basedir: str) -> Path:
         return _download_unsigned_rpm_package(basedir)
 
-    def import_pubkey(self, pubkey: str):
+    def import_pubkey_file(self, pubkey: str):
         """
-        Import public_key into the rpm-tool.
+        Import public_key file (ascii-armored) into the rpm-tool.
 
         Parameters:
             import_pubkey: The public key file in ascii-armored format.
         """
-        cmd = ("rpm", "--import", pubkey)
+        cmd = ("rpm", *self.opts, "--import", pubkey)
         completed_process = subprocess.run(cmd, capture_output=True)
         if completed_process.returncode != 0:
             raise RuntimeError(
@@ -238,13 +244,15 @@ class RpmTool:
 
     def import_pubkey_string(self, pubkey: str):
         """
+        Import public_key string (ascii-armored) into the rpm-tool.
+
         Parameters:
             import_pubkey: The public key string in ascii-armored format.
         """
         with tempfile.NamedTemporaryFile() as pubkey_file:
             pubkey_file.write(pubkey.encode())
             pubkey_file.flush()
-            self.import_pubkey(pubkey_file.name)
+            self.import_pubkey_file(pubkey_file.name)
 
     def verify_signature(self, rpm_package_file: Path, raises=True):
         """
@@ -275,7 +283,7 @@ class RpmTool:
                 returncode: 0
                 output: "camel-0.1-1.noarch.rpm: digests signatures OK"
         """
-        cmd = ("rpm", "--checksig", str(rpm_package_file))
+        cmd = ("rpm", *self.opts, "--checksig", str(rpm_package_file))
         completed_process = subprocess.run(cmd, capture_output=True)
         exitcode = completed_process.returncode
         output = completed_process.stdout.decode()
