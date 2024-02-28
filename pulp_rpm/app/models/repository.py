@@ -22,6 +22,7 @@ from pulpcore.plugin.models import (
     RepositoryContent,
     RepositoryVersion,
     Publication,
+    PublishedMetadata,
     Distribution,
 )
 from pulpcore.plugin.repo_version_utils import (
@@ -260,6 +261,18 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
                 repo_config=self.repo_config,
                 compression_type=self.compression_type,
             )
+
+    @property
+    def published_metadata_size(self):
+        versions = self.versions.all()
+        publications = Publication.objects.filter(repository_version__in=versions, complete=True)
+        published_metadata = PublishedMetadata.objects.filter(publication__in=publications)
+        size = (
+            Artifact.objects.filter(content__in=published_metadata)
+            .distinct()
+            .aggregate(size=models.Sum("size", default=0))["size"]
+        )
+        return size
 
     def all_content_pks(self):
         """Returns a list of pks for all content stored across all versions."""
