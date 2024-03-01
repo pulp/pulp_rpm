@@ -1,13 +1,12 @@
-import os
 import shutil
 import subprocess
 import tempfile
 import typing as t
 from hashlib import sha256
+from importlib.resources import files
 from pathlib import Path
 
 import createrepo_c as cr
-import requests
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
 from pulpcore.plugin.exceptions import InvalidSignatureError
@@ -166,48 +165,10 @@ def parse_time(value):
     return int(value) if value.isdigit() else parse_datetime(value)
 
 
-RPM_SPEC = b"""
-Name:           rpm-empty
-Version:        0
-License:        LGPL
-Release:        0
-Summary:        ""
-
-%description
-
-%build
-
-%install
-
-%clean
-
-%files
-
-%changelog
-"""
-
-
-def _download_unsigned_rpm_package(basedir: str) -> Path:
-    """Download a sample RPM from pulp fixtures"""
-    RPM_PACKAGE_URL = "https://raw.githubusercontent.com/pulp/pulp-fixtures/master/rpm/assets/bear-4.1-1.noarch.rpm"  # noqa: E501
-    response = requests.get(RPM_PACKAGE_URL)
-    response.raise_for_status()
-    temp_file = Path(os.path.join(basedir, "bear-4.1-1.noarch.rpm"))
-    temp_file.write_bytes(response.content)
-    return temp_file
-
-
-def _build_empty_rpm(basedir: str) -> Path:
-    """Build an empty RPM an return its Path object."""
-    with tempfile.NamedTemporaryFile(dir=basedir) as file:
-        file.write(RPM_SPEC)
-        file.flush()
-        cmd = ["rpmbuild", "-D", f"_topdir {basedir}", "-bb", file.name]
-        result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        if result.returncode != 0:
-            raise RuntimeError("Could not create rpm package.")
-    destfile = os.path.join(basedir, "RPMS/x86_64/rpm-empty-0-0.x86_64.rpm")
-    return Path(destfile).absolute()
+def _get_datapkg_sample_rpm_copy(basedir: str):
+    sample_rpm = files("pulp_rpm").joinpath("tests/sample-rpm-0-0.x86_64.rpm")
+    copy_rpm = shutil.copy(sample_rpm, basedir)
+    return Path(copy_rpm)
 
 
 class RpmTool:
@@ -219,10 +180,13 @@ class RpmTool:
     """
 
     def __init__(self, root: t.Optional[Path] = None):
-        completed_process = subprocess.run(["which", "rpmsign"])
-        self.opts = ["--root", str(root.absolute())] if root else []
+        completed_process = subprocess.run(
+            ["which", "rpmsign"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+        )
         if completed_process.returncode != 0:
             raise RuntimeError("Rpm cli tool is not installed on your system.")
+
+        self.opts = ["--root", str(root.absolute())] if root else []
 
     @staticmethod
     def get_empty_rpm(basedir: str) -> Path:
@@ -232,7 +196,7 @@ class RpmTool:
         Args:
             basedir: The dir where the rpm will be placed.
         """
-        return _download_unsigned_rpm_package(basedir)
+        return _get_datapkg_sample_rpm_copy(basedir)
 
     def import_pubkey_file(self, pubkey: str):
         """

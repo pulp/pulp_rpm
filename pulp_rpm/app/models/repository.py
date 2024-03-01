@@ -22,9 +22,7 @@ from pulpcore.plugin.models import (
     Repository,
     RepositoryContent,
     RepositoryVersion,
-    Publication,
     PublishedMetadata,
-    Distribution,
 )
 from pulpcore.plugin.repo_version_utils import (
     remove_duplicates,
