@@ -3,7 +3,7 @@ import subprocess
 import tempfile
 import typing as t
 from hashlib import sha256
-from importlib.resources import files
+from importlib_resources import files
 from pathlib import Path
 
 import createrepo_c as cr
