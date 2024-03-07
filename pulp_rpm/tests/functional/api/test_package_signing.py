@@ -49,7 +49,7 @@ def test_sign_package_on_upload(
         "sign_package": True,
     }
     upload_task = rpm_package_api.create(**upload_attrs).task
-    package_href = monitor_task(upload_task).created_resources[1]  # [0] is repository_version
+    package_href = monitor_task(upload_task).created_resources[1]
     package = rpm_package_api.read(package_href)
 
     # Verify stored artifact is properly signed
