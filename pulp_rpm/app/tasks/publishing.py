@@ -295,21 +295,19 @@ class PublicationData:
             self.publish_artifacts(content, prefix=name)
 
 
-def get_checksum_type(name, checksum_types, default=CHECKSUM_TYPES.SHA256):
+def get_checksum_type(checksum_types, default=CHECKSUM_TYPES.SHA256):
     """
     Get checksum algorithm for publishing metadata.
 
     Args:
-        name (str): Name of the metadata type.
         checksum_types (dict): Checksum types for metadata and packages.
     Kwargs:
         default: The checksum type used if there is no specified nor original checksum type.
     """
-    original = checksum_types.get("original")
     general = checksum_types.get("general")
     metadata = checksum_types.get("metadata")
     # fallback order
-    checksum_type = general or metadata or original.get(name) or default
+    checksum_type = general or metadata or default
     # "sha" -> "SHA" -> "CHECKSUM_TYPES.SHA" -> "sha1"
     normalized_checksum_type = getattr(CHECKSUM_TYPES, checksum_type.upper())
     return normalized_checksum_type
@@ -362,7 +360,7 @@ def publish(
     )
     with tempfile.TemporaryDirectory(dir="."):
         with RpmPublication.create(repository_version) as publication:
-            checksum_type = get_checksum_type("primary", checksum_types)
+            checksum_type = get_checksum_type(checksum_types)
             publication.checksum_type = checksum_type
             publication.metadata_checksum_type = checksum_type
             publication.package_checksum_type = checksum_types.get("package") or checksum_type
@@ -453,21 +451,7 @@ def generate_repo_metadata(
         )
 
     # Prepare metadata files
-    compression_extension = ".zst" if compression_type == COMPRESSION_TYPES.ZSTD else ".gz"
     cr_compression_type = cr.ZSTD if compression_type == COMPRESSION_TYPES.ZSTD else cr.GZ
-
-    repomd_path = os.path.join(cwd, "repomd.xml")
-    pri_xml_path = os.path.join(cwd, "primary.xml") + compression_extension
-    fil_xml_path = os.path.join(cwd, "filelists.xml") + compression_extension
-    oth_xml_path = os.path.join(cwd, "other.xml") + compression_extension
-    upd_xml_path = os.path.join(cwd, "updateinfo.xml") + compression_extension
-    mod_yml_path = os.path.join(cwd, "modules.yaml")
-    comps_xml_path = os.path.join(cwd, "comps.xml")
-
-    pri_xml = cr.PrimaryXmlFile(pri_xml_path, compressiontype=cr_compression_type)
-    fil_xml = cr.FilelistsXmlFile(fil_xml_path, compressiontype=cr_compression_type)
-    oth_xml = cr.OtherXmlFile(oth_xml_path, compressiontype=cr_compression_type)
-    upd_xml = None
 
     # We want to support publishing with a different checksum type than the one built-in to the
     # package itself, so we need to get the correct checksums somehow if there is an override.
@@ -538,10 +522,6 @@ def generate_repo_metadata(
 
     total_packages = packages.count() - len(pkg_pks_to_ignore)
 
-    pri_xml.set_num_of_pkgs(total_packages)
-    fil_xml.set_num_of_pkgs(total_packages)
-    oth_xml.set_num_of_pkgs(total_packages)
-
     if settings.RPM_METADATA_USE_REPO_PACKAGE_TIME:
         # gather the times the packages were added to the repo
         repo_content = (
@@ -554,140 +534,122 @@ def generate_repo_metadata(
         )
         repo_pkg_times = {pk: created.timestamp() for pk, created in repo_content}
 
+    repomd_path = os.path.join(repodata_path, "repomd.xml")
+    mod_yml_path = os.path.join(repodata_path, "modules.yaml")
+    comps_xml_path = os.path.join(repodata_path, "comps.xml")
+
+    cr_checksum_type = cr_checksum_type_from_string(publication.checksum_type)
+
     # Process all packages
-    for package in packages.order_by("name", "evr").iterator():
-        if package.pk in pkg_pks_to_ignore:  # Temporary!
-            continue
-        pkg = package.to_createrepo_c()
+    with cr.RepositoryWriter(
+        cwd, compression=cr_compression_type, checksum_type=cr_checksum_type
+    ) as writer:
+        writer.set_num_of_pkgs(total_packages)
 
-        # rewrite the checksum and checksum type with the desired ones
-        (checksum, pkgId) = pkg_to_hash[package.pk]
-        pkg.checksum_type = checksum
-        pkg.pkgId = pkgId
+        # If the repository is empty, use a revision of 0
+        # See: https://pulp.plan.io/issues/9402
+        if not content.exists():
+            writer.repomd.revision = "0"
 
-        pkg_filename = os.path.basename(package.location_href)
-        # this can cause an issue when two same RPM package names appears
-        # a/name1.rpm b/name1.rpm
-        pkg.location_href = os.path.join(PACKAGES_DIRECTORY, pkg_filename[0].lower(), pkg_filename)
+        for package in packages.order_by("name", "evr").iterator():
+            if package.pk in pkg_pks_to_ignore:  # Temporary!
+                continue
+            pkg = package.to_createrepo_c()
 
-        if settings.RPM_METADATA_USE_REPO_PACKAGE_TIME:
-            pkg.time_file = repo_pkg_times[package.pk]
+            # rewrite the checksum and checksum type with the desired ones
+            (checksum, pkgId) = pkg_to_hash[package.pk]
+            pkg.checksum_type = checksum
+            pkg.pkgId = pkgId
 
-        pri_xml.add_pkg(pkg)
-        fil_xml.add_pkg(pkg)
-        oth_xml.add_pkg(pkg)
+            pkg_filename = os.path.basename(package.location_href)
+            # this can cause an issue when two same RPM package names appears
+            # a/name1.rpm b/name1.rpm
+            pkg.location_href = os.path.join(
+                PACKAGES_DIRECTORY, pkg_filename[0].lower(), pkg_filename
+            )
 
-    # Process update records
-    update_records = UpdateRecord.objects.filter(pk__in=content).order_by("id", "digest")
-    for update_record in update_records.iterator():
-        if not upd_xml:
-            upd_xml = cr.UpdateInfoXmlFile(upd_xml_path, compressiontype=cr_compression_type)
-        upd_xml.add_chunk(cr.xml_dump_updaterecord(update_record.to_createrepo_c()))
+            if settings.RPM_METADATA_USE_REPO_PACKAGE_TIME:
+                pkg.time_file = repo_pkg_times[package.pk]
 
-    # Process modulemd, modulemd_defaults and obsoletes
-    with open(mod_yml_path, "ab") as mod_yml:
-        modulemds = Modulemd.objects.filter(pk__in=content).order_by(*Modulemd.natural_key_fields())
-        for modulemd in modulemds.iterator():
-            mod_yml.write(modulemd.snippet.encode())
-            mod_yml.write(b"\n")
-            has_modules = True
-        modulemd_defaults = ModulemdDefaults.objects.filter(pk__in=content).order_by(
-            *ModulemdDefaults.natural_key_fields()
+            writer.add_pkg(pkg)
+
+        # Process update records
+        update_records = UpdateRecord.objects.filter(pk__in=content).order_by("id", "digest")
+        for update_record in update_records.iterator():
+            writer.add_update_record(update_record.to_createrepo_c())
+
+        # Process modulemd, modulemd_defaults and obsoletes
+        with open(mod_yml_path, "ab") as mod_yml:
+            modulemds = Modulemd.objects.filter(pk__in=content).order_by(
+                *Modulemd.natural_key_fields()
+            )
+            for modulemd in modulemds.iterator():
+                mod_yml.write(modulemd.snippet.encode())
+                mod_yml.write(b"\n")
+                has_modules = True
+            modulemd_defaults = ModulemdDefaults.objects.filter(pk__in=content).order_by(
+                *ModulemdDefaults.natural_key_fields()
+            )
+            for default in modulemd_defaults.iterator():
+                mod_yml.write(default.snippet.encode())
+                mod_yml.write(b"\n")
+                has_modules = True
+            modulemd_obsoletes = ModulemdObsolete.objects.filter(pk__in=content).order_by(
+                *ModulemdObsolete.natural_key_fields()
+            )
+            for obsolete in modulemd_obsoletes.iterator():
+                mod_yml.write(obsolete.snippet.encode())
+                mod_yml.write(b"\n")
+                has_modules = True
+
+        # Process comps
+        comps = libcomps.Comps()
+        for pkg_grp in PackageGroup.objects.filter(pk__in=content).order_by("id").iterator():
+            group = pkg_grp.pkg_grp_to_libcomps()
+            comps.groups.append(group)
+            has_comps = True
+        for pkg_cat in PackageCategory.objects.filter(pk__in=content).order_by("id").iterator():
+            cat = pkg_cat.pkg_cat_to_libcomps()
+            comps.categories.append(cat)
+            has_comps = True
+        for pkg_env in PackageEnvironment.objects.filter(pk__in=content).order_by("id").iterator():
+            env = pkg_env.pkg_env_to_libcomps()
+            comps.environments.append(env)
+            has_comps = True
+        package_langpacks = PackageLangpacks.objects.filter(pk__in=content).order_by(
+            *PackageLangpacks.natural_key_fields()
         )
-        for default in modulemd_defaults.iterator():
-            mod_yml.write(default.snippet.encode())
-            mod_yml.write(b"\n")
-            has_modules = True
-        modulemd_obsoletes = ModulemdObsolete.objects.filter(pk__in=content).order_by(
-            *ModulemdObsolete.natural_key_fields()
+        for pkg_lng in package_langpacks.iterator():
+            comps.langpacks = dict_to_strdict(pkg_lng.matches)
+            has_comps = True
+
+        comps.toxml_f(
+            comps_xml_path,
+            xml_options={
+                "default_explicit": True,
+                "empty_groups": True,
+                "empty_packages": True,
+                "uservisible_explicit": True,
+            },
         )
-        for obsolete in modulemd_obsoletes.iterator():
-            mod_yml.write(obsolete.snippet.encode())
-            mod_yml.write(b"\n")
-            has_modules = True
 
-    # Process comps
-    comps = libcomps.Comps()
-    for pkg_grp in PackageGroup.objects.filter(pk__in=content).order_by("id").iterator():
-        group = pkg_grp.pkg_grp_to_libcomps()
-        comps.groups.append(group)
-        has_comps = True
-    for pkg_cat in PackageCategory.objects.filter(pk__in=content).order_by("id").iterator():
-        cat = pkg_cat.pkg_cat_to_libcomps()
-        comps.categories.append(cat)
-        has_comps = True
-    for pkg_env in PackageEnvironment.objects.filter(pk__in=content).order_by("id").iterator():
-        env = pkg_env.pkg_env_to_libcomps()
-        comps.environments.append(env)
-        has_comps = True
-    package_langpacks = PackageLangpacks.objects.filter(pk__in=content).order_by(
-        *PackageLangpacks.natural_key_fields()
-    )
-    for pkg_lng in package_langpacks.iterator():
-        comps.langpacks = dict_to_strdict(pkg_lng.matches)
-        has_comps = True
+        if has_modules:
+            writer.add_repomd_metadata("modules", mod_yml_path, use_compression=False)
 
-    comps.toxml_f(
-        comps_xml_path,
-        xml_options={
-            "default_explicit": True,
-            "empty_groups": True,
-            "empty_packages": True,
-            "uservisible_explicit": True,
-        },
-    )
+        if has_comps:
+            writer.add_repomd_metadata("group", comps_xml_path, use_compression=False)
 
-    pri_xml.close()
-    fil_xml.close()
-    oth_xml.close()
-    if upd_xml:
-        upd_xml.close()
+        for name, record in extra_repomdrecords:
+            writer.add_repomd_metadata(name, record)
 
-    repomd = cr.Repomd()
-    # If the repository is empty, use a revision of 0
-    # See: https://pulp.plan.io/issues/9402
-    if not content.exists():
-        repomd.revision = "0"
-
-    repomdrecords = [
-        ("primary", pri_xml_path),
-        ("filelists", fil_xml_path),
-        ("other", oth_xml_path),
-    ]
-
-    if upd_xml:
-        repomdrecords.append(("updateinfo", upd_xml_path))
-
-    if has_modules:
-        repomdrecords.append(("modules", mod_yml_path))
-
-    if has_comps:
-        repomdrecords.append(("group", comps_xml_path))
-
-    repomdrecords.extend(extra_repomdrecords)
-
-    for name, path in repomdrecords:
-        record = cr.RepomdRecord(name, path)
-        checksum_type = cr_checksum_type_from_string(
-            get_checksum_type(name, checksum_types, default=publication.checksum_type)
-        )
-        record.fill(checksum_type)
-        record.rename_file()
-        path = record.location_href.split("/")[-1]
-        repomd.set_record(record)
-
-        if sub_folder:
-            path = os.path.join(sub_folder, path)
-
+    for record in writer.repomd.records:
+        path = os.path.join(repodata_path, os.path.basename(record.location_href))
         with open(path, "rb") as repodata_fd:
             PublishedMetadata.create_from_file(
-                relative_path=os.path.join(repodata_path, os.path.basename(path)),
+                relative_path=path,
                 publication=publication,
                 file=File(repodata_fd),
             )
-
-    with open(repomd_path, "w") as repomd_f:
-        repomd_f.write(repomd.xml_dump())
 
     if metadata_signing_service:
         signing_service = AsciiArmoredDetachedSigningService.objects.get(
