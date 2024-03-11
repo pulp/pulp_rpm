@@ -1,4 +1,5 @@
 """Tests that perform actions over content unit."""
+
 from urllib.parse import urljoin
 
 import pytest

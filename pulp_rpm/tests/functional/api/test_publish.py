@@ -1,4 +1,5 @@
 """Tests that publish rpm plugin repositories."""
+
 import os
 import pytest
 
