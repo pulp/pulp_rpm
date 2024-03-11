@@ -87,7 +87,6 @@ from pulp_rpm.app.modulemd import parse_modular
 
 from pulp_rpm.app.comps import strdict_to_dict, dict_digest
 from pulp_rpm.app.kickstart.treeinfo import PulpTreeInfo, TreeinfoData
-from pulp_rpm.app.metadata_parsing import MetadataParser
 from pulp_rpm.app.shared_utils import (
     is_previous_version,
     get_sha256,
@@ -1170,7 +1169,7 @@ class RpmFirstStage(Stage):
 
     async def parse_packages(self, primary_xml, filelists_xml, other_xml, modulemd_list=None):
         """Parse packages from the remote repository."""
-        parser = MetadataParser.from_metadata_files(
+        parser = cr.RepositoryReader.from_metadata_files(
             primary_xml.path, filelists_xml.path, other_xml.path
         )
 
@@ -1270,7 +1269,7 @@ class RpmFirstStage(Stage):
 
         # Ew, callback-based API, gross. The streaming API doesn't support optionally
         # specifying particular files yet so we have to use the old way.
-        parser.for_each_pkg_primary(verification_and_skip_callback)
+        cr.xml_parse_primary(primary_xml.path, pkgcb=verification_and_skip_callback, do_files=False)
 
         # Go through the package lists, sort them descending by EVR, ignore the first N and then
         # add the remaining ones to the skip list.
@@ -1306,7 +1305,7 @@ class RpmFirstStage(Stage):
             "total": total_packages,
         }
         async with ProgressReport(**progress_data) as packages_pb:
-            for pkg in parser.as_iterator():
+            for pkg in parser.iter_packages():
                 pkg_nevra = pkg.nevra()
                 # Skip over packages (retention feature, skip_types feature)
                 if package_skip_nevras and pkg_nevra in package_skip_nevras:
