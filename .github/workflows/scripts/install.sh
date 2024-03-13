@@ -16,7 +16,7 @@ set -euv
 source .github/workflows/scripts/utils.sh
 
 PLUGIN_VERSION="$(sed -n -e 's/^\s*current_version\s*=\s*//p' .bumpversion.cfg | python -c 'from packaging.version import Version; print(Version(input()))')"
-PLUGIN_NAME="./pulp_rpm/dist/pulp_rpm-${PLUGIN_VERSION}-py3-none-any.whl"
+PLUGIN_SOURCE="./pulp_rpm/dist/pulp_rpm-${PLUGIN_VERSION}-py3-none-any.whl"
 
 export PULP_API_ROOT="/pulp/"
 
@@ -37,7 +37,6 @@ then
 fi
 
 cd .ci/ansible/
-PLUGIN_SOURCE="${PLUGIN_NAME}"
 if [ "$TEST" = "s3" ]; then
   PLUGIN_SOURCE="${PLUGIN_SOURCE} pulpcore[s3]"
 fi
@@ -139,7 +138,7 @@ if [ "${PULP_API_ROOT:-}" ]; then
   sed -i -e '$a api_root: "'"$PULP_API_ROOT"'"' vars/main.yaml
 fi
 
-pulp config create --base-url https://pulp --api-root "$PULP_API_ROOT"
+pulp config create --base-url https://pulp --api-root "$PULP_API_ROOT" --username "admin" --password "password"
 if [[ "$TEST" != "docs" ]]; then
   cp ~/.config/pulp/cli.toml "${REPO_ROOT}/../pulp-cli/tests/cli.toml"
 fi
