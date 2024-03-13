@@ -1,4 +1,5 @@
 """Utilities for tests for the rpm plugin."""
+
 import gzip
 import os
 import subprocess

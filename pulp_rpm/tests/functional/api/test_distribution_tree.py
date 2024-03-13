@@ -1,4 +1,5 @@
 """Tests distribution trees."""
+
 import pytest
 
 from pulp_rpm.tests.functional.constants import (

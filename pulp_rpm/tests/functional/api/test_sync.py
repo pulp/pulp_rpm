@@ -1,4 +1,5 @@
 """Tests that sync rpm plugin repositories."""
+
 import pytest
 from random import choice
 

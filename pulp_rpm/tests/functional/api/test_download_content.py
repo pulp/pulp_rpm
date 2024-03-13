@@ -1,4 +1,5 @@
 """Tests that verify download of content served by Pulp."""
+
 import hashlib
 from random import choice
 from urllib.parse import urljoin

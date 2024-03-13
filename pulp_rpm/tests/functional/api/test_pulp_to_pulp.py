@@ -1,4 +1,5 @@
 """Tests that verify download of content served by Pulp."""
+
 import pytest
 
 from pulp_rpm.tests.functional.constants import DOWNLOAD_POLICIES
