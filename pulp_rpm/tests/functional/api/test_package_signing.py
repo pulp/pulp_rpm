@@ -49,10 +49,12 @@ def test_sign_package_on_upload(
         "sign_package": True,
     }
     upload_task = rpm_package_api.create(**upload_attrs).task
-    package_href = monitor_task(upload_task).created_resources[1]
+    # created_resources: [0] artifact [1] repository_version [2] package
+    package_href = monitor_task(upload_task).created_resources[2]
     package = rpm_package_api.read(package_href)
 
     # Verify stored artifact is properly signed
     artifact = pulpcore_bindings.ArtifactsApi.read(package.artifact)
-    with default_storage.open(artifact.file, "r") as package_file:
+    with default_storage.open(artifact.file, "rb") as package_file:
+        package_file.read()  # hopefully will trigger download on external storages
         assert rpm_tool.verify_signature(package_file.name)
