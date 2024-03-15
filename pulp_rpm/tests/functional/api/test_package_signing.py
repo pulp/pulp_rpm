@@ -45,7 +45,7 @@ def test_sign_package_on_upload(
     with pytest.raises(InvalidSignatureError, match="The package is not signed: .*"):
         rpm_tool.verify_signature(file_to_upload)
 
-    # Create Repository with signing service
+    # Create Repository with related signing service
     repository = rpm_repository_factory(
         package_signing_service=rpm_package_signing_service.pulp_href
     )
@@ -69,4 +69,4 @@ def test_sign_package_on_upload(
     package_bytes = download_content_unit(distribution.base_path, pkg_path)
     downloaded_package = tmp_path / "package.rpm"
     downloaded_package.write_bytes(package_bytes)
-    assert rpm_tool.verify_signature(str(downloaded_package.resolve()))
+    assert rpm_tool.verify_signature(downloaded_package)

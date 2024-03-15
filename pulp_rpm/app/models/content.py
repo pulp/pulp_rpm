@@ -39,6 +39,5 @@ class RpmPackageSigningService(SigningService):
 
             # verify with rpm tool
             rpm_tool = RpmTool(root=Path(temp_directory_name))
-            # rpm_tool = RpmTool(root=Path.home())
             rpm_tool.import_pubkey_string(self.public_key)
             rpm_tool.verify_signature(temp_file)

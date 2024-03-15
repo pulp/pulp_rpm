@@ -54,8 +54,7 @@ def test_verify_package_is_unsigned(tmp_path):
     pkg_file = get_fixture(tmp_path, RPM_UNSIGNED_URL)
 
     rpm_tool = RpmTool(tmp_path)
-    err_msg = "The package is not signed:"
-    with pytest.raises(InvalidSignatureError, match=err_msg):
+    with pytest.raises(InvalidSignatureError, match=RpmTool.UNSIGNED_ERROR_MSG):
         rpm_tool.verify_signature(pkg_file)
 
 
@@ -66,8 +65,7 @@ def test_verify_signature_is_invalid(tmp_path):
     pkg_file = get_fixture(tmp_path, RPM_SIGNED_URL)
 
     rpm_tool = RpmTool(tmp_path)
-    err_msg = "Signature is invalid or could not be verified:"
-    with pytest.raises(InvalidSignatureError, match=err_msg):
+    with pytest.raises(InvalidSignatureError, match=RpmTool.INVALID_SIGNATURE_ERROR_MSG):
         rpm_tool.verify_signature(pkg_file)
 
 
@@ -87,6 +85,5 @@ def test_alternative_root_works(tmp_path):
     # it raises for not being able to find the pubkey to verify the pkg
     root_2 = tmp_path / "root_2"
     rpm_tool_2 = RpmTool(root=root_2)
-    err_msg = "Signature is invalid or could not be verified:"
-    with pytest.raises(InvalidSignatureError, match=err_msg):
+    with pytest.raises(InvalidSignatureError, match=RpmTool.INVALID_SIGNATURE_ERROR_MSG):
         rpm_tool_2.verify_signature(pkg_file)

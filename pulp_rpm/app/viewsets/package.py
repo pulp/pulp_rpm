@@ -72,7 +72,7 @@ class PackageViewSet(SingleArtifactContentUploadViewSet):
     }
 
     @extend_schema(
-        description="Trigger an asynchronous task to create content,"
+        description="Trigger an asynchronous task to create an RPM package,"
         "optionally create new repository version.",
         responses={202: AsyncOperationResponseSerializer},
     )
@@ -92,7 +92,7 @@ class PackageViewSet(SingleArtifactContentUploadViewSet):
         ]
 
         # handle signing, if required
-        sign_package = serializer.validated_data.get("sign_package")
+        sign_package = serializer.validated_data.pop("sign_package")
         if sign_package is True:
             task_fn = rpm_tasks.signing.sign_and_create
             # 'repository' is being popped because the 'validated_data' will create

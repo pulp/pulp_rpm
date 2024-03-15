@@ -179,6 +179,10 @@ class RpmTool:
         root: Alternative root directory passed to `rpm --root`
     """
 
+    INVALID_SIGNATURE_ERROR_MSG = "Signature is invalid or pubkey is unreachable"
+    UNKNOWN_ERROR_MSG = "Some unknown error ocurred"
+    UNSIGNED_ERROR_MSG = "The package is not signed"
+
     def __init__(self, root: t.Optional[Path] = None):
         completed_process = subprocess.run(
             ["which", "rpmsign"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -198,21 +202,21 @@ class RpmTool:
         """
         return _get_datapkg_sample_rpm_copy(basedir)
 
-    def import_pubkey_file(self, pubkey: str):
+    def import_pubkey_file(self, pubkey_file: str):
         """
         Import public_key file (ascii-armored) into the rpm-tool.
 
-        Parameters:
+        Args:
             import_pubkey: The public key file in ascii-armored format.
         """
-        cmd = ("rpm", *self.opts, "--import", pubkey)
+        cmd = ("rpm", *self.opts, "--import", pubkey_file)
         completed_process = subprocess.run(cmd, capture_output=True)
         if completed_process.returncode != 0:
             raise RuntimeError(
                 f"Could not import public key into rpm-tool:\n{completed_process.stderr.decode()}"
             )
 
-    def import_pubkey_string(self, pubkey: str):
+    def import_pubkey_string(self, pubkey_content: str):
         """
         Import public_key string (ascii-armored) into the rpm-tool.
 
@@ -220,7 +224,7 @@ class RpmTool:
             import_pubkey: The public key string in ascii-armored format.
         """
         with tempfile.NamedTemporaryFile() as pubkey_file:
-            pubkey_file.write(pubkey.encode())
+            pubkey_file.write(pubkey_content.encode())
             pubkey_file.flush()
             self.import_pubkey_file(pubkey_file.name)
 
@@ -229,40 +233,37 @@ class RpmTool:
         Verify that an Rpm Package is signed by some of the imported pubkey.
 
         Parameters:
-            rpm_package_file: abs path string to the rpm package
+            rpm_package_file: Path object to rpm package
 
         Returns:
             True (if has valid)
 
         Raises:
-            InvalidSignature for invalid/unsigned package
+            InvalidSignature (for invalid/unsigned package)
 
         Notes:
             This is based on the command: `rpm --checksig camel-0.1-1.noarch.rpm`
             Which have the following scenarios/outputs:
 
-            unsigned:
-                returncode: 0
-                output: "camel-0.1-1.noarch.rpm: digests OK"
-
-            signed, but rpm doesnt have pubkey imported:
-                returncode: 1
-                output: "camel-0.1-1.noarch.rpm: digests SIGNATURES NOT OK"
-
-            signed and rpm can validate:
-                returncode: 0
-                output: "camel-0.1-1.noarch.rpm: digests signatures OK"
+            - unsigned:
+                * returncode: 0
+                * output: "camel-0.1-1.noarch.rpm: digests OK"
+            - signed, but rpm doesnt have pubkey imported:
+                * returncode: 1
+                * output: "camel-0.1-1.noarch.rpm: digests SIGNATURES NOT OK"
+            - signed and rpm can validate:
+                * returncode: 0
+                * output: "camel-0.1-1.noarch.rpm: digests signatures OK"
         """
-        cmd = ("rpm", *self.opts, "--checksig", str(rpm_package_file))
+        cmd = ("rpm", *self.opts, "--checksig", str(rpm_package_file.resolve()))
         completed_process = subprocess.run(cmd, capture_output=True)
-        exitcode = completed_process.returncode
-        output = completed_process.stdout.decode()
-        if "kangoroo" in output:
-            import epdb
-
-            epdb.serve(port=12345)
-        if exitcode != 0:
-            raise InvalidSignatureError(f"Signature is invalid or could not be verified: {output}")
+        stdout = completed_process.stdout.decode()
+        stderr = completed_process.stderr.decode()
+        output = f"\nstdout: {stdout}\nstderr: {stderr}"
+        if completed_process.returncode != 0:
+            if "SIGNATURES NOT OK" in stdout:
+                raise InvalidSignatureError(f"{RpmTool.INVALID_SIGNATURE_ERROR_MSG}: {output}")
+            raise TypeError(f"{RpmTool.UNKNOWN_ERROR_MSG}: {output}")
         elif "signatures" not in output:
-            raise InvalidSignatureError(f"The package is not signed: {output}")
+            raise InvalidSignatureError(f"{RpmTool.UNSIGNED_ERROR_MSG}: {output}")
         return True
