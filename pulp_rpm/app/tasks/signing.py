@@ -1,6 +1,5 @@
 from tempfile import NamedTemporaryFile
 
-from django.core.files import File
 from pulpcore.app.apps import get_plugin_config
 from pulpcore.plugin.models import Artifact, CreatedResource, MasterModel
 from pulpcore.plugin.util import extract_pk, get_url
@@ -17,8 +16,7 @@ def sign_and_create(app_label, serializer_name, signing_service_pk, *args, **kwa
     # Get unsigned packaged from Artifact
     unsigned_artifact = Artifact.objects.get(pk=extract_pk(data["artifact"]))
 
-    with NamedTemporaryFile(mode="wb", dir=".", delete=False) as f:
-        final_package = File(f)
+    with NamedTemporaryFile(mode="wb", dir=".", delete=False) as final_package:
         # Get copy of package
         with unsigned_artifact.file.open() as unsigned_package:
             final_package.write(unsigned_package.read())

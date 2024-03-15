@@ -1,10 +1,14 @@
 import pytest
 import requests
-from django.core.files.storage import default_storage
+from pulpcore.client.pulp_rpm import RpmRpmPublication
 from pulpcore.exceptions.validation import InvalidSignatureError
 
 from pulp_rpm.app.shared_utils import RpmTool
-from pulp_rpm.tests.functional.constants import RPM_PACKAGE_FILENAME, RPM_UNSIGNED_URL
+from pulp_rpm.tests.functional.constants import (
+    RPM_PACKAGE_FILENAME,
+    RPM_UNSIGNED_URL,
+)
+from pulp_rpm.tests.functional.utils import get_package_repo_path
 
 
 @pytest.mark.parallel
@@ -18,13 +22,17 @@ def test_register_rpm_package_signing_service(rpm_package_signing_service):
 
 @pytest.mark.parallel
 def test_sign_package_on_upload(
-    rpm_package_factory,
-    rpm_repository_factory,
-    rpm_package_signing_service,
-    pulpcore_bindings,
-    rpm_package_api,
-    monitor_task,
     tmp_path,
+    pulpcore_bindings,
+    monitor_task,
+    gen_object_with_cleanup,
+    download_content_unit,
+    rpm_package_signing_service,
+    rpm_package_api,
+    rpm_repository_factory,
+    rpm_publication_api,
+    rpm_package_factory,
+    rpm_distribution_factory,
 ):
     """Sign an Rpm Package with the Package Upload endpoint."""
     # Setup rpm package file to upload
@@ -48,13 +56,17 @@ def test_sign_package_on_upload(
         "repository": repository.pulp_href,
         "sign_package": True,
     }
-    upload_task = rpm_package_api.create(**upload_attrs).task
-    # created_resources: [0] artifact [1] repository_version [2] package
-    package_href = monitor_task(upload_task).created_resources[2]
-    package = rpm_package_api.read(package_href)
+    upload_task_href = rpm_package_api.create(**upload_attrs).task
+    package_href = monitor_task(upload_task_href).created_resources[2]
+    package_loc_href = rpm_package_api.read(package_href).location_href
 
-    # Verify stored artifact is properly signed
-    artifact = pulpcore_bindings.ArtifactsApi.read(package.artifact)
-    with default_storage.open(artifact.file, "rb") as package_file:
-        package_file.read()  # hopefully will trigger download on external storages
-        assert rpm_tool.verify_signature(package_file.name)
+    # Verify that the final served package is signed
+    publish_data = RpmRpmPublication(repository=repository.pulp_href)
+    publication = gen_object_with_cleanup(rpm_publication_api, publish_data)
+    distribution = rpm_distribution_factory(publication=publication.pulp_href)
+
+    pkg_path = get_package_repo_path(package_loc_href)
+    package_bytes = download_content_unit(distribution.base_path, pkg_path)
+    downloaded_package = tmp_path / "package.rpm"
+    downloaded_package.write_bytes(package_bytes)
+    assert rpm_tool.verify_signature(str(downloaded_package.resolve()))

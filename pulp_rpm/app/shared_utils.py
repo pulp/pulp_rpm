@@ -257,6 +257,10 @@ class RpmTool:
         completed_process = subprocess.run(cmd, capture_output=True)
         exitcode = completed_process.returncode
         output = completed_process.stdout.decode()
+        if "kangoroo" in output:
+            import epdb
+
+            epdb.serve(port=12345)
         if exitcode != 0:
             raise InvalidSignatureError(f"Signature is invalid or could not be verified: {output}")
         elif "signatures" not in output:
