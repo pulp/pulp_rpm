@@ -153,12 +153,6 @@ def add_metadata_to_publication(publication, version, prefix=""):
     """
     repo_metadata_files = metadata_files_for_mirroring[str(version.repository.pk)]
 
-    has_repomd_signature = "repodata/repomd.xml.asc" in repo_metadata_files.keys()
-
-    publication.package_checksum_type = CHECKSUM_TYPES.UNKNOWN
-    publication.metadata_checksum_type = CHECKSUM_TYPES.UNKNOWN
-    publication.repo_config = {"repo_gpgcheck": has_repomd_signature, "gpgcheck": 0}
-
     for relative_path, metadata_file_path in repo_metadata_files.items():
         with open(metadata_file_path, "rb") as metadata_fd:
             PublishedMetadata.create_from_file(
@@ -577,6 +571,19 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
         with RpmPublication.create(
             repo_sync_results[PRIMARY_REPO], pass_through=False
         ) as publication:
+            gpgcheck = repository.repo_config.get("gpgcheck", 0)
+            has_repomd_signature = (
+                "repodata/repomd.xml.asc" in metadata_files_for_mirroring[str(repository.pk)].keys()
+            )
+            repo_gpgcheck = has_repomd_signature and repository.repo_config.get("repo_gpgcheck", 0)
+
+            publication.package_checksum_type = CHECKSUM_TYPES.UNKNOWN
+            publication.metadata_checksum_type = CHECKSUM_TYPES.UNKNOWN
+            publication.repo_config = {
+                "repo_gpgcheck": int(repo_gpgcheck),
+                "gpgcheck": int(gpgcheck),
+            }
+
             for path, repo_version in repo_sync_results.items():
                 add_metadata_to_publication(publication, repo_version, prefix=path)
 
