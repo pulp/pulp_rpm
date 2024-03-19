@@ -1,23 +1,24 @@
 from tempfile import NamedTemporaryFile
 
-from pulpcore.app.apps import get_plugin_config
-from pulpcore.plugin.models import Artifact, CreatedResource, MasterModel
-from pulpcore.plugin.util import extract_pk, get_url
+from pulpcore.plugin.models import Artifact, CreatedResource, PulpTemporaryFile
+from pulpcore.plugin.tasking import general_create
+from pulpcore.plugin.util import get_url
 
 from pulp_rpm.app.models.content import RpmPackageSigningService
 
 
-def sign_and_create(app_label, serializer_name, signing_service_pk, *args, **kwargs):
+def sign_and_create(
+    app_label, serializer_name, signing_service_pk, temporary_file_pk, *args, **kwargs
+):
     data = kwargs.pop("data", None)
     context = kwargs.pop("context", {})
-    serializer_class = get_plugin_config(app_label).named_serializers[serializer_name]
 
     # Get unsigned package file and sign it
     package_signing_service = RpmPackageSigningService.objects.get(pk=signing_service_pk)
-    unsigned_artifact = Artifact.objects.get(pk=extract_pk(data["artifact"]))
+    uploaded_package = PulpTemporaryFile.objects.get(pk=temporary_file_pk)
     with NamedTemporaryFile(mode="wb", dir=".", delete=False) as final_package:
-        with unsigned_artifact.file.open() as unsigned_package:
-            final_package.write(unsigned_package.read())
+        with uploaded_package.file.open() as unsigned_package_file:
+            final_package.write(unsigned_package_file.read())
             final_package.flush()
         package_signing_service.sign(final_package.name)
 
@@ -25,13 +26,8 @@ def sign_and_create(app_label, serializer_name, signing_service_pk, *args, **kwa
         artifact.save()
         resource = CreatedResource(content_object=artifact)
         resource.save()
+    uploaded_package.delete()
 
     # Create Package content
     data["artifact"] = get_url(artifact)
-    serializer = serializer_class(data=data, context=context)
-    serializer.is_valid(raise_exception=True)
-    instance = serializer.save()
-    if isinstance(instance, MasterModel):
-        instance = instance.cast()
-    resource = CreatedResource(content_object=instance)
-    resource.save()
+    general_create(app_label, serializer_name, data=data, context=context, *args, **kwargs)
