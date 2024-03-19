@@ -57,7 +57,12 @@ endif
 
 $(STATIC_BUILD_DIR)/api.json:
 	mkdir -p $(STATIC_BUILD_DIR)
-	curl --fail -o $(STATIC_BUILD_DIR)/api.json "$(PULP_URL)/pulp/api/v3/docs/api.json?plugin=pulp_rpm&include_html=1"
+	if pulp debug has-plugin --name core --specifier ">=3.44.0.dev"; \
+	then \
+		curl --fail -o $(STATIC_BUILD_DIR)/api.json "$(PULP_URL)/pulp/api/v3/docs/api.json?component=rpm&include_html=1"; \
+	else \
+		curl --fail -o $(STATIC_BUILD_DIR)/api.json "$(PULP_URL)/pulp/api/v3/docs/api.json?plugin=pulp_rpm&include_html=1"; \
+	fi
 
 html: $(STATIC_BUILD_DIR)/api.json
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
