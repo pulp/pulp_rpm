@@ -1,8 +1,10 @@
 """Tests that sync rpm plugin repositories."""
+
 import pytest
 from random import choice
 
 import dictdiffer
+import requests
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
 
@@ -1094,3 +1096,47 @@ def test_mirror_mode(sync_policy, init_and_sync, rpm_publication_api):
             repository_version=repository.latest_version_href
         ).count
         assert created_publications == 1
+
+
+@pytest.mark.parallel
+def test_config_repo_mirror_sync(
+    rpm_rpmremote_factory,
+    rpm_repository_factory,
+    rpm_publication_factory,
+    rpm_distribution_factory,
+    rpm_repository_api,
+    rpm_publication_api,
+    monitor_task,
+):
+    """Whether config.repo has the right content for a mirror sync."""
+
+    # TODO: once we have a fixture repository with signed metadata, we should use that
+    # and extend this test to see that repo_gpgcheck=1 even if the repository has it disabled
+    remote = rpm_rpmremote_factory(url=RPM_UNSIGNED_FIXTURE_URL)
+    repository = rpm_repository_factory(
+        remote=remote.pulp_href, repo_config={"repo_gpgcheck": 1, "gpgcheck": 1}
+    )
+    repository_sync_data = RpmRepositorySyncURL(
+        remote=remote.pulp_href,
+        sync_policy="mirror_complete",
+    )
+
+    sync_response = rpm_repository_api.sync(repository.pulp_href, repository_sync_data)
+    monitor_task(sync_response.task)
+    repository = rpm_repository_api.read(repository.pulp_href)
+    publication = rpm_publication_api.list(
+        repository_version=repository.latest_version_href
+    ).results[0]
+
+    distribution = rpm_distribution_factory(
+        publication=publication.pulp_href, generate_repo_config=True
+    )
+
+    content = requests.get(f"{distribution.base_url}config.repo").content
+
+    # gpgcheck should follow repo_config
+    # repo_gpgcheck should match whether the upstream repo has signed metadata or not
+    assert bytes(f"[{distribution.name}]\n", "utf-8") in content
+    assert bytes(f"baseurl={distribution.base_url}\n", "utf-8") in content
+    assert bytes("gpgcheck=1\n", "utf-8") in content
+    assert bytes("repo_gpgcheck=0", "utf-8") in content
