@@ -45,6 +45,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_COMPLEX_PACKAGE_DATA,
     RPM_FIXTURE_SUMMARY,
     RPM_INVALID_FIXTURE_URL,
+    RPM_NO_ROOT_REPO_TREEINFO_FIXTURE_URL,
     RPM_KICKSTART_DATA,
     RPM_KICKSTART_FIXTURE_SUMMARY,
     RPM_KICKSTART_FIXTURE_URL,
@@ -134,6 +135,19 @@ def test_sync_from_invalid_mirror_list_feed(init_and_sync):
     """Sync RPM content from a mirror list feed which contains an invalid remote URL."""
     with pytest.raises(PulpTaskError) as exc:
         init_and_sync(url=RPM_MIRROR_LIST_BAD_FIXTURE_URL)
+
+    assert "An invalid remote URL was provided" in exc.value.task.to_dict()["error"]["description"]
+
+
+@pytest.mark.parallel
+def test_sync_from_treeinfo_repo_with_empty_root(init_and_sync):
+    """Sync RPM content from a remote that has no root repo, but does have subrepos."""
+    # test that it is successful if you're not skipping treeinfo
+    init_and_sync(url=RPM_NO_ROOT_REPO_TREEINFO_FIXTURE_URL, skip_types=["treeinfo"])
+
+    # test that if you do skip treeinfo, the repo looks empty, and fails
+    with pytest.raises(PulpTaskError) as exc:
+        init_and_sync(url=RPM_NO_ROOT_REPO_TREEINFO_FIXTURE_URL, skip_types=["treeinfo"])
 
     assert "An invalid remote URL was provided" in exc.value.task.to_dict()["error"]["description"]
 

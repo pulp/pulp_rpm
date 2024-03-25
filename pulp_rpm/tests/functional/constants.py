@@ -90,6 +90,8 @@ RPM_ZSTD_METADATA_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-zstd-metada
 
 RPM_INVALID_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-missing-filelists/")
 
+RPM_NO_ROOT_REPO_TREEINFO_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-distribution-tree-empty-root/")
+
 RPM_MIRROR_LIST_GOOD_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-mirrorlist-good")
 RPM_MIRROR_LIST_BAD_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-mirrorlist-bad")
 
