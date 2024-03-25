@@ -1,4 +1,5 @@
 """Constants for Pulp RPM plugin tests."""
+
 # flake8: noqa
 
 from urllib.parse import urljoin
