@@ -1,0 +1,1 @@
+Pulp will no longer allow multiple packages with the same NEVRA to be present in a repo.

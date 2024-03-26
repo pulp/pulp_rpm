@@ -143,13 +143,13 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
     )
 
     location_base = serializers.CharField(
-        help_text=_("Base location of this package"),
+        help_text=_("DEPRECATED: Base location of this package"),
         allow_blank=True,
         required=False,
         read_only=True,
     )
     location_href = serializers.CharField(
-        help_text=_("Relative location of package to the repodata"),
+        help_text=_("DEPRECATED: Relative location of package to the repodata"),
         read_only=True,
     )
 
@@ -262,11 +262,8 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
             )
             + ".rpm"
         )
-        if not data.get("relative_path"):
-            data["relative_path"] = filename
-            new_pkg["location_href"] = filename
-        else:
-            new_pkg["location_href"] = data["relative_path"]
+        data["relative_path"] = filename
+        new_pkg["location_href"] = filename
 
         data.update(new_pkg)
         return data
