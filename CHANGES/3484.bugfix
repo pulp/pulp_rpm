@@ -1,0 +1,1 @@
+Fix publications created by mirror_complete syncs not having checksum_type set properly.
