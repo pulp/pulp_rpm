@@ -263,47 +263,6 @@ def fetch_mirror(remote):
     return None
 
 
-def fetch_remote_url(remote, custom_url=None):
-    """Fetch a single remote from which can be content synced."""
-
-    def normalize_url(url_to_normalize):
-        return url_to_normalize.rstrip("/") + "/"
-
-    url = custom_url or remote.url
-
-    try:
-        normalized_remote_url = normalize_url(url)
-        get_repomd_file(remote, normalized_remote_url)
-        # just check if the metadata exists
-        return normalized_remote_url
-    except ClientResponseError as exc:
-        # If 'custom_url' is passed it is a call from ACS refresh
-        # which doesn't support mirror lists.
-        if custom_url:
-            raise ValueError(
-                _(
-                    "ACS remote for url '{}' raised an error '{}: {}'. "
-                    "Please check your ACS remote configuration."
-                ).format(custom_url, exc.status, exc.message)
-            )
-        log.info(
-            _("Attempting to resolve a true url from potential mirrolist url '{}'").format(url)
-        )
-        remote_url = fetch_mirror(remote)
-        if remote_url:
-            log.info(
-                _("Using url '{}' from mirrorlist in place of the provided url {}").format(
-                    remote_url, url
-                )
-            )
-            return normalize_url(remote_url)
-
-        if exc.status == 404:
-            raise ValueError(_("An invalid remote URL was provided: {}").format(url))
-
-        raise exc
-
-
 def should_optimize_sync(sync_details, last_sync_details):
     """
     Check whether the sync should be optimized by comparing its parameters with the previous sync.
@@ -469,9 +428,10 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
     def is_subrepo(directory):
         return directory != PRIMARY_REPO
 
-    with tempfile.TemporaryDirectory(dir="."):
-        remote_url = fetch_remote_url(remote, url)
+    # normalize
+    remote_url = (url or remote.url).rstrip("/") + "/"
 
+    with tempfile.TemporaryDirectory(dir="."):
         # Find and set up to deal with any subtrees
         treeinfo = get_treeinfo_data(remote, remote_url)
         if treeinfo:
@@ -506,14 +466,44 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
                     "repo": sub_repo,
                 }
 
-        # Set up to deal with the primary repository
-        sync_details = get_sync_details(remote, remote_url, sync_policy, repository)
-        repo_sync_config[PRIMARY_REPO] = {
-            "should_skip": should_optimize_sync(sync_details, repository.last_sync_details),
-            "sync_details": sync_details,
-            "url": remote_url,
-            "repo": repository,
-        }
+        try:
+            get_repomd_file(remote, remote_url)
+        except ClientResponseError as exc:
+            if not treeinfo:
+                # If 'custom_url' is passed it is a call from ACS refresh
+                # which doesn't support mirror lists.
+                if url:
+                    raise ValueError(
+                        _(
+                            "ACS remote for url '{}' raised an error '{}: {}'. "
+                            "Please check your ACS remote configuration."
+                        ).format(custom_url, exc.status, exc.message)
+                    )
+                log.info(
+                    _("Attempting to resolve a true url from potential mirrolist url '{}'").format(url)
+                )
+                remote_url = fetch_mirror(remote)
+                if remote_url:
+                    log.info(
+                        _("Using url '{}' from mirrorlist in place of the provided url {}").format(
+                            remote_url, url
+                        )
+                    )
+                    return normalize_url(remote_url)
+
+                if exc.status == 404:
+                    raise ValueError(_("An invalid remote URL was provided: {}").format(url))
+
+                raise exc
+            finally:
+                # Set up to deal with the primary repository
+                sync_details = get_sync_details(remote, remote_url, sync_policy, repository)
+                repo_sync_config[PRIMARY_REPO] = {
+                    "should_skip": should_optimize_sync(sync_details, repository.last_sync_details),
+                    "sync_details": sync_details,
+                    "url": remote_url,
+                    "repo": repository,
+                }
 
         # If all repos are exactly the same, we should skip all further processing, even in
         # metadata-mirror mode
@@ -571,6 +561,10 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
         with RpmPublication.create(
             repo_sync_results[PRIMARY_REPO], pass_through=False
         ) as publication:
+            # TODO: how do we create a publication if we have no "root" repository version? we need to pick one... it isn't obvious which one
+            # Or can we pick an empty / the previous repository version of the current repo?"
+
+            # TODO: no new repository version == no autopublish. that's kind of fundamental to how autopublish works currently, I'm not sure how to work around it
             gpgcheck = repository.repo_config.get("gpgcheck", 0)
             has_repomd_signature = (
                 "repodata/repomd.xml.asc" in metadata_files_for_mirroring[str(repository.pk)].keys()
