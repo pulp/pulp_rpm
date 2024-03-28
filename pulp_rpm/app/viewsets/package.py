@@ -1,17 +1,17 @@
 from django_filters import CharFilter
-
+from drf_spectacular.utils import extend_schema
+from pulpcore.plugin.models import PulpTemporaryFile
+from pulpcore.plugin.serializers import AsyncOperationResponseSerializer
+from pulpcore.plugin.tasking import dispatch, general_create
 from pulpcore.plugin.viewsets import (
     ContentFilter,
+    OperationPostponedResponse,
     SingleArtifactContentUploadViewSet,
 )
 
-from pulp_rpm.app.models import (
-    Package,
-)
-from pulp_rpm.app.serializers import (
-    MinimalPackageSerializer,
-    PackageSerializer,
-)
+from pulp_rpm.app import tasks as rpm_tasks
+from pulp_rpm.app.models import Package
+from pulp_rpm.app.serializers import MinimalPackageSerializer, PackageSerializer
 
 
 class PackageFilter(ContentFilter):
@@ -71,3 +71,49 @@ class PackageViewSet(SingleArtifactContentUploadViewSet):
         ],
         "queryset_scoping": {"function": "scope_queryset"},
     }
+
+    @extend_schema(
+        description="Trigger an asynchronous task to create an RPM package,"
+        "optionally create new repository version.",
+        responses={202: AsyncOperationResponseSerializer},
+    )
+    def create(self, request):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # common task params
+        task_args = {
+            "app_label": self.queryset.model._meta.app_label,
+            "serializer_name": serializer.__class__.__name__,
+        }
+        task_exclusive = [
+            item
+            for item in (serializer.validated_data.get(key) for key in ("upload", "repository"))
+            if item
+        ]
+
+        # handle signing, if required
+        sign_package = serializer.validated_data.pop("sign_package")
+        temp_uploaded_file = serializer.validated_data.get("file")
+        if sign_package is True and temp_uploaded_file:
+            request.data.pop("file")
+            pulp_temp_file = PulpTemporaryFile(file=temp_uploaded_file.temporary_file_path())
+            pulp_temp_file.save()
+            task_fn = rpm_tasks.signing.sign_and_create
+            associated_repo = serializer.validated_data.get("repository")
+            task_args["signing_service_pk"] = associated_repo.package_signing_service.pk
+            task_args["temporary_file_pk"] = pulp_temp_file.pk
+            task_payload = {k: v for k, v in request.data.items()}
+        else:
+            task_fn = general_create
+            task_payload = self.init_content_data(serializer, request)
+        task = dispatch(
+            task_fn,
+            exclusive_resources=task_exclusive,
+            args=tuple(task_args.values()),
+            kwargs={
+                "data": task_payload,
+                "context": self.get_deferred_context(request),
+            },
+        )
+        return OperationPostponedResponse(task, request)

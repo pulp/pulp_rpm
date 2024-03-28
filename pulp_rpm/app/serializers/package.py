@@ -1,20 +1,17 @@
 import logging
 import traceback
-
 from gettext import gettext as _
-
-from rest_framework import serializers
-from rest_framework.exceptions import NotAcceptable
 
 from pulpcore.plugin.serializers import (
     ContentChecksumSerializer,
     SingleArtifactContentUploadSerializer,
 )
 from pulpcore.plugin.util import get_domain_pk
+from rest_framework import serializers
+from rest_framework.exceptions import NotAcceptable
 
 from pulp_rpm.app.models import Package
-from pulp_rpm.app.shared_utils import read_crpackage_from_artifact, format_nvra
-
+from pulp_rpm.app.shared_utils import format_nvra, read_crpackage_from_artifact
 
 log = logging.getLogger(__name__)
 
@@ -227,9 +224,19 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         ),
         read_only=True,
     )
+    sign_package = serializers.BooleanField(
+        help_text=_(
+            "Sign the package using the SigningService associated with the "
+            "Repository this is being upload to."
+        ),
+        default=False,
+        required=False,
+        write_only=True,
+    )
 
     def __init__(self, *args, **kwargs):
         """Initializer for RpmPackageSerializer."""
+
         super().__init__(*args, **kwargs)
         if "relative_path" in self.fields:
             self.fields["relative_path"].required = False
@@ -318,9 +325,15 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
                 "size_package",
                 "time_build",
                 "time_file",
+                "sign_package",
             )
         )
         model = Package
+
+    def create(self, validated_data):
+        # clean api-only option before creating model
+        validated_data.pop("sign_package", None)
+        return super().create(validated_data)
 
 
 class MinimalPackageSerializer(PackageSerializer):

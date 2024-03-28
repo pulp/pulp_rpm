@@ -1,29 +1,28 @@
-import re
 import os
+import re
 import textwrap
-
 from gettext import gettext as _
 from logging import getLogger
 
 from aiohttp.web_response import Response
-from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
+from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
 from pulpcore.plugin.download import DownloaderFactory
 from pulpcore.plugin.models import (
-    AutoAddObjPermsMixin,
     Artifact,
     AsciiArmoredDetachedSigningService,
+    AutoAddObjPermsMixin,
     Content,
     ContentArtifact,
+    Distribution,
+    Publication,
     Remote,
     RemoteArtifact,
     Repository,
     RepositoryContent,
     RepositoryVersion,
-    Publication,
     PublishedMetadata,
-    Distribution,
 )
 from pulpcore.plugin.repo_version_utils import (
     remove_duplicates,
@@ -32,22 +31,22 @@ from pulpcore.plugin.repo_version_utils import (
 )
 
 from pulp_rpm.app.constants import CHECKSUM_CHOICES, COMPRESSION_CHOICES
+from pulp_rpm.app.downloaders import RpmDownloader, RpmFileDownloader, UlnDownloader
+from pulp_rpm.app.exceptions import DistributionTreeConflict
 from pulp_rpm.app.models import (
     DistributionTree,
-    Package,
-    PackageCategory,
-    PackageGroup,
-    PackageEnvironment,
-    PackageLangpacks,
-    RepoMetadataFile,
     Modulemd,
     ModulemdDefaults,
     ModulemdObsolete,
+    Package,
+    PackageCategory,
+    PackageEnvironment,
+    PackageGroup,
+    PackageLangpacks,
+    RepoMetadataFile,
+    RpmPackageSigningService,
     UpdateRecord,
 )
-
-from pulp_rpm.app.downloaders import RpmDownloader, RpmFileDownloader, UlnDownloader
-from pulp_rpm.app.exceptions import DistributionTreeConflict
 from pulp_rpm.app.shared_utils import urlpath_sanitize
 
 log = getLogger(__name__)
@@ -225,6 +224,9 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
 
     metadata_signing_service = models.ForeignKey(
         AsciiArmoredDetachedSigningService, on_delete=models.SET_NULL, null=True
+    )
+    package_signing_service = models.ForeignKey(
+        RpmPackageSigningService, on_delete=models.SET_NULL, null=True
     )
     original_checksum_types = models.JSONField(default=dict)
     last_sync_details = models.JSONField(default=dict)
