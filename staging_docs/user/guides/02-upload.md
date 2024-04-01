@@ -1,107 +1,124 @@
-# Upload Content
+# Post and Delete Content
 
-Content can be added to a repository not only by synchronizing from a remote source but also by
-uploading.
+RPM Content (packages, advisories, modulemds, etc) can be submitted to a Pulp Repository individually.
 
-### Add content to repository `foo`
+## Post Content
 
-If there is content already in Pulp, you can add it to a repository using `content modify`:
+### Package Example
 
-=== "Add Package to a Repository"
+Package upload requires a valid RPM package.
+
+=== "Upload a Package"
 
     ```bash
-    #!/usr/bin/env bash
+    # Get or create a repository
+    pulp rpm repository create --name testrepo
+    REPOSITORY=testrepo
+
+    # Get a package
+    wget https://fixtures.pulpproject.org/rpm-unsigned/bear-4.1-1.noarch.rpm
+    PACKAGE="bear-4.1-1.noarch.rpm"
     
-    # Add created RPM content to repository
-    echo "Add created RPM Package to repository."
-    TASK_HREF=$(pulp rpm repository content modify \
-                --repository "${REPO_NAME}" \
-                --add-content "[{\"pulp_href\": \"${PACKAGE_HREF}\"}]" \
-                2>&1 >/dev/null | awk '{print $4}')
+    # Upload package to the repo
+    PACKAGE_HREF=$(pulp rpm content -t package upload \
+        --file "${PACKAGE}" \
+        --repository "${REPOSITORY}" \
+        | jq -r '.content_summary.added."rpm.package".href')
     
-    # After the task is complete, it gives us a new repository version
-    echo "Set REPOVERSION_HREF from finished task."
-    REPOVERSION_HREF=$(pulp show --href "${TASK_HREF}" \
-                       | jq -r '.created_resources | first')
-    
-    echo "Inspecting RepositoryVersion."
-    pulp show --href "${REPOVERSION_HREF}"
+    # Inspect the package
+    pulp show --href "${PACKAGE_HREF}"
     ```
 
 === "Output"
 
     ```json
-    {
-        "base_version": null,
-        "content_summary": {
-            "added": {
-                "rpm.package": {
-                    "count": 1,
-                    "href": "/pulp/api/v3/content/rpm/packages/?repository_version_added=/pulp/api/v3/repositories/rpm/rpm/805de89c-1b1d-432c-993e-3eb9a3fedd22/versions/1/"
-                }
-            },
-            "present": {
-                "rpm.package": {
-                    "count": 1,
-                    "href": "/pulp/api/v3/content/rpm/packages/?repository_version=/pulp/api/v3/repositories/rpm/rpm/805de89c-1b1d-432c-993e-3eb9a3fedd22/versions/1/"
-                }
-            },
-            "removed": {}
-        },
-        "number": 1,
-        "pulp_created": "2019-11-27T13:48:18.326333Z",
-        "pulp_href": "/pulp/api/v3/repositories/rpm/rpm/805de89c-1b1d-432c-993e-3eb9a3fedd22/versions/1/"
-    }
+      {
+        "pulp_href": "/pulp/api/v3/content/rpm/packages/018e9b3a-78c8-7cce-aa9a-034e92ae2e93/",
+        "pulp_created": "2024-04-01T19:54:44.297487Z",
+        "pulp_last_updated": "2024-04-01T19:54:44.297497Z",
+        "md5": "95281cf165536b930d428e06c9072ecc",
+        "sha1": "7a1c48b1ed69992c6ca3f20853f46ec88e8de146",
+        "sha224": "2c96cdb234d4ace0f95d0d4dcab5c6dbc009f886ad021fb223768dd1",
+        "sha256": "ceb0f0bb58be244393cc565e8ee5ef0ad36884d8ba8eec74542ff47d299a34c1",
+        "sha384": "444b2be8b1e91f851acced29c00ccc3984106f3f8429c2c6d79d0166bf3fe0ce82942e761f861b52f9d32b8766ac9b01",
+        "sha512": "67434c4e7697908572e65007590317dc7e541dc63be68b330b5fdcddf1127ad525487ee4cca41f218a6810c7a936d5da1847e840f751b5b22f3f1a03f4e25a12",
+        "artifact": "/pulp/api/v3/artifacts/018e9b3a-785f-7b12-b7c5-cb966c1efcd0/",
+        "name": "bear",
+        "epoch": "0",
+        "version": "4.1",
+        "release": "1",
+        "arch": "noarch",
+        "pkgId": "ceb0f0bb58be244393cc565e8ee5ef0ad36884d8ba8eec74542ff47d299a34c1",
+        "checksum_type": "sha256",
+        "summary": "A dummy package of bear",
+        "description": "A dummy package of bear",
+        "url": "http://tstrachota.fedorapeople.org",
+        "changelogs": [],
+        "files": [
+          [
+            "",
+            "/tmp/",
+            "bear.txt",
+            "5938462bfd4a5d750e0851f5b82f3ade"
+          ]
+        ],
+        "requires": [],
+        "provides": [
+          [
+            "bear",
+            "EQ",
+            "0",
+            "4.1",
+            "1",
+            false
+          ]
+        ],
+        "conflicts": [],
+        "obsoletes": [],
+        "suggests": [],
+        "enhances": [],
+        "recommends": [],
+        "supplements": [],
+        "location_base": "",
+        "location_href": "bear-4.1-1.noarch.rpm",
+        "rpm_buildhost": "smqe-ws15",
+        "rpm_group": "Internet/Applications",
+        "rpm_license": "GPLv2",
+        "rpm_packager": "",
+        "rpm_sourcerpm": "bear-4.1-1.src.rpm",
+        "rpm_vendor": "",
+        "rpm_header_start": 280,
+        "rpm_header_end": 1697,
+        "is_modular": false,
+        "size_archive": 296,
+        "size_installed": 42,
+        "size_package": 1846,
+        "time_build": 1331831374,
+        "time_file": 1712001284
+      },
     ```
 
-!!! note
-    It is recommended to omit the `relative_path` and have Pulp generate a common pool location.
-    This will be `/repo/Packages/s/squirrel-0.1-1.noarch.rpm` as shown below.
-
-    When specifying a `relative_path`, make sure to add the exact name of the package
-    including its name, version, release and arch as in `squirrel-0.1-1.noarch.rpm`.
-    It is composed of the `name-version-release.arch.rpm`.
-
-    Example:
-
-    ```none
-    relative_path="squirrel-0.1-1.noarch.rpm"
-    ```
-
-### Advisory upload
+### Advisory Example
 
 Advisory upload requires a file or an artifact containing advisory information in the JSON format.
-Repository is an optional argument to create new repository version with uploaded advisory.
+
 
 === "Upload an Advisory"
 
-    ```
-    #!/usr/bin/env bash
-    
+    ```bash
     # Get advisory
     echo '{
         "updated": "2014-09-28 00:00:00",
         "issued": "2014-09-24 00:00:00",
         "id": "RHSA-XXXX:XXXX"
     }' > advisory.json
-    export ADVISORY="advisory.json"
+    ADVISORY="advisory.json"
     
     # Upload advisory
-    echo "Upload advisory in JSON format."
-    TASK_URL=$(http --form POST "${BASE_ADDR}"/pulp/api/v3/content/rpm/advisories/ \
-        file@./"${ADVISORY}" repository="${REPO_HREF}" | jq -r '.task')
-    export TASK_URL
+    ADVISORY_HREF=$(pulp rpm content -t advisory \
+        upload --file "${ADVISORY}" | jq -r '.pulp_href')
     
-    # Poll the task (here we use a function defined in docs/_scripts/base.sh)
-    wait_until_task_finished "${BASE_ADDR}""${TASK_URL}"
-    
-    # After the task is complete, it gives us a new repository version
-    echo "Set ADVISORY_HREF from finished task."
-    ADVISORY_HREF=$(http "${BASE_ADDR}""${TASK_URL}" \
-                    | jq -r '.created_resources | .[] | match(".*advisories.*") | .string')
-    export ADVISORY_HREF
-    
-    echo "Inspecting advisory."
+    # Inspect advisory
     pulp show --href "${ADVISORY_HREF}"
     ```
 
@@ -109,26 +126,80 @@ Repository is an optional argument to create new repository version with uploade
 
     ```json
     {
-        "artifact": "/pulp/api/v3/artifacts/b4e3a95c-eb82-410e-8f90-aba59d573058/",
-        "description": "",
-        "fromstr": "nobody@redhat.com",
-        "id": "RHSA-XXXX:XXXX",
-        "issued_date": "2014-09-24 00:00:00",
-        "pkglist": [],
-        "pulp_created": "2019-11-27T13:48:20.364919Z",
-        "pulp_href": "/pulp/api/v3/content/rpm/advisories/51169df4-f7c6-46df-953c-1714e5dd5869/",
-        "pushcount": "",
-        "reboot_suggested": false,
-        "references": [],
-        "release": "",
-        "rights": "",
-        "severity": "",
-        "solution": "",
-        "status": "",
-        "summary": "",
-        "title": "",
-        "type": "",
-        "updated_date": "",
-        "version": ""
+      "pulp_href": "/pulp/api/v3/content/rpm/advisories/018e9aec-f864-73a1-9e0b-22fc0288be75/",
+      "pulp_created": "2024-04-01T18:30:05.157638Z",
+      "pulp_last_updated": "2024-04-01T18:30:05.163938Z",
+      "id": "RHSA-XXXX:XXXX",
+      "updated_date": "2014-09-28 00:00:01",
+      "description": "",
+      "issued_date": "2014-09-24 00:00:01",
+      "fromstr": "",
+      "status": "",
+      "title": "",
+      "summary": "",
+      "version": "",
+      "type": "",
+      "severity": "",
+      "solution": "",
+      "release": "",
+      "rights": "",
+      "pushcount": "",
+      "pkglist": [],
+      "references": [],
+      "reboot_suggested": false
     }
     ```
+
+!!! note
+
+    The previous example doesn't relate the Advisory with a Repository.
+    To do so, see [Add Content to Repository](site:pulp_rpm/docs/user/guides/03-modify#add-content-to-repository).
+
+### Other Contents
+
+Rpm Content types that support individual submission are:
+`packages`,
+`advisories`,
+`modulemds`,
+`modulemd_defaults`,
+`modulemd_obsoletes`. If CLI supports it, you can use the commands below to check the necessary parameters.
+
+```bash
+pulp rpm content -t CONTENT_TYPE upload --help
+pulp rpm content -t CONTENT_TYPE create --help
+```
+
+!!! warning
+
+    `pulp-cli` may not support all of these yet, but they are available in the REST API 
+    (e.g, [modulemd_defaults POST](https://docs.pulpproject.org/pulp_rpm/restapi.html#tag/Content:-Modulemd_Defaults/operation/content_rpm_modulemd_defaults_create)).
+    
+    You may consider [opening a ticket in pulp-cli](https://github.com/pulp/pulp-cli/issues/new/choose) requesting support.
+
+    
+
+## Delete Content
+
+Removing content from Pulp entirely is slightly complicated for a number of architectural reasons.
+
+1. `repository-versions` are immutable, so you can get back to any version and have all the content available. This means that it is not possible to remove content as long as there still exists a repo-version that "knows about it".
+2. Pulp deduplicates content. Artifacts can be shared across repositories - which means the repo being looked at, may not be the only one whose repo-versions still point to the content.
+
+**The way content gets removed "from Pulp" is via the orphan cleanup task**, which will look for Artifacts that don't belong to any repository-versions, and haven't been touched in a while, and removes them.
+
+!!! warning
+    Please, follow the script steps carefully and only if you know what you are doing because you risk losing data.
+
+```bash
+#!/usr/bin/env bash
+
+# Remove content from repository
+echo "Removing content from ${REPO_NAME}"
+pulp rpm repository version destroy --repository $REPO_NAME
+
+echo "Removing orphan rpm contents"
+pulp orphan cleanup --content-hrefs $(pulp rpm content list | jq -cr '.|map(.pulp_href)') --protection-time 0
+
+echo "Checking rpm contents"
+pulp rpm repository content list --repository $REPO_NAME
+```
