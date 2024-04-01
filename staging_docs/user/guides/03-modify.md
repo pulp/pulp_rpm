@@ -1,60 +1,148 @@
-# Copy RPM content between repositories
+# Modify Repository Content
 
-If you want to copy RPM content from one repository into another repository, you have two options
-for doing so.
+Modyfing existing Repositorie's Content lets you filter what content you want in a Repository.
+This guide will present some methods for achieving that.
+
+Keep in mind that none of these operations introduces new Content or deletes a Content from a Pulp instance.
+To achieve that, see [Post and Delete Content](site:pulp_rpm/docs/user/guides/02-upload/) or [Create, Sync and Publish a Repository](site:pulp_rpm/docs/user/tutorials/01-create_sync_publish/).
 
 ## Basic Repository Modification API
 
 Like all Pulp repositories, you can use `pulp rpm repository modify` to:
 
-- add or remove individual content units from a repository by HREF
-- roll back the content present in a repository to that of a previous version using 'base_version'
-- clone a repository version using '"base_version". This operation will create a new repository
-  version in the current repository which is a copy of the one specified as the "base_version",
-  regardless of what content was previously present in the repository. This can be combined with
-  adding and removing content units in the same call. For workflows check the [Recipes section](#recipes).
+- Add or remove individual content units from a repository by HREF.
+- Clone a repository version using `base_version`. This enables roll-back to a previous version.
+
+You'll need to use existing package hrefs or repository versions.
+To help you achieve that, you may use `pulp rpm content list`, `pulp rpm repository list` and similar commands.
   
-```bash
-#!/usr/bin/env bash
+### Add content to repository
 
-# Add content unit to the repository
-echo "Add and then remove content from repository."
+If there is content already in Pulp, you can add it to a repository using `content modify`.
 
-TASK_HREF=$(pulp rpm repository content modify \
-            --repository "${REPO_NAME}" \
-            --add-content "[{\"pulp_href\": \"${PACKAGE_HREF}\"}]" \
-            2>&1 >/dev/null | awk '{print $4}')
-REPOVERSION_HREF=$(pulp show --href "${TASK_HREF}" | jq -r '.created_resources | first')
-REPOVERSION=$(echo "${REPOVERSION_HREF}" | cut -d "/" -f 10)
-export REPOVERSION
+=== "Add Package to a Repository"
 
-# Remove content units from the repository
-pulp rpm repository content modify \
-  --repository "${REPO_NAME}" \
-  --remove-content "[{\"pulp_href\": \"${PACKAGE_HREF}\"}]"
+    ```bash
+    # Get a Content `pulp_href` and set the href variable
+    PACKAGE_HREF=CONTENT_PULP_HREF_HERE
 
-# Clone a repository (can be composed with addition or removal of units)
-# This operation will create a new repository version in the current repository which
-# is a copy of the one specified as the 'base_version', regardless of what content
-# was previously present in the repository.
-echo "Clone a repository with a content."
-TASK_HREF=$(pulp rpm repository content modify \
-            --repository "${REPO_NAME}" \
-            --base-version "${REPOVERSION}" \
-            2>&1 >/dev/null | awk '{print $4}')
+    # Add created RPM content to repository
+    echo "Add created RPM Package to repository."
+    TASK_HREF=$(pulp rpm repository content modify \
+                --repository "${REPO_NAME}" \
+                --add-content "[{\"pulp_href\": \"${PACKAGE_HREF}\"}]" \
+                2>&1 >/dev/null | awk '{print $4}')
+    
+    # After the task is complete, it gives us a new repository version
+    echo "Set REPOVERSION_HREF from finished task."
+    REPOVERSION_HREF=$(pulp show --href "${TASK_HREF}" \
+                       | jq -r '.created_resources | first')
+    
+    echo "Inspecting RepositoryVersion."
+    pulp show --href "${REPOVERSION_HREF}"
+    ```
 
-# After the task is complete, it gives us a new repository version
-echo "Set REPOVERSION_HREF from finished task."
-REPOVERSION_HREF=$(pulp show --href "${TASK_HREF}" | jq -r '.created_resources | first')
-export REPOVERSION_HREF
+=== "Output"
 
-echo "Inspecting RepositoryVersion."
-pulp show --href "${REPOVERSION_HREF}"
-```
+    ```json
+    {
+        "base_version": null,
+        "content_summary": {
+            "added": {
+                "rpm.package": {
+                    "count": 1,
+                    "href": "/pulp/api/v3/content/rpm/packages/?repository_version_added=/pulp/api/v3/repositories/rpm/rpm/805de89c-1b1d-432c-993e-3eb9a3fedd22/versions/1/"
+                }
+            },
+            "present": {
+                "rpm.package": {
+                    "count": 1,
+                    "href": "/pulp/api/v3/content/rpm/packages/?repository_version=/pulp/api/v3/repositories/rpm/rpm/805de89c-1b1d-432c-993e-3eb9a3fedd22/versions/1/"
+                }
+            },
+            "removed": {}
+        },
+        "number": 1,
+        "pulp_created": "2019-11-27T13:48:18.326333Z",
+        "pulp_href": "/pulp/api/v3/repositories/rpm/rpm/805de89c-1b1d-432c-993e-3eb9a3fedd22/versions/1/"
+    }
+    ```
+
+??? tip
+
+    It is recommended to omit the `relative_path` and have Pulp generate a common pool location.
+    This will be `/repo/Packages/s/squirrel-0.1-1.noarch.rpm` as shown below.
+
+    When specifying a `relative_path`, make sure to add the exact name of the package
+    including its name, version, release and arch as in `squirrel-0.1-1.noarch.rpm`.
+    It is composed of the `name-version-release.arch.rpm`.
+
+    Example:
+
+    ```bash
+    relative_path="squirrel-0.1-1.noarch.rpm"
+    ```
+
+### Remove content from a repository
+
+Removing a content means creating a new repository version that won't contain it anymore.
+Again, keep in mind that this doesn't delete the content from Pulp (see how to [Delete Content](#)).
+
+=== "Remove content"
+
+    ```bash
+    # Get a Content `pulp_href` and set the href variable
+    PACKAGE_HREF=CONTENT_PULP_HREF_HERE
+
+    # Remove content units from the repository
+    pulp rpm repository content modify \
+      --repository "${REPO_NAME}" \
+      --remove-content "[{\"pulp_href\": \"${PACKAGE_HREF}\"}]"
+    ```
+
+=== "Output"
+
+    ```json
+    TODO
+    ```
+
+### Copy content to a new repository
+
+This operation will create a new repository version in the current repository which is a copy of the one specified as the "base_version", regardless of what content was previously present in the repository.
+This can be combined with adding and removing content units in the same call.
+
+=== "Clone a Repository"
+
+    ```bash
+    # Get a Repository REPOVERSION and set the base-version var
+    REPOVERSION=BASE_REPOVERSION_HERE
+    
+    # Clone a repository
+    echo "Clone a repository with a content."
+    TASK_HREF=$(pulp rpm repository content modify \
+                --repository "${REPO_NAME}" \
+                --base-version "${REPOVERSION}" \
+                2>&1 >/dev/null | awk '{print $4}')
+
+    # After the task is complete, it gives us a new repository version
+    echo "Set REPOVERSION_HREF from finished task."
+    REPOVERSION_HREF=$(pulp show --href "${TASK_HREF}" | jq -r '.created_resources | first')
+    export REPOVERSION_HREF
+
+    echo "Inspecting RepositoryVersion."
+    pulp show --href "${REPOVERSION_HREF}"
+    ```
+
+=== "Output"
+
+    ```json
+    TODO
+    ```
 
 ## Advanced copy workflow
 
 !!! note
+
     The RPM copy API is a **tech preview**, while we hope it can remain stable, it may be subject
     to change in future releases.
 
@@ -62,6 +150,8 @@ pulp show --href "${REPOVERSION_HREF}"
 RPM repositories have a large number of unique use cases for which the standard 'generic' Pulp
 repository modification API is insufficient, so a separate RPM-specific API is provided for more
 'advanced' use cases.
+
+### Background
 
 Several types of RPM content, such as Advisories (Errata), Package Groups, and Modules
 depend on the existence of other content units to be "correct" or meaningful. For example:
@@ -97,6 +187,7 @@ The goal is to be as easy to use as possible, while allowing for a "best effort"
 the "correctness" of the repository, as well as its dependencies if requested.
 
 !!! note
+
     In all cases, copy engages in a "best effort" attempt to fulfill the requirement. This
     means that, in the event of the copy process being unable to find entities it believes
     are necessary for the copy operation, **it will continue to execute the copy**. This
@@ -130,6 +221,7 @@ to use dependency-solving, (or if you configure it incorrectly), it is possible 
 repositories.
 
 !!! note
+
     While the default value for the "dependency_solving" parameter is currently `True`, this
     default is potentially subject to change in the future - until such a time as this API is
     stabilized.
@@ -168,6 +260,7 @@ config:=[
 ```
 
 !!! note
+
     Retain package policy is set by `retain_package_versions` option.
     When set, it identifies the maximum number of versions of each package to keep; as new versions of
     packages are added by upload, sync, or copy, older versions of the same packages are automatically
