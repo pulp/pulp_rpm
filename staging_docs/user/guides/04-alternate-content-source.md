@@ -1,4 +1,4 @@
-# Alternate Content Sources
+# Configure Alternate Content Sources
 
 Alternate Content Sources (ACS) can help speed up populating of new repositories.
 If you have content stored locally or geographically near you which matches

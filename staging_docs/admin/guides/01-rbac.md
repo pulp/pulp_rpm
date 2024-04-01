@@ -1,4 +1,4 @@
-# Role Based Access Control
+# Configure Role Based Access Control
 
 !!! warning
     This feature is a Tech Preview and may be subject to change.
