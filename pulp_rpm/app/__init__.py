@@ -8,6 +8,6 @@ class PulpRpmPluginAppConfig(PulpPluginAppConfig):
 
     name = "pulp_rpm.app"
     label = "rpm"
-    version = "3.25.2"
+    version = "3.25.3.dev"
     python_package_name = "pulp-rpm"
     domain_compatible = True
