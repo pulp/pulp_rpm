@@ -49,7 +49,7 @@ A tree is architecture-specific and is made up of:
 
 Almost all the content in a tree is described in a metadata file called the treeinfo file (sometimes .treeinfo).
 
-There can be only one Distribution Tree in a repository verison.
+There can be only one Distribution Tree in a repository version.
 
 ## Comps.xml
 

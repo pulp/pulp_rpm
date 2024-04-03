@@ -1,10 +1,9 @@
 # Modify Repository Content
 
-Modyfing existing Repositorie's Content lets you filter what content you want in a Repository.
-This guide will present some methods for achieving that.
+Modyfing existing Repository Content lets you filter what content you want in a Repository.
 
 Keep in mind that none of these operations introduces new Content or deletes a Content from a Pulp instance.
-To achieve that, see [Post and Delete Content](site:pulp_rpm/docs/user/guides/02-upload/) or [Create, Sync and Publish a Repository](site:pulp_rpm/docs/user/tutorials/01-create_sync_publish/).
+To populate Pulp, see [Post and Delete Content](site:pulp_rpm/docs/user/guides/02-upload/) or [Create, Sync and Publish a Repository](site:pulp_rpm/docs/user/tutorials/01-create_sync_publish/).
 
 ## Basic Repository Modification API
 
@@ -12,132 +11,151 @@ Like all Pulp repositories, you can use `pulp rpm repository modify` to:
 
 - Add or remove individual content units from a repository by HREF.
 - Clone a repository version using `base_version`. This enables roll-back to a previous version.
-
-You'll need to use existing package hrefs or repository versions.
-To help you achieve that, you may use `pulp rpm content list`, `pulp rpm repository list` and similar commands.
   
-### Add content to repository
+### Sample Setup
 
-If there is content already in Pulp, you can add it to a repository using `content modify`.
+If you want to experiment with the operations on some sample data, run this setup so you can follow along.
+The output is based on this sample and only makes sense if the operations are followed in order.
 
-=== "Add Package to a Repository"
+```bash
+pulp rpm repository create --name modify_test_repo
+pulp rpm repository create --name fixture_repo
+pulp rpm remote create --name fixture_remote --url https://fixtures.pulpproject.org/rpm-unsigned/
+pulp rpm repository sync --repository fixture_repo --remote fixture_remote
+```
 
-    ```bash
-    # Get a Content `pulp_href` and set the href variable
-    PACKAGE_HREF=CONTENT_PULP_HREF_HERE
+### Add content to Repository
 
-    # Add created RPM content to repository
-    echo "Add created RPM Package to repository."
-    TASK_HREF=$(pulp rpm repository content modify \
-                --repository "${REPO_NAME}" \
-                --add-content "[{\"pulp_href\": \"${PACKAGE_HREF}\"}]" \
-                2>&1 >/dev/null | awk '{print $4}')
-    
-    # After the task is complete, it gives us a new repository version
-    echo "Set REPOVERSION_HREF from finished task."
-    REPOVERSION_HREF=$(pulp show --href "${TASK_HREF}" \
-                       | jq -r '.created_resources | first')
-    
-    echo "Inspecting RepositoryVersion."
-    pulp show --href "${REPOVERSION_HREF}"
-    ```
-
-=== "Output"
-
+1. Set required variables:
+    * `REPONAME`: The repository where you want to add
+    * `ADD_LIST`: A json list with the `package_href` constructed like:
     ```json
-    {
-        "base_version": null,
-        "content_summary": {
-            "added": {
-                "rpm.package": {
-                    "count": 1,
-                    "href": "/pulp/api/v3/content/rpm/packages/?repository_version_added=/pulp/api/v3/repositories/rpm/rpm/805de89c-1b1d-432c-993e-3eb9a3fedd22/versions/1/"
-                }
-            },
-            "present": {
-                "rpm.package": {
-                    "count": 1,
-                    "href": "/pulp/api/v3/content/rpm/packages/?repository_version=/pulp/api/v3/repositories/rpm/rpm/805de89c-1b1d-432c-993e-3eb9a3fedd22/versions/1/"
-                }
-            },
-            "removed": {}
-        },
-        "number": 1,
-        "pulp_created": "2019-11-27T13:48:18.326333Z",
-        "pulp_href": "/pulp/api/v3/repositories/rpm/rpm/805de89c-1b1d-432c-993e-3eb9a3fedd22/versions/1/"
-    }
+    [{"pulp_href": "/pulp/api/v3/content/rpm/packages/018ea4c6-50f2-7895-aaf9-d1dde2b94c20/"}]
     ```
+2. Run the modify command
+3. Inspect the created Repository Version
 
-??? tip
-
-    It is recommended to omit the `relative_path` and have Pulp generate a common pool location.
-    This will be `/repo/Packages/s/squirrel-0.1-1.noarch.rpm` as shown below.
-
-    When specifying a `relative_path`, make sure to add the exact name of the package
-    including its name, version, release and arch as in `squirrel-0.1-1.noarch.rpm`.
-    It is composed of the `name-version-release.arch.rpm`.
-
-    Example:
+=== "Add Packages to a Repository"
 
     ```bash
-    relative_path="squirrel-0.1-1.noarch.rpm"
-    ```
+    # Set required variables
+    REPONAME=modify_test_repo
+    ADD_LIST=$(pulp rpm repository content list \
+        --repository fixture_repo \
+        --limit 5 | jq -r '[.[] | {pulp_href}]')
 
-### Remove content from a repository
-
-Removing a content means creating a new repository version that won't contain it anymore.
-Again, keep in mind that this doesn't delete the content from Pulp (see how to [Delete Content](#)).
-
-=== "Remove content"
-
-    ```bash
-    # Get a Content `pulp_href` and set the href variable
-    PACKAGE_HREF=CONTENT_PULP_HREF_HERE
-
-    # Remove content units from the repository
+    # Run the modify command
     pulp rpm repository content modify \
-      --repository "${REPO_NAME}" \
-      --remove-content "[{\"pulp_href\": \"${PACKAGE_HREF}\"}]"
+        --repository "${REPONAME}" \
+        --add-content "${ADD_LIST}"
+    
+    # Inspect the Repository Version and its Contents
+    pulp rpm repository show --name modify_test_repo | jq '.latest_version_href'
+    pulp rpm repository content list --repository modify_test_repo | jq '.[].location_href'
     ```
 
 === "Output"
 
     ```json
-    TODO
+    # last repository version. Now its 1, previous was 0
+    "/pulp/api/v3/repositories/rpm/rpm/018ea4da-702b-7b20-b427-393efe196193/versions/1/"
+
+    # last repository version content
+    "zebra-0.1-2.noarch.rpm"
+    "wolf-9.4-2.noarch.rpm"
+    "whale-0.2-1.noarch.rpm"
+    "walrus-5.21-1.noarch.rpm"
+    "walrus-0.71-1.noarch.rpm"
     ```
 
-### Copy content to a new repository
+### Remove content from a Repository
 
-This operation will create a new repository version in the current repository which is a copy of the one specified as the "base_version", regardless of what content was previously present in the repository.
+Removing a content means creating a new *Repository Version* that won't contain it anymore:
+
+1. Set required variables:
+    * `REPONAME`: The repository where you want to delete from
+    * `REMOVE_LIST`: A json list with the `package_href` constructed like:
+    ```json
+    [{"pulp_href": "/pulp/api/v3/content/rpm/packages/018ea4c6-50f2-7895-aaf9-d1dde2b94c20/"}]
+    ```
+2. Run the modify command
+3. Inspect the created Repository Version
+
+=== "Remove Package from  a Repository"
+
+    ```bash
+    # Set required variables
+    REPONAME=modify_test_repo
+    REMOVE_LIST=$(pulp rpm repository content list \
+        --repository modify_test_repo \
+        --limit 2 | jq -r '[.[] | {pulp_href}]')
+
+    # Run the modify command
+    pulp rpm repository content modify \
+        --repository "${REPONAME}" \
+        --remove-content "${REMOVE_LIST}"
+    
+    # Inspect the Repository Version and its Contents
+    pulp rpm repository show --name modify_test_repo | jq '.latest_version_href'
+    pulp rpm repository content list --repository modify_test_repo | jq '.[].location_href'
+    ```
+
+=== "Output"
+
+    ```json
+    # last repository version. Now its 2, previous was 1
+    "/pulp/api/v3/repositories/rpm/rpm/018ea4da-702b-7b20-b427-393efe196193/versions/2/"
+
+    # last repository version content
+    "whale-0.2-1.noarch.rpm"
+    "walrus-5.21-1.noarch.rpm"
+    "walrus-0.71-1.noarch.rpm"
+    ```
+
+### Copy content from a Repository Version
+
+This operation will create a new *Repository Version* in the current Repository based on a previous version (that belongs to the same Repository).
+It will contain the exact same contents as in the `base_version`, regardless of what content was previously present.
+
 This can be combined with adding and removing content units in the same call.
 
-=== "Clone a Repository"
+1. Set required variables:
+    * `REPONAME`: The repository to create a copy and get a `base_version` from.
+    * `REPOVERSION`: The repository version number to roll-back to.
+2. Run the modify command
+3. Inspect the created Repository Version
+
+=== "Clone a Repository Version"
 
     ```bash
-    # Get a Repository REPOVERSION and set the base-version var
-    REPOVERSION=BASE_REPOVERSION_HERE
+    # Set required variables
+    REPONAME=modify_test_repo
+    REPOVERSION=1
     
-    # Clone a repository
-    echo "Clone a repository with a content."
-    TASK_HREF=$(pulp rpm repository content modify \
-                --repository "${REPO_NAME}" \
-                --base-version "${REPOVERSION}" \
-                2>&1 >/dev/null | awk '{print $4}')
+    # Run the modify command
+    pulp rpm repository content modify \
+        --repository "${REPONAME}" \
+        --base-version "${REPOVERSION}"
 
-    # After the task is complete, it gives us a new repository version
-    echo "Set REPOVERSION_HREF from finished task."
-    REPOVERSION_HREF=$(pulp show --href "${TASK_HREF}" | jq -r '.created_resources | first')
-    export REPOVERSION_HREF
-
-    echo "Inspecting RepositoryVersion."
-    pulp show --href "${REPOVERSION_HREF}"
+    # Inspect the Repository Version and its Contents
+    pulp rpm repository show --name modify_test_repo | jq '.latest_version_href'
+    pulp rpm repository content list --repository modify_test_repo | jq '.[].location_href'
     ```
 
 === "Output"
 
     ```json
-    TODO
+    # last repository version. Now its 3, previous was 2
+    "/pulp/api/v3/repositories/rpm/rpm/018ea4da-702b-7b20-b427-393efe196193/versions/3/"
+
+    # last repository version content
+    "zebra-0.1-2.noarch.rpm"
+    "wolf-9.4-2.noarch.rpm"
+    "whale-0.2-1.noarch.rpm"
+    "walrus-5.21-1.noarch.rpm"
+    "walrus-0.71-1.noarch.rpm"
     ```
+
 
 ## Advanced copy workflow
 
