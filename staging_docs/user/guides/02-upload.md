@@ -176,30 +176,10 @@ pulp rpm content -t CONTENT_TYPE create --help
     
     You may consider [opening a ticket in pulp-cli](https://github.com/pulp/pulp-cli/issues/new/choose) requesting support.
 
-    
-
 ## Delete Content
 
-Removing content from Pulp entirely is slightly complicated for a number of architectural reasons.
+Deleting *Content* is not part of the user-facing API as a CRUD operation.
+There are several architectural reasons for that, one of which is that multiple *Repository Versions* may rely on the same *Content* unit, and forcing a deletion may lead to a broken state.
 
-1. `repository-versions` are immutable, so you can get back to any version and have all the content available. This means that it is not possible to remove content as long as there still exists a repo-version that "knows about it".
-2. Pulp deduplicates content. Artifacts can be shared across repositories - which means the repo being looked at, may not be the only one whose repo-versions still point to the content.
+If you want to remove *Content*, consider using the [Modify API](site:pulp_rpm/docs/user/guides/03-modify/#remove-content-from-a-repository) to remove the content *from a Repository*, and not from Pulp itself. The latter should be handled by Admins, who should configure Pulp to handle cleanups safely.
 
-**The way content gets removed "from Pulp" is via the orphan cleanup task**, which will look for Artifacts that don't belong to any repository-versions, and haven't been touched in a while, and removes them.
-
-!!! warning
-    Please, follow the script steps carefully and only if you know what you are doing because you risk losing data.
-
-```bash
-#!/usr/bin/env bash
-
-# Remove content from repository
-echo "Removing content from ${REPO_NAME}"
-pulp rpm repository version destroy --repository $REPO_NAME
-
-echo "Removing orphan rpm contents"
-pulp orphan cleanup --content-hrefs $(pulp rpm content list | jq -cr '.|map(.pulp_href)') --protection-time 0
-
-echo "Checking rpm contents"
-pulp rpm repository content list --repository $REPO_NAME
-```
