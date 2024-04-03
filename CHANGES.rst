@@ -13,6 +13,19 @@ Changelog
 
 .. towncrier release notes start
 
+3.25.2 (2024-04-02)
+===================
+
+Bugfixes
+--------
+
+- Fixed an issue where the value of `gpgcheck` wasn't appropriately set on some publications.
+  `#3462 <https://github.com/pulp/pulp_rpm/issues/3462>`__
+
+
+----
+
+
 3.25.1 (2024-02-09)
 ===================
 
