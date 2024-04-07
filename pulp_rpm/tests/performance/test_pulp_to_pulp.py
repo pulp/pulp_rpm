@@ -1,4 +1,5 @@
 """Tests that verify download of content served by Pulp."""
+
 import unittest
 
 from pulp_smash.pulp3.bindings import monitor_task
