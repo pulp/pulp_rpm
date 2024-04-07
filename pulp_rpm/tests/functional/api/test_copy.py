@@ -1,4 +1,5 @@
 """Tests that sync rpm plugin repositories."""
+
 import pytest
 
 from pulp_smash.pulp3.utils import (

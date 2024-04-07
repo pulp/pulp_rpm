@@ -1,4 +1,5 @@
 """Tests that CRUD rpm remotes."""
+
 import pytest
 
 from random import choice
