@@ -1,4 +1,5 @@
 """Tests for Pulp's characters encoding."""
+
 import uuid
 
 import pytest
