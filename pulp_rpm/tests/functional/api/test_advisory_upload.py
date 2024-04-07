@@ -1,4 +1,5 @@
 """Tests that perform actions over advisory content unit upload."""
+
 import pytest
 import os
 
