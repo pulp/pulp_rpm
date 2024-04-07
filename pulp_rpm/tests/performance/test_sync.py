@@ -1,4 +1,5 @@
 """Tests that sync rpm plugin repositories."""
+
 import pytest
 import os
 from datetime import datetime
