@@ -1,4 +1,5 @@
 """Tests to test advisory conflict resolution functionality."""
+
 from pulp_rpm.tests.functional.constants import (
     RPM_ADVISORY_DIFFERENT_PKGLIST_URL,
     RPM_ADVISORY_TEST_ID,
