@@ -1,4 +1,5 @@
 """Tests that perform actions over content unit."""
+
 import requests
 
 from urllib.parse import urljoin

@@ -4,6 +4,7 @@ Tests PulpImporter and PulpImport functionality.
 NOTE: assumes ALLOWED_EXPORT_PATHS and ALLOWED_IMPORT_PATHS settings contain "/tmp" - all tests
 will fail if this is not the case.
 """
+
 from pulp_smash import api, cli, config
 from pulp_smash.utils import uuid4
 from pulp_smash.pulp3.bindings import (
