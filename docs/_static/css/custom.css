@@ -1,0 +1,43 @@
+.banner {
+  background: #ffe2c9;
+  height: 50px;
+  border-top: 5px solid #ffad67;
+  width: 100%;
+  position: fixed;
+  z-index: 9999;
+  box-shadow: 0 3px 10px -5px rgb(0 0 0 / 0.2);
+ }
+
+.banner__content {
+  padding: 16px;
+  max-width: 1120px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  height: 100%;
+ }
+
+.banner__text {
+  flex-grow: 1;
+  line_height: 1.4em;
+  text-align: center;
+  font-weight: bold;
+  font-family: Roboto Slab,ff-tisa-web-pro,Georgia,Arial,sans-serif;
+  color: #505050;
+}
+
+
+@media (min-width: 768px){
+  .wy-side-nav-search {
+    padding-top: 60px;
+  }
+}
+
+@media (max-width: 768px){
+  .wy-nav-top {
+    margin-top: 50px;
+  }
+  .wy-side-nav-search {
+    margin-top: 50px;
+  }
+}
