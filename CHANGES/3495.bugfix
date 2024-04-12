@@ -1,0 +1,1 @@
+Fixed modulemd_defaults create endpoint not setting the content digest.
