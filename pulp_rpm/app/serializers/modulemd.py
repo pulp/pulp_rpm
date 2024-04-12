@@ -1,6 +1,7 @@
 from gettext import gettext as _
 
 from rest_framework import serializers
+import hashlib
 
 from pulpcore.plugin.serializers import (
     DetailRelatedField,
@@ -83,6 +84,11 @@ class ModulemdDefaultsSerializer(NoArtifactContentSerializer):
     stream = serializers.CharField(help_text=_("Modulemd default stream."))
     profiles = serializers.JSONField(help_text=_("Default profiles for modulemd streams."))
     snippet = serializers.CharField(help_text=_("Modulemd default snippet"), write_only=True)
+
+    def create(self, validated_data):
+        snippet = validated_data["snippet"]
+        validated_data["digest"] = hashlib.sha256(snippet.encode()).hexdigest()
+        return super().create(validated_data)
 
     class Meta:
         fields = NoArtifactContentSerializer.Meta.fields + (
