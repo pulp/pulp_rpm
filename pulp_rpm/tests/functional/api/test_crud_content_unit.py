@@ -1,18 +1,21 @@
 """Tests that perform actions over content unit."""
 
+from textwrap import dedent
 from urllib.parse import urljoin
 
 import pytest
 import requests
+from pulpcore.client.pulp_rpm import RpmModulemdDefaults
 
-from pulp_rpm.tests.functional.utils import gen_rpm_content_attrs
 from pulp_rpm.tests.functional.constants import (
     RPM_KICKSTART_FIXTURE_URL,
     RPM_MODULAR_FIXTURE_URL,
-    RPM_REPO_METADATA_FIXTURE_URL,
     RPM_PACKAGE_FILENAME,
     RPM_PACKAGE_FILENAME2,
+    RPM_REPO_METADATA_FIXTURE_URL,
 )
+from pulp_rpm.tests.functional.utils import gen_rpm_content_attrs
+from pulpcore.tests.functional.utils import PulpTaskError
 
 
 def test_crud_content_unit(
@@ -133,3 +136,49 @@ def test_remove_content_unit(url, init_and_sync, rpm_repository_version_api, bin
 
             # check that '405' (method not allowed) is returned
             assert resp.status_code == 405
+
+
+def test_create_modulemd_defaults(monitor_task, gen_object_with_cleanup, rpm_modulemd_defaults_api):
+    """
+    Create modulemd_defaults with proper unique identifier.
+
+    See: https://github.com/pulp/pulp_rpm/issues/3495
+    """
+    request_1 = {
+        "module": "squid",
+        "stream": "4",
+        "profiles": '{"4": ["common"]}',
+        "snippet": dedent(
+            """\
+        ---
+        document: modulemd-defaults
+        version: 1
+        data:
+          module: squid
+          stream: "4"
+          profiles:
+            4: [common]
+        ..."""
+        ),
+    }
+
+    # First create
+    response = rpm_modulemd_defaults_api.create(RpmModulemdDefaults(**request_1))
+    created_href = monitor_task(response.task).created_resources[0]
+    created_content = rpm_modulemd_defaults_api.read(created_href)
+    assert created_content.module == request_1["module"]
+
+    # Change snippet only
+    request_3 = request_1.copy()
+    request_3["snippet"] = request_3["snippet"].replace("module: squid", 'module: "squid-mod"')
+    response = rpm_modulemd_defaults_api.create(RpmModulemdDefaults(**request_3))
+    created_href = monitor_task(response.task).created_resources[0]
+    created_content = rpm_modulemd_defaults_api.read(created_href)
+    assert created_content.module == request_3["module"]
+
+    # Change module name only. Snippet is the same, so should fail
+    request_3 = request_1.copy()
+    request_3["module"] = "squid-mod2"
+    response = rpm_modulemd_defaults_api.create(RpmModulemdDefaults(**request_3))
+    with pytest.raises(PulpTaskError, match="duplicate key value violates unique constraint"):
+        monitor_task(response.task)
