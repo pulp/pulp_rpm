@@ -13,6 +13,21 @@ Changelog
 
 .. towncrier release notes start
 
+3.25.3 (2024-04-18)
+===================
+
+Bugfixes
+--------
+
+- Fix publications created by mirror_complete syncs not having checksum_type set properly.
+  `#3484 <https://github.com/pulp/pulp_rpm/issues/3484>`__
+- Fixed modulemd_defaults create endpoint not setting the content digest.
+  `#3495 <https://github.com/pulp/pulp_rpm/issues/3495>`__
+
+
+----
+
+
 3.25.2 (2024-04-02)
 ===================
 
