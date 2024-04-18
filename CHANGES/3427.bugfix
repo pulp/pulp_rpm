@@ -1,0 +1,1 @@
+Fixed modulemd upload raising an error when "packages" parameter was passed.

@@ -1,19 +1,10 @@
+import hashlib
 from gettext import gettext as _
 
+from pulpcore.plugin.serializers import DetailRelatedField, NoArtifactContentSerializer
 from rest_framework import serializers
-import hashlib
 
-from pulpcore.plugin.serializers import (
-    DetailRelatedField,
-    NoArtifactContentSerializer,
-)
-
-from pulp_rpm.app.models import (
-    Modulemd,
-    ModulemdDefaults,
-    ModulemdObsolete,
-    Package,
-)
+from pulp_rpm.app.models import Modulemd, ModulemdDefaults, ModulemdObsolete, Package
 
 
 class ModulemdSerializer(NoArtifactContentSerializer):
@@ -56,6 +47,20 @@ class ModulemdSerializer(NoArtifactContentSerializer):
     )
     profiles = serializers.JSONField(help_text=_("Modulemd profiles."), allow_null=True)
     snippet = serializers.CharField(help_text=_("Modulemd snippet"), write_only=True)
+
+    def create(self, validated_data):
+        """
+        Create and return a new `Modulemd` instance, given the validated data.
+        """
+        snippet = validated_data["snippet"]
+        validated_data["digest"] = hashlib.sha256(snippet.encode()).hexdigest()
+        # In django, we can't add items to a m2m relationship on the main object instantiation.
+        # First we need to create the main object, then add things to the m2m field.
+        # https://stackoverflow.com/a/50015229
+        packages = validated_data.pop("packages")
+        modulemd = super().create(validated_data)
+        modulemd.packages.set(packages)
+        return modulemd
 
     class Meta:
         fields = NoArtifactContentSerializer.Meta.fields + (
