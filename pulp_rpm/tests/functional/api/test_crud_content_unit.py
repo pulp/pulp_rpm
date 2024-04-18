@@ -5,7 +5,7 @@ from urllib.parse import urljoin
 
 import pytest
 import requests
-from pulpcore.client.pulp_rpm import RpmModulemdDefaults
+from pulpcore.client.pulp_rpm import RpmModulemdDefaults, RpmModulemd
 
 from pulp_rpm.tests.functional.constants import (
     RPM_KICKSTART_FIXTURE_URL,
@@ -182,3 +182,36 @@ def test_create_modulemd_defaults(monitor_task, gen_object_with_cleanup, rpm_mod
     response = rpm_modulemd_defaults_api.create(RpmModulemdDefaults(**request_3))
     with pytest.raises(PulpTaskError, match="duplicate key value violates unique constraint"):
         monitor_task(response.task)
+
+
+def test_create_modulemds(
+    monitor_task, gen_object_with_cleanup, rpm_modulemd_api, rpm_package_factory
+):
+    package = rpm_package_factory()
+    request = {
+        "name": "foo",
+        "stream": "foo",
+        "version": "foo",
+        "context": "foo",
+        "arch": "foo",
+        "artifacts": "[]",
+        "dependencies": "[]",
+        "packages": [package.pulp_href],
+        "snippet": "foobar",
+        "profiles": "[]",
+        "description": "foo",
+    }
+
+    # Can upload
+    modulemd = gen_object_with_cleanup(rpm_modulemd_api, RpmModulemd(**request))
+    assert modulemd.name == request["name"]
+
+    # Cant create duplicate
+    with pytest.raises(PulpTaskError, match="duplicate key value violates unique constraint"):
+        modulemd = gen_object_with_cleanup(rpm_modulemd_api, RpmModulemd(**request))
+
+    # Can upload variation
+    request2 = request.copy()
+    request2["snippet"] = "barfoo"
+    modulemd = gen_object_with_cleanup(rpm_modulemd_api, RpmModulemd(**request2))
+    assert modulemd.name == request2["name"]
