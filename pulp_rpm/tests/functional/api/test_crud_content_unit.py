@@ -162,26 +162,27 @@ def test_create_modulemd_defaults(monitor_task, gen_object_with_cleanup, rpm_mod
         ),
     }
 
-    # First create
-    response = rpm_modulemd_defaults_api.create(RpmModulemdDefaults(**request_1))
-    created_href = monitor_task(response.task).created_resources[0]
-    created_content = rpm_modulemd_defaults_api.read(created_href)
-    assert created_content.module == request_1["module"]
+    # Can create
+    modulemd_default = gen_object_with_cleanup(
+        rpm_modulemd_defaults_api, RpmModulemdDefaults(**request_1)
+    )
+    assert modulemd_default.module == request_1["module"]
 
-    # Change snippet only
-    request_3 = request_1.copy()
-    request_3["snippet"] = request_3["snippet"].replace("module: squid", 'module: "squid-mod"')
-    response = rpm_modulemd_defaults_api.create(RpmModulemdDefaults(**request_3))
-    created_href = monitor_task(response.task).created_resources[0]
-    created_content = rpm_modulemd_defaults_api.read(created_href)
-    assert created_content.module == request_3["module"]
+    # Can create variation
+    request_2 = request_1.copy()
+    request_2["snippet"] = request_2["snippet"].replace("module: squid", 'module: "squid-mod"')
+    modulemd_default = gen_object_with_cleanup(
+        rpm_modulemd_defaults_api, RpmModulemdDefaults(**request_2)
+    )
+    assert modulemd_default.module == request_2["module"]
 
-    # Change module name only. Snippet is the same, so should fail
+    # Cant create duplicate
     request_3 = request_1.copy()
-    request_3["module"] = "squid-mod2"
-    response = rpm_modulemd_defaults_api.create(RpmModulemdDefaults(**request_3))
+    request_3["module"] = "squid-mod2"  # not in unique_togheter
     with pytest.raises(PulpTaskError, match="duplicate key value violates unique constraint"):
-        monitor_task(response.task)
+        modulemd_default = gen_object_with_cleanup(
+            rpm_modulemd_defaults_api, RpmModulemdDefaults(**request_3)
+        )
 
 
 def test_create_modulemds(
