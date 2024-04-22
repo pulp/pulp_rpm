@@ -1,3 +1,5 @@
-.. _pulp-rpm-changes:
+.. _pulp_rpm-changes:
 
 .. include:: ../CHANGES.rst
+
+.. include:: ../HISTORY.rst
