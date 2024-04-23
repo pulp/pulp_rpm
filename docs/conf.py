@@ -133,7 +133,6 @@ html_theme = 'sphinx_rtd_theme' if sphinx_rtd_theme else 'default'
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
-html_css_files = ['css/custom.css']
 
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
@@ -253,3 +252,8 @@ texinfo_documents = [
 
 # How to display URL addresses: 'footnote', 'no', or 'inline'.
 #texinfo_show_urls = 'footnote'
+
+rst_prolog = """.. attention::
+    This docs will be deactivated in July 2024. `Learn More <https://discourse.pulpproject.org/t/unified-documentation-part-2/1188>`_
+    or go to the `New Pulp Docs <https://staging-docs.pulpproject.org/>`_ (beta).
+"""
