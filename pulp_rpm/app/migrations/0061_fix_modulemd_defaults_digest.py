@@ -8,9 +8,15 @@ from django.db import migrations
 def add_snippet_hash(apps, schema_editor):
     """Calculate and add digest hash of the snippet."""
 
-    Modulemd = apps.get_model("rpm", "ModulemdDefaults")
+    ModulemdDefaults = apps.get_model("rpm", "ModulemdDefaults")
     modules_to_update = []
+    for mmd in ModulemdDefaults.objects.filter(digest__in=('', None)).only("snippet").iterator():
+        mmd.digest = hashlib.sha256(mmd.snippet.encode()).hexdigest()
+        modules_to_update.append(mmd)
+    ModulemdDefaults.objects.bulk_update(modules_to_update, fields=["digest"])
 
+    Modulemd = apps.get_model("rpm", "Modulemd")
+    modules_to_update = []
     for mmd in Modulemd.objects.filter(digest__in=('', None)).only("snippet").iterator():
         mmd.digest = hashlib.sha256(mmd.snippet.encode()).hexdigest()
         modules_to_update.append(mmd)
