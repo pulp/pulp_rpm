@@ -5,6 +5,7 @@ The pulp_rpm plugin extends pulpcore to support hosting RPM family content types
 If you just got here, you should take our [Getting Started with RPM](site:pulp_rpm/docs/user/tutorials/01-create_sync_publish/) tutorial to get your first RPM repository up and running.
 We also recommended that you read the [Basic Concepts](site:pulp_rpm/docs/user/learn/01-manage/) section before diving into the workflows and reference material.
 
+
 ## Features
 
 - Sync-publish workflow:
