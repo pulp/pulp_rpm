@@ -669,18 +669,9 @@ class Solver:
             "pk"
         )
 
-        nonmodular_rpms = models.Package.objects.filter(
-            pk__in=package_ids, is_modular=False
-        ).values(*RPM_FIELDS)
+        packages = models.Package.objects.filter(pk__in=package_ids).values(*RPM_FIELDS)
 
-        for rpm in nonmodular_rpms.iterator(chunk_size=5000):
-            self._add_unit_to_solver(rpm_to_solvable, rpm, repo, libsolv_repo_name)
-
-        modular_rpms = models.Package.objects.filter(pk__in=package_ids, is_modular=True).values(
-            *RPM_FIELDS
-        )
-
-        for rpm in modular_rpms.iterator(chunk_size=5000):
+        for rpm in packages.iterator(chunk_size=5000):
             self._add_unit_to_solver(rpm_to_solvable, rpm, repo, libsolv_repo_name)
 
         # Load modules into the solver

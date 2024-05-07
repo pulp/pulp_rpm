@@ -1,0 +1,1 @@
+Remove the is_modular flag from Packages - it's not a reliable source of information, and can be actively incorrect.

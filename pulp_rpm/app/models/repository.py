@@ -435,25 +435,21 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
         ), "Cannot apply retention policy to completed repository versions"
 
         if self.retain_package_versions > 0:
-            # It would be more ideal if, instead of annotating with an age and filtering manually,
-            # we could use Django to filter the particular Package content we want to delete.
-            # Something like ".filter(F('age') > self.retain_package_versions)" would be better
-            # however this is not currently possible with Django. It would be possible with raw
-            # SQL but the repository version content membership subquery is currently
-            # django-managed and would be difficult to share.
-            #
-            # Instead we have to do the filtering manually.
-            nonmodular_packages = (
-                Package.objects.with_age()
-                .filter(
-                    pk__in=new_version.content.filter(pulp_type=Package.get_pulp_type()),
-                    is_modular=False,  # don't want to filter out modular RPMs
-                )
-                .only("pk")
-            )
+            # This code is likely not as efficient as it could / should be, but it is heavily
+            # complicated by the lack of a reliable means to determine whether a package is
+            # modular or not via SQL
+            packages = new_version.content.filter(pulp_type=Package.get_pulp_type())
+            modules = new_version.content.filter(pulp_type=Modulemd.get_pulp_type())
+
+            modular_packages = set()
+            for module in Modulemd.objects.filter(pk__in=modules):
+                modular_packages.update(module.packages.all().values_list("pk", flat=True))
+
+            nonmodular_packages = set(packages.values_list("pk", flat=True)) - modular_packages
+            nonmodular_packages = Package.objects.filter(pk__in=nonmodular_packages)
 
             old_packages = []
-            for package in nonmodular_packages:
+            for package in nonmodular_packages.with_age().iterator().only("pk", "age"):
                 if package.age > self.retain_package_versions:
                     old_packages.append(package.pk)
 

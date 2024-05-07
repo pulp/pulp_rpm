@@ -72,7 +72,6 @@ Package GET response (after task complete):
                 "fox.txt"
             ]
         ],
-        "is_modular": false,
         "location_base": "",
         "location_href": "fox-1.1-2.noarch.rpm",
         "name": "fox",

@@ -946,10 +946,6 @@ def test_core_metadata(init_and_sync, rpm_package_api):
     )
     assert list(diff) == [], list(diff)
 
-    # assert no package is marked modular
-    for pkg in get_content(repository.to_dict())[RPM_PACKAGE_CONTENT_NAME]:
-        assert pkg["is_modular"] is False
-
 
 @pytest.mark.parallel
 def test_treeinfo_metadata(init_and_sync, rpm_content_distribution_trees_api):
@@ -1048,10 +1044,6 @@ def test_modular_metadata(
     for m1, m2 in zip(module_obsoletes, RPM_MODULEMD_OBSOLETES_DATA):
         diff = dictdiffer.diff(m1, m2, ignore={"pulp_created", "pulp_last_updated", "pulp_href"})
         assert list(diff) == [], list(diff)
-
-    # assert all package from modular repo is marked as modular
-    for pkg in get_content(repository.to_dict())[RPM_PACKAGE_CONTENT_NAME]:
-        assert pkg["is_modular"] is True
 
 
 @pytest.mark.parallel

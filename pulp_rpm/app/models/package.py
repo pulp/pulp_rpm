@@ -136,7 +136,7 @@ class Package(Content):
         rpm_header_end (BigInteger):
             Last byte of the header
         is_modular (Bool):
-            Flag to identify if the package is modular
+            DEPRECATED: Flag to identify if the package is modular
 
         size_archive (BigInteger):
             Size, in bytes, of the archive portion of the original package file
@@ -229,7 +229,7 @@ class Package(Content):
     time_build = models.BigIntegerField(null=True)
     time_file = models.BigIntegerField(null=True)
 
-    # not part of createrepo_c metadata
+    # not part of createrepo_c metadata - DEPRECATED
     is_modular = models.BooleanField(default=False)
 
     # createrepo_c treats 'nosrc' arch (opensuse specific use) as 'src' so it can seem that two

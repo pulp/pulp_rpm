@@ -89,7 +89,6 @@ Package upload requires a valid RPM package.
         "rpm_vendor": "",
         "rpm_header_start": 280,
         "rpm_header_end": 1697,
-        "is_modular": false,
         "size_archive": 296,
         "size_installed": 42,
         "size_package": 1846,
