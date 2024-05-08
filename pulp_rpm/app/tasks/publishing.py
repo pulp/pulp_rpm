@@ -695,6 +695,12 @@ def generate_repo_metadata(
         )
         sign_results = signing_service.sign(repomd_path)
 
+        # https://github.com/pulp/pulp_rpm/issues/3526
+        signature_file_path = sign_results["signature"]
+        if os.stat(signature_file_path).st_size == 0:
+            log.error(f"{signature_file_path} is 0 bytes! sign_results: {sign_results}")
+            raise Exception("Signature file is 0 bytes")
+
         # publish a signed file
         with open(sign_results["file"], "rb") as signed_file_fd:
             PublishedMetadata.create_from_file(
