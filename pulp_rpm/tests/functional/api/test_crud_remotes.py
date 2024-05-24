@@ -1,14 +1,13 @@
 """Tests that CRUD rpm remotes."""
 
-import pytest
-
 from random import choice
 from uuid import uuid4
 
+import pytest
+from pulpcore.client.pulp_rpm.exceptions import ApiException
+
 from pulp_rpm.tests.functional.constants import DOWNLOAD_POLICIES
 from pulp_rpm.tests.functional.utils import gen_rpm_remote
-
-from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 
 @pytest.mark.parallel
@@ -125,6 +124,24 @@ def test_policy_update_changes(rpm_rpmremote_api, rpm_rpmremote_factory, monitor
     # Verify an invalid policy does not update the remote policy
     with pytest.raises(ApiException):
         rpm_rpmremote_api.partial_update(remote["pulp_href"], {"policy": str(uuid4())})
+
+
+def test_raise_on_invalid_remote_url(
+    rpm_rpmremote_api, rpm_ulnremote_api, gen_object_with_cleanup, monitor_task
+):
+    # Cant create invalid RpmRemote
+    for protocol in ("uln", "sftp", "grpc"):
+        with pytest.raises(ApiException, match=" is not valid. It must start with: "):
+            body = _gen_verbose_remote()
+            body["url"] = f"{protocol}://some/rpm/remote"
+            gen_object_with_cleanup(rpm_rpmremote_api, body)
+
+    # Cant create invalid UlnRemote
+    for protocol in ("http", "https", "file"):
+        with pytest.raises(ApiException, match=" is not valid. It must start with: "):
+            body = _gen_verbose_remote()
+            body["url"] = f"{protocol}://some/uln/remote"
+            gen_object_with_cleanup(rpm_ulnremote_api, body)
 
 
 def _gen_verbose_remote():
