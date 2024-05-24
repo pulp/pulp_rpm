@@ -1,45 +1,34 @@
-from gettext import gettext as _
-
 import logging
+from gettext import gettext as _
 
 from django.conf import settings
 from jsonschema import Draft7Validator
-from rest_framework import serializers
-
-from pulpcore.plugin.util import get_domain
-from pulpcore.plugin.models import (
-    AsciiArmoredDetachedSigningService,
-    Remote,
-    Publication,
-)
+from pulpcore.plugin.models import AsciiArmoredDetachedSigningService, Publication, Remote
 from pulpcore.plugin.serializers import (
-    RelatedField,
     DetailRelatedField,
     DistributionSerializer,
     PublicationSerializer,
+    RelatedField,
     RemoteSerializer,
     RepositorySerializer,
     RepositorySyncURLSerializer,
     ValidateFieldsMixin,
 )
+from pulpcore.plugin.util import get_domain
+from rest_framework import serializers
 
 from pulp_rpm.app.constants import (
     ALLOWED_CHECKSUM_ERROR_MSG,
-    ALLOWED_PUBLISH_CHECKSUMS,
     ALLOWED_PUBLISH_CHECKSUM_ERROR_MSG,
+    ALLOWED_PUBLISH_CHECKSUMS,
     CHECKSUM_CHOICES,
+    COMPRESSION_CHOICES,
     SKIP_TYPES,
     SYNC_POLICY_CHOICES,
-    COMPRESSION_CHOICES,
 )
-from pulp_rpm.app.models import (
-    RpmDistribution,
-    RpmRemote,
-    RpmRepository,
-    RpmPublication,
-    UlnRemote,
-)
+from pulp_rpm.app.models import RpmDistribution, RpmPublication, RpmRemote, RpmRepository, UlnRemote
 from pulp_rpm.app.schema import COPY_CONFIG_SCHEMA
+from urllib.parse import urlparse
 
 
 class RpmRepositorySerializer(RepositorySerializer):
@@ -270,6 +259,15 @@ class RpmRemoteSerializer(RpmBaseRemoteSerializer):
         allow_null=True,
     )
 
+    def validate_url(self, value):
+        ALLOWED = ("http", "https", "file")
+        protocol = urlparse(value).scheme
+        if protocol not in ALLOWED:
+            raise serializers.ValidationError(
+                f"The url {repr(value)} is not valid. It must start with: {ALLOWED}."
+            )
+        return value
+
     class Meta:
         fields = RemoteSerializer.Meta.fields + ("sles_auth_token",)
         model = RpmRemote
@@ -308,6 +306,15 @@ class UlnRemoteSerializer(RpmBaseRemoteSerializer):
         required=False,
         allow_null=True,
     )
+
+    def validate_url(self, value):
+        ALLOWED = ("uln",)
+        protocol = urlparse(value).scheme
+        if protocol not in ALLOWED:
+            raise serializers.ValidationError(
+                f"The url {repr(value)} is not valid. It must start with: {ALLOWED}."
+            )
+        return value
 
     class Meta:
         fields = RemoteSerializer.Meta.fields + ("uln_server_base_url",)
