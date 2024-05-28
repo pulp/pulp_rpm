@@ -13,6 +13,49 @@ Changelog
 
 .. towncrier release notes start
 
+3.26.0 (2024-05-28)
+===================
+
+Features
+--------
+
+- Added django admin command to analyse repository disk size.
+  `#3003 <https://github.com/pulp/pulp_rpm/issues/3003>`__
+- Added support for ``repository-size`` management command.
+  `#3312 <https://github.com/pulp/pulp_rpm/issues/3312>`__
+
+
+Bugfixes
+--------
+
+- Addressed some edge-cases involving advisory-collection-naming and imports.
+  `#3380 <https://github.com/pulp/pulp_rpm/issues/3380>`__
+- Fixed modulemd upload raising an error when "packages" parameter was passed.
+  `#3427 <https://github.com/pulp/pulp_rpm/issues/3427>`__
+- Fixed an issue where the value of `gpgcheck` wasn't appropriately set on some publications.
+  `#3462 <https://github.com/pulp/pulp_rpm/issues/3462>`__
+- Fix publications created by mirror_complete syncs not having checksum_type set properly.
+  `#3484 <https://github.com/pulp/pulp_rpm/issues/3484>`__
+- Fixed modulemd_defaults create endpoint not setting the content digest.
+  `#3495 <https://github.com/pulp/pulp_rpm/issues/3495>`__
+
+
+Improved Documentation
+----------------------
+
+- Improved pages about Post/Delete Content (from Pulp) and Add/Remove/Copy existing Content (from Repos).
+  `#3482 <https://github.com/pulp/pulp_rpm/issues/3482>`__
+
+
+Misc
+----
+
+- `#3445 <https://github.com/pulp/pulp_rpm/issues/3445>`__, `#3520 <https://github.com/pulp/pulp_rpm/issues/3520>`__, `#3526 <https://github.com/pulp/pulp_rpm/issues/3526>`__
+
+
+----
+
+
 3.25.3 (2024-04-18)
 ===================
 
