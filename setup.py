@@ -17,7 +17,7 @@ setup(
     author="Pulp Project Developers",
     author_email="pulp-list@redhat.com",
     url="http://www.pulpproject.org",
-    python_requires=">=3.8",
+    python_requires=">=3.9",
     install_requires=requirements,
     include_package_data=True,
     packages=find_packages(exclude=["test"]),
@@ -28,8 +28,10 @@ setup(
         "Framework :: Django",
         "Programming Language :: Python",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.8",
         "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
     ),
     entry_points={
         "pulpcore.plugin": [
