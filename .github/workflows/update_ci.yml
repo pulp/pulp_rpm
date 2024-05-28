@@ -74,6 +74,33 @@ jobs:
         with:
           fetch-depth: 0
           path: "pulp_rpm"
+          ref: "3.26"
+
+      - name: "Run update"
+        working-directory: "pulp_rpm"
+        run: |
+          ../plugin_template/scripts/update_ci.sh
+
+      - name: "Create Pull Request for CI files"
+        uses: "peter-evans/create-pull-request@v6"
+        with:
+          token: "${{ secrets.RELEASE_TOKEN }}"
+          path: "pulp_rpm"
+          committer: "pulpbot <pulp-infra@redhat.com>"
+          author: "pulpbot <pulp-infra@redhat.com>"
+          title: "Update CI files for branch 3.26"
+          body: ""
+          branch: "update-ci/3.26"
+          base: "3.26"
+          commit-message: |
+            Update CI files
+
+            [noissue]
+          delete-branch: true
+      - uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+          path: "pulp_rpm"
           ref: "3.18"
 
       - name: "Run update"
