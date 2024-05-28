@@ -13,6 +13,25 @@ Changelog
 
 .. towncrier release notes start
 
+3.25.4 (2024-05-28)
+===================
+
+Bugfixes
+--------
+
+- Fixed modulemd upload raising an error when "packages" parameter was passed.
+  `#3427 <https://github.com/pulp/pulp_rpm/issues/3427>`__
+
+
+Misc
+----
+
+- `#3526 <https://github.com/pulp/pulp_rpm/issues/3526>`__
+
+
+----
+
+
 3.25.3 (2024-04-18)
 ===================
 
