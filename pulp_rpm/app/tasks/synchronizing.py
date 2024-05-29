@@ -1327,7 +1327,6 @@ class RpmFirstStage(Stage):
 
                 # find if a package relates to a modulemd
                 if dc.content.nevra in self.nevra_to_module.keys():
-                    dc.content.is_modular = True
                     for dc_modulemd in self.nevra_to_module[dc.content.nevra]:
                         dc.extra_data["modulemd_relation"].append(dc_modulemd)
                         dc_modulemd.extra_data["package_relation"].append(dc)

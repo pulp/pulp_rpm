@@ -197,11 +197,6 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         help_text=_("Last byte of the header"),
         read_only=True,
     )
-    is_modular = serializers.BooleanField(
-        help_text=_("Flag to identify if the package is modular"),
-        required=False,
-        read_only=True,
-    )
 
     size_archive = serializers.IntegerField(
         help_text=_("Size, in bytes, of the archive portion of the original package file"),
@@ -312,7 +307,6 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
                 "rpm_vendor",
                 "rpm_header_start",
                 "rpm_header_end",
-                "is_modular",
                 "size_archive",
                 "size_installed",
                 "size_package",

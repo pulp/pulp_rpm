@@ -237,7 +237,6 @@ RPM_COMPLEX_PACKAGE_DATA = {
         ["dir", "/var/lib/", "complex"],
         ["ghost", "/var/log/", "complex.log"],
     ],
-    "is_modular": False,
     "location_base": "",
     "location_href": "complex-package-2.3.4-5.el8.x86_64.rpm",
     "md5": None,
