@@ -24,8 +24,10 @@ RESPONSE="$(curl --write-out '%{http_code}' --silent --output /dev/null "https:/
 if [ "$RESPONSE" == "200" ];
 then
   echo "pulp_rpm client $VERSION has already been released. Skipping."
-else
-  twine upload -u __token__ -p "$PYPI_API_TOKEN" \
-  "dist/pulp_rpm_client-$VERSION-py3-none-any.whl" \
-  "dist/pulp_rpm-client-$VERSION.tar.gz"
+  exit
 fi
+
+twine upload -u __token__ -p "$PYPI_API_TOKEN" \
+"dist/pulp_rpm_client-$VERSION-py3-none-any.whl" \
+"dist/pulp_rpm-client-$VERSION.tar.gz" \
+;

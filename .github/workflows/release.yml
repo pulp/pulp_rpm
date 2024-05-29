@@ -28,7 +28,7 @@ jobs:
           path: "pulp_rpm"
           token: ${{ secrets.RELEASE_TOKEN }}
 
-      - uses: "actions/setup-python@v5"
+      - uses: "actions/setup-python@v4"
         with:
           python-version: "3.11"
 
