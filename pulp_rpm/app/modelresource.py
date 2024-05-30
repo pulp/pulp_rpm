@@ -390,7 +390,7 @@ class DistributionTreeRepositoryResource(QueryModelResource):
     class Meta:
         model = RpmRepository
         import_id_fields = ("name",)
-        fields = ("name", "pulp_type", "description", "original_checksum_types", "user_hidden")
+        fields = ("name", "pulp_type", "description", "user_hidden")
 
 
 class UpdateCollectionResource(QueryModelResource):

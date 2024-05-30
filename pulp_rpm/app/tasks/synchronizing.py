@@ -802,8 +802,6 @@ class RpmFirstStage(Stage):
                         run_repomdrecord_download(record.type, record.location_href, downloader)
                     )
 
-                self.repository.original_checksum_types = checksum_types
-
                 try:
                     for future in asyncio.as_completed(list(repomd_downloaders.values())):
                         name, location_href, result = await future
