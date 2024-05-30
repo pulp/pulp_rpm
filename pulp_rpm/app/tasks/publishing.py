@@ -325,8 +325,11 @@ def publish(
     repository_version_pk,
     metadata_signing_service=None,
     checksum_types=None,
+    checksum_type=None,  # currently unused, but prep for eliminating "checksum_types due to zero-downtime requirements"
     repo_config=None,
     compression_type=COMPRESSION_TYPES.GZ,
+    *args,
+    **kwargs,
 ):
     """
     Create a Publication based on a RepositoryVersion.
@@ -344,6 +347,8 @@ def publish(
     repository_version = RepositoryVersion.objects.get(pk=repository_version_pk)
     repository = repository_version.repository.cast()
     checksum_types = checksum_types or {}
+    if checksum_type:
+        checksum_types = {"general": checksum_type}
 
     if metadata_signing_service:
         metadata_signing_service = AsciiArmoredDetachedSigningService.objects.get(
