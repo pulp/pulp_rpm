@@ -59,7 +59,7 @@ class PublicationData:
 
     """
 
-    def __init__(self, publication):
+    def __init__(self, publication, checksum_types):
         """
         Setting Publication data.
 
@@ -70,6 +70,7 @@ class PublicationData:
         self.publication = publication
         self.sub_repos = []
         self.repomdrecords = []
+        self.checksum_types = checksum_types
 
     def prepare_metadata_files(self, content, folder=None):
         """
@@ -260,7 +261,6 @@ class PublicationData:
                         (
                             addon_or_variant_id,
                             repository_version.content,
-                            self.checksum_types,
                         )
                     )
 
@@ -290,7 +290,7 @@ class PublicationData:
         for name, content in self.sub_repos:
             os.mkdir(name)
             setattr(self, f"{name}_content", content)
-            setattr(self, f"{name}_checksums", checksum_types)
+            setattr(self, f"{name}_checksums", self.checksum_types)
             setattr(self, f"{name}_repomdrecords", self.prepare_metadata_files(content, name))
             self.publish_artifacts(content, prefix=name)
 
@@ -325,8 +325,11 @@ def publish(
     repository_version_pk,
     metadata_signing_service=None,
     checksum_types=None,
+    checksum_type=None,
     repo_config=None,
     compression_type=COMPRESSION_TYPES.GZ,
+    *args,
+    **kwargs,
 ):
     """
     Create a Publication based on a RepositoryVersion.
@@ -344,6 +347,9 @@ def publish(
     repository_version = RepositoryVersion.objects.get(pk=repository_version_pk)
     repository = repository_version.repository.cast()
     checksum_types = checksum_types or {}
+    # currently unused, but prep for eliminating "checksum_types due to zero-downtime requirements"
+    if checksum_type:
+        checksum_types = {"general": checksum_type}
 
     if metadata_signing_service:
         metadata_signing_service = AsciiArmoredDetachedSigningService.objects.get(
@@ -365,7 +371,7 @@ def publish(
             publication.compression_type = compression_type
             publication.repo_config = repo_config
 
-            publication_data = PublicationData(publication)
+            publication_data = PublicationData(publication, checksum_types)
             publication_data.populate()
 
             total_repos = 1 + len(publication_data.sub_repos)
