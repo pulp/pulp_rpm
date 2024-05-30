@@ -233,7 +233,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
         RpmPackageSigningService, on_delete=models.SET_NULL, null=True
     )
     package_signing_fingerprint = models.TextField(null=True, max_length=40)
-    original_checksum_types = models.JSONField(default=dict)
+    original_checksum_types = models.JSONField(default=dict) # DEPRECATED, remove in 3.27+
     last_sync_details = models.JSONField(default=dict)
     retain_package_versions = models.PositiveIntegerField(default=0)
 

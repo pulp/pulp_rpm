@@ -246,14 +246,19 @@ run a full sync.
 
 ## Create a Publication
 
-A publication can only be created once a sync task completes. You can specify checksum algorithm with the following optional parameters:
+A publication can only be created once a sync task completes. The following optional parameters are available:
 
-- metadata_checksum_type: affects all the repodata, including primary.xml, repomd.xml, etc.
+- metadata_checksum_type (deprecated): affects all the repodata, including primary.xml, repomd.xml, etc.
   If not specified, the default SHA256 algorithm will be used.
-- package_checksum_type: affects package checksum type in all repo metadata files.
+- package_checksum_type (deprecated): affects package checksum type in all repo metadata files.
   If not specified, the default SHA256 algorithm will be used.
   Because of on_demand sync, it is possible that the requested checksum is not available.
   In such case the one from the remote repo will be used.
+- checksum_type: Sets the checksum type to be used by the repository metadata, including primary.xml, repomd.xml, etc.
+  If not specified, the default SHA256 algorithm will be used. Because of on_demand sync, it is possible that the
+  requested checksum is not available. In such case the available checksum supplied by the remote repo will be used.
+- compression_type: Sets the compression type to be used by the repository metadata (primary.xml, filelists.xml, etc.)
+  If not specified, the default Gzip algorithm will be used.
   
 === "Create a Publication"
 
