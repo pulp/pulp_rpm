@@ -226,7 +226,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
     metadata_signing_service = models.ForeignKey(
         AsciiArmoredDetachedSigningService, on_delete=models.SET_NULL, null=True
     )
-    original_checksum_types = models.JSONField(default=dict)
+    original_checksum_types = models.JSONField(default=dict)  # DEPRECATED, remove in 3.27+
     last_sync_details = models.JSONField(default=dict)
     retain_package_versions = models.PositiveIntegerField(default=0)
 

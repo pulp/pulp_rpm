@@ -260,7 +260,7 @@ class PublicationData:
                         (
                             addon_or_variant_id,
                             repository_version.content,
-                            repository.original_checksum_types,
+                            checksum_types,
                         )
                     )
 
@@ -287,7 +287,7 @@ class PublicationData:
         for distribution_tree in distribution_trees:
             self.handle_sub_repos(distribution_tree)
 
-        for name, content, checksum_types in self.sub_repos:
+        for name, content in self.sub_repos:
             os.mkdir(name)
             setattr(self, f"{name}_content", content)
             setattr(self, f"{name}_checksums", checksum_types)
@@ -350,8 +350,6 @@ def publish(
             pk=metadata_signing_service
         )
 
-    checksum_types["original"] = repository.original_checksum_types
-
     log.info(
         _("Publishing: repository={repo}, version={version}").format(
             repo=repository.name,
@@ -392,7 +390,6 @@ def publish(
 
                 for sub_repo in publication_data.sub_repos:
                     name = sub_repo[0]
-                    checksum_types["original"] = getattr(publication_data, f"{name}_checksums")
                     content = getattr(publication_data, f"{name}_content")
                     extra_repomdrecords = getattr(publication_data, f"{name}_repomdrecords")
                     generate_repo_metadata(
