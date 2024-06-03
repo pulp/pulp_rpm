@@ -510,8 +510,7 @@ def get_checksum_types(
 
     def _get_checksum_types(**kwargs):
         fixture_url = kwargs.get("fixture_url", RPM_UNSIGNED_FIXTURE_URL)
-        package_checksum_type = kwargs.get("package_checksum_type")
-        metadata_checksum_type = kwargs.get("metadata_checksum_type")
+        checksum_type = kwargs.get("checksum_type")
         policy = kwargs.get("policy", "immediate")
 
         # 1. create repo and remote
@@ -520,8 +519,7 @@ def get_checksum_types(
         # 2. Publish and distribute
         publish_data = RpmRpmPublication(
             repository=repo.pulp_href,
-            package_checksum_type=package_checksum_type,
-            metadata_checksum_type=metadata_checksum_type,
+            checksum_type=checksum_type,
         )
         publish_response = rpm_publication_api.create(publish_data)
         created_resources = monitor_task(publish_response.task).created_resources
@@ -605,38 +603,18 @@ def test_publish_with_unsupported_checksum_type(rpm_unsigned_repo_on_demand, rpm
 
 
 @pytest.mark.parallel
-def test_on_demand_unspecified_checksum_types(get_checksum_types):
+def test_unspecified_checksum_types(get_checksum_types):
     """Sync and publish an RPM repository and verify the checksum types."""
     repomd_checksum_types, primary_checksum_types = get_checksum_types(
         fixture_url=RPM_SHA512_FIXTURE_URL, policy="on_demand"
     )
 
     for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
-        # hack to account for the fact that our md5 and sha512 repos use md5 and sha256
-        # checksums for all metadata *except* updateinfo :(
-        if not repomd_type == "updateinfo":
-            assert repomd_checksum_type == "sha512"
+        assert repomd_checksum_type == "sha256"
 
     for package, package_checksum_type in primary_checksum_types.items():
         # since none of the packages in question have sha512 checksums, the
         # checksums they do have will be used instead. In this case, sha512.
-        assert package_checksum_type == "sha512"
-
-
-@pytest.mark.parallel
-def test_immediate_unspecified_checksum_types(get_checksum_types):
-    """Sync and publish an RPM repository and verify the checksum types."""
-    repomd_checksum_types, primary_checksum_types = get_checksum_types(
-        fixture_url=RPM_SHA512_FIXTURE_URL, policy="immediate"
-    )
-
-    for repomd_type, repomd_checksum_type in repomd_checksum_types.items():
-        # hack to account for the fact that our md5 and sha512 repos use md5 and sha256
-        # checksums for all metadata *except* updateinfo :(
-        if not repomd_type == "updateinfo":
-            assert repomd_checksum_type == "sha512"
-
-    for package, package_checksum_type in primary_checksum_types.items():
         assert package_checksum_type == "sha512"
 
 
