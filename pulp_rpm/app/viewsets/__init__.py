@@ -11,6 +11,7 @@ from .custom_metadata import RepoMetadataFileViewSet  # noqa
 from .distribution import DistributionTreeViewSet  # noqa
 from .modulemd import ModulemdViewSet, ModulemdDefaultsViewSet, ModulemdObsoleteViewSet  # noqa
 from .package import PackageViewSet  # noqa
+from .prune import PrunePackagesViewSet  # noqa
 from .repository import (  # noqa
     RpmRepositoryViewSet,
     RpmRepositoryVersionViewSet,

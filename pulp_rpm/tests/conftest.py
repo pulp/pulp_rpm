@@ -10,6 +10,7 @@ from pulpcore.client.pulp_rpm import (
     RemotesRpmApi,
     RepositoriesRpmApi,
     RepositoriesRpmVersionsApi,
+    RpmPruneApi,
     RpmRepositorySyncURL,
 )
 
@@ -34,6 +35,12 @@ def rpm_repository_version_api(rpm_client):
 def rpm_distribution_api(rpm_client):
     """Fixture for RPM distribution API."""
     return DistributionsRpmApi(rpm_client)
+
+
+@pytest.fixture(scope="session")
+def rpm_prune_api(rpm_client):
+    """Fixture for RPM Prune API."""
+    return RpmPruneApi(rpm_client)
 
 
 @pytest.fixture(scope="session")
