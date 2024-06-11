@@ -118,6 +118,11 @@ def resolve_advisories(version, previous_version):
             if pk_to_add:
                 new_advisory = UpdateRecord.objects.filter(pk=pk_to_add[0]).get()
                 tmp_advisories.append(new_advisory)
+            # If the first duplicate advisory is ended up in to_remove or to_exclude then
+            # set the one it was compared against as the one to keep.
+            # See https://github.com/pulp/pulp_rpm/pull/3588
+            elif new_advisory.pk in pk_to_remove or new_advisory.pk in pk_to_exclude:
+                new_advisory = adv
             content_pks_to_exclude.update(pk_to_exclude)
             content_pks_to_remove.update(pk_to_remove)
         added_advisories_by_id[adv_id] = [new_advisory]
