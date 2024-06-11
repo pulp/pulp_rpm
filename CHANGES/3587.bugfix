@@ -1,0 +1,1 @@
+Fix a flaw that still allowed to add duplicate advisories to a repository version.
