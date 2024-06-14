@@ -413,8 +413,9 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
 
         namespaces = [".treeinfo", "treeinfo"]
         for namespace in namespaces:
+            treeinfo_url = urlpath_sanitize(remote_url, namespace)
             downloader = remote.get_downloader(
-                url=urlpath_sanitize(remote_url, namespace),
+                url=treeinfo_url,
                 silence_errors_for_response_status_codes={403, 404},
             )
 
@@ -424,7 +425,19 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
                 continue
 
             treeinfo = PulpTreeInfo()
-            treeinfo.load(f=result.path)
+            with open(result.path, "r") as f:
+                treeinfo_str = f.read()
+                # some impolitely configured webservers return HTTP 200 with an HTML error page
+                # when a resource isn't found, instead of returning an HTTP 404 code
+                if treeinfo_str.startswith("<"):
+                    # in the event that the response looks like HTML rather than an INI file,
+                    # let's just pretend it returned 404
+                    log.debug(
+                        f"Server returned 200 for {treeinfo_url}, but the result looks like HTML"
+                        " rather than treeinfo. Ignoring it."
+                    )
+                    continue
+                treeinfo.loads(treeinfo_str)
             sha256 = result.artifact_attributes["sha256"]
             treeinfo_data = TreeinfoData(treeinfo.parsed_sections())
 
