@@ -17,13 +17,13 @@ class PulpTreeInfo(TreeInfo):
 
     """
 
-    def load(self, f):
+    def loads(self, s):
         """
-        Load data from a file.
+        Load data from a string.
 
         """
         try:
-            super().load(f)
+            super().loads(s)
         except MissingSectionHeaderError:
             raise TypeError(_("Treeinfo file should have INI format"))
 
