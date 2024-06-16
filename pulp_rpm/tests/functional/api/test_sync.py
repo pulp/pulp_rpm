@@ -20,7 +20,6 @@ from pulp_smash.pulp3.utils import (
 
 from pulp_rpm.tests.functional.constants import (
     AMAZON_MIRROR,
-    CENTOS7_OPSTOOLS_URL,
     PULP_TYPE_ADVISORY,
     PULP_TYPE_MODULEMD,
     PULP_TYPE_PACKAGE,
@@ -741,13 +740,15 @@ def test_sha_checksum(init_and_sync):
     init_and_sync(url=RPM_SHA_FIXTURE_URL)
 
 
+@pytest.mark.skip("TODO: Need a new test fixture")
 @pytest.mark.parallel
 def test_one_nevra_two_locations_and_checksums(init_and_sync):
     """Sync a repository known to have one nevra, in two locations, with different content.
 
     While 'odd', this is a real-world occurrence.
     """
-    init_and_sync(url=CENTOS7_OPSTOOLS_URL, policy="on_demand")
+    # init_and_sync(url=CENTOS7_OPSTOOLS_URL, policy="on_demand")
+    pass
 
 
 @pytest.mark.parallel
