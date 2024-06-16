@@ -8,6 +8,24 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.23.4 (2024-06-16) {: #3.23.4 }
+
+
+#### Bugfixes {: #3.23.4-bugfix }
+
+- Fixed modulemd upload raising an error when "packages" parameter was passed.
+  [#3427](https://github.com/pulp/pulp_rpm/issues/3427)
+- Fixed modulemd_defaults create endpoint not setting the content digest.
+  [#3495](https://github.com/pulp/pulp_rpm/issues/3495)
+- Taught tests to find centos8 at vault.centos.org.
+  [#3572](https://github.com/pulp/pulp_rpm/issues/3572)
+- Fix a flaw that still allowed to add duplicate advisories to a repository version.
+  [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
+- Made sync more tolerant of poorly configured webservers.
+  [#3599](https://github.com/pulp/pulp_rpm/issues/3599)
+
+---
+
 ## 3.23.3 (2024-02-09) {: #3.23.3 }
 
 ### Bugfixes
