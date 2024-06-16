@@ -19,16 +19,15 @@ from pulp_smash.pulp3.utils import (
 )
 
 from pulp_rpm.tests.functional.constants import (
+    EPEL8_URL,
     RPM_DISTRIBUTION_PATH,
     RPM_PACKAGE_CONTENT_NAME,
     RPM_KICKSTART_FIXTURE_URL,
     RPM_PUBLICATION_PATH,
     RPM_REMOTE_PATH,
     RPM_REPO_PATH,
-    CENTOS7_URL,
     CENTOS8_STREAM_APPSTREAM_URL,
     CENTOS8_STREAM_BASEOS_URL,
-    EPEL7_URL,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_remote
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
@@ -150,13 +149,9 @@ class PublishTestCase(unittest.TestCase):
         )
         return publish_task["created_resources"][0]
 
-    def test_epel7(self):
-        """Publish EPEL 7."""
-        self.rpm_publish(url=EPEL7_URL)
-
-    def test_centos7(self):
-        """Publish CentOS 7."""
-        self.rpm_publish(url=CENTOS7_URL)
+    def test_epel8(self):
+        """Publish EPEL 8."""
+        self.rpm_publish(url=EPEL8_URL)
 
     def test_centos_8stream_baseos(self):
         """Publish CentOS 8 BaseOS."""
@@ -195,7 +190,3 @@ class PublishTestCase(unittest.TestCase):
     def test_centos8_appstream(self):
         """Publish CentOS 8 AppStream."""
         self.rpm_publish(url=CENTOS8_STREAM_APPSTREAM_URL)
-
-    def test_centos8_baseos(self):
-        """Publish CentOS 8 BaseOS."""
-        self.rpm_publish(url=CENTOS8_STREAM_BASEOS_URL)

@@ -22,7 +22,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_KICKSTART_FIXTURE_URL,
     RPM_REMOTE_PATH,
     RPM_REPO_PATH,
-    CENTOS7_URL,
     CENTOS8_STREAM_APPSTREAM_URL,
     CENTOS8_STREAM_BASEOS_URL,
     EPEL8_MIRRORLIST_URL,
@@ -143,14 +142,10 @@ class SyncTestCase(unittest.TestCase):
             # Check that nothing has changed since the last sync.
             self.assertEqual(latest_version_href, repo["latest_version_href"])
 
-    def test_centos7_on_demand(self):
-        """Sync CentOS 7."""
-        self.rpm_sync(url=CENTOS7_URL)
-
     @unittest.skip("Skip to avoid failing due to running out of disk space")
-    def test_centos7_immediate(self):
-        """Sync CentOS 7 with the immediate policy."""
-        self.rpm_sync(url=CENTOS7_URL, policy="immediate")
+    def test_centos8_baseos_immediate(self):
+        """Sync CentOS 8 Stream with the immediate policy."""
+        self.rpm_sync(url=CENTOS8_STREAM_BASEOS_URL, policy="immediate")
 
     def test_centos8_baseos_on_demand(self):
         """Sync CentOS 8 BaseOS."""
