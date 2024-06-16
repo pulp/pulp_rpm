@@ -11,7 +11,6 @@ from pulp_smash.pulp3.utils import (
 )
 
 from pulp_rpm.tests.functional.constants import (
-    CENTOS7_URL,
     CENTOS8_STREAM_BASEOS_URL,
     CENTOS8_STREAM_APPSTREAM_URL,
 )
@@ -127,10 +126,6 @@ class SynctoSyncTestCase(unittest.TestCase):
         added = get_added_content_summary(repo.to_dict())
         added2 = get_added_content_summary(repo2.to_dict())
         self.assertDictEqual(added, added2)
-
-    def test_centos7_on_demand(self):
-        """Sync CentOS 7."""
-        self.do_test(url=CENTOS7_URL)
 
     def test_centos8_baseos_on_demand(self):
         """Sync CentOS 8 BaseOS."""

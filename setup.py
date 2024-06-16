@@ -13,6 +13,7 @@ setup(
     version="3.19.13.dev",
     description="RPM plugin for the Pulp Project",
     long_description=long_description,
+    long_description_content_type="text/x-rst",
     license="GPLv2+",
     author="Pulp Project Developers",
     author_email="pulp-list@redhat.com",
