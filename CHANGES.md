@@ -8,6 +8,20 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.26.1 (2024-06-16) {: #3.26.1 }
+
+
+#### Bugfixes {: #3.26.1-bugfix }
+
+- Taught tests to find centos8 at vault.centos.org.
+  [#3572](https://github.com/pulp/pulp_rpm/issues/3572)
+- Fix a flaw that still allowed to add duplicate advisories to a repository version.
+  [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
+- Made sync more tolerant of poorly configured webservers.
+  [#3599](https://github.com/pulp/pulp_rpm/issues/3599)
+
+---
+
 ## 3.26.0 (2024-05-28) {: #3.26.0 }
 
 ### Features
