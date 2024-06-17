@@ -8,6 +8,41 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.27.0 (2024-06-16) {: #3.27.0 }
+
+
+#### Features {: #3.27.0-feature }
+
+- Added /rpm/prune/ endpoint to allow "pruning" old Packages from repositories.
+  [#2909](https://github.com/pulp/pulp_rpm/issues/2909)
+- Added (tech preview) support for signing RPM packages when uploading to a Repository.
+  [#2986](https://github.com/pulp/pulp_rpm/issues/2986)
+
+#### Bugfixes {: #3.27.0-bugfix }
+
+- Taught tests to find centos8 at vault.centos.org.
+  [#3572](https://github.com/pulp/pulp_rpm/issues/3572)
+- Fix a flaw that still allowed to add duplicate advisories to a repository version.
+  [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
+- Made sync more tolerant of poorly configured webservers.
+  [#3599](https://github.com/pulp/pulp_rpm/issues/3599)
+
+---
+
+## 3.26.1 (2024-06-16) {: #3.26.1 }
+
+
+#### Bugfixes {: #3.26.1-bugfix }
+
+- Taught tests to find centos8 at vault.centos.org.
+  [#3572](https://github.com/pulp/pulp_rpm/issues/3572)
+- Fix a flaw that still allowed to add duplicate advisories to a repository version.
+  [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
+- Made sync more tolerant of poorly configured webservers.
+  [#3599](https://github.com/pulp/pulp_rpm/issues/3599)
+
+---
+
 ## 3.26.0 (2024-05-28) {: #3.26.0 }
 
 ### Features
@@ -38,6 +73,24 @@
 ### Misc
 
 -   [#3445](https://github.com/pulp/pulp_rpm/issues/3445), [#3520](https://github.com/pulp/pulp_rpm/issues/3520), [#3526](https://github.com/pulp/pulp_rpm/issues/3526)
+
+---
+
+## 3.25.5 (2024-06-16) {: #3.25.5 }
+
+
+#### Bugfixes {: #3.25.5-bugfix }
+
+- Taught tests to find centos8 at vault.centos.org.
+  [#3572](https://github.com/pulp/pulp_rpm/issues/3572)
+- Fix a flaw that still allowed to add duplicate advisories to a repository version.
+  [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
+- Made sync more tolerant of poorly configured webservers.
+  [#3599](https://github.com/pulp/pulp_rpm/issues/3599)
+
+#### Misc {: #3.25.5-misc }
+
+- [#3520](https://github.com/pulp/pulp_rpm/issues/3520)
 
 ---
 
@@ -146,6 +199,24 @@
 
 ---
 
+## 3.23.4 (2024-06-16) {: #3.23.4 }
+
+
+#### Bugfixes {: #3.23.4-bugfix }
+
+- Fixed modulemd upload raising an error when "packages" parameter was passed.
+  [#3427](https://github.com/pulp/pulp_rpm/issues/3427)
+- Fixed modulemd_defaults create endpoint not setting the content digest.
+  [#3495](https://github.com/pulp/pulp_rpm/issues/3495)
+- Taught tests to find centos8 at vault.centos.org.
+  [#3572](https://github.com/pulp/pulp_rpm/issues/3572)
+- Fix a flaw that still allowed to add duplicate advisories to a repository version.
+  [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
+- Made sync more tolerant of poorly configured webservers.
+  [#3599](https://github.com/pulp/pulp_rpm/issues/3599)
+
+---
+
 ## 3.23.3 (2024-02-09) {: #3.23.3 }
 
 ### Bugfixes
@@ -215,6 +286,18 @@ No significant changes.
 ### Misc
 
 -   [#3217](https://github.com/pulp/pulp_rpm/issues/3217), [#3225](https://github.com/pulp/pulp_rpm/issues/3225), [#3226](https://github.com/pulp/pulp_rpm/issues/3226), [#3234](https://github.com/pulp/pulp_rpm/issues/3234), [#3254](https://github.com/pulp/pulp_rpm/issues/3254)
+
+---
+
+## 3.22.8 (2024-06-16) {: #3.22.8 }
+
+
+#### Bugfixes {: #3.22.8-bugfix }
+
+- Taught tests to find centos8 at vault.centos.org.
+  [#3572](https://github.com/pulp/pulp_rpm/issues/3572)
+- Fix a flaw that still allowed to add duplicate advisories to a repository version.
+  [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
 
 ---
 
