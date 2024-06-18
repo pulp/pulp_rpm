@@ -74,17 +74,18 @@ def test_dist_tree_copy_as_content(
 
 
 @pytest.mark.parallel
-def test_skip_treeinfo(init_and_sync):
+def test_skip_treeinfo(init_and_sync, has_pulp_plugin):
     # Sync repo. Should create only main repo, not subrepos
     _, _, task = init_and_sync(
         url=RPM_KICKSTART_FIXTURE_URL, skip_types=["treeinfo"], return_task=True
     )
-    rsrvd_repos = [r for r in task.reserved_resources_record if "/repositories/rpm/rpm/" in r]
+    rsrvd = "prn:rpm.rpmrepository" if has_pulp_plugin("core", "3.55") else "/repositories/rpm/rpm/"
+    rsrvd_repos = [r for r in task.reserved_resources_record if rsrvd in r]
     assert 1 == len(rsrvd_repos)
 
     # Sync again, including kstree. Should end up w/ 5 repos reserved.
     _, _, task = init_and_sync(url=RPM_KICKSTART_FIXTURE_URL, return_task=True)
-    rsrvd_repos = [r for r in task.reserved_resources_record if "/repositories/rpm/rpm/" in r]
+    rsrvd_repos = [r for r in task.reserved_resources_record if rsrvd in r]
     assert 5 == len(rsrvd_repos)
 
 
