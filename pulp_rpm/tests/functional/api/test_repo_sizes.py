@@ -9,9 +9,9 @@ from pulp_rpm.tests.functional.constants import (
 )
 
 
-def test_repo_size(init_and_sync, delete_orphans_pre, monitor_task, orphans_cleanup_api_client):
+def test_repo_size(init_and_sync, delete_orphans_pre, monitor_task, pulpcore_bindings):
     """Test that RPM repos correctly report their on-disk artifact sizes."""
-    monitor_task(orphans_cleanup_api_client.cleanup({"orphan_protection_time": 0}).task)
+    monitor_task(pulpcore_bindings.OrphansCleanupApi.cleanup({"orphan_protection_time": 0}).task)
     repo, _ = init_and_sync(url=RPM_UNSIGNED_FIXTURE_URL, policy="on_demand")
 
     cmd = (
@@ -39,11 +39,9 @@ def test_repo_size(init_and_sync, delete_orphans_pre, monitor_task, orphans_clea
     assert report["on-demand-size"] == 0
 
 
-def test_kickstart_repo_size(
-    init_and_sync, delete_orphans_pre, monitor_task, orphans_cleanup_api_client
-):
+def test_kickstart_repo_size(init_and_sync, delete_orphans_pre, monitor_task, pulpcore_bindings):
     """Test that kickstart RPM repos correctly report their on-disk artifact sizes."""
-    monitor_task(orphans_cleanup_api_client.cleanup({"orphan_protection_time": 0}).task)
+    monitor_task(pulpcore_bindings.OrphansCleanupApi.cleanup({"orphan_protection_time": 0}).task)
     repo, _ = init_and_sync(url=RPM_KICKSTART_FIXTURE_URL, policy="on_demand")
 
     cmd = (
