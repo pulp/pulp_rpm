@@ -112,9 +112,11 @@ def rpm_copy_api(rpm_client):
 
 
 @pytest.fixture
-def signed_artifact(artifacts_api_client, tmp_path):
+def signed_artifact(pulpcore_bindings, tmp_path):
     data = requests.get(RPM_SIGNED_URL).content
-    artifacts = artifacts_api_client.list(sha256=hashlib.sha256(data).hexdigest(), limit=1)
+    artifacts = pulpcore_bindings.ArtifactsApi.list(
+        sha256=hashlib.sha256(data).hexdigest(), limit=1
+    )
     try:
         return artifacts.results[0].to_dict()
     except IndexError:
@@ -122,13 +124,11 @@ def signed_artifact(artifacts_api_client, tmp_path):
 
     temp_file = tmp_path / str(uuid.uuid4())
     temp_file.write_bytes(data)
-    return artifacts_api_client.create(temp_file).to_dict()
+    return pulpcore_bindings.ArtifactsApi.create(temp_file).to_dict()
 
 
 @pytest.fixture
-def rpm_artifact_factory(
-    artifacts_api_client, gen_object_with_cleanup, pulp_domain_enabled, tmp_path
-):
+def rpm_artifact_factory(pulpcore_bindings, gen_object_with_cleanup, pulp_domain_enabled, tmp_path):
     """Return an artifact created from uploading an RPM file."""
 
     def _rpm_artifact_factory(url=RPM_SIGNED_URL, pulp_domain=None):
@@ -139,7 +139,7 @@ def rpm_artifact_factory(
             if not pulp_domain_enabled:
                 raise RuntimeError("Server does not have domains enabled.")
             kwargs["pulp_domain"] = pulp_domain
-        return gen_object_with_cleanup(artifacts_api_client, temp_file, **kwargs)
+        return gen_object_with_cleanup(pulpcore_bindings.ArtifactsApi, temp_file, **kwargs)
 
     return _rpm_artifact_factory
 
@@ -194,13 +194,13 @@ def rpm_kickstart_repo_immediate(init_and_sync):
 
 
 @pytest.fixture(scope="session")
-def rpm_metadata_signing_service(signing_service_api_client):
-    results = signing_service_api_client.list(name="sign-metadata")
+def rpm_metadata_signing_service(pulpcore_bindings):
+    results = pulpcore_bindings.SigningServicesApi.list(name="sign-metadata")
     signing_service = None
     if results.count == 0:
         result = init_signed_repo_configuration()
         if result.returncode == 0:
-            results = signing_service_api_client.list(name="sign-metadata")
+            results = pulpcore_bindings.SigningServicesApi.list(name="sign-metadata")
     if results.count == 1:
         signing_service = results.results[0]
 
@@ -286,7 +286,7 @@ def assert_uploaded_advisory(rpm_advisory_api):
 
 @pytest.fixture
 def setup_domain(
-    gen_object_with_cleanup, domains_api_client, rpm_rpmremote_api, rpm_repository_api, monitor_task
+    gen_object_with_cleanup, pulpcore_bindings, rpm_rpmremote_api, rpm_repository_api, monitor_task
 ):
     def _setup_domain(sync=True, url=RPM_SIGNED_FIXTURE_URL, pulp_domain=None):
         if not pulp_domain:
@@ -295,7 +295,7 @@ def setup_domain(
                 "storage_class": "pulpcore.app.models.storage.FileSystem",
                 "storage_settings": {"MEDIA_ROOT": "/var/lib/pulp/media/"},
             }
-            pulp_domain = gen_object_with_cleanup(domains_api_client, body)
+            pulp_domain = gen_object_with_cleanup(pulpcore_bindings.DomainsApi, body)
 
         remote = gen_object_with_cleanup(
             rpm_rpmremote_api, {"name": str(uuid.uuid4()), "url": url}, pulp_domain=pulp_domain.name
@@ -320,7 +320,7 @@ def setup_domain(
 
 
 @pytest.fixture
-def cleanup_domains(orphans_cleanup_api_client, monitor_task, rpm_repository_api):
+def cleanup_domains(pulpcore_bindings, monitor_task, rpm_repository_api):
     def _cleanup_domains(
         domains,
         content_api_client=None,
@@ -336,7 +336,7 @@ def cleanup_domains(orphans_cleanup_api_client, monitor_task, rpm_repository_api
                         monitor_task(repository_api_client.delete(repo.pulp_href).task)
                 # Let orphan-cleanup reap the resulting abandoned content
                 monitor_task(
-                    orphans_cleanup_api_client.cleanup(
+                    pulpcore_bindings.OrphansCleanupApi.cleanup(
                         {"orphan_protection_time": 0}, pulp_domain=domain.name
                     ).task
                 )
@@ -552,5 +552,7 @@ def _rpm_package_signing_service_name(
 
 
 @pytest.fixture
-def rpm_package_signing_service(_rpm_package_signing_service_name, signing_service_api_client):
-    return signing_service_api_client.list(name=_rpm_package_signing_service_name).results[0]
+def rpm_package_signing_service(_rpm_package_signing_service_name, pulpcore_bindings):
+    return pulpcore_bindings.SigningServicesApi.list(
+        name=_rpm_package_signing_service_name
+    ).results[0]
