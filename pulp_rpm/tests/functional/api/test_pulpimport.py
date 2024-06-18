@@ -62,7 +62,7 @@ def import_export_repositories(
 
 
 @pytest.fixture
-def create_exporter(gen_object_with_cleanup, exporters_pulp_api_client, import_export_repositories):
+def create_exporter(gen_object_with_cleanup, pulpcore_bindings, import_export_repositories):
     def _create_exporter(import_repos=None, export_repos=None, url=RPM_UNSIGNED_FIXTURE_URL):
         if not export_repos:
             _, export_repos = import_export_repositories(import_repos, export_repos, url=url)
@@ -72,46 +72,44 @@ def create_exporter(gen_object_with_cleanup, exporters_pulp_api_client, import_e
             "repositories": [r.pulp_href for r in export_repos],
             "path": f"/tmp/{uuid.uuid4()}/",
         }
-        exporter = gen_object_with_cleanup(exporters_pulp_api_client, body)
+        exporter = gen_object_with_cleanup(pulpcore_bindings.ExportersPulpApi, body)
         return exporter
 
     return _create_exporter
 
 
 @pytest.fixture
-def create_export(exporters_pulp_exports_api_client, create_exporter, monitor_task):
+def create_export(pulpcore_bindings, create_exporter, monitor_task):
     def _create_export(
         import_repos=None, export_repos=None, url=RPM_UNSIGNED_FIXTURE_URL, exporter=None
     ):
         if not exporter:
             exporter = create_exporter(import_repos, export_repos, url=url)
 
-        export_response = exporters_pulp_exports_api_client.create(exporter.pulp_href, {})
+        export_response = pulpcore_bindings.ExportersPulpExportsApi.create(exporter.pulp_href, {})
         export_href = monitor_task(export_response.task).created_resources[0]
-        export = exporters_pulp_exports_api_client.read(export_href)
+        export = pulpcore_bindings.ExportersPulpExportsApi.read(export_href)
         return export
 
     return _create_export
 
 
 @pytest.fixture
-def create_chunked_export(exporters_pulp_exports_api_client, create_exporter, monitor_task):
+def create_chunked_export(pulpcore_bindings, create_exporter, monitor_task):
     def _create_chunked_export(import_repos, export_repos, url=RPM_UNSIGNED_FIXTURE_URL):
         exporter = create_exporter(import_repos, export_repos, url=url)
-        export_response = exporters_pulp_exports_api_client.create(
+        export_response = pulpcore_bindings.ExportersPulpExportsApi.create(
             exporter.pulp_href, {"chunk_size": "5KB"}
         )
         export_href = monitor_task(export_response.task).created_resources[0]
-        export = exporters_pulp_exports_api_client.read(export_href)
+        export = pulpcore_bindings.ExportersPulpExportsApi.read(export_href)
         return export
 
     return _create_chunked_export
 
 
 @pytest.fixture
-def pulp_importer_factory(
-    gen_object_with_cleanup, import_export_repositories, importers_pulp_api_client
-):
+def pulp_importer_factory(gen_object_with_cleanup, import_export_repositories, pulpcore_bindings):
     def _pulp_importer_factory(
         import_repos=None,
         exported_repos=None,
@@ -141,7 +139,7 @@ def pulp_importer_factory(
             "repo_mapping": mapping,
         }
 
-        importer = gen_object_with_cleanup(importers_pulp_api_client, body)
+        importer = gen_object_with_cleanup(pulpcore_bindings.ImportersPulpApi, body)
 
         return importer
 
@@ -152,7 +150,7 @@ def pulp_importer_factory(
 def perform_import(
     create_chunked_export,
     create_export,
-    importers_pulp_imports_api_client,
+    pulpcore_bindings,
     monitor_task_group,
     import_export_repositories,
 ):
@@ -186,7 +184,7 @@ def perform_import(
             if "path" not in body:
                 body["path"] = filenames[0]
 
-        import_response = importers_pulp_imports_api_client.create(importer.pulp_href, body)
+        import_response = pulpcore_bindings.ImportersPulpImportsApi.create(importer.pulp_href, body)
         task_group = monitor_task_group(import_response.task_group)
 
         return task_group
@@ -210,7 +208,7 @@ def test_import(
 
 def test_double_import(
     pulp_importer_factory,
-    importers_pulp_imports_api_client,
+    pulpcore_bindings,
     import_export_repositories,
     rpm_repository_api,
     perform_import,
@@ -222,7 +220,7 @@ def test_double_import(
     perform_import(importer, import_repos, exported_repos)
     perform_import(importer, import_repos, exported_repos)
 
-    imports = importers_pulp_imports_api_client.list(importer.pulp_href).results
+    imports = pulpcore_bindings.ImportersPulpImportsApi.list(importer.pulp_href).results
     assert len(imports) == 2
 
     for repo in import_repos:
@@ -258,7 +256,7 @@ def test_clean_import(
     create_export,
     pulp_importer_factory,
     monitor_task,
-    orphans_cleanup_api_client,
+    pulpcore_bindings,
     perform_import,
 ):
     """Test an import into an empty instance."""
@@ -278,7 +276,7 @@ def test_clean_import(
 
     for repo in exported_repos:
         monitor_task(rpm_repository_api.delete(repo.pulp_href).task)
-    monitor_task(orphans_cleanup_api_client.cleanup({"orphan_protection_time": 0}).task)
+    monitor_task(pulpcore_bindings.OrphansCleanupApi.cleanup({"orphan_protection_time": 0}).task)
 
     existing_repos = rpm_repository_api.list().count
     # At this point we should be importing into a content-free-zone
@@ -299,12 +297,8 @@ def test_create_missing_repos(
     rpm_repository_api,
     rpm_content_distribution_trees_api,
     monitor_task,
-    exporters_pulp_api_client,
-    exporters_pulp_exports_api_client,
-    orphans_cleanup_api_client,
-    importers_pulp_api_client,
+    pulpcore_bindings,
     gen_object_with_cleanup,
-    importers_pulp_imports_api_client,
     monitor_task_group,
 ):
     """
@@ -341,13 +335,13 @@ def test_create_missing_repos(
         "repositories": [entity_map["rpm-repo"].pulp_href, entity_map["ks-repo"].pulp_href],
         "path": f"/tmp/{uuid.uuid4()}/",
     }
-    exporter = gen_object_with_cleanup(exporters_pulp_api_client, body)
+    exporter = gen_object_with_cleanup(pulpcore_bindings.ExportersPulpApi, body)
     entity_map["exporter-path"] = exporter.path
 
     # Step 3, export
-    export_response = exporters_pulp_exports_api_client.create(exporter.pulp_href, {})
+    export_response = pulpcore_bindings.ExportersPulpExportsApi.create(exporter.pulp_href, {})
     export_href = monitor_task(export_response.task).created_resources[0]
-    export = exporters_pulp_exports_api_client.read(export_href)
+    export = pulpcore_bindings.ExportersPulpExportsApi.read(export_href)
     filenames = [
         f
         for f in list(export.output_file_info.keys())
@@ -362,12 +356,12 @@ def test_create_missing_repos(
         assert "//" not in an_export_filename
 
     # Step 4, exporter/repo-cleanup, orphans
-    exporters_pulp_api_client.delete(exporter.pulp_href)
+    pulpcore_bindings.ExportersPulpApi.delete(exporter.pulp_href)
     rpm_rpmremote_api.delete(entity_map["rpm-remote"].pulp_href)
     rpm_rpmremote_api.delete(entity_map["ks-remote"].pulp_href)
     rpm_repository_api.delete(entity_map["rpm-repo"].pulp_href)
     rpm_repository_api.delete(entity_map["ks-repo"].pulp_href)
-    monitor_task(orphans_cleanup_api_client.cleanup({"orphan_protection_time": 0}).task)
+    monitor_task(pulpcore_bindings.OrphansCleanupApi.cleanup({"orphan_protection_time": 0}).task)
 
     saved_entities = entity_map
 
@@ -378,11 +372,11 @@ def test_create_missing_repos(
     body = {
         "name": str(uuid.uuid4()),
     }
-    importer = gen_object_with_cleanup(importers_pulp_api_client, body)
+    importer = gen_object_with_cleanup(pulpcore_bindings.ImportersPulpApi, body)
 
     # Step 6
     # At this point we should be importing into a content-free-zone
-    import_response = importers_pulp_imports_api_client.create(
+    import_response = pulpcore_bindings.ImportersPulpImportsApi.create(
         importer.pulp_href,
         {"path": saved_entities["export-filename"], "create_repositories": True},
     )

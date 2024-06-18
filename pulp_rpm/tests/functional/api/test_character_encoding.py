@@ -24,12 +24,12 @@ This test targets the following issues:
 
 
 def test_upload_non_ascii(
-    tmp_path, artifacts_api_client, rpm_package_api, monitor_task, delete_orphans_pre
+    tmp_path, pulpcore_bindings, rpm_package_api, monitor_task, delete_orphans_pre
 ):
     """Test whether one can upload an RPM with non-ascii metadata."""
     temp_file = tmp_path / str(uuid.uuid4())
     temp_file.write_bytes(requests.get(RPM_WITH_NON_ASCII_URL).content)
-    artifact = artifacts_api_client.create(temp_file)
+    artifact = pulpcore_bindings.ArtifactsApi.create(temp_file)
     response = rpm_package_api.create(
         artifact=artifact.pulp_href,
         relative_path=RPM_WITH_NON_ASCII_NAME,
@@ -39,12 +39,12 @@ def test_upload_non_ascii(
 
 
 def test_upload_non_utf8(
-    tmp_path, artifacts_api_client, rpm_package_api, monitor_task, delete_orphans_pre
+    tmp_path, pulpcore_bindings, rpm_package_api, monitor_task, delete_orphans_pre
 ):
     """Test whether an exception is raised when non-utf-8 is uploaded."""
     temp_file = tmp_path / str(uuid.uuid4())
     temp_file.write_bytes(requests.get(RPM_WITH_NON_UTF_8_URL).content)
-    artifact = artifacts_api_client.create(temp_file)
+    artifact = pulpcore_bindings.ArtifactsApi.create(temp_file)
     with pytest.raises(PulpTaskError) as ctx:
         response = rpm_package_api.create(
             artifact=artifact.pulp_href,
