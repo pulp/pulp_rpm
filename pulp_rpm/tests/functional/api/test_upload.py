@@ -32,7 +32,7 @@ CENTOS8_CONTENT = BIG_GROUPS + BIG_CATEGORY + BIG_LANGPACK + BIG_ENVIRONMENTS
 
 
 def test_single_request_unit_and_duplicate_unit(
-    delete_orphans_pre, rpm_package_api, monitor_task, tasks_api_client
+    delete_orphans_pre, rpm_package_api, monitor_task, pulpcore_bindings
 ):
     """Test single request upload unit.
 
@@ -61,7 +61,7 @@ def test_single_request_unit_and_duplicate_unit(
         monitor_task(upload.task)
     except PulpTaskError:
         pass
-    task_report = tasks_api_client.read(upload.task)
+    task_report = pulpcore_bindings.TasksApi.read(upload.task)
     assert task_report.created_resources[0] == package.pulp_href
 
 
