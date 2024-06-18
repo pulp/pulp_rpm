@@ -142,11 +142,11 @@ def test_remove_repo_with_distribution_tree(
     init_and_sync,
     rpm_repository_api,
     rpm_content_distribution_trees_api,
-    orphans_cleanup_api_client,
+    pulpcore_bindings,
     monitor_task,
 ):
     """Sync repository with distribution tree and remove the repository."""
-    response = orphans_cleanup_api_client.cleanup({"orphan_protection_time": 0})
+    response = pulpcore_bindings.OrphansCleanupApi.cleanup({"orphan_protection_time": 0})
     monitor_task(response.task)
 
     num_repos_start = rpm_repository_api.list().count
@@ -158,6 +158,6 @@ def test_remove_repo_with_distribution_tree(
 
     assert rpm_repository_api.list().count == num_repos_start
     # Remove orphans and check if distribution tree was removed.
-    response = orphans_cleanup_api_client.cleanup({"orphan_protection_time": 0})
+    response = pulpcore_bindings.OrphansCleanupApi.cleanup({"orphan_protection_time": 0})
     monitor_task(response.task)
     assert rpm_content_distribution_trees_api.list().count == num_disttrees_start

@@ -112,11 +112,11 @@ def test_package_manager_consume(
     dnf_config_add_repo,
     dnf_install_rpm,
     create_distribution,
-    artifacts_api_client,
+    pulpcore_bindings,
     delete_orphans_pre,
 ):
     """Verify whether package manager can consume content from Pulp."""
-    before_sync_artifact_count = artifacts_api_client.list().count
+    before_sync_artifact_count = pulpcore_bindings.ArtifactsApi.list().count
 
     autopublish = sync_policy != "mirror_complete"
     distribution = create_distribution(
@@ -126,7 +126,7 @@ def test_package_manager_consume(
         sync_policy=sync_policy,
     )
 
-    before_consumption_artifact_count = artifacts_api_client.list().count
+    before_consumption_artifact_count = pulpcore_bindings.ArtifactsApi.list().count
     # sync=mirror_complete creates new Artifacts for the metadata even w/ on_demand & streamed
     # sync!=mirror_complete sets autopublish=True so new Artifacts will also be created
     assert before_consumption_artifact_count > before_sync_artifact_count
@@ -144,7 +144,7 @@ def test_package_manager_consume(
     )
     assert rpm_name == rpm[0]
 
-    after_consumption_artifact_count = artifacts_api_client.list().count
+    after_consumption_artifact_count = pulpcore_bindings.ArtifactsApi.list().count
     if policy == "immediate" or policy == "streamed":
         assert before_consumption_artifact_count == after_consumption_artifact_count
     elif policy == "on_demand":

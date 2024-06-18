@@ -21,7 +21,7 @@ if not settings.DOMAIN_ENABLED:
 
 
 def test_domain_create(
-    domains_api_client,
+    pulpcore_bindings,
     gen_object_with_cleanup,
     monitor_task,
     rpm_package_api,
@@ -34,7 +34,7 @@ def test_domain_create(
         "storage_class": "pulpcore.app.models.storage.FileSystem",
         "storage_settings": {"MEDIA_ROOT": "/var/lib/pulp/media/"},
     }
-    domain = gen_object_with_cleanup(domains_api_client, body)
+    domain = gen_object_with_cleanup(pulpcore_bindings.DomainsApi, body)
     domain_name = domain.name
 
     # create and sync in default domain (not specified)
@@ -53,7 +53,7 @@ def test_domain_create(
 
 def test_domain_sync(
     cleanup_domains,
-    domains_api_client,
+    pulpcore_bindings,
     gen_object_with_cleanup,
     monitor_task,
     rpm_advisory_api,
@@ -72,7 +72,7 @@ def test_domain_sync(
             "storage_class": "pulpcore.app.models.storage.FileSystem",
             "storage_settings": {"MEDIA_ROOT": "/var/lib/pulp/media/"},
         }
-        domain = gen_object_with_cleanup(domains_api_client, body)
+        domain = gen_object_with_cleanup(pulpcore_bindings.DomainsApi, body)
         domain_name = domain.name
 
         # create and sync in the newly-created domain
@@ -130,7 +130,7 @@ def test_domain_sync(
 
 @pytest.mark.parallel
 def test_object_creation(
-    domains_api_client, gen_object_with_cleanup, rpm_repository_api, rpm_rpmremote_api
+    pulpcore_bindings, gen_object_with_cleanup, rpm_repository_api, rpm_rpmremote_api
 ):
     """Test basic object creation in a separate domain."""
     body = {
@@ -138,7 +138,7 @@ def test_object_creation(
         "storage_class": "pulpcore.app.models.storage.FileSystem",
         "storage_settings": {"MEDIA_ROOT": "/var/lib/pulp/media/"},
     }
-    domain = gen_object_with_cleanup(domains_api_client, body)
+    domain = gen_object_with_cleanup(pulpcore_bindings.DomainsApi, body)
     domain_name = domain.name
 
     repo_body = {"name": str(uuid.uuid4())}
@@ -175,10 +175,9 @@ def test_object_creation(
 
 @pytest.mark.parallel
 def test_artifact_from_file(
-    domains_api_client,
+    pulpcore_bindings,
     gen_object_with_cleanup,
     rpm_artifact_factory,
-    artifacts_api_client,
 ):
     """Test uploading artifacts in separate domains."""
     body = {
@@ -186,24 +185,24 @@ def test_artifact_from_file(
         "storage_class": "pulpcore.app.models.storage.FileSystem",
         "storage_settings": {"MEDIA_ROOT": "/var/lib/pulp/media/"},
     }
-    domain1 = gen_object_with_cleanup(domains_api_client, body)
+    domain1 = gen_object_with_cleanup(pulpcore_bindings.DomainsApi, body)
 
     body = {
         "name": str(uuid.uuid4()),
         "storage_class": "pulpcore.app.models.storage.FileSystem",
         "storage_settings": {"MEDIA_ROOT": "/var/lib/pulp/media/"},
     }
-    domain2 = gen_object_with_cleanup(domains_api_client, body)
+    domain2 = gen_object_with_cleanup(pulpcore_bindings.DomainsApi, body)
 
     # Create as-artifact in domain1
     domain1_artifact = rpm_artifact_factory(pulp_domain=domain1.name)
-    artifacts = artifacts_api_client.list(pulp_domain=domain1.name)
+    artifacts = pulpcore_bindings.ArtifactsApi.list(pulp_domain=domain1.name)
     assert artifacts.count == 1
     assert domain1_artifact.pulp_href == artifacts.results[0].pulp_href
 
     # Create as-artifact in domain2
     domain2_artifact = rpm_artifact_factory(pulp_domain=domain2.name)
-    artifacts = artifacts_api_client.list(pulp_domain=domain2.name)
+    artifacts = pulpcore_bindings.ArtifactsApi.list(pulp_domain=domain2.name)
     assert artifacts.count == 1
     assert domain2_artifact.pulp_href == artifacts.results[0].pulp_href
 
@@ -225,7 +224,7 @@ def test_artifact_from_file(
 @pytest.mark.parallel
 def test_rpm_from_file(
     cleanup_domains,
-    domains_api_client,
+    pulpcore_bindings,
     rpm_package_factory,
     gen_object_with_cleanup,
     rpm_package_api,
@@ -236,7 +235,7 @@ def test_rpm_from_file(
         "storage_class": "pulpcore.app.models.storage.FileSystem",
         "storage_settings": {"MEDIA_ROOT": "/var/lib/pulp/media/"},
     }
-    domain = gen_object_with_cleanup(domains_api_client, body)
+    domain = gen_object_with_cleanup(pulpcore_bindings.DomainsApi, body)
 
     try:
         default_content = rpm_package_factory()
@@ -253,7 +252,7 @@ def test_rpm_from_file(
 @pytest.mark.parallel
 def test_content_promotion(
     cleanup_domains,
-    domains_api_client,
+    pulpcore_bindings,
     download_content_unit,
     rpm_repository_api,
     rpm_rpmremote_factory,
@@ -268,7 +267,7 @@ def test_content_promotion(
         "storage_class": "pulpcore.app.models.storage.FileSystem",
         "storage_settings": {"MEDIA_ROOT": "/var/lib/pulp/media/"},
     }
-    domain = gen_object_with_cleanup(domains_api_client, body)
+    domain = gen_object_with_cleanup(pulpcore_bindings.DomainsApi, body)
 
     try:
         # Sync task
@@ -314,7 +313,7 @@ def test_content_promotion(
 
 @pytest.mark.parallel
 def test_domain_rbac(
-    cleanup_domains, domains_api_client, gen_user, gen_object_with_cleanup, rpm_repository_api
+    cleanup_domains, pulpcore_bindings, gen_user, gen_object_with_cleanup, rpm_repository_api
 ):
     """Test domain level-roles."""
     body = {
@@ -322,7 +321,7 @@ def test_domain_rbac(
         "storage_class": "pulpcore.app.models.storage.FileSystem",
         "storage_settings": {"MEDIA_ROOT": "/var/lib/pulp/media/"},
     }
-    domain = gen_object_with_cleanup(domains_api_client, body)
+    domain = gen_object_with_cleanup(pulpcore_bindings.DomainsApi, body)
 
     try:
         rpm_viewer = "rpm.rpmrepository_viewer"
