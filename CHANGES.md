@@ -8,6 +8,21 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.27.1 (2024-06-20) {: #3.27.1 }
+
+
+#### Features {: #3.27.1-feature }
+
+- Honor repository's compression_type for publications unless overridden
+  [#3614](https://github.com/pulp/pulp_rpm/issues/3614)
+
+#### Bugfixes {: #3.27.1-bugfix }
+
+- Declared compatibility against pulpcore<3.70.
+  [#3620](https://github.com/pulp/pulp_rpm/issues/3620)
+
+---
+
 ## 3.27.0 (2024-06-16) {: #3.27.0 }
 
 
