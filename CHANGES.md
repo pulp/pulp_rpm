@@ -8,6 +8,21 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.27.1 (2024-06-20) {: #3.27.1 }
+
+
+#### Features {: #3.27.1-feature }
+
+- Honor repository's compression_type for publications unless overridden
+  [#3614](https://github.com/pulp/pulp_rpm/issues/3614)
+
+#### Bugfixes {: #3.27.1-bugfix }
+
+- Declared compatibility against pulpcore<3.70.
+  [#3620](https://github.com/pulp/pulp_rpm/issues/3620)
+
+---
+
 ## 3.27.0 (2024-06-16) {: #3.27.0 }
 
 
@@ -675,6 +690,18 @@ No significant changes.
 ### Misc
 
 -   [#2718](https://github.com/pulp/pulp_rpm/issues/2718), [#2791](https://github.com/pulp/pulp_rpm/issues/2791), [#2805](https://github.com/pulp/pulp_rpm/issues/2805), [#2832](https://github.com/pulp/pulp_rpm/issues/2832), [#2886](https://github.com/pulp/pulp_rpm/issues/2886), [#2905](https://github.com/pulp/pulp_rpm/issues/2905)
+
+---
+
+## 3.18.21 (2024-06-20) {: #3.18.21 }
+
+
+#### Bugfixes {: #3.18.21-bugfix }
+
+- Taught tests to find centos8 at vault.centos.org.
+  [#3572](https://github.com/pulp/pulp_rpm/issues/3572)
+- Fix a flaw that still allowed to add duplicate advisories to a repository version.
+  [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
 
 ---
 
