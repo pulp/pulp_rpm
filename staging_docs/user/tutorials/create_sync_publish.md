@@ -9,7 +9,7 @@ available for users.
 
     ```bash
     echo "Creating Repository."
-    pulp rpm repository create --name foo | jq -r '.pulp_href')
+    pulp rpm repository create --name foo | jq -r '.pulp_href'
     echo "Inspecting Repository."
     pulp rpm repository show --name foo
     ```
