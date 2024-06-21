@@ -21,10 +21,6 @@ with the pruned list of Packages. All the "standard rules" apply at that point:
 - The version must be published to generate the repo-metadata reflecting the new content (e.g., a new Publication is created or`autopublish` is `True`).
 - The version will not be available until it is Distributed (e.g. a Distribution is created to point to the new Publication or a Distribution exists that points at the **Repository** directly)
 
-!!! note
-
-    Support for `/prune/` is not yet available in `pulp-cli`. Until it is, this relies on the direct REST calls
-    to invoke the API.
 
 !!! note
 
@@ -34,24 +30,27 @@ with the pruned list of Packages. All the "standard rules" apply at that point:
 
 ## Example
 
+=== "Setup"
+
+    ```bash
+    pulp rpm remote create --name zoo --policy on_demand --url https://fixtures.pulpproject.org/rpm-signed/
+    pulp rpm repository create --name zoo --remote zoo
+    pulp rpm repository sync --name zoo
+    ```
+
 === "Prune a repository"
 
     ```bash 
-    $ http POST :5001/pulp/api/v3/rpm/prune/ \
-      repo_hrefs:='["/pulp/api/v3/repositories/rpm/rpm/018f73d1-8ba2-779c-8956-854b33b6899c/"]' \
-      keep_days=0 \
-      dry_run=True
+    $ pulp rpm prune-packages --repository zoo --keep-days 0 --dry-run
+    Started background task group /pulp/api/v3/task-groups/019036ae-04c5-79b4-bc0b-e31be3372c8a/
+    $ pulp task-group show --href /pulp/api/v3/task-groups/019036ae-04c5-79b4-bc0b-e31be3372c8a/
     ``` 
 
 === "Output"
 
     ```json
     {
-        "task_group": "/pulp/api/v3/task-groups/018f7468-a024-7330-b65e-991203d49064/"
-    }
-    $ pulp show --href /pulp/api/v3/task-groups/018f7468-a024-7330-b65e-991203d49064/
-    {
-      "pulp_href": "/pulp/api/v3/task-groups/018f7468-a024-7330-b65e-991203d49064/",
+      "pulp_href": "/pulp/api/v3/task-groups/019036ae-04c5-79b4-bc0b-e31be3372c8a/",
       "description": "Prune old Packages.",
       "all_tasks_dispatched": true,
       "waiting": 0,
@@ -72,59 +71,59 @@ with the pruned list of Packages. All the "standard rules" apply at that point:
       ],
       "tasks": [
         {
-          "pulp_href": "/pulp/api/v3/tasks/018f7468-a058-7e11-a57d-db9096eb16bc/",
-          "pulp_created": "2024-05-14T00:02:44.953250Z",
-          "pulp_last_updated": "2024-05-14T00:02:44.953262Z",
+          "pulp_href": "/pulp/api/v3/tasks/019036ae-04d0-79e8-97eb-f4ac6778d1a1/",
+          "pulp_created": "2024-06-20T17:24:52.561964Z",
+          "pulp_last_updated": "2024-06-20T17:24:52.561999Z",
           "name": "pulp_rpm.app.tasks.prune.prune_packages",
           "state": "completed",
-          "unblocked_at": "2024-05-14T00:02:44.974458Z",
-          "started_at": "2024-05-14T00:02:45.042580Z",
-          "finished_at": "2024-05-14T00:02:45.262785Z",
-          "worker": "/pulp/api/v3/workers/018f743a-d793-78df-b3e9-7cca5e20b99b/"
+          "unblocked_at": "2024-06-20T17:24:52.579086Z",
+          "started_at": "2024-06-20T17:24:52.619739Z",
+          "finished_at": "2024-06-20T17:24:52.684361Z",
+          "worker": "/pulp/api/v3/workers/01902cd4-536f-7e31-aec9-059c55ba427c/"
         },
         {
-          "pulp_href": "/pulp/api/v3/tasks/018f7468-a16f-7da0-a530-67bcbd003d6a/",
-          "pulp_created": "2024-05-14T00:02:45.231599Z",
-          "pulp_last_updated": "2024-05-14T00:02:45.231611Z",
+          "pulp_href": "/pulp/api/v3/tasks/019036ae-052c-7b42-9716-61c7c289662c/",
+          "pulp_created": "2024-06-20T17:24:52.652887Z",
+          "pulp_last_updated": "2024-06-20T17:24:52.652897Z",
           "name": "pulp_rpm.app.tasks.prune.prune_repo_packages",
           "state": "completed",
-          "unblocked_at": "2024-05-14T00:02:45.258585Z",
-          "started_at": "2024-05-14T00:02:45.321801Z",
-          "finished_at": "2024-05-14T00:02:45.504732Z",
-          "worker": "/pulp/api/v3/workers/018f743a-d85b-77d8-80e7-53850c2b878c/"
+          "unblocked_at": "2024-06-20T17:24:52.669390Z",
+          "started_at": "2024-06-20T17:24:52.721946Z",
+          "finished_at": "2024-06-20T17:24:52.774561Z",
+          "worker": "/pulp/api/v3/workers/01902cd4-51ff-78d3-9aa7-3d2dde187e18/"
         }
       ]
     }
     ```
 
-=== "Show Spawned Task"
+=== "Show spawned task pruning repository 'zoo'"
 
     ```bash
-    $ pulp task show --href /pulp/api/v3/tasks/018f7468-a16f-7da0-a530-67bcbd003d6a/
+    $ pulp task show --href /pulp/api/v3/tasks/019036ae-052c-7b42-9716-61c7c289662c/
     ```
 
 === "Output"
 
     ```json
     {
-      "pulp_href": "/pulp/api/v3/tasks/018f7468-a16f-7da0-a530-67bcbd003d6a/",
-      "pulp_created": "2024-05-14T00:02:45.231599Z",
-      "pulp_last_updated": "2024-05-14T00:02:45.231611Z",
+      "pulp_href": "/pulp/api/v3/tasks/019036ae-052c-7b42-9716-61c7c289662c/",
+      "pulp_created": "2024-06-20T17:24:52.652887Z",
+      "pulp_last_updated": "2024-06-20T17:24:52.652897Z",
       "state": "completed",
       "name": "pulp_rpm.app.tasks.prune.prune_repo_packages",
-      "logging_cid": "9553043efcb74085a32606569f230610",
+      "logging_cid": "4008405185ef4b40b24581eefece35ab",
       "created_by": "/pulp/api/v3/users/1/",
-      "unblocked_at": "2024-05-14T00:02:45.258585Z",
-      "started_at": "2024-05-14T00:02:45.321801Z",
-      "finished_at": "2024-05-14T00:02:45.504732Z",
+      "unblocked_at": "2024-06-20T17:24:52.669390Z",
+      "started_at": "2024-06-20T17:24:52.721946Z",
+      "finished_at": "2024-06-20T17:24:52.774561Z",
       "error": null,
-      "worker": "/pulp/api/v3/workers/018f743a-d85b-77d8-80e7-53850c2b878c/",
-      "parent_task": "/pulp/api/v3/tasks/018f7468-a058-7e11-a57d-db9096eb16bc/",
+      "worker": "/pulp/api/v3/workers/01902cd4-51ff-78d3-9aa7-3d2dde187e18/",
+      "parent_task": "/pulp/api/v3/tasks/019036ae-04d0-79e8-97eb-f4ac6778d1a1/",
       "child_tasks": [],
-      "task_group": "/pulp/api/v3/task-groups/018f7468-a024-7330-b65e-991203d49064/",
+      "task_group": "/pulp/api/v3/task-groups/019036ae-04c5-79b4-bc0b-e31be3372c8a/",
       "progress_reports": [
         {
-          "message": "Pruning unfoo",
+          "message": "Pruning zoo",
           "code": "rpm.package.prune.repository",
           "state": "completed",
           "total": 4,
@@ -134,11 +133,9 @@ with the pruned list of Packages. All the "standard rules" apply at that point:
       ],
       "created_resources": [],
       "reserved_resources_record": [
-        "prn:rpm.rpmrepository:018f73d1-8ba2-779c-8956-854b33b6899c",
-        "/pulp/api/v3/repositories/rpm/rpm/018f73d1-8ba2-779c-8956-854b33b6899c/",
+        "prn:rpm.rpmrepository:019036a6-4f7a-7daa-b2ad-02bd30f4ce01",
         "rpm-prune-worker-0",
-        "shared:prn:core.domain:018e770d-1009-786d-a08a-36acd238d229",
-        "shared:/pulp/api/v3/domains/018e770d-1009-786d-a08a-36acd238d229/"
+        "shared:prn:core.domain:01902cd3-9252-72fe-9069-58fc3086c0cf"
       ]
     }
     ```
