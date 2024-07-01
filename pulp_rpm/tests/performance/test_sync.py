@@ -10,7 +10,6 @@ from pulp_rpm.tests.functional.constants import (
     RHEL8_BASEOS_CDN_URL,
     RPM_KICKSTART_CONTENT_NAME,
     RPM_KICKSTART_COUNT,
-    CENTOS7_URL,
     CENTOS8_STREAM_APPSTREAM_URL,
     CENTOS8_STREAM_BASEOS_URL,
     EPEL8_MIRRORLIST_URL,
@@ -34,9 +33,8 @@ def parse_date_from_string(s, parse_format="%Y-%m-%dT%H:%M:%S.%fZ"):
 @pytest.mark.parametrize(
     "url,policy,check_dist_tree,resync",
     [
-        (CENTOS7_URL, "on_demand", True, True),
         pytest.param(
-            CENTOS7_URL,
+            CENTOS8_STREAM_BASEOS_URL,
             "immediate",
             True,
             True,
