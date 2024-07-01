@@ -604,13 +604,11 @@ RPM_DIFF_NAME_SAME_CONTENT_URL = urljoin(PULP_FIXTURES_BASE_URL, "diff-name-same
 RPM_ONLY_METADATA_REPO_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-unsigned-meta-only")
 
 AMAZON_MIRROR = "http://amazonlinux.us-east-1.amazonaws.com/2/core/latest/x86_64/mirror.list"
-CENTOS7_URL = "http://mirror.centos.org/centos-7/7/os/x86_64/"
-CENTOS7_OPSTOOLS_URL = "http://mirror.centos.org/centos/7/opstools/x86_64/"
 CENTOS8_STREAM_BASEOS_URL = "http://vault.centos.org/centos/8-stream/BaseOS/x86_64/os/"
 CENTOS8_STREAM_APPSTREAM_URL = "http://vault.centos.org/centos/8-stream/AppStream/x86_64/os/"
 CENTOS9_STREAM_BASEOS_URL = "http://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/"
 CENTOS9_STREAM_APPSTREAM_URL = "http://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/"
-EPEL7_URL = "https://dl.fedoraproject.org/pub/epel/7/x86_64/"
+EPEL8_URL = "https://dl.fedoraproject.org/pub/epel/8/Everything/x86_64/"
 EPEL8_MIRRORLIST_URL = "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-8&arch=x86_64"
 RAWHIDE_KICKSTART_URL = (
     "https://dl.fedoraproject.org/pub/fedora/linux/development/rawhide/Server/x86_64/os/"
