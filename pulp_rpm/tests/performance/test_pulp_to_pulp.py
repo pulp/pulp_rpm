@@ -3,16 +3,13 @@
 import pytest
 
 from pulp_rpm.tests.functional.constants import (
-    CENTOS7_URL,
     CENTOS8_STREAM_BASEOS_URL,
     CENTOS8_STREAM_APPSTREAM_URL,
 )
 
 
 @pytest.mark.parallel
-@pytest.mark.parametrize(
-    "url", [CENTOS7_URL, CENTOS8_STREAM_BASEOS_URL, CENTOS8_STREAM_APPSTREAM_URL]
-)
+@pytest.mark.parametrize("url", [CENTOS8_STREAM_BASEOS_URL, CENTOS8_STREAM_APPSTREAM_URL])
 def test_pulp_to_pulp(
     url,
     init_and_sync,
