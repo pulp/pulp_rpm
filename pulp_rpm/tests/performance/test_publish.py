@@ -11,10 +11,8 @@ from productmd.treeinfo import TreeInfo
 
 from pulp_rpm.tests.functional.constants import (
     RPM_PACKAGE_CONTENT_NAME,
-    CENTOS7_URL,
     CENTOS8_STREAM_APPSTREAM_URL,
     CENTOS8_STREAM_BASEOS_URL,
-    EPEL7_URL,
 )
 
 
@@ -83,8 +81,6 @@ def centos_8stream_baseos_extra_tests(rpm_distribution_factory):
 @pytest.mark.parametrize(
     "url,extra_tests",
     [
-        (EPEL7_URL, None),
-        (CENTOS7_URL, None),
         (CENTOS8_STREAM_BASEOS_URL, "centos_8stream_baseos_extra_tests"),
         (CENTOS8_STREAM_APPSTREAM_URL, None),
         (CENTOS8_STREAM_BASEOS_URL, None),
