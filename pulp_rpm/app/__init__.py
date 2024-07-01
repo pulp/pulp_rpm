@@ -11,3 +11,9 @@ class PulpRpmPluginAppConfig(PulpPluginAppConfig):
     version = "3.28.0.dev"
     python_package_name = "pulp-rpm"
     domain_compatible = True
+
+    def ready(self):
+        # include drf-spectacular Extension module
+        import pulp_rpm.app.schema.extensions  # noqa: E402, F401
+
+        super().ready()

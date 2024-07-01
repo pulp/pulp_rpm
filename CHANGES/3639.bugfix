@@ -1,0 +1,1 @@
+Fixed openapi schema generation by monkeypatching that drf JSONField is always an OA 'object'.
