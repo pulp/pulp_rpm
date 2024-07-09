@@ -3,6 +3,7 @@ from gettext import gettext as _
 
 from pulpcore.plugin.serializers import DetailRelatedField, NoArtifactContentSerializer
 from rest_framework import serializers
+from pulp_rpm.app.fields import CustomJSONField
 
 from pulp_rpm.app.models import Modulemd, ModulemdDefaults, ModulemdObsolete, Package
 
@@ -31,8 +32,8 @@ class ModulemdSerializer(NoArtifactContentSerializer):
     arch = serializers.CharField(
         help_text=_("Modulemd architecture."),
     )
-    artifacts = serializers.JSONField(help_text=_("Modulemd artifacts."), allow_null=True)
-    dependencies = serializers.JSONField(help_text=_("Modulemd dependencies."), allow_null=True)
+    artifacts = CustomJSONField(help_text=_("Modulemd artifacts."), allow_null=True)
+    dependencies = CustomJSONField(help_text=_("Modulemd dependencies."), allow_null=True)
     # TODO: The performance of this is not great, there's a noticable difference in response
     # time before/after. Since this will only return Package content hrefs, we might benefit
     # from creating a specialized version of this Field that can skip some of the work.
@@ -45,7 +46,7 @@ class ModulemdSerializer(NoArtifactContentSerializer):
         view_name="content-rpm/packages-detail",
         many=True,
     )
-    profiles = serializers.JSONField(help_text=_("Modulemd profiles."), allow_null=True)
+    profiles = CustomJSONField(help_text=_("Modulemd profiles."), allow_null=True)
     snippet = serializers.CharField(help_text=_("Modulemd snippet"), write_only=True)
 
     def create(self, validated_data):
@@ -87,7 +88,7 @@ class ModulemdDefaultsSerializer(NoArtifactContentSerializer):
 
     module = serializers.CharField(help_text=_("Modulemd name."))
     stream = serializers.CharField(help_text=_("Modulemd default stream."))
-    profiles = serializers.JSONField(help_text=_("Default profiles for modulemd streams."))
+    profiles = CustomJSONField(help_text=_("Default profiles for modulemd streams."))
     snippet = serializers.CharField(help_text=_("Modulemd default snippet"), write_only=True)
 
     def create(self, validated_data):
