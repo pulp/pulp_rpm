@@ -77,64 +77,54 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         read_only=True,
     )
 
-    changelogs = serializers.JSONField(
+    changelogs = serializers.ListField(
         help_text=_("Changelogs that package contains"),
-        default="[]",
         required=False,
         read_only=True,
     )
-    files = serializers.JSONField(
+    files = serializers.ListField(
         help_text=_("Files that package contains"),
-        default="[]",
         required=False,
         read_only=True,
     )
 
-    requires = serializers.JSONField(
+    requires = serializers.ListField(
         help_text=_("Capabilities the package requires"),
-        default="[]",
         required=False,
         read_only=True,
     )
-    provides = serializers.JSONField(
+    provides = serializers.ListField(
         help_text=_("Capabilities the package provides"),
-        default="[]",
         required=False,
         read_only=True,
     )
-    conflicts = serializers.JSONField(
+    conflicts = serializers.ListField(
         help_text=_("Capabilities the package conflicts"),
-        default="[]",
         required=False,
         read_only=True,
     )
-    obsoletes = serializers.JSONField(
+    obsoletes = serializers.ListField(
         help_text=_("Capabilities the package obsoletes"),
-        default="[]",
         required=False,
         read_only=True,
     )
-    suggests = serializers.JSONField(
+    suggests = serializers.ListField(
         help_text=_("Capabilities the package suggests"),
-        default="[]",
         required=False,
         read_only=True,
     )
-    enhances = serializers.JSONField(
+    enhances = serializers.ListField(
         help_text=_("Capabilities the package enhances"),
-        default="[]",
         required=False,
         read_only=True,
     )
-    recommends = serializers.JSONField(
+    recommends = serializers.ListField(
         help_text=_("Capabilities the package recommends"),
-        default="[]",
         required=False,
         read_only=True,
     )
-    supplements = serializers.JSONField(
+    supplements = serializers.ListField(
         help_text=_("Capabilities the package supplements"),
-        default="[]",
         required=False,
         read_only=True,
     )
