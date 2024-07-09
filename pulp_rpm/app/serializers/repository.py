@@ -139,7 +139,7 @@ class RpmRepositorySerializer(RepositorySerializer):
         ),
         read_only=True,
     )
-    repo_config = serializers.JSONField(
+    repo_config = serializers.DictField(
         required=False,
         help_text=_("A JSON document describing config.repo file"),
     )
@@ -402,7 +402,7 @@ class RpmPublicationSerializer(PublicationSerializer):
         ),
         read_only=True,
     )
-    repo_config = serializers.JSONField(
+    repo_config = serializers.DictField(
         required=False,
         help_text=_("A JSON document describing config.repo file"),
     )
@@ -536,13 +536,33 @@ class RpmRepositorySyncURLSerializer(RepositorySyncURLSerializer):
         return data
 
 
+copy_config_example = """
+[
+    {
+    "source_repo_version": {{ version-href }},
+    "dest_repo": {{ repo-href }},
+    "content": [ {{ item-1.href }}, {{ item-2.href }} ]
+    },
+    {
+    "source_repo_version": {{ version-href }},
+    "dest_repo": {{ repo-href }},
+    "dest_base_version": 0,
+    "content": [ {{ item-1.href }}, {{ item-2.href }} ]
+    }
+]
+"""
+
+
 class CopySerializer(ValidateFieldsMixin, serializers.Serializer):
     """
     A serializer for Content Copy API.
     """
 
-    config = serializers.JSONField(
-        help_text=_("A JSON document describing sources, destinations, and content to be copied"),
+    config = serializers.ListField(
+        help_text=_(
+            "A JSON List of Objects describing sources, destinations, and content to be copied. "
+            f"E.g:\n```{copy_config_example}```"
+        ),
     )
 
     dependency_solving = serializers.BooleanField(
