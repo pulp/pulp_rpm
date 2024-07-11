@@ -276,6 +276,13 @@ def test_clean_import(
 
     for repo in exported_repos:
         monitor_task(rpm_repository_api.delete(repo.pulp_href).task)
+
+    # At this time there should be no other repository in the system.
+    result = rpm_repository_api.list()
+    if result.count != len(import_repos):
+        descriptions = [r.description for r in result.results]
+        pytest.fail(f"Leftover repositories: {descriptions}")
+
     monitor_task(pulpcore_bindings.OrphansCleanupApi.cleanup({"orphan_protection_time": 0}).task)
 
     existing_repos = rpm_repository_api.list().count

@@ -1,3 +1,4 @@
+import os
 import uuid
 
 import pytest
@@ -71,7 +72,7 @@ def rpm_repository_factory(rpm_repository_api, gen_object_with_cleanup):
     """A factory to generate an RPM Repository with auto-deletion after the test run."""
 
     def _rpm_repository_factory(pulp_domain=None, **body):
-        data = {"name": str(uuid.uuid4())}
+        data = {"name": str(uuid.uuid4()), "description": os.environ["PYTEST_CURRENT_TEST"]}
         data.update(body)
         kwargs = {}
         if pulp_domain:
