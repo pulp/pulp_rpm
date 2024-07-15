@@ -3,7 +3,7 @@
 Modifying existing Repository Content lets you filter what content you want in a Repository.
 
 Keep in mind that none of these operations introduces new Content or deletes a Content from a Pulp instance.
-To populate Pulp, see [Post and Delete Content](site:pulp_rpm/docs/user/guides/02-upload/) or [Create, Sync and Publish a Repository](site:pulp_rpm/docs/user/tutorials/01-create_sync_publish/).
+To populate Pulp, see [Post and Delete Content](site:pulp_rpm/docs/user/guides/upload/) or [Create, Sync and Publish a Repository](site:pulp_rpm/docs/user/tutorials/create_sync_publish/).
 
 ## Basic Repository Modification API
 

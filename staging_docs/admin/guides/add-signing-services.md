@@ -29,7 +29,7 @@ Nevertheless, the process of registering is very similar.
 1. Register it with `pulpcore-manager add-signing-service`.
     - The `--class` should be `rpm:RpmPackageSigningService`.
     - The key provided here serves only for validating the script.
-      The signing fingerprint is provided dynamically, as [on upload signing](site:pulp_rpm/docs/user/guides/06-sign-packages/#on-upload).
+      The signing fingerprint is provided dynamically, as [on upload signing](site:pulp_rpm/docs/user/guides/sign-packages/#on-upload).
 1. Retrieve the signing service for usage.
 
 ### Example

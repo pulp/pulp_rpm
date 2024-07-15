@@ -2,8 +2,8 @@
 
 The pulp_rpm plugin extends pulpcore to support hosting RPM family content types.
 
-If you just got here, you should take our [Getting Started with RPM](site:pulp_rpm/docs/user/tutorials/01-create_sync_publish/) tutorial to get your first RPM repository up and running.
-We also recommended that you read the [Basic Concepts](site:pulp_rpm/docs/user/learn/01-manage/) section before diving into the workflows and reference material.
+If you just got here, you should take our [Getting Started with RPM](site:pulp_rpm/docs/user/tutorials/create_sync_publish/) tutorial to get your first RPM repository up and running.
+We also recommended that you read the [Basic Concepts](site:pulp_rpm/docs/user/learn/concepts/) section before diving into the workflows and reference material.
 
 ## Features
 
@@ -15,6 +15,6 @@ We also recommended that you read the [Basic Concepts](site:pulp_rpm/docs/user/l
 - Upload local RPM content
 - Add, remove, copy, and organize RPM content into various repositories
 - De-duplication of all saved content
-- Host content either [locally or on S3](https://docs.pulpproject.org/installation/storage.html)
+- Host content either [locally or on S3](https://github.com/pulp/pulp-oci-images/issues/649)
 - View distributions served by pulpcore-content in a browser
 

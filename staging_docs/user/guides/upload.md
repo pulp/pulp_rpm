@@ -153,7 +153,7 @@ Advisory upload requires a file or an artifact containing advisory information i
 !!! note
 
     The previous example doesn't relate the Advisory with a Repository.
-    To do so, see [Add Content to Repository](site:pulp_rpm/docs/user/guides/03-modify#add-content-to-repository).
+    To do so, see [Add Content to Repository](site:pulp_rpm/docs/user/guides/modify#add-content-to-repository).
 
 ### Other Contents
 
@@ -172,7 +172,7 @@ pulp rpm content -t CONTENT_TYPE create --help
 !!! warning
 
     `pulp-cli` may not support all of these yet, but they are available in the REST API 
-    (e.g, [modulemd_defaults POST](https://docs.pulpproject.org/pulp_rpm/restapi.html#tag/Content:-Modulemd_Defaults/operation/content_rpm_modulemd_defaults_create)).
+    (e.g, [modulemd_defaults POST](site:pulp_rpm/restapi/#tag/Content:-Modulemd_Defaults/operation/content_rpm_modulemd_defaults_create)).
     
     You may consider [opening a ticket in pulp-cli](https://github.com/pulp/pulp-cli/issues/new/choose) requesting support.
 
@@ -181,5 +181,5 @@ pulp rpm content -t CONTENT_TYPE create --help
 Deleting *Content* is not part of the user-facing API as a CRUD operation.
 There are several architectural reasons for that, one of which is that multiple *Repository Versions* may rely on the same *Content* unit, and forcing a deletion may lead to a broken state.
 
-If you want to remove *Content*, consider using the [Modify API](site:pulp_rpm/docs/user/guides/03-modify/#remove-content-from-a-repository) to remove the content *from a Repository*, and not from Pulp itself. The latter should be handled by Admins, who should configure Pulp to handle cleanups safely.
+If you want to remove *Content*, consider using the [Modify API](site:pulp_rpm/docs/user/guides/modify/#remove-content-from-a-repository) to remove the content *from a Repository*, and not from Pulp itself. The latter should be handled by Admins, who should configure Pulp to handle cleanups safely.
 

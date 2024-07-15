@@ -140,11 +140,11 @@ pulp rpm remote create \
 
 You can also specify the ULN Server base URL for a remote using the `uln_server_base_url` parameter.
 If you do not provide this parameter, a sync with the remote will default to the contents of the `DEFAULT_ULN_SERVER_BASE_URL` setting, which is `https://linux-update.oracle.com/` by default.
-The [pulpcore settings documentation](site:/pulpcore/docs/admin/learn/settings/) has more on how to change Pulp settings.
+The [pulpcore settings documentation](site:pulpcore/docs/admin/reference/settings/) has more on how to change Pulp settings.
 
 Once you have created a ULN remote, you can synchronize it into a RPM repository, just like you would with a RPM remote.
 
-You may also want to consult the [Oracle ULN documentation](https://docs.oracle.com/en/operating-systems/oracle-linux/uln-user/ol_about_uln.html) for more information.
+You may also want to consult the [Oracle ULN documentation](https://docs.oracle.com/en/operating-systems/oracle-linux/uln-user/uln-AbouttheUnbreakableLinuxNetwork.html#ol_about_uln) for more information.
 
 ## Sync repository `foo` using remote `bar`
 
@@ -242,7 +242,7 @@ run a full sync.
 
 !!! note
     To set up a regular sync task, use one of the external tools that deal with periodic background jobs.
-    Learn more about scheduling tasks [here](site:/pulpcore/workflows/scheduling-tasks.html).
+    Learn more about scheduling tasks [here](site:pulpcore/docs/user/learn/from-pulp-2/#scheduling-tasks).
 
 ## Create a Publication
 
@@ -307,7 +307,7 @@ A publication can only be created once a sync task completes. You can specify ch
     }
     ```
 
-We encourage users to take a look at the [pulp_rpm API documentation](site:/pulp_rpm/restapi.html#tag/Repositories:-Rpm/operation/repositories_rpm_rpm_create)
+We encourage users to take a look at the [pulp_rpm API documentation](site:pulp_rpm/restapi/#tag/Repositories:-Rpm/operation/repositories_rpm_rpm_create)
 to see the default values for these options.
 
 ## Create a Distribution for the Publication
