@@ -37,7 +37,7 @@ pulp rpm repository show --name "${REPO_NAME}"
 ```
 
 Then, the repository needs to be published and a new distribution needs to be created out of it, as
-usually. Follow the instructions provided [in the tutorial](site:/pulp_rpm/docs/user/tutorials/01-create_sync_publish/#create-a-publication) to do so.
+usually. Follow the instructions provided [in the tutorial](site:/pulp_rpm/docs/user/tutorials/create_sync_publish/#create-a-publication) to do so.
 
 The publication will automatically contain a detached ascii-armored signature and a public key.
 Both the detached signature and the public key are used by package managers during the process of

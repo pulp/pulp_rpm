@@ -3,21 +3,21 @@
 ## Python Client
 
 The [pulp-rpm-client package](https://pypi.org/project/pulp-rpm-client/) on PyPI provides
-bindings for all API calls in the [pulp_rpm API documentation](restapi.html). It is
+bindings for all API calls in the [pulp_rpm API documentation](site:pulp_rpm/restapi/). It is
 currently published daily and with every RC.
 
 The [pulpcore-client package](https://pypi.org/project/pulpcore-client/) on PyPI provides bindings
-for all API calls in the [pulpcore API documentation](https://docs.pulpproject.org/restapi.html).
+for all API calls in the [pulpcore API documentation](site:pulpcore/restapi/).
 It is currently published daily and with every RC.
 
 ## Ruby Client
 
 The [pulp_rpm_client Ruby Gem](https://rubygems.org/gems/pulp_rpm_client) on rubygems.org
-provides bindings for all API calls in the [pulp_rpm API documentation](restapi.html). It
+provides bindings for all API calls in the [pulp_rpm API documentation](site:pulp_rpm/restapi/). It
 is currently published daily and with every RC.
 
 The [pulpcore_client Ruby Gem](https://rubygems.org/gems/pulpcore_client) on rubygems.org provides
-bindings for all API calls in the [pulpcore API documentation](https://docs.pulpproject.org/restapi.html). It is currently published daily and with every RC.
+bindings for all API calls in the [pulpcore API documentation](site:pulpcore/restapi/). It is currently published daily and with every RC.
 
 ## Client in a language of your choice
 

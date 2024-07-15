@@ -13,7 +13,7 @@ Sign an RPM Package when uploading it to a Repository.
 ### Pre-requisites
 
 - Have an `RpmPackageSigningService` registered
-  (see [here](site:pulp_rpm/docs/admin/guides/add-package-signing-service/#package-signing)).
+  (see [here](site:pulp_rpm/docs/admin/guides/add-signing-services/#package-signing)).
 - Have the V4 fingerprint of the key you want to use. The key should be accessible by the SigningService you are using.
 
 ### Instructions
@@ -41,7 +41,7 @@ pulp rpm content upload \
 ### Known Limitations
 
 **Traffic overhead**: The signing of a package should happen inside of a Pulp worker.
-  [By design](site:pulpcore/docs/dev/learn/triage-needed!/concepts/#tasks),
+  [By design](site:pulpcore/docs/dev/learn/plugin-concepts/#tasks),
   Pulp needs to temporarily commit the file to the default backend storage in order to make the Uploaded File available to the tasking system.
   This implies in some extra traffic, compared to a scenario where a task could process the file directly.
 
