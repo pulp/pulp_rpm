@@ -22,7 +22,7 @@ deploy_to_pypi: true
 disabled_redis_runners: []
 doc_requirements_from_pulpcore: false
 docker_fixtures: true
-docs_test: true
+docs_test: false
 flake8: true
 flake8_ignore: []
 github_org: pulp
