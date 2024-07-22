@@ -32,7 +32,9 @@ kanban: true
 latest_release_branch: null
 lint_requirements: true
 noissue_marker: '[noissue]'
-os_required_packages: []
+os_required_packages:
+- libgirepository1.0-dev
+- gir1.2-modulemd-2.0
 parallel_test_workers: 8
 plugin_app_label: rpm
 plugin_default_branch: main
