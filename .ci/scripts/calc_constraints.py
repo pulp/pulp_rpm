@@ -105,6 +105,8 @@ def main():
             if line.strip().startswith("#"):
                 # Shortcut comment only lines
                 print(line.strip())
+            elif "pygobject" in line.lower():
+                print("# Skipping PyGObject.")
             else:
                 req, comment = split_comment(line)
                 if args.upper:
