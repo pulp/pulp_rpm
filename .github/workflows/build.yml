@@ -31,14 +31,14 @@ jobs:
       - uses: "actions/setup-python@v5"
         with:
           python-version: "3.11"
+      - name: "Install OS packages"
+        run: |
+          sudo apt-get install -y libgirepository1.0-dev gir1.2-modulemd-2.0
       - name: "Install python dependencies"
         run: |
           echo ::group::PYDEPS
           pip install packaging twine wheel mkdocs jq "PyGObject<3.45"
           echo ::endgroup::
-      - name: "Install OS packages"
-        run: |
-          sudo apt-get install -y libgirepository1.0-dev gir1.2-modulemd-2.0
       - name: "Build package"
         run: |
           python3 setup.py sdist bdist_wheel --python-tag py3
