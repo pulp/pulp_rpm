@@ -2,6 +2,11 @@
 
 import pytest
 from random import choice
+import createrepo_c as cr
+from urllib.parse import urljoin
+import os
+import shutil
+import hashlib
 
 import dictdiffer
 import requests
@@ -1145,3 +1150,83 @@ def test_config_repo_mirror_sync(
     assert bytes(f"baseurl={distribution.base_url}\n", "utf-8") in content
     assert bytes("gpgcheck=1\n", "utf-8") in content
     assert bytes("repo_gpgcheck=0", "utf-8") in content
+
+
+@pytest.mark.parametrize("repeat", range(5))
+def test_remote_content_change(
+    tmpdir,
+    rpm_repository_api,
+    monitor_task,
+    init_and_sync,
+    rpm_repository_factory,
+    delete_orphans_pre,
+    rpm_distribution_factory,
+    repeat,
+):
+    assert rpm_repository_api.list().count == 0
+    policy = "on_demand"
+    sync_policy = "mirror_content_only"
+
+    pkg_name = "giraffe-0.67-2.noarch.rpm"
+    ext_repo_foo = f"{tmpdir}/repo_foo"
+    ext_repo_bar = f"{tmpdir}/repo_bar"
+    download_dir = f"{tmpdir}/download_dir"
+    os.mkdir(ext_repo_foo)
+    os.mkdir(ext_repo_bar)
+    os.mkdir(download_dir)
+
+    signed_url = urljoin(RPM_SIGNED_FIXTURE_URL, pkg_name)
+    unsigned_url = urljoin(RPM_UNSIGNED_FIXTURE_URL, pkg_name)
+    wget_download_on_host(signed_url, download_dir)  # to download_dir/rpm-signed/{pkg-name}
+    wget_download_on_host(unsigned_url, download_dir)  # to download_dir/rpm-unsigned/{pkg-name}
+
+    # Create initial external repositories and sync with Pulp
+    # - Both contain the signed version of the package
+    for repo in (ext_repo_foo, ext_repo_bar):
+        shutil.copy(f"{download_dir}/rpm-signed/{pkg_name}", repo)
+        with cr.RepositoryWriter(repo) as writer:
+            writer.set_num_of_pkgs(1)
+            writer.add_pkg_from_file(f"{repo}/{pkg_name}")
+
+    repo_foo = rpm_repository_factory(autopublish=True)
+    repo_bar = rpm_repository_factory(autopublish=True)
+    dist_foo = rpm_distribution_factory(repository=repo_foo.pulp_href)
+    dist_bar = rpm_distribution_factory(repository=repo_bar.pulp_href)
+    _, remote_foo = init_and_sync(
+        url=f"file://{ext_repo_foo}/", repository=repo_foo, policy=policy, sync_policy=sync_policy
+    )
+    _, remote_bar = init_and_sync(
+        url=f"file://{ext_repo_bar}/", repository=repo_bar, policy=policy, sync_policy=sync_policy
+    )
+
+    # Modify external repository content (ext_repo_bar)
+    # - Replace signed with unsigned
+    # - Regenerate repository with createrepo
+    # - Resync repo_bar
+    shutil.rmtree(ext_repo_bar)
+    os.mkdir(ext_repo_bar)
+    shutil.copy(f"{download_dir}/rpm-unsigned/{pkg_name}", ext_repo_bar)
+    with cr.RepositoryWriter(ext_repo_bar) as writer:
+        writer.set_num_of_pkgs(1)
+        writer.add_pkg_from_file(f"{ext_repo_bar}/{pkg_name}")
+    repository_sync_data = RpmRepositorySyncURL(
+        remote=remote_bar.pulp_href,
+        sync_policy=sync_policy,
+    )
+    sync_response = rpm_repository_api.sync(repo_bar.pulp_href, repository_sync_data)
+    monitor_task(sync_response.task)
+
+    # Verify we get the expected package checksums
+    with open(f"{download_dir}/rpm-signed/{pkg_name}", "rb") as fd:
+        signed_sha256 = hashlib.sha256(fd.read()).hexdigest()
+    with open(f"{download_dir}/rpm-unsigned/{pkg_name}", "rb") as fd:
+        unsigned_sha256 = hashlib.sha256(fd.read()).hexdigest()
+    pkg_digest_from_foo = hashlib.sha256(
+        requests.get(dist_foo.base_url + f"/Packages/g/{pkg_name}").content
+    ).hexdigest()
+    pkg_digest_from_bar = hashlib.sha256(
+        requests.get(dist_bar.base_url + f"/Packages/g/{pkg_name}").content
+    ).hexdigest()
+
+    assert pkg_digest_from_foo == signed_sha256
+    assert pkg_digest_from_bar == unsigned_sha256
