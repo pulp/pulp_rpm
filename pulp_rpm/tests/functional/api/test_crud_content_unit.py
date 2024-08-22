@@ -173,9 +173,10 @@ class ContentUnitRemoveTestCase(PulpTestCase):
         repo_content = get_content(repo.to_dict())
         base_addr = self.cfg.get_host_settings()[0]["url"]
 
+        basic_auth = requests.auth.HTTPBasicAuth("admin", "password")
         for content_type in repo_content.keys():
             response = requests.delete(
-                urljoin(base_addr, repo_content[content_type][0]["pulp_href"])
+                urljoin(base_addr, repo_content[content_type][0]["pulp_href"]), auth=basic_auth
             )
             self.assertEqual(response.status_code, 405)
 
