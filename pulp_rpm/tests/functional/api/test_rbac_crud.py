@@ -336,6 +336,7 @@ def test_rbac_publication(
         assert not any(p.repository != repository.pulp_href for p in publications)
 
 
+@pytest.mark.run_only_this
 @pytest.mark.parallel
 def test_rbac_distribution(
     gen_user,
@@ -442,6 +443,7 @@ def test_rbac_distribution(
         assert rpm_rpmremote_api.list(name=remote.name).count == 0
 
 
+@pytest.mark.run_only_this
 @pytest.mark.parallel
 def test_rbac_content_scoping(
     gen_user,
