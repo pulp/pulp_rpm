@@ -8,3 +8,5 @@ pyyaml
 lxml
 pyzstd
 requests
+pytest-xdist
+pytest-timeout
