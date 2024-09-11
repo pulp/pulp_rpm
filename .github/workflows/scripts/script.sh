@@ -131,8 +131,9 @@ else
     cmd_user_prefix bash -c "pytest -v -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -m parallel -n 8 --nightly"
     cmd_user_prefix bash -c "pytest -v -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -m 'not parallel' --nightly"
   else
-    cmd_user_prefix bash -c "pytest -v -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -k test_sync -n 8"
-    # cmd_user_prefix bash -c "pytest -v -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -m 'not parallel'"
+    # debug
+    cmd_user_prefix bash -c "pytest -v -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -m parallel -n 8"
+    cmd_user_prefix bash -c "pytest -v -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -m 'not parallel'"
   fi
 fi
 export PULP_FIXTURES_URL="http://pulp-fixtures:8080"
