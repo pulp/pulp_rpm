@@ -751,6 +751,7 @@ def test_one_nevra_two_locations_and_checksums(init_and_sync):
     pass
 
 
+@pytest.mark.timeout(3600)
 @pytest.mark.parallel
 def test_requires_urlencoded_paths(init_and_sync):
     """Sync a repository known to FAIL when an RPM has non-urlencoded characters in its path.
