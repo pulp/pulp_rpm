@@ -944,7 +944,7 @@ def test_core_metadata(init_and_sync, rpm_package_api):
     diff = dictdiffer.diff(
         package,
         RPM_COMPLEX_PACKAGE_DATA,
-        ignore={"time_file", "pulp_created", "pulp_last_updated", "pulp_href"},
+        ignore={"time_file", "pulp_created", "pulp_last_updated", "pulp_href", "prn"},
     )
     assert list(diff) == [], list(diff)
 
@@ -1039,16 +1039,20 @@ def test_modular_metadata(
 
     for m1, m2 in zip(modules, RPM_MODULEMDS_DATA):
         diff = dictdiffer.diff(
-            m1, m2, ignore={"packages", "pulp_created", "pulp_last_updated", "pulp_href"}
+            m1, m2, ignore={"packages", "pulp_created", "pulp_last_updated", "pulp_href", "prn"}
         )
         assert list(diff) == [], list(diff)
 
     for m1, m2 in zip(module_defaults, RPM_MODULEMD_DEFAULTS_DATA):
-        diff = dictdiffer.diff(m1, m2, ignore={"pulp_created", "pulp_last_updated", "pulp_href"})
+        diff = dictdiffer.diff(
+            m1, m2, ignore={"pulp_created", "pulp_last_updated", "pulp_href", "prn"}
+        )
         assert list(diff) == [], list(diff)
 
     for m1, m2 in zip(module_obsoletes, RPM_MODULEMD_OBSOLETES_DATA):
-        diff = dictdiffer.diff(m1, m2, ignore={"pulp_created", "pulp_last_updated", "pulp_href"})
+        diff = dictdiffer.diff(
+            m1, m2, ignore={"pulp_created", "pulp_last_updated", "pulp_href", "prn"}
+        )
         assert list(diff) == [], list(diff)
 
     # assert all package from modular repo is marked as modular
