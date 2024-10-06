@@ -16,32 +16,15 @@ cd "$(dirname "$(realpath -e "$0")")"/../../..
 source .github/workflows/scripts/utils.sh
 
 export POST_SCRIPT=$PWD/.github/workflows/scripts/post_script.sh
-export POST_DOCS_TEST=$PWD/.github/workflows/scripts/post_docs_test.sh
 export FUNC_TEST_SCRIPT=$PWD/.github/workflows/scripts/func_test_script.sh
 
-# Needed for both starting the service and building the docs.
+# Needed for starting the service
 # Gets set in .github/settings.yml, but doesn't seem to inherited by
 # this script.
 export DJANGO_SETTINGS_MODULE=pulpcore.app.settings
 export PULP_SETTINGS=$PWD/.ci/ansible/settings/settings.py
 
 export PULP_URL="https://pulp"
-
-if [[ "$TEST" = "docs" ]]; then
-  if [[ "$GITHUB_WORKFLOW" == "Rpm CI" ]]; then
-    towncrier build --yes --version 4.0.0.ci
-  fi
-  # Legacy Docs Build
-  cd docs
-  make PULP_URL="$PULP_URL" diagrams html
-  tar -cvf docs.tar ./_build
-  cd ..
-
-  if [ -f "$POST_DOCS_TEST" ]; then
-    source "$POST_DOCS_TEST"
-  fi
-  exit
-fi
 
 REPORTED_STATUS="$(pulp status)"
 
@@ -145,11 +128,11 @@ if [ -f "$FUNC_TEST_SCRIPT" ]; then
 else
   if [[ "$GITHUB_WORKFLOW" =~ "Nightly" ]]
   then
-    cmd_user_prefix bash -c "pytest -v -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -m parallel -n 8 --nightly"
-    cmd_user_prefix bash -c "pytest -v -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -m 'not parallel' --nightly"
+    cmd_user_prefix bash -c "pytest -v --timeout=300 -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -m parallel -n 8 --nightly"
+    cmd_user_prefix bash -c "pytest -v --timeout=300 -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -m 'not parallel' --nightly"
   else
-    cmd_user_prefix bash -c "pytest -v -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -m parallel -n 8"
-    cmd_user_prefix bash -c "pytest -v -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -m 'not parallel'"
+    cmd_user_prefix bash -c "pytest -v --timeout=300 -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -m parallel -n 8"
+    cmd_user_prefix bash -c "pytest -v --timeout=300 -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -m 'not parallel'"
   fi
 fi
 export PULP_FIXTURES_URL="http://pulp-fixtures:8080"

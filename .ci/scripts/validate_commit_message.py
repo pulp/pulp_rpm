@@ -9,20 +9,15 @@ import re
 import sys
 from pathlib import Path
 import subprocess
-
-
 import os
 import warnings
 from github import Github
 
-
-NO_ISSUE = "[noissue]"
 CHANGELOG_EXTS = [".feature", ".bugfix", ".doc", ".removal", ".misc", ".deprecation"]
+KEYWORDS = ["fixes", "closes"]
+
 sha = sys.argv[1]
 message = subprocess.check_output(["git", "log", "--format=%B", "-n 1", sha]).decode("utf-8")
-
-
-KEYWORDS = ["fixes", "closes"]
 
 g = Github(os.environ.get("GITHUB_TOKEN"))
 repo = g.get_repo("pulp/pulp_rpm")
@@ -64,15 +59,5 @@ if issues:
     for issue in pattern.findall(message):
         __check_status(issue)
         __check_changelog(issue)
-else:
-    if NO_ISSUE in message:
-        print("Commit {sha} has no issues but is tagged {tag}.".format(sha=sha[0:7], tag=NO_ISSUE))
-    elif "Merge" in message and "cherry picked from commit" in message:
-        pass
-    else:
-        sys.exit(
-            "Error: no attached issues found for {sha}. If this was intentional, add "
-            " '{tag}' to the commit message.".format(sha=sha[0:7], tag=NO_ISSUE)
-        )
 
 print("Commit message for {sha} passed.".format(sha=sha[0:7]))

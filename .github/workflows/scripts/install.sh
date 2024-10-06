@@ -21,20 +21,13 @@ PLUGIN_SOURCE="./pulp_rpm/dist/pulp_rpm-${PLUGIN_VERSION}-py3-none-any.whl"
 export PULP_API_ROOT="/pulp/"
 
 PIP_REQUIREMENTS=("pulp-cli")
-if [[ "$TEST" = "docs" || "$TEST" = "publish" ]]
-then
-  PIP_REQUIREMENTS+=("-r" "doc_requirements.txt")
-  git clone https://github.com/pulp/pulpcore.git ../pulpcore
-  PIP_REQUIREMENTS+=("psycopg2-binary" "-r" "../pulpcore/doc_requirements.txt")
-fi
 
+# This must be the **only** call to "pip install" on the test runner.
 pip install ${PIP_REQUIREMENTS[*]}
 
-if [[ "$TEST" != "docs" ]]
-then
-  PULP_CLI_VERSION="$(pip freeze | sed -n -e 's/pulp-cli==//p')"
-  git clone --depth 1 --branch "$PULP_CLI_VERSION" https://github.com/pulp/pulp-cli.git ../pulp-cli
-fi
+# Check out the pulp-cli branch matching the installed version.
+PULP_CLI_VERSION="$(pip freeze | sed -n -e 's/pulp-cli==//p')"
+git clone --depth 1 --branch "$PULP_CLI_VERSION" https://github.com/pulp/pulp-cli.git ../pulp-cli
 
 cd .ci/ansible/
 if [ "$TEST" = "s3" ]; then
@@ -55,6 +48,11 @@ VARSYAML
 if [[ -f ../../ci_requirements.txt ]]; then
   cat >> vars/main.yaml << VARSYAML
     ci_requirements: true
+VARSYAML
+fi
+if [ "$TEST" = "pulp" ]; then
+  cat >> vars/main.yaml << VARSYAML
+    upperbounds: true
 VARSYAML
 fi
 if [ "$TEST" = "lowerbounds" ]; then
@@ -133,9 +131,7 @@ if [ "${PULP_API_ROOT:-}" ]; then
 fi
 
 pulp config create --base-url https://pulp --api-root "$PULP_API_ROOT" --username "admin" --password "password"
-if [[ "$TEST" != "docs" ]]; then
-  cp ~/.config/pulp/cli.toml "${REPO_ROOT}/../pulp-cli/tests/cli.toml"
-fi
+cp ~/.config/pulp/cli.toml "${REPO_ROOT}/../pulp-cli/tests/cli.toml"
 
 ansible-playbook build_container.yaml
 ansible-playbook start_container.yaml
@@ -170,5 +166,5 @@ if [[ "$TEST" = "azure" ]]; then
 fi
 
 echo ::group::PIP_LIST
-cmd_prefix bash -c "pip3 list && pip3 install pipdeptree && pipdeptree"
+cmd_prefix bash -c "pip3 list && pipdeptree"
 echo ::endgroup::
