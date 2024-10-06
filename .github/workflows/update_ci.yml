@@ -11,8 +11,8 @@ name: "Rpm CI Update"
 on:
   schedule:
     # * is a special character in YAML so you have to quote this string
-    # runs at 2:30 UTC every Sunday
-    - cron: '30 2 * * 0'
+    # runs at 23:30 UTC every Sunday
+    - cron: '30 23 * * 0'
   workflow_dispatch:
 
 jobs:
@@ -36,7 +36,7 @@ jobs:
       - name: "Install python dependencies"
         run: |
           echo ::group::PYDEPS
-          pip install gitpython requests packaging jinja2 pyyaml
+          pip install gitpython packaging -r plugin_template/requirements.txt
           echo ::endgroup::
 
       - name: "Configure Git with pulpbot name and email"
@@ -62,11 +62,7 @@ jobs:
           committer: "pulpbot <pulp-infra@redhat.com>"
           author: "pulpbot <pulp-infra@redhat.com>"
           title: "Update CI files for branch main"
-          body: ""
           branch: "update-ci/main"
           base: "main"
-          commit-message: |
-            Update CI files
-
-            [noissue]
           delete-branch: true
+...
