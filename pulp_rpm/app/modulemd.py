@@ -121,13 +121,13 @@ def create_modulemd(modulemd, snippet):
                     "Got unexpected data for module {}-{}-{}-{}-{}: "
                     "profiles failed to parse properly"
                 ).format(
-                    data[PULP_MODULE_ATTR.NAME],
-                    data[PULP_MODULE_ATTR.STREAM],
-                    data[PULP_MODULE_ATTR.VERSION],
-                    data[PULP_MODULE_ATTR.CONTEXT],
-                    data[PULP_MODULE_ATTR.ARCH],
+                    new_module[PULP_MODULE_ATTR.NAME],
+                    new_module[PULP_MODULE_ATTR.STREAM],
+                    new_module[PULP_MODULE_ATTR.VERSION],
+                    new_module[PULP_MODULE_ATTR.CONTEXT],
+                    new_module[PULP_MODULE_ATTR.ARCH],
                 )
-                log.warn(msg)
+                log.warning(msg)
             else:
                 profiles[name] = rpms
 
