@@ -1,1 +1,0 @@
-Fixed the JSONField specification so it doesn't break ruby bindings.
