@@ -1,0 +1,1 @@
+Fix traceback from prune() call discovered after `pulp/pulpcore#5934` addressed.

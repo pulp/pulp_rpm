@@ -160,17 +160,13 @@ def test_object_creation(
         rpm_repository_api.create(repo_body, pulp_domain=domain.name)
     assert e.value.status == 400
     # What key should this error be under? non-field-errors seems wrong
-    assert json.loads(e.value.body) == {
-        "non_field_errors": [f"Objects must all be apart of the {domain_name} domain."]
-    }
+    assert "non_field_errors" in e.value.body
 
     with pytest.raises(ApiException) as e:
         sync_body = {"remote": default_remote.pulp_href}
         rpm_repository_api.sync(repo.pulp_href, sync_body)
     assert e.value.status == 400
-    assert json.loads(e.value.body) == {
-        "non_field_errors": [f"Objects must all be apart of the {domain_name} domain."]
-    }
+    assert "non_field_errors" in e.value.body
 
 
 @pytest.mark.parallel

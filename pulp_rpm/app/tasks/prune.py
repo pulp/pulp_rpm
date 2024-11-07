@@ -8,6 +8,7 @@ from django.utils import timezone
 from pulpcore.plugin.models import ProgressReport
 from pulpcore.plugin.constants import TASK_STATES
 from pulpcore.plugin.models import (
+    Content,
     GroupProgressReport,
     RepositoryContent,
     TaskGroup,
@@ -91,8 +92,9 @@ def prune_repo_packages(repo_pk, keep_days, dry_run):
             ):
                 log.debug(f'{p["name"]}-{p["epoch"]}:{p["version"]}-{p["release"]}.{p["arch"]}')
     else:
+        content_q = Content.objects.filter(pk__in=target_ids_q)
         with repo.new_version(base_version=None) as new_version:
-            new_version.remove_content(target_ids_q)
+            new_version.remove_content(content_q)
         data["done"] = to_be_removed
 
     pb = ProgressReport(**data)
