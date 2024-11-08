@@ -901,12 +901,16 @@ class RpmFirstStage(Stage):
 
     async def parse_repository_metadata(self, repomd, metadata_results):
         """Parse repository metadata."""
-        needed_metadata = set(PACKAGE_REPODATA) - set(metadata_results.keys())
-
-        if needed_metadata:
+        if "primary" not in metadata_results.keys():
             raise FileNotFoundError(
-                _("XML file(s): {filenames} not found").format(filenames=", ".join(needed_metadata))
+                "Repository doesn't contain required metadata file 'primary.xml'"
             )
+
+        if "filelists" not in metadata_results.keys():
+            log.warn("Repository doesn't contain metadata file 'filelists.xml'")
+
+        if "other" not in metadata_results.keys():
+            log.warn("Repository doesn't contain metadata file 'other.xml'")
 
         await self.parse_distribution_tree()
 
@@ -927,9 +931,9 @@ class RpmFirstStage(Stage):
 
         # **Now** we can successfully parse package-metadata
         await self.parse_packages(
-            metadata_results["primary"],
-            metadata_results["filelists"],
-            metadata_results["other"],
+            metadata_results.get("primary"),
+            metadata_results.get("filelists"),
+            metadata_results.get("other"),
             modulemd_list=modulemd_list,
         )
 
@@ -1168,7 +1172,9 @@ class RpmFirstStage(Stage):
     async def parse_packages(self, primary_xml, filelists_xml, other_xml, modulemd_list=None):
         """Parse packages from the remote repository."""
         parser = cr.RepositoryReader.from_metadata_files(
-            primary_xml.path, filelists_xml.path, other_xml.path
+            primary_xml.path,
+            filelists_xml.path if filelists_xml else None,
+            other_xml.path if other_xml else None,
         )
 
         # skip SRPM if defined
