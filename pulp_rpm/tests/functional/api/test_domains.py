@@ -161,7 +161,7 @@ def test_object_creation(
     assert e.value.status == 400
     # What key should this error be under? non-field-errors seems wrong
     assert json.loads(e.value.body) == {
-        "non_field_errors": [f"Objects must all be apart of the {domain_name} domain."]
+        "non_field_errors": [f"Objects must all be a part of the {domain_name} domain."]
     }
 
     with pytest.raises(ApiException) as e:
@@ -169,7 +169,7 @@ def test_object_creation(
         rpm_repository_api.sync(repo.pulp_href, sync_body)
     assert e.value.status == 400
     assert json.loads(e.value.body) == {
-        "non_field_errors": [f"Objects must all be apart of the {domain_name} domain."]
+        "non_field_errors": [f"Objects must all be a part of the {domain_name} domain."]
     }
 
 
