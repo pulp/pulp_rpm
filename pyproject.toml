@@ -5,6 +5,52 @@ requires = [
 ]
 build-backend = 'setuptools.build_meta'
 
+[project]
+name = "pulp-rpm"
+version = "3.28.0.dev"
+description = "Pulp plugin to manage RPM repositories"
+readme = "README.rst"
+authors = [
+  {name="Pulp Rpm Plugin Project Developers", email="pulp-dev@redhat.com"}
+]
+classifiers = [
+  "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
+  "Operating System :: POSIX :: Linux",
+  "Development Status :: 5 - Production/Stable",
+  "Framework :: Django",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "createrepo_c~=1.2",
+    "django_readonly_field~=1.1.1",
+    "jsonschema>=4.6,<5.0",
+    "libcomps>=0.1.20.post1,<0.2",
+    "productmd~=1.33.0",
+    "pulpcore>=3.49.11,<3.70",
+    "solv~=0.7.21",
+    "aiohttp_xmlrpc~=1.5.0",
+    "importlib-resources~=6.4.0",
+]
+
+[project.urls]
+Homepage = "https://pulpproject.org"
+Documentation = "https://pulpproject.org/pulp_rpm/"
+Repository = "https://github.com/pulp/pulp_rpm"
+"Bug Tracker" = "https://github.com/pulp/pulp_rpm/issues"
+Changelog = "https://pulpproject.org/pulp_rpm/changes/"
+
+[project.entry-points."pulpcore.plugin"]
+pulp_rpm = "pulp_rpm:default_app_config"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
 [tool.towncrier]
 package = "pulp_rpm"
 filename = "CHANGES.md"

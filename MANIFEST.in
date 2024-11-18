@@ -8,7 +8,6 @@ include pulp_rpm/app/schema/*
 include pulp_rpm/tests/functional/sign-metadata.sh
 include pulp_rpm/tests/sample-rpm-0-0.x86_64.rpm
 include pyproject.toml
-include requirements.txt
 include test_requirements.txt
 include unittest_requirements.txt
 exclude releasing.md
