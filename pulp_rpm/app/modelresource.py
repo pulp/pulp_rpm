@@ -56,9 +56,7 @@ class RpmContentResource(BaseContentResource):
             django.db.models.QuerySet: The Content to export for a RepositoryVersion
 
         """
-        content = self.Meta.model.objects.filter(pk__in=self.repo_version.content).order_by(
-            "content_ptr_id"
-        )
+        content = self.Meta.model.objects.filter(pk__in=self.repo_version.content)
         self._add_to_mapping(
             self.repo_version.repository, content.values_list("pulp_id", flat=True)
         )
@@ -67,12 +65,10 @@ class RpmContentResource(BaseContentResource):
         if tree:
             for repo in tree.repositories():
                 version = repo.latest_version()
-                content |= self.Meta.model.objects.filter(pk__in=version.content).order_by(
-                    "content_ptr_id"
-                )
+                content |= self.Meta.model.objects.filter(pk__in=version.content)
                 self._add_to_mapping(repo, version.content.values_list("pulp_id", flat=True))
 
-        return content
+        return content.order_by("content_ptr_id")
 
     def dehydrate__pulp_domain(self, content):
         return str(content._pulp_domain_id)
