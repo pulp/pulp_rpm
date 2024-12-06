@@ -1,0 +1,1 @@
+Ensure migrations depending on core, depend on core/0091 or later.
