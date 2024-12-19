@@ -88,6 +88,7 @@ def create_distribution(
     return _create_distribution
 
 
+@pytest.mark.skip("TODO: Figure out why sudo suddenly requires a passwd")
 @pytest.mark.skipif(not dnf_installed, reason="dnf must be installed")
 @pytest.mark.parametrize(
     "policy,sync_policy,url",
@@ -151,6 +152,7 @@ def test_package_manager_consume(
         assert after_consumption_artifact_count > before_consumption_artifact_count
 
 
+@pytest.mark.skip("TODO: Figure out why sudo suddenly requires a passwd")
 @pytest.mark.parallel
 def test_publish_signed_repo_metadata(
     rpm_metadata_signing_service, create_distribution, dnf_config_add_repo, dnf_install_rpm
