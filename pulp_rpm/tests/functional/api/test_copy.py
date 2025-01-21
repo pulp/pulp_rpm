@@ -18,8 +18,23 @@ from pulp_rpm.tests.functional.constants import (
 
 from pulpcore.client.pulp_rpm import Copy
 from pulpcore.client.pulp_rpm.exceptions import ApiException
+import subprocess
 
 
+def noop(uri):
+    return uri
+
+
+def get_prn(uri):
+    """Utility to get prn without having to setup django."""
+    commands = f"from pulpcore.app.util import get_prn; print(get_prn(uri='{uri}'));"
+    process = subprocess.run(["pulpcore-manager", "shell", "-c", commands], capture_output=True)
+    assert process.returncode == 0
+    prn = process.stdout.decode().strip()
+    return prn
+
+
+@pytest.mark.parametrize("get_id", [noop, get_prn], ids=["without-prn", "with-prn"])
 @pytest.mark.parallel
 def test_modular_static_context_copy(
     init_and_sync,
@@ -28,13 +43,19 @@ def test_modular_static_context_copy(
     rpm_modulemd_api,
     rpm_repository_factory,
     rpm_repository_api,
+    get_id,
 ):
     """Test copying a static_context-using repo to an empty destination."""
     src, _ = init_and_sync(url=RPM_MODULES_STATIC_CONTEXT_FIXTURE_URL)
     dest = rpm_repository_factory()
 
     data = Copy(
-        config=[{"source_repo_version": src.latest_version_href, "dest_repo": dest.pulp_href}],
+        config=[
+            {
+                "source_repo_version": get_id(src.latest_version_href),
+                "dest_repo": get_id(dest.pulp_href),
+            }
+        ],
         dependency_solving=False,
     )
     monitor_task(rpm_copy_api.copy_content(data).task)
@@ -44,7 +65,7 @@ def test_modular_static_context_copy(
     assert get_content_summary(dest.to_dict()) == RPM_MODULAR_STATIC_FIXTURE_SUMMARY
     assert get_added_content_summary(dest.to_dict()) == RPM_MODULAR_STATIC_FIXTURE_SUMMARY
 
-    modules = rpm_modulemd_api.list(repository_version=dest.latest_version_href).results
+    modules = rpm_modulemd_api.list(repository_version=get_id(dest.latest_version_href)).results
     module_static_contexts = [
         (module.name, module.version) for module in modules if module.static_context
     ]
@@ -141,6 +162,7 @@ class TestCopyWithUnsignedRepoSyncedImmediate:
             )
             rpm_copy_api.copy_content(data)
 
+    @pytest.mark.parametrize("get_id", [noop, get_prn], ids=["without-prn", "with-prn"])
     def test_content(
         self,
         monitor_task,
@@ -149,20 +171,21 @@ class TestCopyWithUnsignedRepoSyncedImmediate:
         rpm_repository_api,
         rpm_repository_factory,
         rpm_unsigned_repo_immediate,
+        get_id,
     ):
         """Test the content parameter."""
         src = rpm_unsigned_repo_immediate
 
         content = rpm_advisory_api.list(repository_version=src.latest_version_href).results
-        content_to_copy = (content[0].pulp_href, content[1].pulp_href)
+        content_to_copy = (get_id(content[0].pulp_href), get_id(content[1].pulp_href))
 
         dest = rpm_repository_factory()
 
         data = Copy(
             config=[
                 {
-                    "source_repo_version": src.latest_version_href,
-                    "dest_repo": dest.pulp_href,
+                    "source_repo_version": get_id(src.latest_version_href),
+                    "dest_repo": get_id(dest.pulp_href),
                     "content": content_to_copy,
                 }
             ],
@@ -172,7 +195,7 @@ class TestCopyWithUnsignedRepoSyncedImmediate:
 
         dest = rpm_repository_api.read(dest.pulp_href)
         dc = rpm_advisory_api.list(repository_version=dest.latest_version_href)
-        dest_content = [c.pulp_href for c in dc.results]
+        dest_content = [get_id(c.pulp_href) for c in dc.results]
 
         assert sorted(content_to_copy) == sorted(dest_content)
 

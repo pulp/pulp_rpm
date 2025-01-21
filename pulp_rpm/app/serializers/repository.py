@@ -3,7 +3,13 @@ from gettext import gettext as _
 
 from django.conf import settings
 from jsonschema import Draft7Validator
-from pulpcore.plugin.models import AsciiArmoredDetachedSigningService, Publication, Remote
+from pulpcore.plugin.models import (
+    AsciiArmoredDetachedSigningService,
+    Publication,
+    Remote,
+    Content,
+    RepositoryVersion,
+)
 from pulpcore.plugin.serializers import (
     DetailRelatedField,
     DistributionSerializer,
@@ -14,7 +20,7 @@ from pulpcore.plugin.serializers import (
     RepositorySyncURLSerializer,
     ValidateFieldsMixin,
 )
-from pulpcore.plugin.util import get_domain
+from pulpcore.plugin.util import get_domain, resolve_prn
 from rest_framework import serializers
 from pulp_rpm.app.fields import CustomJSONField
 
@@ -37,6 +43,7 @@ from pulp_rpm.app.models import (
 )
 from pulp_rpm.app.schema import COPY_CONFIG_SCHEMA
 from urllib.parse import urlparse
+from textwrap import dedent
 
 
 class RpmRepositorySerializer(RepositorySerializer):
@@ -543,7 +550,32 @@ class CopySerializer(ValidateFieldsMixin, serializers.Serializer):
     """
 
     config = CustomJSONField(
-        help_text=_("A JSON document describing sources, destinations, and content to be copied"),
+        help_text=_(
+            dedent(
+                """\
+        Content to be copied into the given destinations from the given sources.
+
+        Its a list of dictionaries with the following available fields:
+
+        ```json
+        [
+          {
+            "source_repo_version": <RepositoryVersion [pulp_href|prn]>,
+            "dest_repo": <RpmRepository [pulp_href|prn]>,
+            "dest_base_version": <int>,
+            "content": [<Content [pulp_href|prn]>, ...]
+          },
+          ...
+        ]
+        ```
+
+        If domains are enabled, the refered pulp objects must be part of the current domain.
+
+        For usage examples, refer to the advanced copy guide:
+        <https://pulpproject.org/pulp_rpm/docs/user/guides/modify/#advanced-copy-workflow>
+        """
+            )
+        ),
     )
 
     dependency_solving = serializers.BooleanField(
@@ -558,29 +590,91 @@ class CopySerializer(ValidateFieldsMixin, serializers.Serializer):
         Check for cross-domain references (if domain-enabled).
         """
 
-        def check_domain(domain, href, name):
-            # We're doing just a string-check here rather than checking objects
-            # because there can be A LOT of objects, and this is happening in the view-layer
-            # where we have strictly-limited timescales to work with
-            if href and domain not in href:
+        def raise_validation(field, domain, id=""):
+            id = f"\n{id}" if id else ""
+            raise serializers.ValidationError(
+                _("The field {} contains object(s) not in {} domain.{}".format(field, domain, id))
+            )
+
+        def parse_reference(ref) -> tuple[str, str, bool]:
+            """Extract info from prn/href to enable checking domains.
+
+            This is used for:
+            1. In case of HREFS, avoid expensive extract_pk(href) to get pks.
+            2. HREF and PRNs have different information hardcoded available.
+               E.g: RepositoryVerseion HREF has its Repository pk; PRNs have the RepoVer pk.
+
+            Returns a tuple with (pk, class_name, is_prn)
+            """
+            if ref.startswith("prn:"):
+                ref_class, pk = resolve_prn(ref)
+                return (pk, ref_class, True)
+            # content:    ${BASE}/content/rpm/packages/${UUID}/
+            # repository: ${BASE}/repositories/rpm/rpm/${UUID}/
+            # repover:    ${BASE}/repositories/rpm/rpm/${UUID}/versions/0/
+            url = urlparse(ref).path.strip("/").split("/")
+            ref_class = RpmRepository if "/repositories/" in ref else Content
+            is_repover_href = url[-1].isdigit() and url[-2] == "versions"
+            uuid = url[-3] if is_repover_href else url[-1]
+            if len(uuid) < 32:
                 raise serializers.ValidationError(
-                    _("{} must be a part of the {} domain.").format(name, domain)
+                    _("The href path should end with a uuid pk: {}".format(ref))
                 )
+            return (uuid, ref_class, False)
+
+        def check_domain(entry, name, curr_domain):
+            """Check domain for RpmRepository and RepositoryVersion objects."""
+            href_or_prn = entry[name]
+            resource_pk, ref_class, is_prn = parse_reference(href_or_prn)
+            try:
+                if ref_class is RepositoryVersion and is_prn:
+                    resource_domain_pk = (
+                        RepositoryVersion.objects.select_related("repository")
+                        .values("repository__pulp_domain")
+                        .get(pk=resource_pk)["repository__pulp_domain"]
+                    )
+                elif ref_class is RpmRepository:
+                    resource_domain_pk = RpmRepository.objects.values("pulp_domain").get(
+                        pk=resource_pk
+                    )["pulp_domain"]
+                else:
+                    raise serializers.ValidationError(
+                        _(
+                            "Expected RpmRepository or RepositoryVersion ref_class. "
+                            "Got {} from {}.".format(ref_class, href_or_prn)
+                        )
+                    )
+            except RepositoryVersion.DoesNotExit as e:
+                raise serializers.ValidationError from e
+            except RpmRepository.DoesNotExit as e:
+                raise serializers.ValidationError from e
+
+            if resource_domain_pk != curr_domain.pk:
+                raise_validation(name, curr_domain.name, resource_domain_pk)
 
         def check_cross_domain_config(cfg):
             """Check that all config-elts are in 'our' domain."""
             # copy-cfg is a list of dictionaries.
             # source_repo_version and dest_repo are required fields.
             # Insure curr-domain exists in src/dest/dest_base_version/content-list hrefs
-            curr_domain_name = get_domain().name
+            curr_domain = get_domain()
             for entry in cfg:
-                check_domain(curr_domain_name, entry["source_repo_version"], "dest_repo")
-                check_domain(curr_domain_name, entry["dest_repo"], "dest_repo")
-                check_domain(
-                    curr_domain_name, entry.get("dest_base_version", None), "dest_base_version"
-                )
-                for content_href in entry.get("content", []):
-                    check_domain(curr_domain_name, content_href, "content")
+                # Check required fields individually
+                check_domain(entry, "source_repo_version", curr_domain)
+                check_domain(entry, "dest_repo", curr_domain)
+
+                # Check content generically to avoid timeout of multiple calls
+                content_list = entry.get("content", None)
+                if content_list:
+                    content_list = [parse_reference(v)[0] for v in content_list]
+                    distinct = (
+                        Content.objects.filter(pk__in=content_list).values("pulp_domain").distinct()
+                    )
+                    domain_ok = (
+                        len(distinct) == 1 and distinct.first()["pulp_domain"] == curr_domain.pk
+                    )
+                    if not domain_ok:
+                        raise_validation("content", curr_domain.name)
 
         super().validate(data)
         if "config" in data:
