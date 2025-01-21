@@ -150,6 +150,7 @@ class DistributionTreeSerializer(MultipleArtifactContentSerializer):
         model = DistributionTree
         fields = (
             "pulp_href",
+            "prn",
             "header_version",
             "release_name",
             "release_short",
