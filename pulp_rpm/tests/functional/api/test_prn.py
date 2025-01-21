@@ -1,12 +1,5 @@
 import pytest
-import requests
 
-
-
-# @pytest.fixture(scope="session")
-# def pulp_openapi_schema_rpm(pulp_api_v3_url):
-#     COMPONENT="rpm"
-#     return requests.get(f"{pulp_api_v3_url}docs/api.json?bindings&component={COMPONENT}").json()
 
 @pytest.mark.parallel
 def test_prn_schema(pulp_openapi_schema):
