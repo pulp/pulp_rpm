@@ -176,6 +176,7 @@ def _name_from_url(url):
 )
 def test_fips_workflow(
     url,
+    distribution_base_url,
     init_and_sync,
     rpm_rpmremote_factory,
     rpm_publication_factory,
@@ -210,5 +211,5 @@ def test_fips_workflow(
     assert distribution is not None
 
     # Test we can access the index of the distribution
-    response = requests.get(distribution.base_url)
+    response = requests.get(distribution_base_url(distribution.base_url))
     assert response is not None

@@ -16,6 +16,7 @@ def test_pulp_to_pulp(
     rpm_publication_factory,
     rpm_distribution_factory,
     rpm_repository_version_api,
+    distribution_base_url,
 ):
     """Verify whether content served by pulp can be synced.
 
@@ -41,7 +42,7 @@ def test_pulp_to_pulp(
 
     # Create another repo pointing to distribution base_url
     repo2, remote2, task = init_and_sync(
-        url=distribution.base_url, policy="on_demand", return_task=True
+        url=distribution_base_url(distribution.base_url), policy="on_demand", return_task=True
     )
     task_duration = task.finished_at - task.started_at
     waiting_time = task.started_at - task.pulp_created

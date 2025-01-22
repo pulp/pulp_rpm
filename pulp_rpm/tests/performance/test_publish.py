@@ -48,11 +48,16 @@ def parse_date_from_string(s, parse_format="%Y-%m-%dT%H:%M:%S.%fZ"):
 
 
 @pytest.fixture
-def centos_8stream_baseos_extra_tests(rpm_distribution_factory):
+def centos_8stream_baseos_extra_tests(
+    rpm_distribution_factory,
+    distribution_base_url,
+):
     def _extra_test(publication_href):
         # Test that the .treeinfo file is available and AppStream sub-repo is published correctly
         distribution = rpm_distribution_factory(publication=publication_href)
-        treeinfo_file = requests.get(urljoin(distribution.base_url, ".treeinfo")).content
+        treeinfo_file = requests.get(
+            urljoin(distribution_base_url(distribution.base_url), ".treeinfo")
+        ).content
         treeinfo = TreeInfo()
         with NamedTemporaryFile("wb") as temp_file:
             temp_file.write(treeinfo_file)
@@ -68,7 +73,8 @@ def centos_8stream_baseos_extra_tests(rpm_distribution_factory):
                 # Find the first package in the 'AppStream/Packages/a/' directory and download it
                 parser = PackagesHtmlParser()
                 a_packages_href = urljoin(
-                    distribution.base_url, "{}/a/".format(variant.paths.packages)
+                    distribution_base_url(distribution.base_url),
+                    "{}/a/".format(variant.paths.packages),
                 )
                 a_packages_listing = requests.get(a_packages_href).text
                 parser.feed(a_packages_listing)
