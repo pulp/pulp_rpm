@@ -1104,9 +1104,9 @@ def test_mirror_mode(sync_policy, init_and_sync, rpm_publication_api, get_conten
 
 @pytest.mark.parallel
 def test_config_repo_mirror_sync(
+    distribution_base_url,
     rpm_rpmremote_factory,
     rpm_repository_factory,
-    rpm_publication_factory,
     rpm_distribution_factory,
     rpm_repository_api,
     rpm_publication_api,
@@ -1136,11 +1136,16 @@ def test_config_repo_mirror_sync(
         publication=publication.pulp_href, generate_repo_config=True
     )
 
-    content = requests.get(f"{distribution.base_url}config.repo").content
-
-    # gpgcheck should follow repo_config
-    # repo_gpgcheck should match whether the upstream repo has signed metadata or not
-    assert bytes(f"[{distribution.name}]\n", "utf-8") in content
-    assert bytes(f"baseurl={distribution.base_url}\n", "utf-8") in content
-    assert bytes("gpgcheck=1\n", "utf-8") in content
-    assert bytes("repo_gpgcheck=0", "utf-8") in content
+    response = requests.get(f"{distribution_base_url(distribution.base_url)}/config.repo")
+    if not settings.CONTENT_ORIGIN:
+        assert response.status_code == 404
+    else:
+        content = response.content
+        # gpgcheck should follow repo_config
+        # repo_gpgcheck should match whether the upstream repo has signed metadata or not
+        assert bytes(f"[{distribution.name}]\n", "utf-8") in content
+        assert (
+            bytes(f"baseurl={distribution_base_url(distribution.base_url)}\n", "utf-8") in content
+        )
+        assert bytes("gpgcheck=1\n", "utf-8") in content
+        assert bytes("repo_gpgcheck=0", "utf-8") in content

@@ -256,6 +256,7 @@ def test_rpm_from_file(
 @pytest.mark.parallel
 def test_content_promotion(
     cleanup_domains,
+    distribution_base_url,
     pulpcore_bindings,
     download_content_unit,
     rpm_repository_api,
@@ -301,7 +302,7 @@ def test_content_promotion(
 
         assert distro.publication == pub.pulp_href
         # Url structure should be host/CONTENT_ORIGIN/DOMAIN_PATH/BASE_PATH
-        assert domain.name == distro.base_url.rstrip("/").split("/")[-2]
+        assert domain.name == distribution_base_url(distro.base_url).rstrip("/").split("/")[-2]
 
         # Check that content can be downloaded from base_url
         for pkg in ("bear-4.1-1.noarch.rpm", "pike-2.2-1.noarch.rpm"):

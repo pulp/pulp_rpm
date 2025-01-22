@@ -1,3 +1,5 @@
+from gettext import gettext as _
+
 from pulpcore.plugin.exceptions import PulpException
 
 
@@ -23,20 +25,17 @@ class AdvisoryConflict(PulpException):
         return self.msg
 
 
-class DistributionTreeConflict(PulpException):
+class DistributionTreeConflict(FileNotFoundError):
     """
     Raised when two or more distribution trees are being added to a repository version.
     """
 
     def __init__(self, msg):
         """
-        Set the exception identifier.
-
-        Args:
-            msg(str): Detailed message about the reasons for Distribution Tree conflict
+        Set the exception identifier and msg.
         """
         super().__init__("RPM0002")
-        self.msg = msg
+        self.msg = _("More than one distribution tree cannot be added to a " "repository version.")
 
     def __str__(self):
         """
@@ -52,13 +51,10 @@ class UlnCredentialsError(PulpException):
 
     def __init__(self, msg):
         """
-        Set the exception identifier.
-
-        Args:
-            msg(str): Detailed message about the reasons for Distribution Tree conflict
+        Set the exception identifier and msg.
         """
         super().__init__("RPM0003")
-        self.msg = msg
+        self.msg = _("No valid ULN credentials given.")
 
     def __str__(self):
         """

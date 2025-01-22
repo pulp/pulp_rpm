@@ -74,6 +74,7 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
     @pytest.mark.parallel
     def test_publish_with_compression_types(
         self,
+        distribution_base_url,
         compression_type,
         compression_ext,
         rpm_unsigned_repo_immediate,
@@ -94,13 +95,16 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
         distribution = rpm_distribution_factory(publication=publication_href)
 
         # 2. Check "primary", "filelists", "other", "updateinfo" have correct compression ext
-        for md_type, md_href in self.get_repomd_metadata_urls(distribution.base_url).items():
+        for md_type, md_href in self.get_repomd_metadata_urls(
+            distribution_base_url(distribution.base_url)
+        ).items():
             if md_type in ("primary", "filelists", "other", "updateinfo"):
                 assert md_href.endswith(compression_ext)
 
     @pytest.mark.parallel
     def test_validate_no_checksum_tag(
         self,
+        distribution_base_url,
         rpm_unsigned_repo_immediate,
         rpm_publication_api,
         rpm_distribution_api,
@@ -120,9 +124,11 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
         distribution = rpm_distribution_factory(publication=publication_href)
 
         # 2. check the tag 'sum' is not present in updateinfo.xml
-        update_xml_url = self.get_repomd_metadata_urls(distribution.base_url)["updateinfo"]
+        update_xml_url = self.get_repomd_metadata_urls(
+            distribution_base_url(distribution.base_url)
+        )["updateinfo"]
         update_xml = download_and_decompress_file(
-            os.path.join(distribution.base_url, update_xml_url)
+            os.path.join(distribution_base_url(distribution.base_url), update_xml_url)
         )
         update_info_content = ElementTree.fromstring(update_xml)
 
@@ -136,7 +142,7 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
 
         Example:
             ```
-            >>> get_repomd_metadata_urls(distribution.base_url)
+            >>> get_repomd_metadata_urls(distribution_base_url(distribution.base_url))
             {
                 "primary": "repodata/.../primary.xml.gz",
                 "filelists": "repodata/.../filelists.xml.gz",
@@ -220,6 +226,7 @@ def test_publish_references_update(assert_created_publication):
 
 @pytest.mark.parametrize("repo_url", [RPM_COMPLEX_FIXTURE_URL, RPM_MODULAR_FIXTURE_URL])
 def test_complex_repo_core_metadata(
+    distribution_base_url,
     repo_url,
     init_and_sync,
     rpm_publication_api,
@@ -253,7 +260,9 @@ def test_complex_repo_core_metadata(
     )
 
     reproduced_repomd = ElementTree.fromstring(
-        requests.get(os.path.join(distribution.base_url, "repodata/repomd.xml")).text
+        requests.get(
+            os.path.join(distribution_base_url(distribution.base_url), "repodata/repomd.xml")
+        ).text
     )
 
     def get_metadata_content(base_url, repomd_elem, meta_type):
@@ -286,7 +295,7 @@ def test_complex_repo_core_metadata(
     for metadata_file in ["primary", "filelists", "other"]:
         original_metadata = get_metadata_content(repo_url, original_repomd, metadata_file)
         generated_metadata = get_metadata_content(
-            distribution.base_url, reproduced_repomd, metadata_file
+            distribution_base_url(distribution.base_url), reproduced_repomd, metadata_file
         )
 
         _compare_xml_metadata_file(original_metadata, generated_metadata, metadata_file)
@@ -294,7 +303,9 @@ def test_complex_repo_core_metadata(
     # =================
 
     original_modulemds = get_metadata_content(repo_url, original_repomd, "modules")
-    generated_modulemds = get_metadata_content(distribution.base_url, reproduced_repomd, "modules")
+    generated_modulemds = get_metadata_content(
+        distribution_base_url(distribution.base_url), reproduced_repomd, "modules"
+    )
 
     assert bool(original_modulemds) == bool(generated_modulemds)
 
@@ -310,7 +321,7 @@ def test_complex_repo_core_metadata(
     # TODO: make this deeper
     original_updateinfo = get_metadata_content(repo_url, original_repomd, "updateinfo")
     generated_updateinfo = get_metadata_content(
-        distribution.base_url, reproduced_repomd, "updateinfo"
+        distribution_base_url(distribution.base_url), reproduced_repomd, "updateinfo"
     )
     assert bool(original_updateinfo) == bool(generated_updateinfo)
 
@@ -405,6 +416,7 @@ def _compare_xml_metadata_file(original_metadata_text, generated_metadata_text, 
 @pytest.mark.parallel
 @pytest.mark.parametrize("mirror", [True, False], ids=["mirror", "standard"])
 def test_distribution_tree_metadata_publish(
+    distribution_base_url,
     mirror,
     rpm_repository_api,
     rpm_rpmremote_api,
@@ -438,7 +450,9 @@ def test_distribution_tree_metadata_publish(
 
     # 4. Download and parse the metadata.
     original_treeinfo = requests.get(os.path.join(RPM_KICKSTART_FIXTURE_URL, ".treeinfo")).text
-    generated_treeinfo = requests.get(os.path.join(distribution.base_url, ".treeinfo")).text
+    generated_treeinfo = requests.get(
+        os.path.join(distribution_base_url(distribution.base_url), ".treeinfo")
+    ).text
 
     config = ConfigParser()
     config.optionxform = str  # by default it will cast keys to lower case
@@ -488,11 +502,17 @@ def test_distribution_tree_metadata_publish(
             continue
 
         checksum_type, checksum = checksum.split(":")
-        assert requests.get(os.path.join(distribution.base_url, path)).status_code == 200
+        assert (
+            requests.get(
+                os.path.join(distribution_base_url(distribution.base_url), path)
+            ).status_code
+            == 200
+        )
 
 
 @pytest.fixture
 def get_checksum_types(
+    distribution_base_url,
     init_and_sync,
     rpm_publication_api,
     rpm_distribution_api,
@@ -523,7 +543,9 @@ def get_checksum_types(
         distribution = rpm_distribution_factory(publication=publication_href)
 
         repomd = ElementTree.fromstring(
-            requests.get(os.path.join(distribution.base_url, "repodata/repomd.xml")).text
+            requests.get(
+                os.path.join(distribution_base_url(distribution.base_url), "repodata/repomd.xml")
+            ).text
         )
 
         data_xpath = "{{{}}}data".format(RPM_NAMESPACES["metadata/repo"])
@@ -539,7 +561,9 @@ def get_checksum_types(
                 location_xpath = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
                 primary_href = data_elem.find(location_xpath).get("href")
                 primary = ElementTree.fromstring(
-                    download_and_decompress_file(os.path.join(distribution.base_url, primary_href))
+                    download_and_decompress_file(
+                        os.path.join(distribution_base_url(distribution.base_url), primary_href)
+                    )
                 )
                 package_checksum_xpath = "{{{}}}checksum".format(RPM_NAMESPACES["metadata/common"])
                 package_xpath = "{{{}}}package".format(RPM_NAMESPACES["metadata/common"])
@@ -701,9 +725,12 @@ def test_immediate_specified_metadata_and_package_checksum_type(get_checksum_typ
 
 
 @pytest.mark.parallel
-def test_directory_layout_distribute_with_modules(generate_distribution):
+def test_directory_layout_distribute_with_modules(
+    distribution_base_url,
+    generate_distribution,
+):
     """Ensure no more files or folders are present when distribute repository with modules."""
-    distribution = generate_distribution(RPM_MODULAR_FIXTURE_URL)
+    distribution = distribution_base_url(generate_distribution(RPM_MODULAR_FIXTURE_URL))
     parser = etree.XMLParser(recover=True)
     repository = etree.fromstring(requests.get(distribution).text, parser=parser)
     # Get links from repository HTML
@@ -722,9 +749,12 @@ def test_directory_layout_distribute_with_modules(generate_distribution):
 
 
 @pytest.mark.parallel
-def test_directory_layout_distribute_with_treeinfo(generate_distribution):
+def test_directory_layout_distribute_with_treeinfo(
+    generate_distribution,
+    distribution_base_url,
+):
     """Ensure no more files or folders are present when distribute repository with treeinfo."""
-    distribution = generate_distribution(RPM_KICKSTART_FIXTURE_URL)
+    distribution = distribution_base_url(generate_distribution(RPM_KICKSTART_FIXTURE_URL))
     parser = etree.XMLParser(recover=True)
     repository = etree.fromstring(requests.get(distribution).text, parser=parser)
     # Get links from repository HTML
