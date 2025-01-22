@@ -15,7 +15,7 @@ dnf_installed = subprocess.run(("which", "dnf")).returncode == 0
 
 
 @pytest.fixture
-def dnf_config_add_repo():
+def dnf_config_add_repo(distribution_base_url):
     added_repos = []
 
     def _add_repo(distribution, has_signing_service=False):
@@ -23,7 +23,9 @@ def dnf_config_add_repo():
         repo_id = "*{}_".format(distribution.base_path)
         args = ["sudo", "dnf", "config-manager", "--save", f"--setopt={repo_id}.gpgcheck=0"]
         if has_signing_service:
-            public_key_url = f"{distribution.base_url}repodata/repomd.xml.key"
+            public_key_url = (
+                f"{distribution_base_url(distribution.base_url)}repodata/repomd.xml.key"
+            )
             args.extend(
                 (
                     f"--setopt={repo_id}.repo_gpgcheck=1",
@@ -188,6 +190,7 @@ func_params = itertools.product(*test_options.values())
 @pytest.mark.parallel
 @pytest.mark.parametrize("repo_config,has_signing_service,generate_repo_config", func_params)
 def test_config_dot_repo(
+    distribution_base_url,
     repo_config,
     has_signing_service,
     generate_repo_config,
@@ -205,15 +208,17 @@ def test_config_dot_repo(
         has_signing_service=has_signing_service,
         generate_repo_config=generate_repo_config,
     )
-    content = requests.get(f"{distribution.base_url}config.repo").text
-
+    content = requests.get(f"{distribution_base_url(distribution.base_url)}config.repo").text
     assert f"[{distribution.name}]\n" in content
-    assert f"baseurl={distribution.base_url}\n" in content
+    assert f"baseurl={distribution_base_url(distribution.base_url)}\n" in content
     assert "gpgcheck=0\n" in content
     assert "repo_gpgcheck=0\n" in content
 
     if has_signing_service:
-        assert f"gpgkey={distribution.base_url}repodata/repomd.xml.key" in content
+        assert (
+            f"gpgkey={distribution_base_url(distribution.base_url)}repodata/repomd.xml.key"
+            in content
+        )
 
     if repo_config:
         assert "assumeyes=True\n" in content
@@ -221,16 +226,16 @@ def test_config_dot_repo(
 
 
 @pytest.mark.parallel
-def test_repomd_headers(create_distribution):
+def test_repomd_headers(create_distribution, distribution_base_url):
     """Test if repomd.xml is returned with Cache-control: no-cache header."""
     distribution = create_distribution(
         repo_config={}, has_signing_service=True, generate_repo_config=True
     )
-    resp = requests.get(f"{distribution.base_url}repodata/repomd.xml")
+    resp = requests.get(f"{distribution_base_url(distribution.base_url)}/repodata/repomd.xml")
     assert resp.headers.get("Cache-control", "") == "no-cache"
 
-    resp = requests.get(f"{distribution.base_url}config.repo")
+    resp = requests.get(f"{distribution_base_url(distribution.base_url)}/config.repo")
     assert not resp.headers.get("Cache-control", "") == "no-cache"
 
-    resp = requests.get(f"{distribution.base_url}repodata/repomd.xml.key")
+    resp = requests.get(f"{distribution_base_url(distribution.base_url)}/repodata/repomd.xml.key")
     assert resp.headers.get("Cache-control", "") == "no-cache"

@@ -176,7 +176,7 @@ class UlnDownloader(RpmDownloader):
             if not self.session_key:
                 self.session_key = await client.auth.login(self.username, self.password)
                 if len(self.session_key) != 43:
-                    raise UlnCredentialsError("No valid ULN credentials given.")
+                    raise UlnCredentialsError()
                 self.headers = {"X-ULN-API-User-Key": self.session_key}
                 await client.close()
             # build request url from input uri
