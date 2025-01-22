@@ -11,6 +11,7 @@ from pulpcore.client.pulp_rpm import RpmRpmPublication
 def test_pulp_pulp_sync(
     policy,
     init_and_sync,
+    distribution_base_url,
     rpm_repository_version_api,
     rpm_publication_api,
     rpm_distribution_factory,
@@ -42,8 +43,9 @@ def test_pulp_pulp_sync(
 
     # Create another repo pointing to distribution base_url
     # Should this second policy always be "immediate"?
-    repo2, remote2 = init_and_sync(url=distribution.base_url, policy="immediate")
-
+    repo2, remote2 = init_and_sync(
+        url=distribution_base_url(distribution.base_url), policy="immediate"
+    )
     repo_ver = rpm_repository_version_api.read(repo.latest_version_href)
     summary = {k: v["count"] for k, v in repo_ver.content_summary.present.items()}
     repo_ver2 = rpm_repository_version_api.read(repo2.latest_version_href)
