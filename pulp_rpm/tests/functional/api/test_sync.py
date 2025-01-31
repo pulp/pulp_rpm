@@ -971,6 +971,7 @@ def test_treeinfo_metadata(init_and_sync, rpm_content_distribution_trees_api):
     distribution_tree = distribution_tree.to_dict()
     # delete pulp-specific metadata
     distribution_tree.pop("pulp_href")
+    distribution_tree.pop("prn")
 
     # sort kickstart metadata so that we can compare the dicts properly
     for d in [distribution_tree, RPM_KICKSTART_DATA]:
