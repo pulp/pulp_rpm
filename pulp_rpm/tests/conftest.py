@@ -160,3 +160,35 @@ def init_and_sync(rpm_repository_factory, rpm_repository_api, rpm_rpmremote_fact
         return (repository, remote) if not return_task else (repository, remote, task)
 
     return _init_and_sync
+
+
+@pytest.fixture
+def get_content_summary(rpm_repository_version_api):
+    """A fixture that fetches the content summary from a repository."""
+
+    def _get_content_summary(repo, version_href=None, dump=True):
+        """Fetches the content summary from a given repository.
+
+        Args:
+            repo: The repository where the content is fetched from.
+            version_href: The repository version from where the content should be fetched from.
+                Default: latest repository version.
+            dump: If true, return a dumped dictionary with convenient filters (default).
+                Otherwise, return the response object.
+
+        Returns:
+            The content summary of the repository.
+        """
+        version_href = version_href or repo.latest_version_href
+        if version_href is None:
+            return {}
+        content_summary = rpm_repository_version_api.read(version_href).content_summary
+        if not dump:
+            return content_summary
+        else:
+            # removes the hrefs, which is may get in the way of data comparision
+            # https://docs.pydantic.dev/latest/concepts/serialization/#pickledumpsmodel
+            exclude_fields = {"__all__": {"__all__": {"href"}}}
+            return content_summary.model_dump(exclude=exclude_fields)
+
+    return _get_content_summary

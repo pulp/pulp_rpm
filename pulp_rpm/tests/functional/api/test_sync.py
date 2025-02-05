@@ -78,31 +78,29 @@ from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 
 @pytest.mark.parallel
-def test_sync(init_and_sync, rpm_repository_version_api):
+def test_sync(init_and_sync, get_content_summary):
     """Sync repositories with the rpm plugin."""
     # Create a remote (default) and empty repository
-    repository_s0, remote = init_and_sync()
-
-    # Assert that it's synced properly
-    response = rpm_repository_version_api.read(repository_s0.latest_version_href)
-    assert response.content_summary.model_dump()["present"] == RPM_FIXTURE_SUMMARY
+    # Then Assert that it's synced properly
+    repository, remote = init_and_sync()
+    original_latest_version_href = repository.latest_version_href
+    assert get_content_summary(repository)["present"] == RPM_FIXTURE_SUMMARY
 
     # Sync the same repository again
-    repository_s1, _ = init_and_sync(repository=repository_s0, remote=remote)
-
-    # Assert that the repository has not changed, the latest version stays the same
-    assert repository_s0.latest_version_href == repository_s1.latest_version_href
-    response = rpm_repository_version_api.read(repository_s1.latest_version_href)
-    assert response.content_summary.model_dump()["present"] == RPM_FIXTURE_SUMMARY
+    # Then assert that the repository has not changed, the latest version stays the same
+    repository, _ = init_and_sync(repository=repository, remote=remote)
+    assert original_latest_version_href == repository.latest_version_href
+    assert get_content_summary(repository)["present"] == RPM_FIXTURE_SUMMARY
 
 
 @pytest.mark.parallel
-def test_sync_zstd(init_and_sync):
+def test_sync_zstd(init_and_sync, get_content_summary):
     """Test syncing non-gzip metadata."""
     repository, _ = init_and_sync(url=RPM_ZSTD_METADATA_FIXTURE_URL)
 
-    assert get_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
-    assert get_added_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
+    content_summary = get_content_summary(repository)
+    assert content_summary["present"] == RPM_FIXTURE_SUMMARY
+    assert content_summary["added"] == RPM_FIXTURE_SUMMARY
 
 
 @pytest.mark.parallel
@@ -113,12 +111,13 @@ def test_sync_local(init_and_sync, tmpdir):
 
 
 @pytest.mark.parallel
-def test_sync_from_valid_mirror_list_feed(init_and_sync):
+def test_sync_from_valid_mirror_list_feed(init_and_sync, get_content_summary):
     """Sync RPM content from a mirror list feed which contains a valid remote URL."""
     repository, _ = init_and_sync(url=RPM_MIRROR_LIST_GOOD_FIXTURE_URL)
 
-    assert get_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
-    assert get_added_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
+    content_summary = get_content_summary(repository)
+    assert content_summary["present"] == RPM_FIXTURE_SUMMARY
+    assert content_summary["added"] == RPM_FIXTURE_SUMMARY
 
 
 @pytest.mark.parallel
@@ -137,16 +136,17 @@ def test_sync_from_invalid_mirror_list_feed(init_and_sync):
 
 
 @pytest.mark.parallel
-def test_sync_modular(init_and_sync):
+def test_sync_modular(init_and_sync, get_content_summary):
     """Sync RPM modular content."""
     repository, _ = init_and_sync(url=RPM_MODULAR_FIXTURE_URL)
 
-    assert get_content_summary(repository.to_dict()) == RPM_MODULAR_FIXTURE_SUMMARY
-    assert get_added_content_summary(repository.to_dict()) == RPM_MODULAR_FIXTURE_SUMMARY
+    content_summary = get_content_summary(repository)
+    assert content_summary["present"] == RPM_MODULAR_FIXTURE_SUMMARY
+    assert content_summary["added"] == RPM_MODULAR_FIXTURE_SUMMARY
 
 
 @pytest.mark.parallel
-def test_checksum_constraint(init_and_sync):
+def test_checksum_constraint(init_and_sync, get_content_summary):
     """Verify checksum constraint test case.
 
     Do the following:
@@ -160,14 +160,14 @@ def test_checksum_constraint(init_and_sync):
     """
     for url in [RPM_REFERENCES_UPDATEINFO_URL, RPM_UNSIGNED_FIXTURE_URL]:
         repository, _ = init_and_sync(url=url)
-
-        assert get_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
-        assert get_added_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
+        content_summary = get_content_summary(repository)
+        assert content_summary["present"] == RPM_FIXTURE_SUMMARY
+        assert content_summary["added"] == RPM_FIXTURE_SUMMARY
 
 
 @pytest.mark.parallel
 @pytest.mark.parametrize("policy", ["on_demand", "immediate"])
-def test_kickstart(policy, init_and_sync, rpm_content_distribution_trees_api):
+def test_kickstart(policy, init_and_sync, rpm_content_distribution_trees_api, get_content_summary):
     """Sync repositories with the rpm plugin.
 
     Do the following:
@@ -181,14 +181,14 @@ def test_kickstart(policy, init_and_sync, rpm_content_distribution_trees_api):
     6. Assert that the same number of packages are present.
     """
     repository, remote = init_and_sync(url=RPM_KICKSTART_FIXTURE_URL, policy=policy)
-
     latest_version_href = repository.latest_version_href
-    assert get_content_summary(repository.to_dict()) == RPM_KICKSTART_FIXTURE_SUMMARY
-    assert get_added_content_summary(repository.to_dict()) == RPM_KICKSTART_FIXTURE_SUMMARY
+    content_summary = get_content_summary(repository)
+    assert content_summary["present"] == RPM_KICKSTART_FIXTURE_SUMMARY
+    assert content_summary["added"] == RPM_KICKSTART_FIXTURE_SUMMARY
 
     repository, _ = init_and_sync(repository=repository, remote=remote)
-
-    assert get_content_summary(repository.to_dict()) == RPM_KICKSTART_FIXTURE_SUMMARY
+    content_summary = get_content_summary(repository)
+    assert content_summary["present"] == RPM_KICKSTART_FIXTURE_SUMMARY
     assert latest_version_href == repository.latest_version_href
 
     distribution_tree = rpm_content_distribution_trees_api.list(
@@ -197,7 +197,7 @@ def test_kickstart(policy, init_and_sync, rpm_content_distribution_trees_api):
     assert "RHEL" == distribution_tree.release_short
 
 
-def test_mutated_packages(init_and_sync):
+def test_mutated_packages(init_and_sync, get_content_summary):
     """Sync two copies of the same packages.
 
     Make sure we end up with only one copy.
@@ -215,9 +215,9 @@ def test_mutated_packages(init_and_sync):
     7. Assert that the packages have changed since the last sync.
     """
     repository, _ = init_and_sync(url=RPM_UNSIGNED_FIXTURE_URL)
-
-    assert get_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
-    assert get_added_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
+    content_summary = get_content_summary(repository)
+    assert content_summary["present"] == RPM_FIXTURE_SUMMARY
+    assert content_summary["added"] == RPM_FIXTURE_SUMMARY
 
     # Save the copy of the original packages.
     original_packages = {
@@ -292,7 +292,7 @@ def test_sync_diff_checksum_packages(init_and_sync):
 
 
 @pytest.mark.parallel
-def test_mutated_advisory_metadata(init_and_sync):
+def test_mutated_advisory_metadata(init_and_sync, get_content_summary):
     """Sync two copies of the same Advisory (only description is updated).
 
     Make sure we end up with only one copy.
@@ -311,9 +311,9 @@ def test_mutated_advisory_metadata(init_and_sync):
     7. Assert that the updaterecords have changed since the last sync.
     """
     repository, _ = init_and_sync(url=RPM_UNSIGNED_FIXTURE_URL, policy="on_demand")
-
-    assert get_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
-    assert get_added_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
+    content_summary = get_content_summary(repository)
+    assert content_summary["present"] == RPM_FIXTURE_SUMMARY
+    assert content_summary["added"] == RPM_FIXTURE_SUMMARY
 
     original_updaterecords = {
         content["id"]: content
@@ -321,10 +321,10 @@ def test_mutated_advisory_metadata(init_and_sync):
     }
 
     repository, _ = init_and_sync(repository=repository, url=RPM_UPDATED_UPDATEINFO_FIXTURE_URL)
-
-    assert get_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
-    assert len(get_added_content(repository.to_dict())[RPM_ADVISORY_CONTENT_NAME]) == 4
-    assert len(get_removed_content(repository.to_dict())[RPM_ADVISORY_CONTENT_NAME]) == 4
+    content_summary = get_content_summary(repository)
+    assert content_summary["present"] == RPM_FIXTURE_SUMMARY
+    assert len(content_summary["added"][RPM_ADVISORY_CONTENT_NAME]) == 4
+    assert len(content_summary["removed"][RPM_ADVISORY_CONTENT_NAME]) == 4
 
     # Test that the updateinfo have been modified.
     mutated_updaterecords = {
@@ -704,12 +704,12 @@ def test_sync_repo_metadata_change(init_and_sync):
 
 
 @pytest.mark.parallel
-def test_sync_modular_static_context(init_and_sync):
+def test_sync_modular_static_context(init_and_sync, get_content_summary):
     """Sync RPM modular content that includes the new static_context_field."""
     repository, _ = init_and_sync(url=RPM_MODULES_STATIC_CONTEXT_FIXTURE_URL)
-
-    summary = get_content_summary(repository.to_dict())
-    added = get_added_content_summary(repository.to_dict())
+    content_summary = get_content_summary(repository)
+    summary = content_summary["present"]
+    added = content_summary["added"]
 
     modules = get_content(repository.to_dict())[PULP_TYPE_MODULEMD]
     module_static_contexts = [
@@ -1082,7 +1082,7 @@ def test_additive_mode(init_and_sync):
 
 @pytest.mark.parallel
 @pytest.mark.parametrize("sync_policy", ["mirror_complete", "mirror_content_only"])
-def test_mirror_mode(sync_policy, init_and_sync, rpm_publication_api):
+def test_mirror_mode(sync_policy, init_and_sync, rpm_publication_api, get_content_summary):
     """Test of mirror mode."""
     repository, remote = init_and_sync(url=SRPM_UNSIGNED_FIXTURE_URL, policy="on_demand")
 
@@ -1095,7 +1095,8 @@ def test_mirror_mode(sync_policy, init_and_sync, rpm_publication_api):
 
     # check that one publication was created w/ no repository versions
     # and only the new content is present
-    assert get_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
+    content_summary = get_content_summary(repository)
+    assert content_summary["present"] == RPM_FIXTURE_SUMMARY
     assert repository.latest_version_href == f"{repository.pulp_href}versions/2/"
 
     if sync_policy == "mirror_complete":
