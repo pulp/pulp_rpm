@@ -70,8 +70,9 @@ def test_merging(
     # Third upload, two pkgs, intersects with existing, expect AdvisoryConflict failure
     with pytest.raises(PulpTaskError) as ctx:
         _, _, _ = upload_advisory_factory(advisory=CAMEL_BIRD_JSON, repository=repo, use_id=an_id)
-    assert "neither package list is a proper subset of the other" in str(ctx.value)
-    assert "ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION" in str(ctx.value)
+    error_msg = ctx.value.task.error["description"]
+    assert "neither package list is a proper subset of the other" in error_msg
+    assert "ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION" in error_msg
 
     # Fourth upload, intersecting pkglists, expecting three pkgs
     cambeardog, vers_href, _ = upload_advisory_factory(

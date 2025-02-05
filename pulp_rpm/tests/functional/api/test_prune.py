@@ -1,7 +1,5 @@
 import pytest
 
-from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-
 from pulpcore.client.pulp_rpm import PrunePackages
 from pulpcore.client.pulp_rpm.exceptions import ApiException
 

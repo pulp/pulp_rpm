@@ -9,7 +9,6 @@ from pulpcore.client.pulp_rpm import ApiException, Copy, RpmRepositorySyncURL
 from pulpcore.client.pulpcore.exceptions import ApiException as CoreApiException
 
 from pulp_rpm.tests.functional.utils import (
-    gen_rpm_remote,
     get_package_repo_path,
 )
 from pulp_rpm.tests.functional.constants import (
@@ -27,6 +26,7 @@ def test_domain_create(
     rpm_package_api,
     rpm_repository_api,
     rpm_rpmremote_api,
+    rpm_rpmremote_factory,
 ):
     """Test repo-creation in a domain."""
     body = {
@@ -38,7 +38,7 @@ def test_domain_create(
     domain_name = domain.name
 
     # create and sync in default domain (not specified)
-    remote = gen_object_with_cleanup(rpm_rpmremote_api, gen_rpm_remote(RPM_SIGNED_FIXTURE_URL))
+    remote = rpm_rpmremote_factory(url=RPM_SIGNED_FIXTURE_URL)
     repo_body = {"name": str(uuid.uuid4()), "remote": remote.pulp_href}
     repo = gen_object_with_cleanup(rpm_repository_api, repo_body)
     # Check that we can "find" the new repo in the default-domain
@@ -63,6 +63,7 @@ def test_domain_sync(
     rpm_package_lang_packs_api,
     rpm_repository_api,
     rpm_rpmremote_api,
+    rpm_rpmremote_factory,
 ):
     """Test repo-sync in a domain."""
 
@@ -76,13 +77,12 @@ def test_domain_sync(
         domain_name = domain.name
 
         # create and sync in the newly-created domain
-        remote = gen_object_with_cleanup(
-            rpm_rpmremote_api,
-            {"name": str(uuid.uuid4()), "url": RPM_SIGNED_FIXTURE_URL},
-            pulp_domain=domain_name,
+        remote = rpm_rpmremote_factory(
+            name=str(uuid.uuid4()), url=RPM_SIGNED_FIXTURE_URL, pulp_domain=domain_name
         )
         repo_body = {"name": str(uuid.uuid4()), "remote": remote.pulp_href}
         repo = gen_object_with_cleanup(rpm_repository_api, repo_body, pulp_domain=domain_name)
+
         # Check that we can "find" the new repo in the new domain via filtering
         repos = rpm_repository_api.list(name=repo.name, pulp_domain=domain_name).results
         assert len(repos) == 1
@@ -130,7 +130,11 @@ def test_domain_sync(
 
 @pytest.mark.parallel
 def test_object_creation(
-    pulpcore_bindings, gen_object_with_cleanup, rpm_repository_api, rpm_rpmremote_api
+    pulpcore_bindings,
+    gen_object_with_cleanup,
+    rpm_repository_api,
+    rpm_rpmremote_api,
+    rpm_rpmremote_factory,
 ):
     """Test basic object creation in a separate domain."""
     body = {
@@ -154,7 +158,7 @@ def test_object_creation(
     assert default_repos.count == 0
 
     # Try to create an object w/ cross domain relations
-    default_remote = gen_object_with_cleanup(rpm_rpmremote_api, gen_rpm_remote())
+    default_remote = rpm_rpmremote_factory()
     with pytest.raises(ApiException) as e:
         repo_body = {"name": str(uuid.uuid4()), "remote": default_remote.pulp_href}
         rpm_repository_api.create(repo_body, pulp_domain=domain.name)

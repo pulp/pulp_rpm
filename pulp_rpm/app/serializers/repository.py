@@ -22,7 +22,6 @@ from pulpcore.plugin.serializers import (
 )
 from pulpcore.plugin.util import get_domain, resolve_prn
 from rest_framework import serializers
-from pulp_rpm.app.fields import CustomJSONField
 
 from pulp_rpm.app.constants import (
     ALLOWED_CHECKSUM_ERROR_MSG,
@@ -147,10 +146,25 @@ class RpmRepositorySerializer(RepositorySerializer):
         ),
         read_only=True,
     )
-    repo_config = CustomJSONField(
+    repo_config = serializers.JSONField(
         required=False,
         help_text=_("A JSON document describing config.repo file"),
     )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Import workflow may cause these fields to be stored as "" in the database
+        # This ensure the correct type of  None | Enum in the response
+        for field in (
+            "checksum_type",
+            "metadata_checksum_type",
+            "package_checksum_type",
+            "compression_type",
+        ):
+            field_data = data.get(field)
+            if field_data == "":
+                data[field] = None
+        return data
 
     def validate(self, data):
         """Validate data."""
@@ -410,7 +424,7 @@ class RpmPublicationSerializer(PublicationSerializer):
         ),
         read_only=True,
     )
-    repo_config = CustomJSONField(
+    repo_config = serializers.JSONField(
         required=False,
         help_text=_("A JSON document describing config.repo file"),
     )
@@ -549,7 +563,7 @@ class CopySerializer(ValidateFieldsMixin, serializers.Serializer):
     A serializer for Content Copy API.
     """
 
-    config = CustomJSONField(
+    config = serializers.JSONField(
         help_text=_(
             dedent(
                 """\

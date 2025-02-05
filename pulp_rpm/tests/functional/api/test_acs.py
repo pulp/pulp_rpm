@@ -35,6 +35,7 @@ def test_acs_simple(
     rpm_acs_api,
     rpm_repository_factory,
     rpm_rpmremote_factory,
+    get_content_summary,
     monitor_task,
     monitor_task_group,
     gen_object_with_cleanup,
@@ -72,7 +73,5 @@ def test_acs_simple(
     monitor_task(sync_response.task)
 
     repo = rpm_repository_api.read(repo.pulp_href)
-    repo_ver = rpm_repository_version_api.read(repo.latest_version_href)
-
-    present_summary = {k: v["count"] for k, v in repo_ver.content_summary.present.items()}
+    present_summary = get_content_summary(repo)["present"]
     assert present_summary == content_summary

@@ -8,7 +8,6 @@ from pulpcore.plugin.serializers import (
 )
 from pulpcore.plugin.util import get_domain_pk
 from rest_framework import serializers
-from pulp_rpm.app.fields import CustomJSONField
 from rest_framework.exceptions import NotAcceptable
 
 from pulp_rpm.app.models import Package
@@ -78,62 +77,62 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         read_only=True,
     )
 
-    changelogs = CustomJSONField(
+    changelogs = serializers.JSONField(
         help_text=_("Changelogs that package contains"),
         default="[]",
         required=False,
         read_only=True,
     )
-    files = CustomJSONField(
+    files = serializers.JSONField(
         help_text=_("Files that package contains"),
         default="[]",
         required=False,
         read_only=True,
     )
 
-    requires = CustomJSONField(
+    requires = serializers.JSONField(
         help_text=_("Capabilities the package requires"),
         default="[]",
         required=False,
         read_only=True,
     )
-    provides = CustomJSONField(
+    provides = serializers.JSONField(
         help_text=_("Capabilities the package provides"),
         default="[]",
         required=False,
         read_only=True,
     )
-    conflicts = CustomJSONField(
+    conflicts = serializers.JSONField(
         help_text=_("Capabilities the package conflicts"),
         default="[]",
         required=False,
         read_only=True,
     )
-    obsoletes = CustomJSONField(
+    obsoletes = serializers.JSONField(
         help_text=_("Capabilities the package obsoletes"),
         default="[]",
         required=False,
         read_only=True,
     )
-    suggests = CustomJSONField(
+    suggests = serializers.JSONField(
         help_text=_("Capabilities the package suggests"),
         default="[]",
         required=False,
         read_only=True,
     )
-    enhances = CustomJSONField(
+    enhances = serializers.JSONField(
         help_text=_("Capabilities the package enhances"),
         default="[]",
         required=False,
         read_only=True,
     )
-    recommends = CustomJSONField(
+    recommends = serializers.JSONField(
         help_text=_("Capabilities the package recommends"),
         default="[]",
         required=False,
         read_only=True,
     )
-    supplements = CustomJSONField(
+    supplements = serializers.JSONField(
         help_text=_("Capabilities the package supplements"),
         default="[]",
         required=False,

@@ -22,6 +22,7 @@ def test_sync_with_retention(
     rpm_repository_version_api,
     rpm_package_api,
     monitor_task,
+    get_content_summary,
 ):
     """Verify functionality with sync.
 
@@ -38,13 +39,12 @@ def test_sync_with_retention(
     7. Assert the repository version we end with has only one version of each package.
     """
     repo, remote, task = init_and_sync(policy="on_demand", optimize=False, return_task=True)
+    summary = get_content_summary(repo)
 
     # Test that, by default, everything is retained / nothing is tossed out.
-    version = rpm_repository_version_api.read(repo.latest_version_href)
-    present = {k: v["count"] for k, v in version.content_summary.present.items()}
-    added = {k: v["count"] for k, v in version.content_summary.added.items()}
-    assert present == RPM_FIXTURE_SUMMARY
-    assert added == RPM_FIXTURE_SUMMARY
+    assert summary["present"] == RPM_FIXTURE_SUMMARY
+    assert summary["added"] == RPM_FIXTURE_SUMMARY
+
     # Test that the # of packages processed is correct
     reports = get_progress_reports_by_code(task)
     assert reports["sync.parsing.packages"].total == RPM_PACKAGE_COUNT
@@ -82,6 +82,7 @@ def test_sync_with_retention_and_modules(
     rpm_repository_api,
     rpm_repository_version_api,
     monitor_task,
+    get_content_summary,
 ):
     """Verify functionality with sync.
 
@@ -105,11 +106,9 @@ def test_sync_with_retention_and_modules(
     )
 
     # Test that, by default, everything is retained / nothing is tossed out.
-    version = rpm_repository_version_api.read(repo.latest_version_href)
-    present = {k: v["count"] for k, v in version.content_summary.present.items()}
-    added = {k: v["count"] for k, v in version.content_summary.added.items()}
-    assert present == RPM_MODULAR_STATIC_FIXTURE_SUMMARY
-    assert added == RPM_MODULAR_STATIC_FIXTURE_SUMMARY
+    summary = get_content_summary(repo)
+    assert summary["present"] == RPM_MODULAR_STATIC_FIXTURE_SUMMARY
+    assert summary["added"] == RPM_MODULAR_STATIC_FIXTURE_SUMMARY
     # Test that the # of packages processed is correct
     reports = get_progress_reports_by_code(task)
     assert reports["sync.parsing.packages"].total == RPM_MODULAR_PACKAGE_COUNT

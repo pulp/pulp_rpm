@@ -1,7 +1,6 @@
 from gettext import gettext as _
 
 from rest_framework import serializers
-from pulp_rpm.app.fields import CustomJSONField
 
 from pulpcore.plugin.models import Repository
 from pulpcore.plugin.serializers import DetailRelatedField
@@ -32,12 +31,14 @@ class PackageGroupSerializer(NoArtifactContentSerializer):
     )
     name = serializers.CharField(help_text=_("PackageGroup name."), allow_blank=True)
     description = serializers.CharField(help_text=_("PackageGroup description."), allow_blank=True)
-    packages = CustomJSONField(help_text=_("PackageGroup package list."), allow_null=True)
+    packages = serializers.JSONField(help_text=_("PackageGroup package list."), allow_null=True)
     biarch_only = serializers.BooleanField(help_text=_("PackageGroup biarch only."), required=False)
-    desc_by_lang = CustomJSONField(
+    desc_by_lang = serializers.JSONField(
         help_text=_("PackageGroup description by language."), allow_null=True
     )
-    name_by_lang = CustomJSONField(help_text=_("PackageGroup name by language."), allow_null=True)
+    name_by_lang = serializers.JSONField(
+        help_text=_("PackageGroup name by language."), allow_null=True
+    )
     digest = serializers.CharField(
         help_text=_("PackageGroup digest."),
     )
@@ -72,11 +73,11 @@ class PackageCategorySerializer(NoArtifactContentSerializer):
     display_order = serializers.IntegerField(
         help_text=_("Category display order."), allow_null=True
     )
-    group_ids = CustomJSONField(help_text=_("Category group list."), allow_null=True)
-    desc_by_lang = CustomJSONField(
+    group_ids = serializers.JSONField(help_text=_("Category group list."), allow_null=True)
+    desc_by_lang = serializers.JSONField(
         help_text=_("Category description by language."), allow_null=True
     )
-    name_by_lang = CustomJSONField(help_text=_("Category name by language."), allow_null=True)
+    name_by_lang = serializers.JSONField(help_text=_("Category name by language."), allow_null=True)
     digest = serializers.CharField(
         help_text=_("Category digest."),
     )
@@ -108,12 +109,14 @@ class PackageEnvironmentSerializer(NoArtifactContentSerializer):
     display_order = serializers.IntegerField(
         help_text=_("Environment display order."), allow_null=True
     )
-    group_ids = CustomJSONField(help_text=_("Environment group list."), allow_null=True)
-    option_ids = CustomJSONField(help_text=_("Environment option ids"), allow_null=True)
-    desc_by_lang = CustomJSONField(
+    group_ids = serializers.JSONField(help_text=_("Environment group list."), allow_null=True)
+    option_ids = serializers.JSONField(help_text=_("Environment option ids"), allow_null=True)
+    desc_by_lang = serializers.JSONField(
         help_text=_("Environment description by language."), allow_null=True
     )
-    name_by_lang = CustomJSONField(help_text=_("Environment name by language."), allow_null=True)
+    name_by_lang = serializers.JSONField(
+        help_text=_("Environment name by language."), allow_null=True
+    )
     digest = serializers.CharField(help_text=_("Environment digest."))
 
     class Meta:
@@ -136,7 +139,7 @@ class PackageLangpacksSerializer(NoArtifactContentSerializer):
     PackageLangpacks serializer.
     """
 
-    matches = CustomJSONField(help_text=_("Langpacks matches."), allow_null=True)
+    matches = serializers.JSONField(help_text=_("Langpacks matches."), allow_null=True)
     digest = serializers.CharField(help_text=_("Langpacks digest."), allow_null=True)
 
     class Meta:

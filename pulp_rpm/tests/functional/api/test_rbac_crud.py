@@ -4,7 +4,6 @@ import uuid
 from pulpcore.client.pulp_rpm import RpmRepositorySyncURL
 from pulpcore.client.pulp_rpm.exceptions import ApiException
 
-from pulp_rpm.tests.functional.utils import gen_rpm_remote
 from pulp_rpm.tests.functional.constants import (
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
@@ -52,14 +51,13 @@ def test_rbac_repositories(gen_user, rpm_repository_factory, rpm_repository_api,
     with user_creator:
         repo_data = repo.to_dict()
         repo_data.update(name="rpm_repo_test_modify")
-        response = rpm_repository_api.update(repo_data["pulp_href"], repo_data)
-        monitor_task(response.task)
+        monitor_task(rpm_repository_api.update(repo.pulp_href, repo_data).task)
         assert rpm_repository_api.read(repo.pulp_href).name == "rpm_repo_test_modify"
 
     with user_no, pytest.raises(ApiException) as exc:
         repo_data = repo.to_dict()
         repo_data.update(name="rpm_repo_test_modify_without_perms")
-        rpm_repository_api.update(repo_data["pulp_href"], repo_data)
+        rpm_repository_api.update(repo.pulp_href, repo_data)
     # Here is response `404` as user doesn't have even permission to retrieve repo data
     # so pulp response with not found instead `access denied` to not expose it exists
     assert exc.value.status == 404
@@ -67,7 +65,7 @@ def test_rbac_repositories(gen_user, rpm_repository_factory, rpm_repository_api,
     with user_viewer, pytest.raises(ApiException) as exc:
         repo_data = repo.to_dict()
         repo_data.update(name="rpm_repo_test_modify_with_view_perms")
-        rpm_repository_api.update(repo_data["pulp_href"], repo_data)
+        rpm_repository_api.update(repo.pulp_href, repo_data)
     # Fails with '403' as a repo can be seen but not updated.
     assert exc.value.status == 403
 
@@ -89,7 +87,12 @@ def test_rbac_repositories(gen_user, rpm_repository_factory, rpm_repository_api,
 
 @pytest.mark.parallel
 def test_rbac_remotes_and_sync(
-    gen_user, rpm_rpmremote_api, rpm_repository_api, rpm_repository_factory, monitor_task
+    gen_user,
+    rpm_rpmremote_api,
+    rpm_repository_api,
+    rpm_repository_factory,
+    rpm_rpmremote_factory,
+    monitor_task,
 ):
     """
     Test creation of remotes with user with permissions and without.
@@ -106,23 +109,23 @@ def test_rbac_remotes_and_sync(
     user_no = gen_user(model_roles=["rpm.rpmrepository_creator"])
 
     remote = None
-    remote_data = gen_rpm_remote(RPM_SIGNED_FIXTURE_URL)
 
     # Create
     with user_no, pytest.raises(ApiException) as exc:
-        rpm_rpmremote_api.create(remote_data)
+        rpm_rpmremote_factory(url=RPM_SIGNED_FIXTURE_URL)
     assert exc.value.status == 403
 
     with user_viewer, pytest.raises(ApiException) as exc:
-        rpm_rpmremote_api.create(remote_data)
+        rpm_rpmremote_factory(url=RPM_SIGNED_FIXTURE_URL)
     assert exc.value.status == 403
 
     with user_creator:
-        remote = rpm_rpmremote_api.create(remote_data)
+        remote = rpm_rpmremote_factory(url=RPM_SIGNED_FIXTURE_URL)
         assert rpm_rpmremote_api.list(name=remote.name).count == 1
 
     # Update
-    remote_data_update = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
+    remote_data_update = remote.to_dict()
+    remote_data_update["url"] = RPM_UNSIGNED_FIXTURE_URL
 
     with user_no, pytest.raises(ApiException) as exc:
         rpm_rpmremote_api.update(remote.pulp_href, remote_data_update)
@@ -181,7 +184,7 @@ def test_rbac_remotes_and_sync(
 
 
 @pytest.mark.parallel
-def test_rbac_acs(gen_user, rpm_acs_api, rpm_rpmremote_api, monitor_task):
+def test_rbac_acs(gen_user, rpm_acs_api, rpm_rpmremote_api, rpm_rpmremote_factory, monitor_task):
     """Test RPM ACS CRUD."""
     user_creator = gen_user(
         model_roles=[
@@ -202,8 +205,7 @@ def test_rbac_acs(gen_user, rpm_acs_api, rpm_rpmremote_api, monitor_task):
     )
 
     acs = None
-    remote_data = gen_rpm_remote(policy="on_demand")
-    remote = rpm_rpmremote_api.create(remote_data)
+    remote = rpm_rpmremote_factory(policy="on_demand")
 
     acs_data = {
         "name": str(uuid.uuid4()),
@@ -229,15 +231,15 @@ def test_rbac_acs(gen_user, rpm_acs_api, rpm_rpmremote_api, monitor_task):
     assert exc.value.status == 404
 
     with user_viewer, pytest.raises(ApiException) as exc:
-        acs_to_update = rpm_acs_api.read(acs.pulp_href)
-        acs_to_update.paths[0] = "files/"
-        rpm_acs_api.update(acs_to_update.pulp_href, acs_to_update)
+        acs_to_update = rpm_acs_api.read(acs.pulp_href).to_dict()
+        acs_to_update["paths"][0] = "files/"
+        rpm_acs_api.update(acs.pulp_href, acs_to_update)
     assert exc.value.status == 403
 
     with user_creator:
-        acs_to_update = rpm_acs_api.read(acs.pulp_href)
-        acs_to_update.paths[0] = "files/"
-        response = rpm_acs_api.update(acs_to_update.pulp_href, acs_to_update)
+        acs_to_update = rpm_acs_api.read(acs.pulp_href).to_dict()
+        acs_to_update["paths"][0] = "files/"
+        response = rpm_acs_api.update(acs.pulp_href, acs_to_update)
         monitor_task(response.task)
         assert rpm_acs_api.list(name=acs.name).count == 1
         assert "files/" in rpm_acs_api.read(acs.pulp_href).paths
@@ -359,9 +361,9 @@ def test_rbac_distribution(
         assert distribution.publication == publication.pulp_href
 
     # Update
-    dist_data_to_update = rpm_distribution_api.read(distribution.pulp_href)
+    dist_data_to_update = rpm_distribution_api.read(distribution.pulp_href).to_dict()
     new_name = str(uuid.uuid4())
-    dist_data_to_update.name = new_name
+    dist_data_to_update["name"] = new_name
 
     with user_no, pytest.raises(ApiException) as exc:
         rpm_distribution_api.update(distribution.pulp_href, dist_data_to_update)
@@ -407,6 +409,7 @@ def test_rbac_content_scoping(
     rpm_repository_api,
     rpm_repository_factory,
     rpm_rpmremote_api,
+    rpm_rpmremote_factory,
     monitor_task,
 ):
     """
@@ -424,11 +427,10 @@ def test_rbac_content_scoping(
     user_no = gen_user(model_roles=["rpm.rpmrepository_creator"])
 
     remote = None
-    remote_data = gen_rpm_remote(RPM_SIGNED_FIXTURE_URL)
 
     # Create
     with user_creator:
-        remote = rpm_rpmremote_api.create(remote_data)
+        remote = rpm_rpmremote_factory(url=RPM_SIGNED_FIXTURE_URL)
         assert rpm_rpmremote_api.list().count == 1
 
     # Sync the remote
@@ -442,25 +444,25 @@ def test_rbac_content_scoping(
 
     def _assert_listed_content():
         packages_count = rpm_package_api.list(repository_version=repo.latest_version_href).count
-        assert RPM_FIXTURE_SUMMARY["rpm.package"] == packages_count
+        assert RPM_FIXTURE_SUMMARY["rpm.package"]["count"] == packages_count
 
         advisories_count = rpm_advisory_api.list(repository_version=repo.latest_version_href).count
-        assert RPM_FIXTURE_SUMMARY["rpm.advisory"] == advisories_count
+        assert RPM_FIXTURE_SUMMARY["rpm.advisory"]["count"] == advisories_count
 
         package_categories_count = rpm_package_category_api.list(
             repository_version=repo.latest_version_href
         ).count
-        assert RPM_FIXTURE_SUMMARY["rpm.packagecategory"] == package_categories_count
+        assert RPM_FIXTURE_SUMMARY["rpm.packagecategory"]["count"] == package_categories_count
 
         package_groups_count = rpm_package_groups_api.list(
             repository_version=repo.latest_version_href
         ).count
-        assert RPM_FIXTURE_SUMMARY["rpm.packagegroup"] == package_groups_count
+        assert RPM_FIXTURE_SUMMARY["rpm.packagegroup"]["count"] == package_groups_count
 
         package_lang_packs_count = rpm_package_lang_packs_api.list(
             repository_version=repo.latest_version_href
         ).count
-        assert RPM_FIXTURE_SUMMARY["rpm.packagelangpacks"] == package_lang_packs_count
+        assert RPM_FIXTURE_SUMMARY["rpm.packagelangpacks"]["count"] == package_lang_packs_count
 
     # Test content visibility
     # TODO: modules
