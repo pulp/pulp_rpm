@@ -11,6 +11,7 @@ from rest_framework import serializers
 from pulp_rpm.app.fields import CustomJSONField
 from rest_framework.exceptions import NotAcceptable
 
+from pulpcore.plugin.serializers import JSONDictField, JSONListField
 from pulp_rpm.app.models import Package
 from pulp_rpm.app.shared_utils import format_nvra, read_crpackage_from_artifact
 
@@ -78,62 +79,62 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         read_only=True,
     )
 
-    changelogs = CustomJSONField(
+    changelogs = JSONListField(
         help_text=_("Changelogs that package contains"),
         default="[]",
         required=False,
         read_only=True,
     )
-    files = CustomJSONField(
+    files = JSONListField(
         help_text=_("Files that package contains"),
         default="[]",
         required=False,
         read_only=True,
     )
 
-    requires = CustomJSONField(
+    requires = JSONListField(
         help_text=_("Capabilities the package requires"),
         default="[]",
         required=False,
         read_only=True,
     )
-    provides = CustomJSONField(
+    provides = JSONListField(
         help_text=_("Capabilities the package provides"),
         default="[]",
         required=False,
         read_only=True,
     )
-    conflicts = CustomJSONField(
+    conflicts = JSONListField(
         help_text=_("Capabilities the package conflicts"),
         default="[]",
         required=False,
         read_only=True,
     )
-    obsoletes = CustomJSONField(
+    obsoletes = JSONListField(
         help_text=_("Capabilities the package obsoletes"),
         default="[]",
         required=False,
         read_only=True,
     )
-    suggests = CustomJSONField(
+    suggests = JSONListField(
         help_text=_("Capabilities the package suggests"),
         default="[]",
         required=False,
         read_only=True,
     )
-    enhances = CustomJSONField(
+    enhances = JSONListField(
         help_text=_("Capabilities the package enhances"),
         default="[]",
         required=False,
         read_only=True,
     )
-    recommends = CustomJSONField(
+    recommends = JSONListField(
         help_text=_("Capabilities the package recommends"),
         default="[]",
         required=False,
         read_only=True,
     )
-    supplements = CustomJSONField(
+    supplements = JSONListField(
         help_text=_("Capabilities the package supplements"),
         default="[]",
         required=False,

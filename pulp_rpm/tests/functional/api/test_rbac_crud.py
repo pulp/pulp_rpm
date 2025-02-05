@@ -52,14 +52,14 @@ def test_rbac_repositories(gen_user, rpm_repository_factory, rpm_repository_api,
     with user_creator:
         repo_data = repo.to_dict()
         repo_data.update(name="rpm_repo_test_modify")
-        response = rpm_repository_api.update(repo_data["pulp_href"], repo_data)
+        response = rpm_repository_api.update(repo_data.pulp_href, repo_data)
         monitor_task(response.task)
         assert rpm_repository_api.read(repo.pulp_href).name == "rpm_repo_test_modify"
 
     with user_no, pytest.raises(ApiException) as exc:
         repo_data = repo.to_dict()
         repo_data.update(name="rpm_repo_test_modify_without_perms")
-        rpm_repository_api.update(repo_data["pulp_href"], repo_data)
+        rpm_repository_api.update(repo_data.pulp_href, repo_data)
     # Here is response `404` as user doesn't have even permission to retrieve repo data
     # so pulp response with not found instead `access denied` to not expose it exists
     assert exc.value.status == 404
@@ -67,7 +67,7 @@ def test_rbac_repositories(gen_user, rpm_repository_factory, rpm_repository_api,
     with user_viewer, pytest.raises(ApiException) as exc:
         repo_data = repo.to_dict()
         repo_data.update(name="rpm_repo_test_modify_with_view_perms")
-        rpm_repository_api.update(repo_data["pulp_href"], repo_data)
+        rpm_repository_api.update(repo_data.pulp_href, repo_data)
     # Fails with '403' as a repo can be seen but not updated.
     assert exc.value.status == 403
 

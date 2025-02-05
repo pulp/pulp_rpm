@@ -14,7 +14,6 @@ from pulp_smash.pulp3.utils import (
     get_added_content_summary,
     get_added_content,
     get_content,
-    get_content_summary,
     get_removed_content,
     wget_download_on_host,
 )
@@ -79,22 +78,22 @@ from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 
 @pytest.mark.parallel
-def test_sync(init_and_sync):
+def test_sync(init_and_sync, rpm_repository_version_api):
     """Sync repositories with the rpm plugin."""
     # Create a remote (default) and empty repository
-    repository, remote = init_and_sync()
+    repository_s0, remote = init_and_sync()
 
     # Assert that it's synced properly
-    latest_version_href = repository.latest_version_href
-    assert get_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
-    assert get_added_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
+    response = rpm_repository_version_api.read(repository_s0.latest_version_href)
+    assert response.content_summary.model_dump()["present"] == RPM_FIXTURE_SUMMARY
 
     # Sync the same repository again
-    repository, _ = init_and_sync(repository=repository, remote=remote)
+    repository_s1, _ = init_and_sync(repository=repository_s0, remote=remote)
 
     # Assert that the repository has not changed, the latest version stays the same
-    assert latest_version_href == repository.latest_version_href
-    assert get_content_summary(repository.to_dict()) == RPM_FIXTURE_SUMMARY
+    assert repository_s0.latest_version_href == repository_s1.latest_version_href
+    response = rpm_repository_version_api.read(repository_s1.latest_version_href)
+    assert response.content_summary.model_dump()["present"] == RPM_FIXTURE_SUMMARY
 
 
 @pytest.mark.parallel
@@ -379,7 +378,7 @@ def test_optimize(
     repository = rpm_repository_api.read(repository.pulp_href)
     content = choice(get_content(repository.to_dict())[RPM_PACKAGE_CONTENT_NAME])
     response = rpm_repository_api.modify(
-        repository.pulp_href, {"remove_content_units": [content["pulp_href"]]}
+        repository.pulp_href, {"remove_content_units": [content.pulp_href]}
     )
     monitor_task(response.task)
 
@@ -969,9 +968,6 @@ def test_treeinfo_metadata(init_and_sync, rpm_content_distribution_trees_api):
         repository_version=repository.latest_version_href
     ).results[0]
     distribution_tree = distribution_tree.to_dict()
-    # delete pulp-specific metadata
-    distribution_tree.pop("pulp_href")
-    distribution_tree.pop("prn")
 
     # sort kickstart metadata so that we can compare the dicts properly
     for d in [distribution_tree, RPM_KICKSTART_DATA]:

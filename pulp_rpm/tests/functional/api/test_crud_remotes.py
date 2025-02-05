@@ -115,15 +115,15 @@ def test_policy_update_changes(rpm_rpmremote_api, rpm_rpmremote_factory, monitor
 
     # Verify ability to change policy to value other than the default
     changed_policy = choice([item for item in DOWNLOAD_POLICIES if item != "immediate"])
-    response = rpm_rpmremote_api.partial_update(remote["pulp_href"], {"policy": changed_policy})
+    response = rpm_rpmremote_api.partial_update(remote.pulp_href, {"policy": changed_policy})
     monitor_task(response.task)
 
-    remote = rpm_rpmremote_api.read(remote["pulp_href"]).to_dict()
-    assert remote["policy"] == changed_policy, remote
+    remote = rpm_rpmremote_api.read(remote.pulp_href)
+    assert remote.policy == changed_policy, remote
 
     # Verify an invalid policy does not update the remote policy
     with pytest.raises(ApiException):
-        rpm_rpmremote_api.partial_update(remote["pulp_href"], {"policy": str(uuid4())})
+        rpm_rpmremote_api.partial_update(remote.pulp_href, {"policy": str(uuid4())})
 
 
 def test_raise_on_invalid_remote_url(

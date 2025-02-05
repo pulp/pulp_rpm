@@ -79,7 +79,7 @@ def gen_rpm_content_attrs(artifact, rpm_name):
     :param artifact: A dict of info about the artifact.
     :returns: A semi-random dict for use in creating a content unit.
     """
-    return {"artifact": artifact["pulp_href"], "relative_path": rpm_name}
+    return {"artifact": artifact.pulp_href, "relative_path": rpm_name}
 
 
 def rpm_copy(cfg, config, recursive=False):
@@ -113,7 +113,7 @@ def publish(cfg, repo, version_href=None, repo_config=None):
     if version_href:
         body = {"repository_version": version_href}
     else:
-        body = {"repository": repo["pulp_href"]}
+        body = {"repository": repo.pulp_href}
 
     body.update({"repo_config": repo_config})
 
