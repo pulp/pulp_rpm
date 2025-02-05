@@ -17,6 +17,7 @@ def test_download_policies(
     rpm_publication_api,
     gen_object_with_cleanup,
     delete_orphans_pre,
+    get_content_summary,
 ):
     """Sync repositories with the different ``download_policy``.
 
@@ -39,11 +40,9 @@ def test_download_policies(
 
     # Step 3, 4
     assert repo.latest_version_href.endswith("/1/")
-    repo_ver = rpm_repository_version_api.read(repo.latest_version_href)
-    present_summary = {k: v["count"] for k, v in repo_ver.content_summary.present.items()}
-    assert present_summary == RPM_FIXTURE_SUMMARY
-    added_summary = {k: v["count"] for k, v in repo_ver.content_summary.added.items()}
-    assert added_summary == RPM_FIXTURE_SUMMARY
+    content_summary = get_content_summary(repo)
+    assert content_summary["present"] == RPM_FIXTURE_SUMMARY
+    assert content_summary["added"] == RPM_FIXTURE_SUMMARY
 
     # Step 5
     latest_version_href = repo.latest_version_href
@@ -51,9 +50,8 @@ def test_download_policies(
 
     # Step 6, 7
     assert latest_version_href == repo.latest_version_href
-    repo_ver = rpm_repository_version_api.read(repo.latest_version_href)
-    present_summary = {k: v["count"] for k, v in repo_ver.content_summary.present.items()}
-    assert present_summary == RPM_FIXTURE_SUMMARY
+    content_summary = get_content_summary(repo)
+    assert content_summary["present"] == RPM_FIXTURE_SUMMARY
 
     # Step 8
     publish_data = RpmRpmPublication(repository=repo.pulp_href)

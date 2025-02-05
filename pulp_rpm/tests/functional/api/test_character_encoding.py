@@ -29,7 +29,7 @@ def test_upload_non_ascii(
     """Test whether one can upload an RPM with non-ascii metadata."""
     temp_file = tmp_path / str(uuid.uuid4())
     temp_file.write_bytes(requests.get(RPM_WITH_NON_ASCII_URL).content)
-    artifact = pulpcore_bindings.ArtifactsApi.create(temp_file)
+    artifact = pulpcore_bindings.ArtifactsApi.create(str(temp_file))
     response = rpm_package_api.create(
         artifact=artifact.pulp_href,
         relative_path=RPM_WITH_NON_ASCII_NAME,
@@ -44,7 +44,7 @@ def test_upload_non_utf8(
     """Test whether an exception is raised when non-utf-8 is uploaded."""
     temp_file = tmp_path / str(uuid.uuid4())
     temp_file.write_bytes(requests.get(RPM_WITH_NON_UTF_8_URL).content)
-    artifact = pulpcore_bindings.ArtifactsApi.create(temp_file)
+    artifact = pulpcore_bindings.ArtifactsApi.create(str(temp_file))
     with pytest.raises(PulpTaskError) as ctx:
         response = rpm_package_api.create(
             artifact=artifact.pulp_href,
@@ -52,4 +52,5 @@ def test_upload_non_utf8(
         )
         monitor_task(response.task)
 
-    assert "'utf-8' codec can't decode byte 0x80 in position 168: invalid start" in str(ctx.value)
+    error_msg = ctx.value.task.error["description"]
+    assert "'utf-8' codec can't decode byte 0x80 in position 168: invalid start" in error_msg

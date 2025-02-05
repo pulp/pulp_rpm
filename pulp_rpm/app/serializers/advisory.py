@@ -5,7 +5,6 @@ import json
 import createrepo_c
 from django.db import IntegrityError, transaction
 from rest_framework import serializers
-from pulp_rpm.app.fields import CustomJSONField
 
 from pulpcore.plugin.serializers import (
     ModelSerializer,
@@ -44,7 +43,7 @@ class UpdateCollectionSerializer(ModelSerializer):
         help_text=_("Collection short name."), allow_blank=True, allow_null=True
     )
 
-    module = CustomJSONField(help_text=_("Collection modular NSVCA."), allow_null=True)
+    module = serializers.JSONField(help_text=_("Collection modular NSVCA."), allow_null=True)
 
     packages = UpdateCollectionPackagesField(
         source="*", read_only=True, help_text=_("List of packages")

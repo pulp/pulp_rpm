@@ -118,13 +118,13 @@ def signed_artifact(pulpcore_bindings, tmp_path):
         sha256=hashlib.sha256(data).hexdigest(), limit=1
     )
     try:
-        return artifacts.results[0].to_dict()
+        return artifacts.results[0]
     except IndexError:
         pass
 
     temp_file = tmp_path / str(uuid.uuid4())
     temp_file.write_bytes(data)
-    return pulpcore_bindings.ArtifactsApi.create(temp_file).to_dict()
+    return pulpcore_bindings.ArtifactsApi.create(str(temp_file))
 
 
 @pytest.fixture
@@ -139,7 +139,7 @@ def rpm_artifact_factory(pulpcore_bindings, gen_object_with_cleanup, pulp_domain
             if not pulp_domain_enabled:
                 raise RuntimeError("Server does not have domains enabled.")
             kwargs["pulp_domain"] = pulp_domain
-        return gen_object_with_cleanup(pulpcore_bindings.ArtifactsApi, temp_file, **kwargs)
+        return gen_object_with_cleanup(pulpcore_bindings.ArtifactsApi, str(temp_file), **kwargs)
 
     return _rpm_artifact_factory
 
