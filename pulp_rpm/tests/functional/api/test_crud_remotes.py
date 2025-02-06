@@ -7,7 +7,6 @@ import pytest
 from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 from pulp_rpm.tests.functional.constants import DOWNLOAD_POLICIES
-from pulp_rpm.tests.functional.utils import gen_rpm_remote
 
 
 @pytest.mark.parallel
@@ -23,7 +22,7 @@ def test_basic_crud_remote(rpm_rpmremote_api, rpm_rpmremote_factory, monitor_tas
         assert remote.to_dict()[key] == val, key
 
     # Try to create a second remote with an identical name
-    body = gen_rpm_remote()
+    body = rpm_rpmremote_factory()
     body["name"] = remote.name
     with pytest.raises(ApiException):
         rpm_rpmremote_api.create(body)
@@ -67,7 +66,7 @@ def test_basic_crud_remote(rpm_rpmremote_api, rpm_rpmremote_factory, monitor_tas
 
 
 @pytest.mark.parallel
-def test_missing_url(rpm_rpmremote_api):
+def test_missing_url(rpm_rpmremote_api, rpm_rpmremote_factory):
     """Verify whether is possible to create a remote without a URL.
 
     This test targets the following issues:
@@ -75,7 +74,7 @@ def test_missing_url(rpm_rpmremote_api):
     * `Pulp #3395 <https://pulp.plan.io/issues/3395>`_
     * `Pulp Smash #984 <https://github.com/pulp/pulp-smash/issues/984>`_
     """
-    body = gen_rpm_remote()
+    body = rpm_rpmremote_factory()
     del body["url"]
     with pytest.raises(ApiException):
         rpm_rpmremote_api.create(body)
@@ -144,7 +143,7 @@ def test_raise_on_invalid_remote_url(
             gen_object_with_cleanup(rpm_ulnremote_api, body)
 
 
-def _gen_verbose_remote():
+def _gen_verbose_remote(rpm_rpmremote_factory):
     """Return a semi-random dict for use in defining a remote.
 
     For most tests, it"s desirable to create remotes with as few attributes
@@ -154,7 +153,7 @@ def _gen_verbose_remote():
 
     Note that 'username' and 'password' are write-only attributes.
     """
-    attrs = gen_rpm_remote()
+    attrs = rpm_rpmremote_factory()
     attrs.update(
         {"password": str(uuid4()), "username": str(uuid4()), "policy": choice(DOWNLOAD_POLICIES)}
     )

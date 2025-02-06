@@ -9,14 +9,6 @@ from django.conf import settings
 from django.utils.dateparse import parse_datetime
 
 from pulpcore.tests.functional.utils import PulpTaskError
-from pulp_smash.pulp3.utils import (
-    gen_repo,
-    get_added_content_summary,
-    get_added_content,
-    get_content,
-    get_removed_content,
-    wget_download_on_host,
-)
 
 from pulp_rpm.tests.functional.constants import (
     AMAZON_MIRROR,
@@ -70,9 +62,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_MODULEMDS_DATA,
     RPM_ZSTD_METADATA_FIXTURE_URL,
 )
-from pulp_rpm.tests.functional.utils import gen_rpm_remote
-from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-
 from pulpcore.client.pulp_rpm import RpmRepositorySyncURL
 from pulpcore.client.pulp_rpm.exceptions import ApiException
 
@@ -104,7 +93,7 @@ def test_sync_zstd(init_and_sync, get_content_summary):
 
 
 @pytest.mark.parallel
-def test_sync_local(init_and_sync, tmpdir):
+def test_sync_local(init_and_sync, tmpdir, wget_download_on_host):
     """Test syncing from the local filesystem."""
     wget_download_on_host(RPM_UNSIGNED_FIXTURE_URL, str(tmpdir))
     init_and_sync(url=f"file://{tmpdir}/rpm-unsigned/")
@@ -132,7 +121,7 @@ def test_sync_from_invalid_mirror_list_feed(init_and_sync):
     with pytest.raises(PulpTaskError) as exc:
         init_and_sync(url=RPM_MIRROR_LIST_BAD_FIXTURE_URL)
 
-    assert "An invalid remote URL was provided" in exc.value.task.to_dict()["error"]["description"]
+    assert "An invalid remote URL was provided" in exc.value.task.error["description"]
 
 
 @pytest.mark.parallel
@@ -197,7 +186,7 @@ def test_kickstart(policy, init_and_sync, rpm_content_distribution_trees_api, ge
     assert "RHEL" == distribution_tree.release_short
 
 
-def test_mutated_packages(init_and_sync, get_content_summary):
+def test_mutated_packages(init_and_sync, get_content_summary, get_content):
     """Sync two copies of the same packages.
 
     Make sure we end up with only one copy.
@@ -228,20 +217,21 @@ def test_mutated_packages(init_and_sync, get_content_summary):
             content["release"],
             content["arch"],
         ): content
-        for content in get_content(repository.to_dict())[RPM_PACKAGE_CONTENT_NAME]
+        for content in get_content(repository)[RPM_PACKAGE_CONTENT_NAME]
     }
 
     # Create a remote with a different test fixture with the same NEVRA but
     # different digests.
     repository, _ = init_and_sync(repository=repository, url=RPM_SIGNED_FIXTURE_URL)
+    content_summary = get_content_summary(repository)
 
     # In case of "duplicates" the most recent one is chosen, so the old
     # package is removed from and the new one is added to a repo version.
     assert (
-        len(get_added_content(repository.to_dict())[RPM_PACKAGE_CONTENT_NAME])
+        len(content_summary["added"][RPM_PACKAGE_CONTENT_NAME])
     ) == RPM_PACKAGE_COUNT
     assert (
-        len(get_removed_content(repository.to_dict())[RPM_PACKAGE_CONTENT_NAME])
+        len(content_summary["removed"][RPM_PACKAGE_CONTENT_NAME])
     ) == RPM_PACKAGE_COUNT
 
     # Test that the packages have been modified.
@@ -253,14 +243,14 @@ def test_mutated_packages(init_and_sync, get_content_summary):
             content["release"],
             content["arch"],
         ): content
-        for content in get_content(repository.to_dict())[RPM_PACKAGE_CONTENT_NAME]
+        for content in get_content(repository)[RPM_PACKAGE_CONTENT_NAME]
     }
 
     for nevra in original_packages:
         assert original_packages[nevra]["pkgId"] != mutated_packages[nevra]["pkgId"]
 
 
-def test_sync_diff_checksum_packages(init_and_sync):
+def test_sync_diff_checksum_packages(init_and_sync, get_content, get_content_summary):
     """Sync two fixture content with same NEVRA and different checksum.
 
     Make sure we end up with the most recently synced content.
@@ -276,9 +266,10 @@ def test_sync_diff_checksum_packages(init_and_sync):
     repository, _ = init_and_sync(url=RPM_UNSIGNED_FIXTURE_URL, policy="on_demand")
 
     repository, _ = init_and_sync(repository=repository, url=RPM_SHA512_FIXTURE_URL)
+    content_summary = get_content_summary(repository)
 
-    added_content = get_content(repository.to_dict())[RPM_PACKAGE_CONTENT_NAME]
-    removed_content = get_removed_content(repository.to_dict())[RPM_PACKAGE_CONTENT_NAME]
+    added_content = get_content(repository)[RPM_PACKAGE_CONTENT_NAME]
+    removed_content = content_summary["removed"][RPM_PACKAGE_CONTENT_NAME]
 
     # In case of "duplicates" the most recent one is chosen, so the old
     # package is removed from and the new one is added to a repo version.
@@ -292,7 +283,7 @@ def test_sync_diff_checksum_packages(init_and_sync):
 
 
 @pytest.mark.parallel
-def test_mutated_advisory_metadata(init_and_sync, get_content_summary):
+def test_mutated_advisory_metadata(init_and_sync, get_content_summary, get_content):
     """Sync two copies of the same Advisory (only description is updated).
 
     Make sure we end up with only one copy.
@@ -317,7 +308,7 @@ def test_mutated_advisory_metadata(init_and_sync, get_content_summary):
 
     original_updaterecords = {
         content["id"]: content
-        for content in get_content(repository.to_dict())[RPM_ADVISORY_CONTENT_NAME]
+        for content in get_content(repository)[RPM_ADVISORY_CONTENT_NAME]
     }
 
     repository, _ = init_and_sync(repository=repository, url=RPM_UPDATED_UPDATEINFO_FIXTURE_URL)
@@ -329,7 +320,7 @@ def test_mutated_advisory_metadata(init_and_sync, get_content_summary):
     # Test that the updateinfo have been modified.
     mutated_updaterecords = {
         content["id"]: content
-        for content in get_content(repository.to_dict())[RPM_ADVISORY_CONTENT_NAME]
+        for content in get_content(repository)[RPM_ADVISORY_CONTENT_NAME]
     }
 
     assert mutated_updaterecords != original_updaterecords
@@ -345,6 +336,8 @@ def test_optimize(
     rpm_repository_api,
     rpm_rpmremote_api,
     monitor_task,
+    get_content,
+    rpm_repository_factory,
 ):
     """Tests that sync is skipped when no critical parameters of the sync change.
 
@@ -376,7 +369,7 @@ def test_optimize(
 
     # create a new repo version, sync again, assert not optimized
     repository = rpm_repository_api.read(repository.pulp_href)
-    content = choice(get_content(repository.to_dict())[RPM_PACKAGE_CONTENT_NAME])
+    content = choice(get_content(repository)[RPM_PACKAGE_CONTENT_NAME])
     response = rpm_repository_api.modify(
         repository.pulp_href, {"remove_content_units": [content.pulp_href]}
     )
@@ -400,7 +393,7 @@ def test_optimize(
     assert all(report.code != "sync.was_skipped" for report in task.progress_reports)
 
     # create new remote with the same URL and download_policy as the first and run a sync task
-    new_remote = gen_object_with_cleanup(rpm_rpmremote_api, gen_rpm_remote())
+    new_remote = rpm_repository_factory()
     repository_sync_data = RpmRepositorySyncURL(
         remote=new_remote.pulp_href, sync_policy="mirror_content_only"
     )
@@ -450,7 +443,7 @@ def test_optimize(
 
 
 @pytest.mark.parallel
-def test_sync_advisory_new_version(init_and_sync):
+def test_sync_advisory_new_version(init_and_sync, get_content_summary):
     """Sync a repository and re-sync with newer version of Advisory.
 
     Test if advisory with same ID and pkglist, but newer version is updated.
@@ -462,15 +455,16 @@ def test_sync_advisory_new_version(init_and_sync):
     repository, _ = init_and_sync(url=RPM_UNSIGNED_FIXTURE_URL)
 
     repository, _ = init_and_sync(repository=repository, url=RPM_ADVISORY_UPDATED_VERSION_URL)
+    content_summary = get_content_summary(repository)
 
     # check if newer version advisory was added and older removed
-    added_advisories = get_added_content(repository.to_dict())[PULP_TYPE_ADVISORY]
+    added_advisories = content_summary["added"][PULP_TYPE_ADVISORY]
     added_advisory = [
         advisory["version"]
         for advisory in added_advisories
         if advisory["id"] == RPM_ADVISORY_TEST_ID
     ]
-    removed_advisories = get_removed_content(repository.to_dict())[PULP_TYPE_ADVISORY]
+    removed_advisories = content_summary["removed"][PULP_TYPE_ADVISORY]
     removed_advisory = [
         advisory["version"]
         for advisory in removed_advisories
@@ -480,7 +474,7 @@ def test_sync_advisory_new_version(init_and_sync):
 
 
 @pytest.mark.parallel
-def test_sync_advisory_old_version(init_and_sync):
+def test_sync_advisory_old_version(init_and_sync, get_content):
     """Sync a repository and re-sync with older version of Advisory.
 
     Test if advisory with same ID and pkglist, but older version is not updated.
@@ -495,7 +489,7 @@ def test_sync_advisory_old_version(init_and_sync):
     repository, _ = init_and_sync(repository=repository, url=RPM_UNSIGNED_FIXTURE_URL)
     repository_version_new = repository.latest_version_href
 
-    present_advisories = get_content(repository.to_dict())[PULP_TYPE_ADVISORY]
+    present_advisories = get_content(repository)[PULP_TYPE_ADVISORY]
     advisory_version = [
         advisory["version"]
         for advisory in present_advisories
@@ -510,22 +504,23 @@ def test_sync_advisory_old_version(init_and_sync):
 
 
 @pytest.mark.parallel
-def test_sync_merge_advisories(init_and_sync):
+def test_sync_merge_advisories(init_and_sync, get_content_summary):
     """Sync two advisories with same ID, version and different pkglist.
 
     Test if two advisories are merged.
     """
     repository, _ = init_and_sync(url=RPM_UNSIGNED_FIXTURE_URL)
     repository, _ = init_and_sync(repository=repository, url=RPM_ADVISORY_DIFFERENT_PKGLIST_URL)
+    content_summary = get_content_summary(repository)
 
     # check advisories were merged
-    added_advisories = get_added_content(repository.to_dict())[PULP_TYPE_ADVISORY]
+    added_advisories = content_summary["added"][PULP_TYPE_ADVISORY]
     added_advisory_pkglist = [
         advisory["pkglist"]
         for advisory in added_advisories
         if advisory["id"] == RPM_ADVISORY_TEST_ID
     ]
-    removed_advisories = get_removed_content(repository.to_dict())[PULP_TYPE_ADVISORY]
+    removed_advisories = content_summary["removed"][PULP_TYPE_ADVISORY]
     removed_advisory_pkglist = [
         advisory["pkglist"]
         for advisory in removed_advisories
@@ -646,19 +641,21 @@ def test_sync_advisory_no_updated_date(init_and_sync):
 
 
 @pytest.mark.parallel
-def test_sync_advisory_updated_update_date(init_and_sync):
+def test_sync_advisory_updated_update_date(init_and_sync, get_content_summary):
     """Test sync advisory with updated update_date."""
     repository, _ = init_and_sync(url=RPM_UNSIGNED_FIXTURE_URL)
     repository, _ = init_and_sync(repository=repository, url=RPM_UPDATED_UPDATEINFO_FIXTURE_URL)
+    content_summary = get_content_summary(repository)
 
+    # check advisories were merged
     added_advisory_date = [
         advisory["updated_date"]
-        for advisory in get_added_content(repository.to_dict())[PULP_TYPE_ADVISORY]
+        for advisory in content_summary["added"][PULP_TYPE_ADVISORY]
         if RPM_ADVISORY_TEST_ID_NEW in advisory["id"]
     ]
     removed_advisory_date = [
         advisory["updated_date"]
-        for advisory in get_removed_content(repository.to_dict())[PULP_TYPE_ADVISORY]
+        for advisory in content_summary["removed"][PULP_TYPE_ADVISORY]
         if RPM_ADVISORY_TEST_ID_NEW in advisory["id"]
     ]
 
@@ -666,23 +663,25 @@ def test_sync_advisory_updated_update_date(init_and_sync):
 
 
 @pytest.mark.parallel
-def test_sync_advisory_older_update_date(init_and_sync):
+def test_sync_advisory_older_update_date(init_and_sync, get_content_summary, get_content):
     """Test sync advisory with older update_date."""
     repository, _ = init_and_sync(url=RPM_UPDATED_UPDATEINFO_FIXTURE_URL)
+
     advisory_date = [
         advisory["updated_date"]
-        for advisory in get_content(repository.to_dict())[PULP_TYPE_ADVISORY]
+        for advisory in get_content(repository)[PULP_TYPE_ADVISORY]
         if advisory["id"] == RPM_ADVISORY_TEST_ID
     ]
 
     repository, _ = init_and_sync(repository, url=RPM_UNSIGNED_FIXTURE_URL)
+    content_summary = get_content_summary(repository)
     advisory_date_new = [
         advisory["updated_date"]
-        for advisory in get_content(repository.to_dict())[PULP_TYPE_ADVISORY]
+        for advisory in get_content(repository)[PULP_TYPE_ADVISORY]
         if advisory["id"] == RPM_ADVISORY_TEST_ID
     ]
     added_advisories = [
-        advisory["id"] for advisory in get_added_content(repository.to_dict())[PULP_TYPE_ADVISORY]
+        advisory["id"] for advisory in content_summary["added"][PULP_TYPE_ADVISORY]
     ]
 
     # check if advisory is preserved and no advisory with same id was added
@@ -691,27 +690,28 @@ def test_sync_advisory_older_update_date(init_and_sync):
 
 
 @pytest.mark.parallel
-def test_sync_repo_metadata_change(init_and_sync):
+def test_sync_repo_metadata_change(init_and_sync, get_content_summary):
     """Sync RPM modular content."""
     repository, _ = init_and_sync(url=RPM_CUSTOM_REPO_METADATA_FIXTURE_URL)
     repository, _ = init_and_sync(
         repository=repository, url=RPM_CUSTOM_REPO_METADATA_CHANGED_FIXTURE_URL
     )
+    content_summary = get_content_summary(repository)
 
     # Check if repository was updated with repository metadata
     assert repository.latest_version_href.rstrip("/")[-1] == "2"
-    assert PULP_TYPE_REPOMETADATA in get_added_content(repository.to_dict())
+    assert PULP_TYPE_REPOMETADATA in content_summary["added"][PULP_TYPE_ADVISORY]
 
 
 @pytest.mark.parallel
-def test_sync_modular_static_context(init_and_sync, get_content_summary):
+def test_sync_modular_static_context(init_and_sync, get_content_summary, get_content):
     """Sync RPM modular content that includes the new static_context_field."""
     repository, _ = init_and_sync(url=RPM_MODULES_STATIC_CONTEXT_FIXTURE_URL)
     content_summary = get_content_summary(repository)
     summary = content_summary["present"]
     added = content_summary["added"]
 
-    modules = get_content(repository.to_dict())[PULP_TYPE_MODULEMD]
+    modules = get_content(repository)[PULP_TYPE_MODULEMD]
     module_static_contexts = [
         (module["name"], module["version"]) for module in modules if module["static_context"]
     ]
@@ -722,14 +722,14 @@ def test_sync_modular_static_context(init_and_sync, get_content_summary):
 
 @pytest.mark.parallel
 @pytest.mark.parametrize("sync_policy", ["mirror_content_only", "additive"])
-def test_sync_skip_srpm(init_and_sync, sync_policy):
+def test_sync_skip_srpm(init_and_sync, sync_policy, get_content):
     """In mirror_content_only mode, skip_types is allowed."""
     repository, _ = init_and_sync(
         url=SRPM_UNSIGNED_FIXTURE_URL, skip_types=["srpm"], sync_policy=sync_policy
     )
 
-    present_package_count = len(get_content(repository.to_dict())[PULP_TYPE_PACKAGE])
-    present_advisory_count = len(get_content(repository.to_dict())[PULP_TYPE_ADVISORY])
+    present_package_count = len(get_content(repository)[PULP_TYPE_PACKAGE])
+    present_advisory_count = len(get_content(repository)[PULP_TYPE_ADVISORY])
     assert present_package_count == 0
     assert present_advisory_count == SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT
 
@@ -883,13 +883,15 @@ def test_mirror_and_sync_policy_provided_simultaneously_fails(
     gen_object_with_cleanup,
     rpm_repository_api,
     rpm_rpmremote_api,
+    rpm_repository_factory,
+    rpm_rpmremote_factory,
 ):
     """
     Test that syncing fails if both the "mirror" and "sync_policy" params are provided.
     """
-    repository = gen_object_with_cleanup(rpm_repository_api, gen_repo())
+    repository = gen_object_with_cleanup(rpm_repository_api, rpm_repository_factory())
     remote = gen_object_with_cleanup(
-        rpm_rpmremote_api, gen_rpm_remote(url=RPM_UNSIGNED_FIXTURE_URL, policy="on_demand")
+        rpm_rpmremote_api, rpm_rpmremote_factory(url=RPM_UNSIGNED_FIXTURE_URL, policy="on_demand")
     )
 
     repository_sync_data = RpmRepositorySyncURL(
@@ -910,7 +912,7 @@ def test_sync_skip_srpm_fails_mirror_complete(init_and_sync):
 
 
 @pytest.mark.parallel
-def test_core_metadata(init_and_sync, rpm_package_api):
+def test_core_metadata(init_and_sync, rpm_package_api, get_content):
     """Test that the metadata returned by the Pulp API post-sync matches what we expect.
 
     Do the following:
@@ -948,7 +950,7 @@ def test_core_metadata(init_and_sync, rpm_package_api):
     assert list(diff) == [], list(diff)
 
     # assert no package is marked modular
-    for pkg in get_content(repository.to_dict())[RPM_PACKAGE_CONTENT_NAME]:
+    for pkg in get_content(repository)[RPM_PACKAGE_CONTENT_NAME]:
         assert pkg["is_modular"] is False
 
 
@@ -989,6 +991,7 @@ def test_modular_metadata(
     rpm_modulemd_defaults_api,
     rpm_modulemd_obsoletes_api,
     delete_orphans_pre,
+    get_content,
 ):
     """Test that the metadata returned by the Pulp API post-sync matches what we expect.
 
@@ -1053,12 +1056,12 @@ def test_modular_metadata(
         assert list(diff) == [], list(diff)
 
     # assert all package from modular repo is marked as modular
-    for pkg in get_content(repository.to_dict())[RPM_PACKAGE_CONTENT_NAME]:
+    for pkg in get_content(repository)[RPM_PACKAGE_CONTENT_NAME]:
         assert pkg["is_modular"] is True
 
 
 @pytest.mark.parallel
-def test_additive_mode(init_and_sync):
+def test_additive_mode(init_and_sync, get_content):
     """Test of additive mode.
 
     1. Create repository, remote and sync it
@@ -1073,8 +1076,8 @@ def test_additive_mode(init_and_sync):
         sync_policy="additive",
     )
 
-    present_package_count = len(get_content(repository.to_dict())[PULP_TYPE_PACKAGE])
-    present_advisory_count = len(get_content(repository.to_dict())[PULP_TYPE_ADVISORY])
+    present_package_count = len(get_content(repository)[PULP_TYPE_PACKAGE])
+    present_advisory_count = len(get_content(repository)[PULP_TYPE_ADVISORY])
 
     assert (RPM_PACKAGE_COUNT + SRPM_UNSIGNED_FIXTURE_PACKAGE_COUNT) == present_package_count
     assert (RPM_ADVISORY_COUNT + SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT) == present_advisory_count

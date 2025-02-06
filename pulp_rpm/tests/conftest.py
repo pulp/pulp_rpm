@@ -1,6 +1,7 @@
 import uuid
 
 import pytest
+from urllib.parse import urlparse
 
 from pulpcore.client.pulp_rpm import (
     ApiClient as RpmApiClient,
@@ -14,9 +15,11 @@ from pulpcore.client.pulp_rpm import (
     RpmRepositorySyncURL,
 )
 
+from collections import defaultdict
 from pulp_rpm.tests.functional.constants import (
     RPM_UNSIGNED_FIXTURE_URL,
 )
+from pulpcore.plugin.util import extract_pk
 
 
 @pytest.fixture(scope="session")
@@ -192,3 +195,44 @@ def get_content_summary(rpm_repository_version_api):
             return content_summary.model_dump(exclude=exclude_fields)
 
     return _get_content_summary
+
+
+@pytest.fixture
+def get_content(
+        rpm_repository_version_api,
+        pulpcore_bindings,
+    ):
+    """A fixture that fetches the content from a repository."""
+
+    def _get_content(repo, version_href=None, dump=True):
+        """Fetches the content from a given repository.
+
+        Args:
+            repo: The repository where the content is fetched from.
+            version_href: The repository version from where the content should be fetched from.
+                Default: latest repository version.
+            dump: If true, return a dumped dictionary with convenient filters (default).
+                Otherwise, return the response object.
+
+        Returns:
+            The content summary of the repository.
+        """
+        version_href = version_href or repo.latest_version_href
+        if version_href is None:
+            return {}
+        content_summary = rpm_repository_version_api.read(version_href).content_summary
+        content = defaultdict(list)
+        content_iter = content_summary.present.items()
+        
+        for content_type, content_dict in content_iter:
+            attrs = {"pulp_type": content_type}
+            query_items = urlparse(content_dict["href"]).query.split(";")
+            for query in query_items:
+                query_k, query_v = query.split("=")
+                attrs[query_k] = query_v
+            typed_content = pulpcore_bindings.ContentApi.list(**attrs)
+            content[content_type] = typed_content
+        return {k:v.model_dump() for k,v in content.items()}
+
+    return _get_content
+

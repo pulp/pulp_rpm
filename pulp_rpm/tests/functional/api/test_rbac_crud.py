@@ -4,7 +4,6 @@ import uuid
 from pulpcore.client.pulp_rpm import RpmRepositorySyncURL
 from pulpcore.client.pulp_rpm.exceptions import ApiException
 
-from pulp_rpm.tests.functional.utils import gen_rpm_remote
 from pulp_rpm.tests.functional.constants import (
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
@@ -89,7 +88,7 @@ def test_rbac_repositories(gen_user, rpm_repository_factory, rpm_repository_api,
 
 @pytest.mark.parallel
 def test_rbac_remotes_and_sync(
-    gen_user, rpm_rpmremote_api, rpm_repository_api, rpm_repository_factory, monitor_task
+    gen_user, rpm_rpmremote_api, rpm_repository_api, rpm_repository_factory, rpm_rpmremote_factory, monitor_task
 ):
     """
     Test creation of remotes with user with permissions and without.
@@ -106,7 +105,7 @@ def test_rbac_remotes_and_sync(
     user_no = gen_user(model_roles=["rpm.rpmrepository_creator"])
 
     remote = None
-    remote_data = gen_rpm_remote(RPM_SIGNED_FIXTURE_URL)
+    remote_data = rpm_rpmremote_factory(RPM_SIGNED_FIXTURE_URL)
 
     # Create
     with user_no, pytest.raises(ApiException) as exc:
@@ -122,7 +121,7 @@ def test_rbac_remotes_and_sync(
         assert rpm_rpmremote_api.list(name=remote.name).count == 1
 
     # Update
-    remote_data_update = gen_rpm_remote(RPM_UNSIGNED_FIXTURE_URL)
+    remote_data_update = rpm_rpmremote_factory(RPM_UNSIGNED_FIXTURE_URL)
 
     with user_no, pytest.raises(ApiException) as exc:
         rpm_rpmremote_api.update(remote.pulp_href, remote_data_update)
@@ -181,7 +180,7 @@ def test_rbac_remotes_and_sync(
 
 
 @pytest.mark.parallel
-def test_rbac_acs(gen_user, rpm_acs_api, rpm_rpmremote_api, monitor_task):
+def test_rbac_acs(gen_user, rpm_acs_api, rpm_rpmremote_api, rpm_rpmremote_factory, monitor_task):
     """Test RPM ACS CRUD."""
     user_creator = gen_user(
         model_roles=[
@@ -202,7 +201,7 @@ def test_rbac_acs(gen_user, rpm_acs_api, rpm_rpmremote_api, monitor_task):
     )
 
     acs = None
-    remote_data = gen_rpm_remote(policy="on_demand")
+    remote_data = rpm_rpmremote_factory(policy="on_demand")
     remote = rpm_rpmremote_api.create(remote_data)
 
     acs_data = {
@@ -407,6 +406,7 @@ def test_rbac_content_scoping(
     rpm_repository_api,
     rpm_repository_factory,
     rpm_rpmremote_api,
+    rpm_rpmremote_factory,
     monitor_task,
 ):
     """
@@ -424,7 +424,7 @@ def test_rbac_content_scoping(
     user_no = gen_user(model_roles=["rpm.rpmrepository_creator"])
 
     remote = None
-    remote_data = gen_rpm_remote(RPM_SIGNED_FIXTURE_URL)
+    remote_data = rpm_rpmremote_factory(RPM_SIGNED_FIXTURE_URL)
 
     # Create
     with user_creator:
