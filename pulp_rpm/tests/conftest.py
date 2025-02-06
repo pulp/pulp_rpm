@@ -15,11 +15,9 @@ from pulpcore.client.pulp_rpm import (
     RpmRepositorySyncURL,
 )
 
-from collections import defaultdict
 from pulp_rpm.tests.functional.constants import (
     RPM_UNSIGNED_FIXTURE_URL,
 )
-from pulpcore.plugin.util import extract_pk
 
 
 @pytest.fixture(scope="session")

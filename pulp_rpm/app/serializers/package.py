@@ -10,7 +10,7 @@ from pulpcore.plugin.util import get_domain_pk
 from rest_framework import serializers
 from rest_framework.exceptions import NotAcceptable
 
-from pulpcore.plugin.serializers import JSONDictField, JSONListField
+from pulpcore.plugin.serializers import JSONListField
 from pulp_rpm.app.models import Package
 from pulp_rpm.app.shared_utils import format_nvra, read_crpackage_from_artifact
 

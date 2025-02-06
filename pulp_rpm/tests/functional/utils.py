@@ -3,9 +3,6 @@
 import gzip
 import os
 import subprocess
-from io import StringIO
-from functools import partial
-from unittest import SkipTest
 
 import pyzstd
 import requests
