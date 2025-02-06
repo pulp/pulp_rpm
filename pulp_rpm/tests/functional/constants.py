@@ -10,7 +10,7 @@ from django.conf import settings
 
 # start from-pulp-smash
 BASE_PATH = settings.V3_API_ROOT or "/pulp/api/v3/"
- 
+
 BASE_CONTENT_PATH = urljoin(BASE_PATH, "content/")
 
 BASE_DISTRIBUTION_PATH = urljoin(BASE_PATH, "distributions/")
@@ -22,7 +22,7 @@ BASE_PUBLICATION_PATH = urljoin(BASE_PATH, "publications/")
 BASE_REMOTE_PATH = urljoin(BASE_PATH, "remotes/")
 
 # end from-pulp-smash
- 
+
 RPM_COPY_PATH = urljoin(BASE_PATH, "rpm/copy/")
 """The URL used for copying RPM content between repos."""
 
@@ -187,11 +187,11 @@ RPM_MODULES_STATIC_CONTEXT_FIXTURE_URL = urljoin(
 """The URL to a modular RPM repository that uses the static_context field."""
 
 RPM_MODULAR_STATIC_FIXTURE_SUMMARY = {
-    RPM_PACKAGE_CONTENT_NAME: RPM_MODULAR_PACKAGE_COUNT,
-    RPM_MODULAR_MODULES_CONTENT_NAME: RPM_MODULAR_MODULES_COUNT,
-    RPM_MODULAR_DEFAULTS_CONTENT_NAME: RPM_MODULAR_DEFAULTS_COUNT,
-    RPM_MODULES_OBSOLETE_CONTENT_NAME: RPM_MODULES_OBSOLETE_COUNT,
-    RPM_ADVISORY_CONTENT_NAME: RPM_MODULAR_ADVISORY_COUNT,
+    RPM_PACKAGE_CONTENT_NAME: {"count": RPM_MODULAR_PACKAGE_COUNT},
+    RPM_MODULAR_MODULES_CONTENT_NAME: {"count": RPM_MODULAR_MODULES_COUNT},
+    RPM_MODULAR_DEFAULTS_CONTENT_NAME: {"count": RPM_MODULAR_DEFAULTS_COUNT},
+    RPM_MODULES_OBSOLETE_CONTENT_NAME: {"count": RPM_MODULES_OBSOLETE_COUNT},
+    RPM_ADVISORY_CONTENT_NAME: {"count": RPM_MODULAR_ADVISORY_COUNT},
 }
 
 """The breakdown of how many of each type of content unit are present in the

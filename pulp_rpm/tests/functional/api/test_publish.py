@@ -81,7 +81,7 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
         gen_object_with_cleanup,
         rpm_distribution_api,
         monitor_task,
-        rpm_distribution_factory
+        rpm_distribution_factory,
     ):
         """Sync and publish an RPM repository w/ zstd compression and verify it exists."""
         # 1. Publish and distribute
@@ -430,7 +430,9 @@ def test_distribution_tree_metadata_publish(
     from configparser import ConfigParser
 
     # 1. create repo and remote
-    repo = gen_object_with_cleanup(rpm_repository_api, rpm_repository_factory(autopublish=not mirror))
+    repo = gen_object_with_cleanup(
+        rpm_repository_api, rpm_repository_factory(autopublish=not mirror)
+    )
 
     body = rpm_rpmremote_factory(RPM_KICKSTART_FIXTURE_URL, policy="on_demand")
     remote = gen_object_with_cleanup(rpm_rpmremote_api, body)

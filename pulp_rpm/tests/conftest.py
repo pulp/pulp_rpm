@@ -199,40 +199,83 @@ def get_content_summary(rpm_repository_version_api):
 
 @pytest.fixture
 def get_content(
-        rpm_repository_version_api,
-        pulpcore_bindings,
-    ):
+    rpm_repository_version_api,
+    pulpcore_bindings,
+    rpm_package_api,
+    rpm_package_category_api,
+    rpm_package_groups_api,
+    rpm_advisory_api,
+    rpm_package_lang_packs_api,
+    rpm_content_repometadata_files_api,
+    rpm_modulemd_api,
+    rpm_modulemd_defaults_api,
+    rpm_modulemd_obsoletes_api,
+):
     """A fixture that fetches the content from a repository."""
 
-    def _get_content(repo, version_href=None, dump=True):
+    def _get_content(repo, version_href=None):
         """Fetches the content from a given repository.
 
         Args:
             repo: The repository where the content is fetched from.
             version_href: The repository version from where the content should be fetched from.
                 Default: latest repository version.
-            dump: If true, return a dumped dictionary with convenient filters (default).
-                Otherwise, return the response object.
 
         Returns:
-            The content summary of the repository.
+            A dictionary with lists of packages by content_type (package, modulemd, etc)
+            for 'present', 'added' and 'removed' content. E.g:
+
+            ```python
+            >>> get_content(repository)
+            {
+                'present': {
+                    'rpm.package': [{'arch', 'noarch', 'artifact': ...}],
+                    'rpm.packagegroup': [{'arch', 'noarch', 'artifact': ...}],
+                    ...
+                },
+                'added': { ... },
+                'removed': { ... },
+            }
+            ```
         """
         version_href = version_href or repo.latest_version_href
         if version_href is None:
             return {}
         content_summary = rpm_repository_version_api.read(version_href).content_summary
-        content = defaultdict(list)
-        content_iter = content_summary.present.items()
-        
-        for content_type, content_dict in content_iter:
-            attrs = {"pulp_type": content_type}
-            query_items = urlparse(content_dict["href"]).query.split(";")
+        BINDINGS_MAP = {
+            "rpm.package": rpm_package_api,
+            "rpm.packagecategory": rpm_package_category_api,
+            "rpm.packagegroup": rpm_package_groups_api,
+            "rpm.packagelangpacks": rpm_package_lang_packs_api,
+            "rpm.advisory": rpm_advisory_api,
+            "rpm.repo_metadata_file": rpm_content_repometadata_files_api,
+            "rpm.modulemd": rpm_modulemd_api,
+            "rpm.modulemd_defaults": rpm_modulemd_defaults_api,
+            "rpm.modulemd_obsolete": rpm_modulemd_obsoletes_api,
+        }
+
+        def fetch_content(content_type, href) -> list:
+            attrs = {}
+            bindings = BINDINGS_MAP[content_type]
+            query_items = urlparse(href).query.split(";")
             for query in query_items:
                 query_k, query_v = query.split("=")
                 attrs[query_k] = query_v
-            typed_content = pulpcore_bindings.ContentApi.list(**attrs)
-            content[content_type] = typed_content
-        return {k:v.model_dump() for k,v in content.items()}
+            typed_content = bindings.list(**attrs)
+            return typed_content.model_dump()["results"]
+
+        result = {}
+        for key in ("present", "added", "removed"):
+            content = {}
+            # ensure every content type returns at least an empty list
+            for k in BINDINGS_MAP:
+                content[k] = []
+            # fetch content details for each content type
+            summary_entry = getattr(content_summary, key)
+            for content_type, content_dict in summary_entry.items():
+                content_href = content_dict["href"]
+                content[content_type] = fetch_content(content_type, content_href)
+            result[key] = content
+        return result
 
     return _get_content
-

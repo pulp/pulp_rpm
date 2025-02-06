@@ -88,7 +88,12 @@ def test_rbac_repositories(gen_user, rpm_repository_factory, rpm_repository_api,
 
 @pytest.mark.parallel
 def test_rbac_remotes_and_sync(
-    gen_user, rpm_rpmremote_api, rpm_repository_api, rpm_repository_factory, rpm_rpmremote_factory, monitor_task
+    gen_user,
+    rpm_rpmremote_api,
+    rpm_repository_api,
+    rpm_repository_factory,
+    rpm_rpmremote_factory,
+    monitor_task,
 ):
     """
     Test creation of remotes with user with permissions and without.

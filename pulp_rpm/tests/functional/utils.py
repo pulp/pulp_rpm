@@ -25,7 +25,6 @@ def gen_rpm_content_attrs(artifact, rpm_name):
     return {"artifact": artifact.pulp_href, "relative_path": rpm_name}
 
 
-
 def init_signed_repo_configuration():
     """Initialize the configuration required for verifying a signed repository.
 

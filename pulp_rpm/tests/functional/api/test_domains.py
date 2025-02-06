@@ -38,7 +38,9 @@ def test_domain_create(
     domain_name = domain.name
 
     # create and sync in default domain (not specified)
-    remote = gen_object_with_cleanup(rpm_rpmremote_api, rpm_rpmremote_factory(RPM_SIGNED_FIXTURE_URL))
+    remote = gen_object_with_cleanup(
+        rpm_rpmremote_api, rpm_rpmremote_factory(RPM_SIGNED_FIXTURE_URL)
+    )
     repo_body = {"name": str(uuid.uuid4()), "remote": remote.pulp_href}
     repo = gen_object_with_cleanup(rpm_repository_api, repo_body)
     # Check that we can "find" the new repo in the default-domain
@@ -130,7 +132,11 @@ def test_domain_sync(
 
 @pytest.mark.parallel
 def test_object_creation(
-    pulpcore_bindings, gen_object_with_cleanup, rpm_repository_api, rpm_rpmremote_api, rpm_rpmremote_factory
+    pulpcore_bindings,
+    gen_object_with_cleanup,
+    rpm_repository_api,
+    rpm_rpmremote_api,
+    rpm_rpmremote_factory,
 ):
     """Test basic object creation in a separate domain."""
     body = {

@@ -8,7 +8,6 @@ from pulpcore.plugin.serializers import (
 )
 from pulpcore.plugin.util import get_domain_pk
 from rest_framework import serializers
-from pulp_rpm.app.fields import CustomJSONField
 from rest_framework.exceptions import NotAcceptable
 
 from pulpcore.plugin.serializers import JSONDictField, JSONListField
