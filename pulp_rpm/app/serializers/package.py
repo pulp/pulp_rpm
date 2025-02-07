@@ -10,7 +10,6 @@ from pulpcore.plugin.util import get_domain_pk
 from rest_framework import serializers
 from rest_framework.exceptions import NotAcceptable
 
-from pulpcore.plugin.serializers import JSONListField
 from pulp_rpm.app.models import Package
 from pulp_rpm.app.shared_utils import format_nvra, read_crpackage_from_artifact
 
@@ -78,62 +77,62 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         read_only=True,
     )
 
-    changelogs = JSONListField(
+    changelogs = serializers.JSONField(
         help_text=_("Changelogs that package contains"),
         default="[]",
         required=False,
         read_only=True,
     )
-    files = JSONListField(
+    files = serializers.JSONField(
         help_text=_("Files that package contains"),
         default="[]",
         required=False,
         read_only=True,
     )
 
-    requires = JSONListField(
+    requires = serializers.JSONField(
         help_text=_("Capabilities the package requires"),
         default="[]",
         required=False,
         read_only=True,
     )
-    provides = JSONListField(
+    provides = serializers.JSONField(
         help_text=_("Capabilities the package provides"),
         default="[]",
         required=False,
         read_only=True,
     )
-    conflicts = JSONListField(
+    conflicts = serializers.JSONField(
         help_text=_("Capabilities the package conflicts"),
         default="[]",
         required=False,
         read_only=True,
     )
-    obsoletes = JSONListField(
+    obsoletes = serializers.JSONField(
         help_text=_("Capabilities the package obsoletes"),
         default="[]",
         required=False,
         read_only=True,
     )
-    suggests = JSONListField(
+    suggests = serializers.JSONField(
         help_text=_("Capabilities the package suggests"),
         default="[]",
         required=False,
         read_only=True,
     )
-    enhances = JSONListField(
+    enhances = serializers.JSONField(
         help_text=_("Capabilities the package enhances"),
         default="[]",
         required=False,
         read_only=True,
     )
-    recommends = JSONListField(
+    recommends = serializers.JSONField(
         help_text=_("Capabilities the package recommends"),
         default="[]",
         required=False,
         read_only=True,
     )
-    supplements = JSONListField(
+    supplements = serializers.JSONField(
         help_text=_("Capabilities the package supplements"),
         default="[]",
         required=False,
