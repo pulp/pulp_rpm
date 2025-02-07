@@ -1,10 +1,8 @@
 """Tests that perform actions over content unit."""
 
 from textwrap import dedent
-from urllib.parse import urljoin
 
 import pytest
-import requests
 from pulpcore.client.pulp_rpm import RpmModulemdDefaults, RpmModulemd
 
 from pulp_rpm.tests.functional.constants import (
@@ -30,18 +28,12 @@ def test_crud_content_unit(
 ):
     """Test creating, reading, updating, and deleting a content unit of package type."""
     # Create content unit
-    # content_unit_original = {}
 
     attrs = gen_rpm_content_attrs(signed_artifact, RPM_PACKAGE_FILENAME)
     response = rpm_package_api.create(**attrs)
     content_unit = rpm_package_api.read(monitor_task(response.task).created_resources[0])
-    print("*" * 100)
-    print(content_unit)
-    print("*" * 100)
     # rpm package doesn't keep relative_path but the location href
     del attrs["relative_path"]
-
-    # content_unit_original.update(content_unit.to_dict())
 
     for key, val in attrs.items():
         assert getattr(content_unit, key) == val
@@ -105,7 +97,7 @@ def test_crud_content_unit(
     [RPM_MODULAR_FIXTURE_URL, RPM_KICKSTART_FIXTURE_URL, RPM_REPO_METADATA_FIXTURE_URL],
     ids=["MODULAR_FIXTURE_URL", "KICKSTART_FIXTURE_URL", "REPO_METADATA_FIXTURE_URL"],
 )
-def test_remove_content_unit(url, init_and_sync, rpm_repository_version_api, bindings_cfg):
+def test_remove_content_unit(url, init_and_sync, get_content, pulp_requests):
     """
     Sync a repository and test that content of any type cannot be removed directly.
 
@@ -120,24 +112,15 @@ def test_remove_content_unit(url, init_and_sync, rpm_repository_version_api, bin
     - packagelangpacks
     - repo metadata
     """
-    repo, _ = init_and_sync(url=url, policy="on_demand")
-
     # Test remove content by types contained in repository.
-    version = rpm_repository_version_api.read(repo.latest_version_href)
+    repo, _ = init_and_sync(url=url, policy="on_demand")
+    added_content = get_content(repo)["added"]
 
-    # iterate over content filtered by repository versions
-    for content_units in version.content_summary.added.values():
-        auth = (bindings_cfg.username, bindings_cfg.password)
-        url = urljoin(bindings_cfg.host, content_units["href"])
-        response = requests.get(url, auth=auth).json()
-
-        # iterate over particular content units and issue delete requests
-        for content_unit in response["results"]:
-            url = urljoin(bindings_cfg.host, content_unit.pulp_href)
-            resp = requests.delete(url, auth=auth)
-
-            # check that '405' (method not allowed) is returned
-            assert resp.status_code == 405
+    # iterate over content units and issue delete requests
+    for content_type, content_list in added_content.items():
+        for content_unit in content_list:
+            resp = pulp_requests("delete", content_unit["pulp_href"])
+            assert resp.status_code == 405  # method not allowed
 
 
 def test_create_modulemd_defaults(monitor_task, gen_object_with_cleanup, rpm_modulemd_defaults_api):
@@ -149,7 +132,7 @@ def test_create_modulemd_defaults(monitor_task, gen_object_with_cleanup, rpm_mod
     request_1 = {
         "module": "squid",
         "stream": "4",
-        "profiles": {"4": ["common"]},
+        "profiles": '{"4": ["common"]}',
         "snippet": dedent(
             """\
         ---

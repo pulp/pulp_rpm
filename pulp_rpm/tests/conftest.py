@@ -1,7 +1,8 @@
 import uuid
 
 import pytest
-from urllib.parse import urlparse
+from urllib.parse import urlparse, urljoin
+import requests
 
 from pulpcore.client.pulp_rpm import (
     ApiClient as RpmApiClient,
@@ -164,6 +165,29 @@ def init_and_sync(rpm_repository_factory, rpm_repository_api, rpm_rpmremote_fact
 
 
 @pytest.fixture
+def pulp_requests(bindings_cfg):
+    """Uses requests lib to issue an http request to pulp server using pulp_href.
+
+    Example:
+        >>> response = pulp_requests("get", "/pulp/api/v3/.../?repository_version=...")
+        >>> type(response)
+        requests.Response
+    """
+    ALLOWED_METHODS=("get", "update", "delete", "post")
+    auth = (bindings_cfg.username, bindings_cfg.password)
+    host = bindings_cfg.host
+
+    def _pulp_requests(method: str, pulp_href: str, body = None):
+        if method not in ALLOWED_METHODS:
+            raise ValueError(f"Method should be in: {ALLOWED_METHODS}")
+        url = urljoin(host, pulp_href)
+        request_fn = getattr(requests, method)
+        return request_fn(url, auth=auth)
+
+    return _pulp_requests
+        
+
+@pytest.fixture
 def get_content_summary(rpm_repository_version_api):
     """A fixture that fetches the content summary from a repository."""
 
@@ -208,6 +232,8 @@ def get_content(
     rpm_modulemd_api,
     rpm_modulemd_defaults_api,
     rpm_modulemd_obsoletes_api,
+    rpm_content_distribution_trees_api,
+    pulp_requests,
 ):
     """A fixture that fetches the content from a repository."""
 
@@ -250,9 +276,11 @@ def get_content(
             "rpm.modulemd": rpm_modulemd_api,
             "rpm.modulemd_defaults": rpm_modulemd_defaults_api,
             "rpm.modulemd_obsolete": rpm_modulemd_obsoletes_api,
+            "rpm.distribution_tree": rpm_content_distribution_trees_api,
+            "rpm.packageenvironment": rpm_content_distribution_trees_api,
         }
 
-        def fetch_content(content_type, href) -> list:
+        def _fetch_content(content_type, href) -> list:
             attrs = {}
             bindings = BINDINGS_MAP[content_type]
             query_items = urlparse(href).query.split(";")
@@ -261,6 +289,11 @@ def get_content(
                 attrs[query_k] = query_v
             typed_content = bindings.list(**attrs)
             return typed_content.model_dump()["results"]
+
+        def fetch_content(pulp_href) -> list:
+            result = pulp_requests("get", pulp_href)
+            result.raise_for_status()
+            return result.json()["results"]
 
         result = {}
         for key in ("present", "added", "removed"):
@@ -271,8 +304,7 @@ def get_content(
             # fetch content details for each content type
             summary_entry = getattr(content_summary, key)
             for content_type, content_dict in summary_entry.items():
-                content_href = content_dict["href"]
-                content[content_type] = fetch_content(content_type, content_href)
+                content[content_type] = fetch_content(content_dict["href"])
             result[key] = content
         return result
 
