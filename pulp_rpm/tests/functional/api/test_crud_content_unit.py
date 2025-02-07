@@ -132,7 +132,7 @@ def test_create_modulemd_defaults(monitor_task, gen_object_with_cleanup, rpm_mod
     request_1 = {
         "module": "squid",
         "stream": "4",
-        "profiles": '{"4": ["common"]}',
+        "profiles": {"4": ["common"]},
         "snippet": dedent(
             """\
         ---
@@ -164,10 +164,11 @@ def test_create_modulemd_defaults(monitor_task, gen_object_with_cleanup, rpm_mod
     # Cant create duplicate
     request_3 = request_1.copy()
     request_3["module"] = "squid-mod2"  # not in unique_togheter
-    with pytest.raises(PulpTaskError, match="duplicate key value violates unique constraint"):
+    with pytest.raises(PulpTaskError) as exc:
         modulemd_default = gen_object_with_cleanup(
             rpm_modulemd_defaults_api, RpmModulemdDefaults(**request_3)
         )
+    assert "duplicate key value violates unique constraint" in exc.value.task.error["description"]
 
 
 def test_create_modulemds(
@@ -193,8 +194,9 @@ def test_create_modulemds(
     assert modulemd.name == request["name"]
 
     # Cant create duplicate
-    with pytest.raises(PulpTaskError, match="duplicate key value violates unique constraint"):
+    with pytest.raises(PulpTaskError) as exc:
         modulemd = gen_object_with_cleanup(rpm_modulemd_api, RpmModulemd(**request))
+    assert "duplicate key value violates unique constraint" in exc.value.task.error["description"]
 
     # Can upload variation
     request2 = request.copy()

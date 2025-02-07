@@ -1,7 +1,7 @@
 import uuid
 
 import pytest
-from urllib.parse import urlparse, urljoin
+from urllib.parse import urljoin
 import requests
 
 from pulpcore.client.pulp_rpm import (
