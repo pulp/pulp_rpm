@@ -9,3 +9,4 @@ pyzstd
 requests
 pytest-xdist
 pytest-timeout
+pytest-custom_exit_code
