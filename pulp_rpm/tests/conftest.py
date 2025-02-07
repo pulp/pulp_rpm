@@ -16,9 +16,7 @@ from pulpcore.client.pulp_rpm import (
     RpmRepositorySyncURL,
 )
 
-from pulp_rpm.tests.functional.constants import (
-    RPM_UNSIGNED_FIXTURE_URL,
-)
+from pulp_rpm.tests.functional.constants import RPM_UNSIGNED_FIXTURE_URL, RPM_CONTENT_NAMES
 
 
 @pytest.fixture(scope="session")
@@ -173,11 +171,11 @@ def pulp_requests(bindings_cfg):
         >>> type(response)
         requests.Response
     """
-    ALLOWED_METHODS=("get", "update", "delete", "post")
+    ALLOWED_METHODS = ("get", "update", "delete", "post")
     auth = (bindings_cfg.username, bindings_cfg.password)
     host = bindings_cfg.host
 
-    def _pulp_requests(method: str, pulp_href: str, body = None):
+    def _pulp_requests(method: str, pulp_href: str, body=None):
         if method not in ALLOWED_METHODS:
             raise ValueError(f"Method should be in: {ALLOWED_METHODS}")
         url = urljoin(host, pulp_href)
@@ -185,7 +183,7 @@ def pulp_requests(bindings_cfg):
         return request_fn(url, auth=auth)
 
     return _pulp_requests
-        
+
 
 @pytest.fixture
 def get_content_summary(rpm_repository_version_api):
@@ -262,44 +260,23 @@ def get_content(
             }
             ```
         """
-        version_href = version_href or repo.latest_version_href
-        if version_href is None:
-            return {}
-        content_summary = rpm_repository_version_api.read(version_href).content_summary
-        BINDINGS_MAP = {
-            "rpm.package": rpm_package_api,
-            "rpm.packagecategory": rpm_package_category_api,
-            "rpm.packagegroup": rpm_package_groups_api,
-            "rpm.packagelangpacks": rpm_package_lang_packs_api,
-            "rpm.advisory": rpm_advisory_api,
-            "rpm.repo_metadata_file": rpm_content_repometadata_files_api,
-            "rpm.modulemd": rpm_modulemd_api,
-            "rpm.modulemd_defaults": rpm_modulemd_defaults_api,
-            "rpm.modulemd_obsolete": rpm_modulemd_obsoletes_api,
-            "rpm.distribution_tree": rpm_content_distribution_trees_api,
-            "rpm.packageenvironment": rpm_content_distribution_trees_api,
-        }
-
-        def _fetch_content(content_type, href) -> list:
-            attrs = {}
-            bindings = BINDINGS_MAP[content_type]
-            query_items = urlparse(href).query.split(";")
-            for query in query_items:
-                query_k, query_v = query.split("=")
-                attrs[query_k] = query_v
-            typed_content = bindings.list(**attrs)
-            return typed_content.model_dump()["results"]
 
         def fetch_content(pulp_href) -> list:
             result = pulp_requests("get", pulp_href)
             result.raise_for_status()
             return result.json()["results"]
 
+        # Select verion_href
+        version_href = version_href or repo.latest_version_href
+        if version_href is None:
+            return {}
+        content_summary = rpm_repository_version_api.read(version_href).content_summary
+
         result = {}
         for key in ("present", "added", "removed"):
             content = {}
             # ensure every content type returns at least an empty list
-            for k in BINDINGS_MAP:
+            for k in RPM_CONTENT_NAMES:
                 content[k] = []
             # fetch content details for each content type
             summary_entry = getattr(content_summary, key)
