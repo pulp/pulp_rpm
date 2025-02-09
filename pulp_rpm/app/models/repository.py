@@ -487,9 +487,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
 
         incoming_disttrees = new_version.content.filter(pulp_type=disttree_pulp_type)
         if len(incoming_disttrees) != 1:
-            raise DistributionTreeConflict(
-                _("More than one distribution tree cannot be added to a " "repository version.")
-            )
+            raise DistributionTreeConflict()
 
 
 class RpmPublication(Publication, AutoAddObjPermsMixin):
@@ -529,10 +527,28 @@ class RpmDistribution(Distribution, AutoAddObjPermsMixin):
             repository, publication = self.get_repository_and_publication()
             if not publication:
                 return
+
+            # "Where content will be retrieved from" comes first from CONTENT_ORIGIN.
+            # If that's not set, use a specified baseurl.
+            # If *that* isn't set - fail, we can't build a config.repo because we
+            # don't have enough information to set the baseurl correctly.
+            origin = (
+                settings.CONTENT_ORIGIN
+                if settings.CONTENT_ORIGIN
+                else publication.repo_config.get("baseurl")
+            )
+            if not origin:
+                return Response(
+                    status=404,
+                    reason=_(
+                        "Cannot auto-generate config.repo when CONTENT_ORIGIN is not set and "
+                        "no baseurl specified."
+                    ),
+                )
             if settings.DOMAIN_ENABLED:
                 base_url = "{}/".format(
                     urlpath_sanitize(
-                        settings.CONTENT_ORIGIN,
+                        origin,
                         settings.CONTENT_PATH_PREFIX,
                         self.pulp_domain.name,
                         self.base_path,
@@ -541,7 +557,7 @@ class RpmDistribution(Distribution, AutoAddObjPermsMixin):
             else:
                 base_url = "{}/".format(
                     urlpath_sanitize(
-                        settings.CONTENT_ORIGIN,
+                        origin,
                         settings.CONTENT_PATH_PREFIX,
                         self.base_path,
                     )
