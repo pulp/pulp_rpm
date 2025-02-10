@@ -44,14 +44,20 @@ def test_config_repo_auto_distribute(
     """Whether config.repo is properly served using auto-distribute."""
     repo, pub, dist = setup_empty_distribution
 
-    body = {"repository": repo.pulp_href, "publication": None}
+    # NOTE(core-3.70):
+    # If generate_repo_config=True isnt passed here the default of False is used, even that
+    # the repository had is set to True before.
+    body = {"repository": repo.pulp_href, "publication": None, "generate_repo_config": True}
     monitor_task(rpm_distribution_api.partial_update(dist.pulp_href, body).task)
     # Check that distribution is now using repository to auto-distribute
     dist = rpm_distribution_api.read(dist.pulp_href)
     assert repo.pulp_href == dist.repository
     assert dist.publication is None
-    content = requests.get(f"{dist.base_url}config.repo").content
 
+    response = requests.get(f"{dist.base_url}config.repo")
+    response.raise_for_status()
+
+    content = response.content
     assert bytes(f"[{dist.name}]\n", "utf-8") in content
     assert bytes(f"baseurl={dist.base_url}\n", "utf-8") in content
     assert bytes("gpgcheck=0\n", "utf-8") in content

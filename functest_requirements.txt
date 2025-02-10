@@ -1,5 +1,4 @@
 django  # TODO: test_sync.py has a dependency on date parsing functions
-git+https://github.com/pulp/pulp-smash.git#egg=pulp-smash
 productmd>=1.25
 pytest<8
 dictdiffer
@@ -10,3 +9,4 @@ pyzstd
 requests
 pytest-xdist
 pytest-timeout
+pytest-custom_exit_code

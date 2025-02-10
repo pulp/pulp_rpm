@@ -12,8 +12,6 @@ import requests
 import xmltodict
 import dictdiffer
 
-from pulp_smash.pulp3.utils import gen_repo, gen_distribution
-
 from pulp_rpm.tests.functional.constants import (
     RPM_ALT_LAYOUT_FIXTURE_URL,
     RPM_COMPLEX_FIXTURE_URL,
@@ -29,8 +27,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_UNSIGNED_FIXTURE_URL,
     SRPM_UNSIGNED_FIXTURE_URL,
 )
-from pulp_rpm.tests.functional.utils import gen_rpm_remote, download_and_decompress_file
-from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
+from pulp_rpm.tests.functional.utils import download_and_decompress_file
 
 from pulpcore.client.pulp_rpm import RpmRepositorySyncURL, RpmRpmPublication
 from pulpcore.client.pulp_rpm.exceptions import ApiException
@@ -81,9 +78,9 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
         compression_ext,
         rpm_unsigned_repo_immediate,
         rpm_publication_api,
-        gen_object_with_cleanup,
         rpm_distribution_api,
         monitor_task,
+        rpm_distribution_factory,
     ):
         """Sync and publish an RPM repository w/ zstd compression and verify it exists."""
         # 1. Publish and distribute
@@ -94,8 +91,7 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
         created_resources = monitor_task(publish_response.task).created_resources
         publication_href = created_resources[0]
 
-        body = gen_distribution(publication=publication_href)
-        distribution = gen_object_with_cleanup(rpm_distribution_api, body)
+        distribution = rpm_distribution_factory(publication=publication_href)
 
         # 2. Check "primary", "filelists", "other", "updateinfo" have correct compression ext
         for md_type, md_href in self.get_repomd_metadata_urls(distribution.base_url).items():
@@ -107,9 +103,9 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
         self,
         rpm_unsigned_repo_immediate,
         rpm_publication_api,
-        gen_object_with_cleanup,
         rpm_distribution_api,
         monitor_task,
+        rpm_distribution_factory,
     ):
         """Sync and publish an RPM repository and verify the checksum.
 
@@ -121,8 +117,7 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
         created_resources = monitor_task(publish_response.task).created_resources
         publication_href = created_resources[0]
 
-        body = gen_distribution(publication=publication_href)
-        distribution = gen_object_with_cleanup(rpm_distribution_api, body)
+        distribution = rpm_distribution_factory(publication=publication_href)
 
         # 2. check the tag 'sum' is not present in updateinfo.xml
         update_xml_url = self.get_repomd_metadata_urls(distribution.base_url)["updateinfo"]
@@ -228,10 +223,10 @@ def test_complex_repo_core_metadata(
     repo_url,
     init_and_sync,
     rpm_publication_api,
-    gen_object_with_cleanup,
     rpm_distribution_api,
     monitor_task,
     delete_orphans_pre,
+    rpm_distribution_factory,
 ):
     """Test the "complex" fixture that covers more of the metadata cases.
 
@@ -250,8 +245,7 @@ def test_complex_repo_core_metadata(
     publication_href = created_resources[0]
 
     # distribute
-    body = gen_distribution(publication=publication_href)
-    distribution = gen_object_with_cleanup(rpm_distribution_api, body)
+    distribution = rpm_distribution_factory(publication=publication_href)
 
     # Download and parse the metadata.
     original_repomd = ElementTree.fromstring(
@@ -412,11 +406,13 @@ def _compare_xml_metadata_file(original_metadata_text, generated_metadata_text, 
 @pytest.mark.parametrize("mirror", [True, False], ids=["mirror", "standard"])
 def test_distribution_tree_metadata_publish(
     mirror,
-    gen_object_with_cleanup,
     rpm_repository_api,
     rpm_rpmremote_api,
     rpm_distribution_api,
     monitor_task,
+    rpm_rpmremote_factory,
+    rpm_repository_factory,
+    rpm_distribution_factory,
 ):
     """Test the "complex" fixture that covers more of the metadata cases.
 
@@ -427,10 +423,8 @@ def test_distribution_tree_metadata_publish(
     from configparser import ConfigParser
 
     # 1. create repo and remote
-    repo = gen_object_with_cleanup(rpm_repository_api, gen_repo(autopublish=not mirror))
-
-    body = gen_rpm_remote(RPM_KICKSTART_FIXTURE_URL, policy="on_demand")
-    remote = gen_object_with_cleanup(rpm_rpmremote_api, body)
+    repo = rpm_repository_factory(autopublish=not mirror)
+    remote = rpm_rpmremote_factory(url=RPM_KICKSTART_FIXTURE_URL, policy="on_demand")
 
     # 2, 3. Sync and publish
     repository_sync_data = RpmRepositorySyncURL(remote=remote.pulp_href, mirror=mirror)
@@ -440,8 +434,7 @@ def test_distribution_tree_metadata_publish(
 
     publication_href = [r for r in created_resources if "publication" in r][0]
 
-    body = gen_distribution(publication=publication_href)
-    distribution = gen_object_with_cleanup(rpm_distribution_api, body)
+    distribution = rpm_distribution_factory(publication=publication_href)
 
     # 4. Download and parse the metadata.
     original_treeinfo = requests.get(os.path.join(RPM_KICKSTART_FIXTURE_URL, ".treeinfo")).text
@@ -502,9 +495,9 @@ def test_distribution_tree_metadata_publish(
 def get_checksum_types(
     init_and_sync,
     rpm_publication_api,
-    gen_object_with_cleanup,
     rpm_distribution_api,
     monitor_task,
+    rpm_distribution_factory,
 ):
     """Sync and publish an RPM repository."""
 
@@ -527,8 +520,7 @@ def get_checksum_types(
         created_resources = monitor_task(publish_response.task).created_resources
         publication_href = created_resources[0]
 
-        body = gen_distribution(publication=publication_href)
-        distribution = gen_object_with_cleanup(rpm_distribution_api, body)
+        distribution = rpm_distribution_factory(publication=publication_href)
 
         repomd = ElementTree.fromstring(
             requests.get(os.path.join(distribution.base_url, "repodata/repomd.xml")).text
@@ -755,10 +747,10 @@ def test_directory_layout_distribute_with_treeinfo(generate_distribution):
 @pytest.fixture(scope="class")
 def generate_distribution(
     init_and_sync,
-    gen_object_with_cleanup,
     rpm_distribution_api,
     rpm_publication_api,
     monitor_task,
+    rpm_distribution_factory,
 ):
     def _generate_distribution(url=None):
         """Sync and publish an RPM repository.
@@ -783,9 +775,8 @@ def generate_distribution(
         created_resources = monitor_task(publish_response.task).created_resources
         publication_href = created_resources[0]
 
-        body = gen_distribution(publication=publication_href)
-        distribution = gen_object_with_cleanup(rpm_distribution_api, body)
+        distribution = rpm_distribution_factory(publication=publication_href)
 
-        return distribution.to_dict()["base_url"]
+        return distribution.base_url
 
     return _generate_distribution

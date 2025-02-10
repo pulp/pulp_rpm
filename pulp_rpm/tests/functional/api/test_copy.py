@@ -2,11 +2,6 @@
 
 import pytest
 
-from pulp_smash.pulp3.utils import (
-    get_added_content_summary,
-    get_content_summary,
-)
-
 from pulp_rpm.tests.functional.constants import (
     PULP_TYPE_PACKAGE,
     RPM_FIXTURE_SUMMARY,
@@ -44,6 +39,7 @@ def test_modular_static_context_copy(
     rpm_repository_factory,
     rpm_repository_api,
     get_id,
+    get_content_summary,
 ):
     """Test copying a static_context-using repo to an empty destination."""
     src, _ = init_and_sync(url=RPM_MODULES_STATIC_CONTEXT_FIXTURE_URL)
@@ -62,8 +58,9 @@ def test_modular_static_context_copy(
 
     # Check that we have the correct content counts.
     dest = rpm_repository_api.read(dest.pulp_href)
-    assert get_content_summary(dest.to_dict()) == RPM_MODULAR_STATIC_FIXTURE_SUMMARY
-    assert get_added_content_summary(dest.to_dict()) == RPM_MODULAR_STATIC_FIXTURE_SUMMARY
+    content_summary = get_content_summary(dest)
+    assert content_summary["present"] == RPM_MODULAR_STATIC_FIXTURE_SUMMARY
+    assert content_summary["added"] == RPM_MODULAR_STATIC_FIXTURE_SUMMARY
 
     modules = rpm_modulemd_api.list(repository_version=get_id(dest.latest_version_href)).results
     module_static_contexts = [
@@ -80,6 +77,7 @@ class TestCopyWithUnsignedRepoSyncedImmediate:
         rpm_repository_factory,
         rpm_repository_api,
         rpm_unsigned_repo_immediate,
+        get_content_summary,
     ):
         """Test copying all the content from one repo to another."""
         src = rpm_unsigned_repo_immediate
@@ -93,8 +91,9 @@ class TestCopyWithUnsignedRepoSyncedImmediate:
 
         # Check that we have the correct content counts.
         dest = rpm_repository_api.read(dest.pulp_href)
-        assert get_content_summary(dest.to_dict()) == RPM_FIXTURE_SUMMARY
-        assert get_added_content_summary(dest.to_dict()) == RPM_FIXTURE_SUMMARY
+        content_summary = get_content_summary(dest)
+        assert content_summary["present"] == RPM_FIXTURE_SUMMARY
+        assert content_summary["added"] == RPM_FIXTURE_SUMMARY
 
     def test_copy_none(
         self,
@@ -463,6 +462,7 @@ class TestCopyWithKickstartRepoSyncedImmediate:
         rpm_kickstart_repo_immediate,
         rpm_repository_api,
         rpm_repository_factory,
+        get_content_summary,
     ):
         """Test copying all the content from one repo to another."""
         src = rpm_kickstart_repo_immediate
@@ -476,8 +476,9 @@ class TestCopyWithKickstartRepoSyncedImmediate:
 
         # Check that we have the correct content counts.
         dest = rpm_repository_api.read(dest.pulp_href)
-        assert get_content_summary(dest.to_dict()) == RPM_KICKSTART_FIXTURE_SUMMARY
-        assert get_added_content_summary(dest.to_dict()) == RPM_KICKSTART_FIXTURE_SUMMARY
+        content_summary = get_content_summary(dest)
+        assert content_summary["present"] == RPM_KICKSTART_FIXTURE_SUMMARY
+        assert content_summary["added"] == RPM_KICKSTART_FIXTURE_SUMMARY
 
 
 def test_strict_copy_module_to_empty_repo(

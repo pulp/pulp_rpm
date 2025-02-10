@@ -22,7 +22,6 @@ from pulpcore.plugin.serializers import (
 )
 from pulpcore.plugin.util import get_domain, resolve_prn
 from rest_framework import serializers
-from pulp_rpm.app.fields import CustomJSONField
 
 from pulp_rpm.app.constants import (
     ALLOWED_CHECKSUM_ERROR_MSG,
@@ -147,7 +146,7 @@ class RpmRepositorySerializer(RepositorySerializer):
         ),
         read_only=True,
     )
-    repo_config = CustomJSONField(
+    repo_config = serializers.JSONField(
         required=False,
         help_text=_("A JSON document describing config.repo file"),
     )
@@ -410,7 +409,7 @@ class RpmPublicationSerializer(PublicationSerializer):
         ),
         read_only=True,
     )
-    repo_config = CustomJSONField(
+    repo_config = serializers.JSONField(
         required=False,
         help_text=_("A JSON document describing config.repo file"),
     )
@@ -549,7 +548,7 @@ class CopySerializer(ValidateFieldsMixin, serializers.Serializer):
     A serializer for Content Copy API.
     """
 
-    config = CustomJSONField(
+    config = serializers.JSONField(
         help_text=_(
             dedent(
                 """\
