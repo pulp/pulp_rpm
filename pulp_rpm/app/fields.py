@@ -1,6 +1,4 @@
 from rest_framework import serializers
-from drf_spectacular.utils import extend_schema_field
-from drf_spectacular.types import OpenApiTypes
 from pulp_rpm.app.constants import ADVISORY_SUM_TYPE_TO_NAME
 from pulp_rpm.app.models import UpdateReference
 
@@ -75,8 +73,3 @@ class UpdateReferenceField(serializers.ListField):
                 }
             )
         return ret
-
-
-@extend_schema_field(OpenApiTypes.OBJECT)
-class CustomJSONField(serializers.JSONField):
-    """A (drf) JSONField override to force openapi schema to use 'object' type."""

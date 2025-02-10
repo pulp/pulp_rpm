@@ -93,9 +93,9 @@ def test_sync_zstd(init_and_sync, get_content_summary):
 
 
 @pytest.mark.parallel
-def test_sync_local(init_and_sync, tmpdir, wget_download_on_host):
+def test_sync_local(init_and_sync, tmpdir, wget_recursive_download_on_host):
     """Test syncing from the local filesystem."""
-    wget_download_on_host(RPM_UNSIGNED_FIXTURE_URL, str(tmpdir))
+    wget_recursive_download_on_host(RPM_UNSIGNED_FIXTURE_URL, str(tmpdir))
     init_and_sync(url=f"file://{tmpdir}/rpm-unsigned/")
 
 
@@ -217,7 +217,7 @@ def test_mutated_packages(init_and_sync, get_content_summary, get_content):
             content["release"],
             content["arch"],
         ): content
-        for content in get_content(repository)[RPM_PACKAGE_CONTENT_NAME]
+        for content in get_content(repository)["present"][RPM_PACKAGE_CONTENT_NAME]
     }
 
     # Create a remote with a different test fixture with the same NEVRA but
@@ -239,11 +239,11 @@ def test_mutated_packages(init_and_sync, get_content_summary, get_content):
             content["release"],
             content["arch"],
         ): content
-        for content in get_content(repository)[RPM_PACKAGE_CONTENT_NAME]
+        for content in get_content(repository)["present"][RPM_PACKAGE_CONTENT_NAME]
     }
 
     for nevra in original_packages:
-        assert original_packages[nevra]["pkg_id"] != mutated_packages[nevra]["pkg_id"]
+        assert original_packages[nevra]["pkgId"] != mutated_packages[nevra]["pkgId"]
 
 
 def test_sync_diff_checksum_packages(init_and_sync, get_content, get_content_summary):

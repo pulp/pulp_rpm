@@ -220,17 +220,6 @@ def get_content_summary(rpm_repository_version_api):
 @pytest.fixture
 def get_content(
     rpm_repository_version_api,
-    pulpcore_bindings,
-    rpm_package_api,
-    rpm_package_category_api,
-    rpm_package_groups_api,
-    rpm_advisory_api,
-    rpm_package_lang_packs_api,
-    rpm_content_repometadata_files_api,
-    rpm_modulemd_api,
-    rpm_modulemd_defaults_api,
-    rpm_modulemd_obsoletes_api,
-    rpm_content_distribution_trees_api,
     pulp_requests,
 ):
     """A fixture that fetches the content from a repository."""
