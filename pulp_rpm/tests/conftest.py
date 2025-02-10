@@ -162,27 +162,27 @@ def init_and_sync(rpm_repository_factory, rpm_repository_api, rpm_rpmremote_fact
     return _init_and_sync
 
 
-@pytest.fixture
+class BaseURLSession(requests.Session):
+    def __init__(self, base_url, *args, **kwargs):
+        self.base_url = base_url
+        super().__init__(*args, **kwargs)
+
+    def request(self, method, url, **kwargs):
+        return super().request(method, urljoin(self.base_url, url), **kwargs)
+
+
+@pytest.fixture(scope="module")
 def pulp_requests(bindings_cfg):
     """Uses requests lib to issue an http request to pulp server using pulp_href.
 
     Example:
-        >>> response = pulp_requests("get", "/pulp/api/v3/.../?repository_version=...")
+        >>> response = pulp_requests.get("/pulp/api/v3/.../?repository_version=...")
         >>> type(response)
         requests.Response
     """
-    ALLOWED_METHODS = ("get", "update", "delete", "post")
-    auth = (bindings_cfg.username, bindings_cfg.password)
-    host = bindings_cfg.host
-
-    def _pulp_requests(method: str, pulp_href: str, body=None):
-        if method not in ALLOWED_METHODS:
-            raise ValueError(f"Method should be in: {ALLOWED_METHODS}")
-        url = urljoin(host, pulp_href)
-        request_fn = getattr(requests, method)
-        return request_fn(url, auth=auth)
-
-    return _pulp_requests
+    with BaseURLSession(bindings_cfg.host) as session:
+        session.auth = (bindings_cfg.username, bindings_cfg.password)
+        yield session
 
 
 @pytest.fixture
@@ -251,7 +251,7 @@ def get_content(
         """
 
         def fetch_content(pulp_href) -> list:
-            result = pulp_requests("get", pulp_href)
+            result = pulp_requests.get(pulp_href)
             result.raise_for_status()
             return result.json()["results"]
 
