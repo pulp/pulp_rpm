@@ -119,7 +119,7 @@ def test_remove_content_unit(url, init_and_sync, get_content, pulp_requests):
     # iterate over content units and issue delete requests
     for content_type, content_list in added_content.items():
         for content_unit in content_list:
-            resp = pulp_requests("delete", content_unit["pulp_href"])
+            resp = pulp_requests.delete(content_unit["pulp_href"])
             assert resp.status_code == 405  # method not allowed
 
 
