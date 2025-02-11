@@ -24,6 +24,7 @@ from pulp_rpm.app.constants import (
     ALLOWED_PUBLISH_CHECKSUMS,
     CHECKSUM_CHOICES,
     COMPRESSION_CHOICES,
+    LAYOUT_CHOICES,
     SKIP_TYPES,
     SYNC_POLICY_CHOICES,
 )
@@ -108,6 +109,12 @@ class RpmRepositorySerializer(RepositorySerializer):
     compression_type = serializers.ChoiceField(
         help_text=_("The compression type to use for metadata files."),
         choices=COMPRESSION_CHOICES,
+        required=False,
+        allow_null=True,
+    )
+    layout = serializers.ChoiceField(
+        help_text=_("How to layout the packages within the published repository."),
+        choices=LAYOUT_CHOICES,
         required=False,
         allow_null=True,
     )
@@ -257,6 +264,7 @@ class RpmRepositorySerializer(RepositorySerializer):
             "sqlite_metadata",
             "repo_config",
             "compression_type",
+            "layout",
         )
         model = RpmRepository
 
@@ -374,6 +382,12 @@ class RpmPublicationSerializer(PublicationSerializer):
         choices=COMPRESSION_CHOICES,
         required=False,
     )
+    layout = serializers.ChoiceField(
+        help_text=_("How to layout the packages within the published repository."),
+        choices=LAYOUT_CHOICES,
+        required=False,
+        allow_null=True,
+    )
     gpgcheck = serializers.IntegerField(
         max_value=1,
         min_value=0,
@@ -455,6 +469,7 @@ class RpmPublicationSerializer(PublicationSerializer):
             "sqlite_metadata",
             "repo_config",
             "compression_type",
+            "layout",
         )
         model = RpmPublication
 
