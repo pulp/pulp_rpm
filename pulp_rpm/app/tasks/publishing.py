@@ -26,6 +26,7 @@ from pulp_rpm.app.constants import (
     CHECKSUM_TYPES,
     COMPRESSION_TYPES,
     PACKAGES_DIRECTORY,
+    LAYOUT_TYPES,
 )
 from pulp_rpm.app.kickstart.treeinfo import PulpTreeInfo, TreeinfoData
 from pulp_rpm.app.models import (
@@ -328,6 +329,7 @@ def publish(
     checksum_type=None,
     repo_config=None,
     compression_type=COMPRESSION_TYPES.GZ,
+    layout=LAYOUT_TYPES.NESTED_ALPHABETICALLY,
     *args,
     **kwargs,
 ):
@@ -342,6 +344,8 @@ def publish(
         repo_config (JSON): repo config that will be served by distribution
         compression_type(pulp_rpm.app.constants.COMPRESSION_TYPES):
             Compression type to use for metadata files.
+        layout(pulp_rpm.app.constants.LAYOUT_TYPES):
+            How to layout the package files within the publication (flat, nested, etc.)
 
     """
     repository_version = RepositoryVersion.objects.get(pk=repository_version_pk)
@@ -369,6 +373,7 @@ def publish(
             publication.metadata_checksum_type = checksum_type
             publication.package_checksum_type = checksum_types.get("package") or checksum_type
             publication.compression_type = compression_type
+            publication.layout = layout
             publication.repo_config = repo_config
 
             publication_data = PublicationData(publication, checksum_types)
@@ -422,6 +427,7 @@ def generate_repo_metadata(
     sub_folder=None,
     metadata_signing_service=None,
     compression_type=COMPRESSION_TYPES.GZ,
+    layout=LAYOUT_TYPES.NESTED_ALPHABETICALLY,
 ):
     """
     Creates a repomd.xml file.
@@ -435,6 +441,8 @@ def generate_repo_metadata(
             A reference to an associated signing service.
         compression_type(pulp_rpm.app.constants.COMPRESSION_TYPES):
             Compression type to use for metadata files.
+        layout(pulp_rpm.app.constants.LAYOUT_TYPES):
+            How to layout the package files within the publication (flat, nested, etc.)
 
     """
     cwd = os.getcwd()
@@ -565,11 +573,16 @@ def generate_repo_metadata(
             pkg.pkgId = pkgId
 
             pkg_filename = os.path.basename(package.location_href)
-            # this can cause an issue when two same RPM package names appears
-            # a/name1.rpm b/name1.rpm
-            pkg.location_href = os.path.join(
-                PACKAGES_DIRECTORY, pkg_filename[0].lower(), pkg_filename
-            )
+            if layout == LAYOUT_TYPES.NESTED_ALPHABETICALLY:
+                # this can cause an issue when two same RPM package names appears
+                # a/name1.rpm b/name1.rpm
+                pkg_path = os.path.join(PACKAGES_DIRECTORY, pkg_filename[0].lower(), pkg_filename)
+            elif layout == LAYOUT_TYPES.FLAT:
+                pkg_path = os.path.join(PACKAGES_DIRECTORY, pkg_filename)
+            else:
+                raise ValueError("Layout value is unsupported by this version")
+
+            pkg.location_href = pkg_path
 
             if settings.RPM_METADATA_USE_REPO_PACKAGE_TIME:
                 pkg.time_file = repo_pkg_times[package.pk]
