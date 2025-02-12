@@ -372,8 +372,6 @@ def publish(
         with RpmPublication.create(repository_version, checkpoint=checkpoint) as publication:
             checksum_type = get_checksum_type(checksum_types)
             publication.checksum_type = checksum_type
-            publication.metadata_checksum_type = checksum_type
-            publication.package_checksum_type = checksum_types.get("package") or checksum_type
             publication.compression_type = compression_type
             publication.layout = layout
             publication.repo_config = repo_config
@@ -451,17 +449,18 @@ def generate_repo_metadata(
     repodata_path = REPODATA_PATH
     has_modules = False
     has_comps = False
-    package_checksum_type = checksum_types.get("package")
+    requested_checksum_type = get_checksum_type(checksum_types)
+
+    if requested_checksum_type not in settings.ALLOWED_CONTENT_CHECKSUMS:
+        raise ValueError(
+            "Disallowed checksum type '{}' was requested to be used for publication: {}".format(
+                requested_checksum_type, ALLOWED_CHECKSUM_ERROR_MSG
+            )
+        )
 
     if sub_folder:
         cwd = os.path.join(cwd, sub_folder)
         repodata_path = os.path.join(sub_folder, repodata_path)
-
-    if package_checksum_type and package_checksum_type not in settings.ALLOWED_CONTENT_CHECKSUMS:
-        raise ValueError(
-            "Repository contains disallowed package checksum type '{}', "
-            "thus can't be published. {}".format(package_checksum_type, ALLOWED_CHECKSUM_ERROR_MSG)
-        )
 
     # Prepare metadata files
     cr_compression_type = cr.ZSTD if compression_type == COMPRESSION_TYPES.ZSTD else cr.GZ
@@ -482,9 +481,8 @@ def generate_repo_metadata(
         "content__rpm_package__pkgId",
     ]
     artifact_checksum = None
-    if package_checksum_type:
-        package_checksum_type = package_checksum_type.lower()
-        artifact_checksum = f"artifact__{package_checksum_type}"
+    if requested_checksum_type:
+        artifact_checksum = f"artifact__{requested_checksum_type}"
         fields.append(artifact_checksum)
 
     contentartifact_qs = ContentArtifact.objects.filter(
@@ -493,10 +491,11 @@ def generate_repo_metadata(
 
     pkg_to_hash = {}
     for ca in contentartifact_qs.iterator():
-        if package_checksum_type:
+        if requested_checksum_type:
             pkgid = ca.get(artifact_checksum, None)
+            package_checksum_type = requested_checksum_type
 
-        if not package_checksum_type or not pkgid:
+        if not requested_checksum_type or not pkgid:
             if ca["content__rpm_package__checksum_type"] not in settings.ALLOWED_CONTENT_CHECKSUMS:
                 raise ValueError(
                     "Package with pkgId {} as content unit {} contains forbidden checksum type "
@@ -507,8 +506,8 @@ def generate_repo_metadata(
                         ALLOWED_CHECKSUM_ERROR_MSG,
                     )
                 )
-            package_checksum_type = ca["content__rpm_package__checksum_type"]
             pkgid = ca["content__rpm_package__pkgId"]
+            package_checksum_type = ca["content__rpm_package__checksum_type"]
 
         pkg_to_hash[ca["content_id"]] = (package_checksum_type, pkgid)
 

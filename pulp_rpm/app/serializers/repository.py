@@ -1,7 +1,7 @@
-import logging
 from gettext import gettext as _
 
 from django.conf import settings
+from drf_spectacular.utils import extend_schema_serializer
 from jsonschema import Draft7Validator
 from pulpcore.plugin.models import (
     AsciiArmoredDetachedSigningService,
@@ -46,6 +46,15 @@ from urllib.parse import urlparse
 from textwrap import dedent
 
 
+@extend_schema_serializer(
+    deprecate_fields=[
+        "metadata_checksum_type",
+        "package_checksum_type",
+        "gpgcheck",
+        "repo_gpgcheck",
+        "sqlite_metadata",
+    ]
+)
 class RpmRepositorySerializer(RepositorySerializer):
     """
     Serializer for Rpm Repositories.
@@ -101,16 +110,22 @@ class RpmRepositorySerializer(RepositorySerializer):
         allow_null=True,
     )
     metadata_checksum_type = serializers.ChoiceField(
-        help_text=_("DEPRECATED: use CHECKSUM_TYPE instead."),
+        help_text=_(
+            "REMOVED: The checksum type to use for metadata. Not operational since pulp_rpm "
+            "3.30.0 release. Use 'checksum_type' instead."
+        ),
         choices=CHECKSUM_CHOICES,
-        required=False,
-        allow_null=True,
+        read_only=True,
     )
     package_checksum_type = serializers.ChoiceField(
-        help_text=_("DEPRECATED: use CHECKSUM_TYPE instead."),
+        help_text=_(
+            "REMOVED: The checksum type for packages. Not operational since pulp_rpm 3.30.0 "
+            "release. Use 'checksum_type' instead."
+        ),
         choices=CHECKSUM_CHOICES,
         required=False,
         allow_null=True,
+        read_only=True,
     )
     compression_type = serializers.ChoiceField(
         help_text=_("The compression type to use for metadata files."),
@@ -125,37 +140,38 @@ class RpmRepositorySerializer(RepositorySerializer):
         allow_null=True,
     )
     gpgcheck = serializers.IntegerField(
+        help_text=_(
+            "REMOVED: An option specifying whether a client should perform a GPG signature "
+            "check on packages. Not operational since pulp_rpm 3.30.0 release. "
+            "Set these values using 'repo_config' instead."
+        ),
         max_value=1,
         min_value=0,
-        required=False,
-        allow_null=True,
-        help_text=_(
-            "DEPRECATED: An option specifying whether a client should perform "
-            "a GPG signature check on packages."
-        ),
+        read_only=True,
     )
     repo_gpgcheck = serializers.IntegerField(
+        help_text=_(
+            "REMOVED: An option specifying whether a client should perform a GPG signature "
+            "check on the repodata. Not operational since pulp_rpm 3.30.0 release. "
+            "Set these values using 'repo_config' instead."
+        ),
         max_value=1,
         min_value=0,
-        required=False,
-        allow_null=True,
-        help_text=_(
-            "DEPRECATED: An option specifying whether a client should perform "
-            "a GPG signature check on the repodata."
-        ),
+        read_only=True,
     )
     sqlite_metadata = serializers.BooleanField(
-        default=False,
-        required=False,
         help_text=_(
             "REMOVED: An option specifying whether Pulp should generate SQLite metadata. "
             "Not operation since pulp_rpm 3.25.0 release"
         ),
+        default=False,
         read_only=True,
     )
     repo_config = serializers.JSONField(
         required=False,
-        help_text=_("A JSON document describing config.repo file"),
+        help_text=_(
+            "A JSON document describing the config.repo file Pulp should generate for this repo"
+        ),
     )
 
     def to_representation(self, instance):
@@ -176,100 +192,17 @@ class RpmRepositorySerializer(RepositorySerializer):
 
     def validate(self, data):
         """Validate data."""
-        for field in ("checksum_type", "metadata_checksum_type", "package_checksum_type"):
-            if field in data and data[field]:
-                if data[field] not in settings.ALLOWED_CONTENT_CHECKSUMS:
-                    raise serializers.ValidationError({field: _(ALLOWED_CHECKSUM_ERROR_MSG)})
+        if checksum_type := data.get("checksum_type"):
+            if checksum_type not in settings.ALLOWED_CONTENT_CHECKSUMS:
+                raise serializers.ValidationError({"checksum_type": _(ALLOWED_CHECKSUM_ERROR_MSG)})
 
-                if data[field] not in ALLOWED_PUBLISH_CHECKSUMS:
-                    raise serializers.ValidationError(
-                        {field: _(ALLOWED_PUBLISH_CHECKSUM_ERROR_MSG)}
-                    )
-
-        if data.get("package_checksum_type") or data.get("metadata_checksum_type"):
-            logging.getLogger("pulp_rpm.deprecation").info(
-                "Support for '*_checksum_type' options will be removed from a future release "
-                "of pulp_rpm."
-            )
-            if data.get("checksum_type"):
+            if checksum_type not in ALLOWED_PUBLISH_CHECKSUMS:
                 raise serializers.ValidationError(
-                    _(
-                        "Cannot use '*_checksum_type' options and 'checksum_type' options "
-                        "simultaneously. The 'package_checksum_type' and 'metadata_checksum_type' "
-                        "options are deprecated, please use 'checksum_type' only."
-                    )
+                    {"checksum_type": _(ALLOWED_PUBLISH_CHECKSUM_ERROR_MSG)}
                 )
 
         validated_data = super().validate(data)
-        if (data.get("gpgcheck") or data.get("repo_gpgcheck")) and data.get("repo_config"):
-            raise serializers.ValidationError(
-                _(
-                    "Cannot use gpg options and 'repo_config' options simultaneously. "
-                    "The 'gpgcheck' and 'repo_gpgcheck' options are deprecated, please use "
-                    "'repo_config' only."
-                )
-            )
         return validated_data
-
-    def create(self, validated_data):
-        """
-        Save the repo and handle gpg options
-
-        Args:
-            validated_data (dict): A dict of validated data to create the repo
-
-        Returns:
-            repo: the created repo
-        """
-        # gpg options are deprecated in favour of repo_config
-        # acting as shim layer between old and new api
-        gpgcheck = validated_data.pop("gpgcheck", None)
-        repo_gpgcheck = validated_data.pop("repo_gpgcheck", None)
-        gpgcheck_options = {}
-        if gpgcheck is not None:
-            gpgcheck_options["gpgcheck"] = gpgcheck
-        if repo_gpgcheck is not None:
-            gpgcheck_options["repo_gpgcheck"] = repo_gpgcheck
-        if gpgcheck_options.keys():
-            logging.getLogger("pulp_rpm.deprecation").info(
-                "Support for gpg options will be removed from a future release of pulp_rpm."
-            )
-        repo_config = (
-            gpgcheck_options if gpgcheck_options else validated_data.get("repo_config", {})
-        )
-        repo = super().create(validated_data)
-        repo.repo_config = repo_config
-        return repo
-
-    def update(self, instance, validated_data):
-        """
-        Update the repo and handle gpg options
-
-        Args:
-            validated_data (dict): A dict of validated data to update the repo
-
-        Returns:
-            repo: the updated repo
-        """
-        # gpg options are deprecated in favour of repo_config
-        # acting as shim layer between old and new api
-        gpgcheck = validated_data.pop("gpgcheck", None)
-        repo_gpgcheck = validated_data.pop("repo_gpgcheck", None)
-        gpgcheck_options = {}
-        if gpgcheck is not None:
-            gpgcheck_options["gpgcheck"] = gpgcheck
-        if repo_gpgcheck is not None:
-            gpgcheck_options["repo_gpgcheck"] = repo_gpgcheck
-        if gpgcheck_options.keys():
-            logging.getLogger("pulp_rpm.deprecation").info(
-                "Support for gpg options will be removed from a future release of pulp_rpm."
-            )
-        repo_config = (
-            gpgcheck_options if gpgcheck_options else validated_data.get("repo_config", {})
-        )
-        instance.repo_config = repo_config
-        instance = super().update(instance, validated_data)
-        return instance
 
     class Meta:
         fields = RepositorySerializer.Meta.fields + (
@@ -379,20 +312,35 @@ class UlnRemoteSerializer(RpmBaseRemoteSerializer):
         model = UlnRemote
 
 
+@extend_schema_serializer(
+    deprecate_fields=[
+        "metadata_checksum_type",
+        "package_checksum_type",
+        "gpgcheck",
+        "repo_gpgcheck",
+        "sqlite_metadata",
+    ]
+)
 class RpmPublicationSerializer(PublicationSerializer):
     """
     A Serializer for RpmPublication.
     """
 
     metadata_checksum_type = serializers.ChoiceField(
-        help_text=_("DEPRECATED: The checksum type for metadata."),
+        help_text=_(
+            "REMOVED: The checksum type for metadata. Not operational since pulp_rpm 3.30.0 "
+            "release. Use 'checksum_type' instead."
+        ),
         choices=CHECKSUM_CHOICES,
-        required=False,
+        read_only=True,
     )
     package_checksum_type = serializers.ChoiceField(
-        help_text=_("DEPRECATED: The checksum type for packages."),
+        help_text=_(
+            "REMOVED: The checksum type for packages. Not operational since pulp_rpm 3.30.0 "
+            "release. Use 'checksum_type' instead."
+        ),
         choices=CHECKSUM_CHOICES,
-        required=False,
+        read_only=True,
     )
     checkpoint = serializers.BooleanField(required=False)
     checksum_type = serializers.ChoiceField(
@@ -412,74 +360,50 @@ class RpmPublicationSerializer(PublicationSerializer):
         allow_null=True,
     )
     gpgcheck = serializers.IntegerField(
+        help_text=_(
+            "REMOVED: An option specifying whether a client should perform "
+            "a GPG signature check on packages. Not operational since pulp_rpm 3.30.0 release. "
+            "Set these values using 'repo_config' instead."
+        ),
         max_value=1,
         min_value=0,
-        required=False,
-        allow_null=True,
-        help_text=_(
-            "DEPRECATED: An option specifying whether a client should perform "
-            "a GPG signature check on packages."
-        ),
+        read_only=True,
     )
     repo_gpgcheck = serializers.IntegerField(
+        help_text=_(
+            "REMOVED: An option specifying whether a client should perform "
+            "a GPG signature check on the repodata. Not operational since pulp_rpm 3.30.0 release. "
+            "Set these values using 'repo_config' instead."
+        ),
         max_value=1,
         min_value=0,
-        required=False,
-        allow_null=True,
-        help_text=_(
-            "DEPRECATED: An option specifying whether a client should perform "
-            "a GPG signature check on the repodata."
-        ),
+        read_only=True,
     )
     sqlite_metadata = serializers.BooleanField(
-        default=False,
-        required=False,
         help_text=_(
             "REMOVED: An option specifying whether Pulp should generate SQLite metadata. "
-            "Not operation since pulp_rpm 3.25.0 release"
+            "Not operational since pulp_rpm 3.25.0 release"
         ),
+        default=False,
         read_only=True,
     )
     repo_config = serializers.JSONField(
         required=False,
-        help_text=_("A JSON document describing config.repo file"),
+        help_text=_(
+            "A JSON document describing the config.repo file Pulp should generate for this repo"
+        ),
     )
 
     def validate(self, data):
         """Validate data."""
-        for field in ("checksum_type", "metadata_checksum_type", "package_checksum_type"):
-            if field in data and data[field]:
-                if data[field] not in settings.ALLOWED_CONTENT_CHECKSUMS:
-                    raise serializers.ValidationError({field: _(ALLOWED_CHECKSUM_ERROR_MSG)})
+        if checksum_type := data.get("checksum_type"):
+            if checksum_type not in settings.ALLOWED_CONTENT_CHECKSUMS:
+                raise serializers.ValidationError(ALLOWED_CHECKSUM_ERROR_MSG)
 
-                if data[field] not in ALLOWED_PUBLISH_CHECKSUMS:
-                    raise serializers.ValidationError(
-                        {field: _(ALLOWED_PUBLISH_CHECKSUM_ERROR_MSG)}
-                    )
-
-        if data.get("package_checksum_type") or data.get("metadata_checksum_type"):
-            logging.getLogger("pulp_rpm.deprecation").info(
-                "Support for '*_checksum_type' options will be removed from a future release "
-                "of pulp_rpm."
-            )
-            if data.get("checksum_type"):
-                raise serializers.ValidationError(
-                    _(
-                        "Cannot use '*_checksum_type' options and 'checksum_type' options "
-                        "simultaneously. The 'package_checksum_type' and 'metadata_checksum_type' "
-                        "options are deprecated, please use 'checksum_type' only."
-                    )
-                )
+            if checksum_type not in ALLOWED_PUBLISH_CHECKSUMS:
+                raise serializers.ValidationError(ALLOWED_PUBLISH_CHECKSUM_ERROR_MSG)
 
         validated_data = super().validate(data)
-        if (data.get("gpgcheck") or data.get("repo_gpgcheck")) and data.get("repo_config"):
-            raise serializers.ValidationError(
-                _(
-                    "Cannot use gpg options and 'repo_config' options simultaneously. "
-                    "The 'gpgcheck' and 'repo_gpgcheck' options are deprecated, please use "
-                    "'repo_config' only."
-                )
-            )
         return validated_data
 
     class Meta:
