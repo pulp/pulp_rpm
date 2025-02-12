@@ -1,4 +1,5 @@
 import os
+import asyncio
 
 from aiohttp_xmlrpc.client import ServerProxy, _Method
 from logging import getLogger
@@ -174,7 +175,7 @@ class UlnDownloader(RpmDownloader):
                 SERVER_URL, proxy=self.proxy, proxy_auth=self.proxy_auth, auth=self.auth
             )
             if not self.session_key:
-                self.session_key = await client.auth.login(self.username, self.password)
+                self.session_key = await self._login_and_retry(client)
                 if len(self.session_key) != 43:
                     raise UlnCredentialsError()
                 self.headers = {"X-ULN-API-User-Key": self.session_key}
@@ -195,6 +196,34 @@ class UlnDownloader(RpmDownloader):
             self.session.close()
             client.close()
         return to_return
+
+    async def _login_and_retry(self, client, max_attempts=4, delay=1):
+        """
+        Attempts to log in using the provided client. Retries up to `max_attempts`
+        times with a delay between attempts.
+
+        Args:
+            client: The client object used for authentication.
+            max_attempts (int): Maximum number of login attempts.
+            delay (int or float): Delay in seconds between retries.
+
+        Returns:
+            The session key from the login.
+
+        Raises:
+            UlnCredentialsError: If all login attempts fail.
+        """
+        for attempt in range(1, max_attempts + 1):
+            try:
+                return await client.auth.login(self.username, self.password)
+            except Exception as exc:
+                if attempt < max_attempts:
+                    log.info(f"ULN login attempt {attempt} failed. Retrying...")
+                    await asyncio.sleep(delay)
+                else:
+                    raise UlnCredentialsError(
+                        f"ULN login failed after {max_attempts} attempts."
+                    ) from exc
 
 
 class AllowProxyServerProxy(ServerProxy):
