@@ -572,8 +572,7 @@ def get_checksum_types(
 
     def _get_checksum_types(**kwargs):
         fixture_url = kwargs.get("fixture_url", RPM_UNSIGNED_FIXTURE_URL)
-        package_checksum_type = kwargs.get("package_checksum_type")
-        metadata_checksum_type = kwargs.get("metadata_checksum_type")
+        configured_checksum_type = kwargs.get("checksum_type")
         policy = kwargs.get("policy", "immediate")
 
         # 1. create repo and remote
@@ -582,8 +581,7 @@ def get_checksum_types(
         # 2. Publish and distribute
         publish_data = RpmRpmPublication(
             repository=repo.pulp_href,
-            package_checksum_type=package_checksum_type,
-            metadata_checksum_type=metadata_checksum_type,
+            checksum_type=configured_checksum_type,
         )
         publish_response = rpm_publication_api.create(publish_data)
         created_resources = monitor_task(publish_response.task).created_resources
@@ -642,7 +640,7 @@ def test_publish_with_disallowed_checksum_type(rpm_unsigned_repo_on_demand, rpm_
         )
 
     publish_data = RpmRpmPublication(
-        repository=rpm_unsigned_repo_on_demand.pulp_href, package_checksum_type="sha384"
+        repository=rpm_unsigned_repo_on_demand.pulp_href, checksum_type="sha384"
     )
     with pytest.raises(ApiException) as ctx:
         rpm_publication_api.create(publish_data)
@@ -661,7 +659,7 @@ def test_publish_with_unsupported_checksum_type(rpm_unsigned_repo_on_demand, rpm
       (even though it is in ALLOWED_CONTENT_CHECKSUMS)
     """
     publish_data = RpmRpmPublication(
-        repository=rpm_unsigned_repo_on_demand.pulp_href, package_checksum_type="sha1"
+        repository=rpm_unsigned_repo_on_demand.pulp_href, checksum_type="sha1"
     )
     with pytest.raises(ApiException) as ctx:
         rpm_publication_api.create(publish_data)

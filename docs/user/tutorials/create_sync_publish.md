@@ -248,12 +248,6 @@ run a full sync.
 
 A publication can only be created once a sync task completes. The following optional parameters are available:
 
-- metadata_checksum_type (deprecated): affects all the repodata, including primary.xml, repomd.xml, etc.
-  If not specified, the default SHA256 algorithm will be used.
-- package_checksum_type (deprecated): affects package checksum type in all repo metadata files.
-  If not specified, the default SHA256 algorithm will be used.
-  Because of on_demand sync, it is possible that the requested checksum is not available.
-  In such case the one from the remote repo will be used.
 - checksum_type: Sets the checksum type to be used by the repository metadata, including primary.xml, repomd.xml, etc.
   If not specified, the default SHA256 algorithm will be used. Because of on_demand sync, it is possible that the
   requested checksum is not available. In such case the available checksum supplied by the remote repo will be used.
@@ -299,11 +293,6 @@ A publication can only be created once a sync task completes. The following opti
       "repository_version": "/pulp/api/v3/repositories/rpm/rpm/678798cd-9e08-4c9d-9feb-7dc88412b101/versions/1/",
       "repository": "/pulp/api/v3/repositories/rpm/rpm/678798cd-9e08-4c9d-9feb-7dc88412b101/",
       "checksum_type": "sha256",
-      "metadata_checksum_type": "sha256",
-      "package_checksum_type": "sha256",
-      "gpgcheck": null,
-      "repo_gpgcheck": null,
-      "sqlite_metadata": false,
       "repo_config": {
         "gpgcheck": 1,
         "repo-gpgcheck": 1
