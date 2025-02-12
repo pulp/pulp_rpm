@@ -12,7 +12,7 @@ from pulpcore.client.pulp_rpm import (
 def setup_autopublish(rpm_repository_factory, rpm_rpmremote_factory, rpm_distribution_factory):
     """Create remote, repo, publish settings, and distribution."""
     remote = rpm_rpmremote_factory()
-    repo = rpm_repository_factory(autopublish=True, metadata_checksum_type="sha512")
+    repo = rpm_repository_factory(autopublish=True, checksum_type="sha512")
     distribution = rpm_distribution_factory(repository=repo.pulp_href)
 
     return repo, remote, distribution
@@ -37,7 +37,7 @@ def test_01_sync(setup_autopublish, rpm_repository_api, rpm_publication_api, mon
 
     # Check that the publish settings were used
     publication = publications.results[0]
-    assert publication.metadata_checksum_type == "sha512"
+    assert publication.checksum_type == "sha512"
 
     # Sync the repository again. Since there should be no new repository version, there
     # should be no new publications or distributions either.
@@ -70,4 +70,4 @@ def test_02_modify(
 
     # Check that the publish settings were used
     publication = publications.results[0]
-    assert publication.metadata_checksum_type == "sha512"
+    assert publication.checksum_type == "sha512"

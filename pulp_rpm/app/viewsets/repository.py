@@ -1,5 +1,4 @@
 from gettext import gettext as _
-import logging
 
 from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
@@ -540,32 +539,7 @@ class RpmPublicationViewSet(PublicationViewSet, RolesMixin):
 
         checkpoint = serializer.validated_data.get("checkpoint")
         checksum_type = serializer.validated_data.get("checksum_type", repository.checksum_type)
-        metadata_checksum_type = serializer.validated_data.get(
-            "metadata_checksum_type", repository.metadata_checksum_type
-        )
-        package_checksum_type = serializer.validated_data.get(
-            "package_checksum_type", repository.package_checksum_type
-        )
-        checksum_types = dict(
-            metadata=metadata_checksum_type,
-            package=package_checksum_type,
-            general=checksum_type,
-        )
-        # gpg options are deprecated in favour of repo_config
-        # acting as shim layer between old and new api
-        gpgcheck = serializer.validated_data.get("gpgcheck")
-        repo_gpgcheck = serializer.validated_data.get("repo_gpgcheck")
-        gpgcheck_options = {}
-        if gpgcheck is not None:
-            gpgcheck_options["gpgcheck"] = gpgcheck
-        if repo_gpgcheck is not None:
-            gpgcheck_options["repo_gpgcheck"] = repo_gpgcheck
-        if gpgcheck_options.keys():
-            logging.getLogger("pulp_rpm.deprecation").info(
-                "Support for gpg options  will be removed from a future release of pulp_rpm."
-            )
         repo_config = serializer.validated_data.get("repo_config", repository.repo_config)
-        repo_config = gpgcheck_options if gpgcheck_options else repo_config
         compression_type = serializer.validated_data.get(
             "compression_type", repository.compression_type
         )
@@ -578,7 +552,7 @@ class RpmPublicationViewSet(PublicationViewSet, RolesMixin):
         kwargs = {
             "repository_version_pk": repository_version.pk,
             "metadata_signing_service": signing_service_pk,
-            "checksum_types": checksum_types,
+            "checksum_type": checksum_type,
             "repo_config": repo_config,
             "compression_type": compression_type,
         }

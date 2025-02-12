@@ -1,0 +1,1 @@
+Using the 'gpgcheck', 'repo_gpgcheck', 'package_checksum_type', or 'checksum_type' options, which have been deprecated for some time, will no longer have any effect. In the case of 'gpgcheck' or 'repo_gpgcheck', please use the 'repo_config' option instead. In the case of 'package_checksum_type' or 'metadata_checksum_type', please use 'checksum_type' instead.
