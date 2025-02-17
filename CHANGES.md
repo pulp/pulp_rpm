@@ -8,6 +8,34 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.28.0 (2025-02-17) {: #3.28.0 }
+
+#### Bugfixes {: #3.28.0-bugfix }
+
+- Honor repository's compression_type for publications unless overridden
+  [#3614](https://github.com/pulp/pulp_rpm/issues/3614)
+- Declared compatibility against pulpcore<3.70.
+  [#3620](https://github.com/pulp/pulp_rpm/issues/3620)
+- Fixed the JSONField specification so it doesn't break ruby bindings.
+  [#3639](https://github.com/pulp/pulp_rpm/issues/3639)
+- Fixed stacktrace from create_modulemd() when trying to report an error.
+  [#3756](https://github.com/pulp/pulp_rpm/issues/3756)
+- Make it possible to sync repositories without filelists.xml or other.xml metadata
+  [#3777](https://github.com/pulp/pulp_rpm/issues/3777)
+- Extended PRN support to Advanced Copy API and DistributionTree.
+  [#3853](https://github.com/pulp/pulp_rpm/issues/3853)
+
+#### Improved Documentation {: #3.28.0-doc }
+
+- Updated documentation for prune and advanced-copy to use pulp-cli examples.
+  [#3622](https://github.com/pulp/pulp_rpm/issues/3622)
+
+#### Misc {: #3.28.0-misc }
+
+- [#3828](https://github.com/pulp/pulp_rpm/issues/3828), [#3854](https://github.com/pulp/pulp_rpm/issues/3854), [#3856](https://github.com/pulp/pulp_rpm/issues/3856)
+
+---
+
 ## 3.27.2 (2024-10-17) {: #3.27.2 }
 
 #### Bugfixes {: #3.27.2-bugfix }
