@@ -1,5 +1,0 @@
-Taught pulp_rpm to respond gracefully when CONTENT_ORIGIN is not set.
-
-NOTE: Without CONTENT_ORIGIN, the plugin cannot autogenerate config.repo for a repository
-unless a config-repo JSON has been provided which contains baseurl. Without CONTENT_ORIGIN
-or a baseurl, requests for config.repo will return a 404.
