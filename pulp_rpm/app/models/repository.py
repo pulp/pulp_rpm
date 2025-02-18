@@ -30,7 +30,7 @@ from pulpcore.plugin.repo_version_utils import (
     validate_version_paths,
 )
 
-from pulp_rpm.app.constants import CHECKSUM_CHOICES, COMPRESSION_CHOICES
+from pulp_rpm.app.constants import CHECKSUM_CHOICES, COMPRESSION_CHOICES, LAYOUT_CHOICES
 from pulp_rpm.app.downloaders import RpmDownloader, RpmFileDownloader, UlnDownloader
 from pulp_rpm.app.exceptions import DistributionTreeConflict
 from pulp_rpm.app.models import (
@@ -208,6 +208,8 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
         repo_config (JSON): repo configuration that will be served by distribution
         compression_type(pulp_rpm.app.constants.COMPRESSION_TYPES):
             Compression type to use for metadata files.
+        layout(pulp_rpm.app.constants.LAYOUT_TYPES):
+            How to layout the package files within the publication (flat, nested, etc.)
     """
 
     TYPE = "rpm"
@@ -240,6 +242,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
     autopublish = models.BooleanField(default=False)
     checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
     compression_type = models.TextField(null=True, choices=COMPRESSION_CHOICES)
+    layout = models.TextField(null=True, choices=LAYOUT_CHOICES)
     metadata_checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
     package_checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
     repo_config = models.JSONField(default=dict)
@@ -267,6 +270,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
                 },
                 repo_config=self.repo_config,
                 compression_type=self.compression_type,
+                layout=self.layout,
             )
 
     @property
@@ -500,6 +504,7 @@ class RpmPublication(Publication, AutoAddObjPermsMixin):
     compression_type = models.TextField(null=True, choices=COMPRESSION_CHOICES)
     metadata_checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
     package_checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
+    layout = models.TextField(null=True, choices=LAYOUT_CHOICES)
     repo_config = models.JSONField(default=dict)
 
     class Meta:

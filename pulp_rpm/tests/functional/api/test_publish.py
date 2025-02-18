@@ -224,6 +224,81 @@ def test_publish_references_update(assert_created_publication):
     assert_created_publication(RPM_REFERENCES_UPDATEINFO_URL)
 
 
+def get_metadata_content_helper(base_url, repomd_elem, meta_type):
+    """Return the text contents of metadata file.
+
+    Provided a url, a repomd root element, and a metadata type, locate the metadata
+    file's location href, download it from the provided url, un-gzip it, parse it, and
+    return the root element node.
+
+    Don't use this with large repos because it will blow up.
+    """
+    # <ns0:repomd xmlns:ns0="http://linux.duke.edu/metadata/repo">
+    #     <ns0:data type="primary">
+    #         <ns0:checksum type="sha256">[…]</ns0:checksum>
+    #         <ns0:location href="repodata/[…]-primary.xml.gz" />
+    #         …
+    #     </ns0:data>
+    #     …
+    xpath = "{{{}}}data".format(RPM_NAMESPACES["metadata/repo"])
+    data_elems = [elem for elem in repomd_elem.findall(xpath) if elem.get("type") == meta_type]
+    if not data_elems:
+        return None
+
+    xpath = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
+    location_href = data_elems[0].find(xpath).get("href")
+
+    return download_and_decompress_file(os.path.join(base_url, location_href))
+
+
+@pytest.mark.parametrize("layout", ["flat", "nested_alphabetically"])
+def test_repo_layout(
+    layout,
+    init_and_sync,
+    rpm_publication_api,
+    gen_object_with_cleanup,
+    rpm_distribution_api,
+    rpm_distribution_factory,
+    monitor_task,
+    delete_orphans_pre,
+    tmpdir,
+    wget_recursive_download_on_host,
+):
+    """Test that using the "layout" option for publication produces the correct package layouts"""
+
+    # create repo and remote
+    repo, _ = init_and_sync(url=RPM_UNSIGNED_FIXTURE_URL, policy="on_demand")
+
+    # publish
+    publish_data = RpmRpmPublication(repository=repo.pulp_href, layout=layout)
+    publish_response = rpm_publication_api.create(publish_data)
+    created_resources = monitor_task(publish_response.task).created_resources
+    publication_href = created_resources[0]
+
+    # distribute
+    distribution = rpm_distribution_factory(publication=publication_href)
+
+    # Download and parse the metadata.
+    repomd = ElementTree.fromstring(
+        requests.get(os.path.join(distribution.base_url, "repodata/repomd.xml")).text
+    )
+
+    # Convert the metadata into a more workable form and then compare.
+    primary = get_metadata_content_helper(distribution.base_url, repomd, "primary")
+
+    packages = xmltodict.parse(primary, dict_constructor=collections.OrderedDict)["metadata"][
+        "package"
+    ]
+
+    for package in packages:
+        if layout == "flat":
+            assert package["location"]["@href"].startswith("Packages/{}".format(package["name"][0]))
+        elif layout == "nested_alphabetically":
+            assert package["location"]["@href"].startswith(
+                "Packages/{}/".format(package["name"][0])
+            )
+
+
 @pytest.mark.parametrize("repo_url", [RPM_COMPLEX_FIXTURE_URL, RPM_MODULAR_FIXTURE_URL])
 def test_complex_repo_core_metadata(
     distribution_base_url,
@@ -265,36 +340,10 @@ def test_complex_repo_core_metadata(
         ).text
     )
 
-    def get_metadata_content(base_url, repomd_elem, meta_type):
-        """Return the text contents of metadata file.
-
-        Provided a url, a repomd root element, and a metadata type, locate the metadata
-        file's location href, download it from the provided url, un-gzip it, parse it, and
-        return the root element node.
-
-        Don't use this with large repos because it will blow up.
-        """
-        # <ns0:repomd xmlns:ns0="http://linux.duke.edu/metadata/repo">
-        #     <ns0:data type="primary">
-        #         <ns0:checksum type="sha256">[…]</ns0:checksum>
-        #         <ns0:location href="repodata/[…]-primary.xml.gz" />
-        #         …
-        #     </ns0:data>
-        #     …
-        xpath = "{{{}}}data".format(RPM_NAMESPACES["metadata/repo"])
-        data_elems = [elem for elem in repomd_elem.findall(xpath) if elem.get("type") == meta_type]
-        if not data_elems:
-            return None
-
-        xpath = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
-        location_href = data_elems[0].find(xpath).get("href")
-
-        return download_and_decompress_file(os.path.join(base_url, location_href))
-
     # Convert the metadata into a more workable form and then compare.
     for metadata_file in ["primary", "filelists", "other"]:
-        original_metadata = get_metadata_content(repo_url, original_repomd, metadata_file)
-        generated_metadata = get_metadata_content(
+        original_metadata = get_metadata_content_helper(repo_url, original_repomd, metadata_file)
+        generated_metadata = get_metadata_content_helper(
             distribution_base_url(distribution.base_url), reproduced_repomd, metadata_file
         )
 
@@ -302,8 +351,8 @@ def test_complex_repo_core_metadata(
 
     # =================
 
-    original_modulemds = get_metadata_content(repo_url, original_repomd, "modules")
-    generated_modulemds = get_metadata_content(
+    original_modulemds = get_metadata_content_helper(repo_url, original_repomd, "modules")
+    generated_modulemds = get_metadata_content_helper(
         distribution_base_url(distribution.base_url), reproduced_repomd, "modules"
     )
 
@@ -319,8 +368,8 @@ def test_complex_repo_core_metadata(
     # ===================
 
     # TODO: make this deeper
-    original_updateinfo = get_metadata_content(repo_url, original_repomd, "updateinfo")
-    generated_updateinfo = get_metadata_content(
+    original_updateinfo = get_metadata_content_helper(repo_url, original_repomd, "updateinfo")
+    generated_updateinfo = get_metadata_content_helper(
         distribution_base_url(distribution.base_url), reproduced_repomd, "updateinfo"
     )
     assert bool(original_updateinfo) == bool(generated_updateinfo)
