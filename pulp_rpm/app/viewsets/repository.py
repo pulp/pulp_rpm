@@ -538,6 +538,7 @@ class RpmPublicationViewSet(PublicationViewSet, RolesMixin):
         repository_version = serializer.validated_data.get("repository_version")
         repository = RpmRepository.objects.get(pk=repository_version.repository.pk)
 
+        checkpoint = serializer.validated_data.get("checkpoint")
         checksum_type = serializer.validated_data.get("checksum_type", repository.checksum_type)
         metadata_checksum_type = serializer.validated_data.get(
             "metadata_checksum_type", repository.metadata_checksum_type
@@ -574,16 +575,19 @@ class RpmPublicationViewSet(PublicationViewSet, RolesMixin):
         else:
             signing_service_pk = None
 
+        kwargs = {
+            "repository_version_pk": repository_version.pk,
+            "metadata_signing_service": signing_service_pk,
+            "checksum_types": checksum_types,
+            "repo_config": repo_config,
+            "compression_type": compression_type,
+        }
+        if checkpoint:
+            kwargs["checkpoint"] = True
         result = dispatch(
             tasks.publish,
             shared_resources=[repository_version.repository],
-            kwargs={
-                "repository_version_pk": repository_version.pk,
-                "metadata_signing_service": signing_service_pk,
-                "checksum_types": checksum_types,
-                "repo_config": repo_config,
-                "compression_type": compression_type,
-            },
+            kwargs=kwargs,
         )
         return OperationPostponedResponse(result, request)
 
