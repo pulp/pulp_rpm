@@ -1,12 +1,13 @@
-django  # TODO: test_sync.py has a dependency on date parsing functions
-productmd>=1.25
-pytest<8
 dictdiffer
-xmltodict
-pyyaml
+django  # TODO: test_sync.py has a dependency on date parsing functions
 lxml
-pyzstd
-requests
+productmd>=1.25
+pydantic
+pyyaml
+pytest<8
 pytest-xdist
 pytest-timeout
 pytest-custom_exit_code
+pyzstd
+requests
+xmltodict
