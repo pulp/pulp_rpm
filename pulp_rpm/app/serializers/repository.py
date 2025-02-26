@@ -167,6 +167,7 @@ class RpmRepositorySerializer(RepositorySerializer):
             "metadata_checksum_type",
             "package_checksum_type",
             "compression_type",
+            "layout",
         ):
             field_data = data.get(field)
             if field_data == "":
