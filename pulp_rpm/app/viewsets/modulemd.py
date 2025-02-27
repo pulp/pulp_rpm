@@ -53,7 +53,7 @@ class ModulemdViewSet(SingleArtifactContentUploadViewSet):
                 "effect": "allow",
             },
             {
-                "action": ["create"],
+                "action": ["create", "set_label", "unset_label"],
                 "principal": "authenticated",
                 "effect": "allow",
                 "condition": [
@@ -99,7 +99,7 @@ class ModulemdDefaultsViewSet(SingleArtifactContentUploadViewSet):
                 "effect": "allow",
             },
             {
-                "action": ["create"],
+                "action": ["create", "set_label", "unset_label"],
                 "principal": "authenticated",
                 "effect": "allow",
                 "condition": [
@@ -129,7 +129,7 @@ class ModulemdObsoleteViewSet(SingleArtifactContentUploadViewSet):
                 "effect": "allow",
             },
             {
-                "action": ["create"],
+                "action": ["create", "set_label", "unset_label"],
                 "principal": "authenticated",
                 "effect": "allow",
             },
