@@ -42,14 +42,16 @@ def test_single_request_unit_and_duplicate_unit(
     # Single unit upload
     file_to_use = os.path.join(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
 
+    labels = {"key_1": "value_1"}
     with NamedTemporaryFile() as file_to_upload:
         file_to_upload.write(requests.get(file_to_use).content)
-        upload_attrs = {"file": file_to_upload.name}
+        upload_attrs = {"file": file_to_upload.name, "pulp_labels": labels}
         upload = rpm_package_api.create(**upload_attrs)
 
     content = monitor_task(upload.task).created_resources[0]
     package = rpm_package_api.read(content)
     assert package.location_href == RPM_PACKAGE_FILENAME
+    assert package.pulp_labels == labels
 
     # Duplicate unit
     with NamedTemporaryFile() as file_to_upload:

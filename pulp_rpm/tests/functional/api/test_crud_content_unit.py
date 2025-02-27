@@ -3,11 +3,16 @@
 from textwrap import dedent
 
 import pytest
-from pulpcore.client.pulp_rpm import RpmModulemdDefaults, RpmModulemd
+from pulpcore.client.pulp_rpm import RpmModulemdDefaults, RpmModulemd, SetLabel, UnsetLabel
 
 from pulp_rpm.tests.functional.constants import (
+    RPM_ADVISORY_CONTENT_NAME,
     RPM_KICKSTART_FIXTURE_URL,
     RPM_MODULAR_FIXTURE_URL,
+    RPM_MODULAR_DEFAULTS_CONTENT_NAME,
+    RPM_MODULAR_MODULES_CONTENT_NAME,
+    RPM_MODULES_OBSOLETE_CONTENT_NAME,
+    RPM_PACKAGE_CONTENT_NAME,
     RPM_PACKAGE_FILENAME,
     RPM_PACKAGE_FILENAME2,
     RPM_REPO_METADATA_FIXTURE_URL,
@@ -89,6 +94,66 @@ def test_crud_content_unit(
     version = rpm_repository_version_api.read(repo.latest_version_href)
     assert version.content_summary.present["rpm.package"]["count"] == 1
     assert version.content_summary.added["rpm.package"]["count"] == 1
+
+
+@pytest.mark.parallel
+def test_set_unset_search_labels(
+    get_content,
+    init_and_sync,
+    rpm_advisory_api,
+    rpm_modulemd_api,
+    rpm_modulemd_defaults_api,
+    rpm_modulemd_obsoletes_api,
+    rpm_package_api,
+):
+    """
+    Sync a repository and test the set/unset/search label calls for
+    content-types which support that.
+    """
+
+    def _do_test(binding, content_type_name, repo_content, repo_vers):
+        a_content = binding.read(repo_content["present"][content_type_name][0]["pulp_href"])
+
+        # Set label
+        sl = SetLabel(key="key_1", value="value_1")
+        binding.set_label(a_content.pulp_href, sl)
+        a_content = binding.read(a_content.pulp_href)
+        labels = a_content.pulp_labels
+        assert "key_1" in labels
+
+        # Search for key_1
+        rslt = binding.list(pulp_label_select="key_1", repository_version=rv)
+        assert 1 == rslt.count
+
+        # Change an existing label
+        sl = SetLabel(key="key_1", value="XXX")
+        binding.set_label(a_content.pulp_href, sl)
+        a_content = binding.read(a_content.pulp_href)
+        labels = a_content.pulp_labels
+        assert labels["key_1"] == "XXX"
+
+        # Unset a label
+        sl = UnsetLabel(key="key_1")
+        binding.unset_label(a_content.pulp_href, sl)
+        content2 = binding.read(a_content.pulp_href)
+        assert "key_1" not in content2.pulp_labels
+
+    # Set up and sync a repository with the desired content-types
+    repository, _ = init_and_sync(url=RPM_MODULAR_FIXTURE_URL)
+    repository_content = get_content(repository)
+    rv = repository.latest_version_href
+
+    # Test set/unset/search for each type-of-content
+    # We don't do this via pytest-parameterization so that we only sync the repo *once*.
+    content_type_tuples = [
+        (rpm_package_api, RPM_PACKAGE_CONTENT_NAME),
+        (rpm_advisory_api, RPM_ADVISORY_CONTENT_NAME),
+        (rpm_modulemd_api, RPM_MODULAR_MODULES_CONTENT_NAME),
+        (rpm_modulemd_defaults_api, RPM_MODULAR_DEFAULTS_CONTENT_NAME),
+        (rpm_modulemd_obsoletes_api, RPM_MODULES_OBSOLETE_CONTENT_NAME),
+    ]
+    for t in content_type_tuples:
+        _do_test(t[0], t[1], repository_content, rv)
 
 
 @pytest.mark.parallel
