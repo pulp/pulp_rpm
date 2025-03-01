@@ -291,6 +291,7 @@ def test_clean_import(
     assert rpm_repository_api.list().count == existing_repos
 
 
+@pytest.mark.parametrize("repeats", range(50))
 def test_create_missing_repos(
     init_and_sync,
     rpm_rpmremote_api,
@@ -301,6 +302,7 @@ def test_create_missing_repos(
     gen_object_with_cleanup,
     monitor_task_group,
     add_to_cleanup,
+    repeats,
 ):
     """
     Tests for PulpImporter and create-missing-repos.
