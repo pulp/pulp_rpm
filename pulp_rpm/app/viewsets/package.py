@@ -60,12 +60,20 @@ class PackageViewSet(SingleArtifactContentUploadViewSet):
                 "effect": "allow",
             },
             {
-                "action": ["create", "set_label", "unset_label"],
+                "action": ["create"],
                 "principal": "authenticated",
                 "effect": "allow",
                 "condition": [
                     "has_required_repo_perms_on_upload:rpm.modify_content_rpmrepository",
                     "has_required_repo_perms_on_upload:rpm.view_rpmrepository",
+                ],
+            },
+            {
+                "action": ["set_label", "unset_label"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_domain_perms:core.manage_content_labels",
                 ],
             },
         ],
