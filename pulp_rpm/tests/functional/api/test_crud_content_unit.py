@@ -3,6 +3,7 @@
 from textwrap import dedent
 
 import pytest
+from pulpcore.client.pulp_rpm.exceptions import ForbiddenException
 from pulpcore.client.pulp_rpm import RpmModulemdDefaults, RpmModulemd, SetLabel, UnsetLabel
 
 from pulp_rpm.tests.functional.constants import (
@@ -98,6 +99,7 @@ def test_crud_content_unit(
 
 @pytest.mark.parallel
 def test_set_unset_search_labels(
+    gen_user,
     get_content,
     init_and_sync,
     rpm_advisory_api,
@@ -111,7 +113,7 @@ def test_set_unset_search_labels(
     content-types which support that.
     """
 
-    def _do_test(binding, content_type_name, repo_content, repo_vers):
+    def _do_test(binding, content_type_name, repo_content, rv):
         a_content = binding.read(repo_content["present"][content_type_name][0]["pulp_href"])
 
         # Set label
@@ -139,21 +141,49 @@ def test_set_unset_search_labels(
         assert "key_1" not in content2.pulp_labels
 
     # Set up and sync a repository with the desired content-types
-    repository, _ = init_and_sync(url=RPM_MODULAR_FIXTURE_URL)
-    repository_content = get_content(repository)
-    rv = repository.latest_version_href
+    # Show that content-labeler can set/unset_label
+    repo_owner = gen_user(model_roles=["rpm.admin", "core.content_labeler"])
+    with repo_owner:
+        repository, _ = init_and_sync(url=RPM_MODULAR_FIXTURE_URL)
+        repository_content = get_content(repository)
 
-    # Test set/unset/search for each type-of-content
-    # We don't do this via pytest-parameterization so that we only sync the repo *once*.
-    content_type_tuples = [
-        (rpm_package_api, RPM_PACKAGE_CONTENT_NAME),
-        (rpm_advisory_api, RPM_ADVISORY_CONTENT_NAME),
-        (rpm_modulemd_api, RPM_MODULAR_MODULES_CONTENT_NAME),
-        (rpm_modulemd_defaults_api, RPM_MODULAR_DEFAULTS_CONTENT_NAME),
-        (rpm_modulemd_obsoletes_api, RPM_MODULES_OBSOLETE_CONTENT_NAME),
-    ]
-    for t in content_type_tuples:
-        _do_test(t[0], t[1], repository_content, rv)
+        # Test set/unset/search for each type-of-content
+        # We don't do this via pytest-parameterization so that we only sync the repo *once*.
+        content_type_tuples = [
+            (rpm_package_api, RPM_PACKAGE_CONTENT_NAME),
+            (rpm_advisory_api, RPM_ADVISORY_CONTENT_NAME),
+            (rpm_modulemd_api, RPM_MODULAR_MODULES_CONTENT_NAME),
+            (rpm_modulemd_defaults_api, RPM_MODULAR_DEFAULTS_CONTENT_NAME),
+            (rpm_modulemd_obsoletes_api, RPM_MODULES_OBSOLETE_CONTENT_NAME),
+        ]
+        for t in content_type_tuples:
+            _do_test(t[0], t[1], repository_content, repository.latest_version_href)
+
+    # Show that a repository-viewer DOES NOT HAVE access to set/unset_label
+    viewer = gen_user(model_roles=["rpm.rpmrepository_viewer"])
+    with viewer:
+        # repository, _ = init_and_sync(url=RPM_MODULAR_FIXTURE_URL)
+        # repo_content = get_content(repository)
+
+        # Test set/unset/search for each type-of-content
+        # We don't do this via pytest-parameterization so that we only sync the repo *once*.
+        content_type_tuples = [
+            (rpm_package_api, RPM_PACKAGE_CONTENT_NAME),
+            (rpm_advisory_api, RPM_ADVISORY_CONTENT_NAME),
+            (rpm_modulemd_api, RPM_MODULAR_MODULES_CONTENT_NAME),
+            (rpm_modulemd_defaults_api, RPM_MODULAR_DEFAULTS_CONTENT_NAME),
+            (rpm_modulemd_obsoletes_api, RPM_MODULES_OBSOLETE_CONTENT_NAME),
+        ]
+        for t in content_type_tuples:
+            content = t[0].read(repository_content["present"][t[1]][0]["pulp_href"])
+
+            with pytest.raises(ForbiddenException):
+                label = SetLabel(key="key_1", value="XXX")
+                t[0].set_label(content.pulp_href, label)
+
+            with pytest.raises(ForbiddenException):
+                label = UnsetLabel(key="key_1")
+                t[0].unset_label(content.pulp_href, label)
 
 
 @pytest.mark.parallel
