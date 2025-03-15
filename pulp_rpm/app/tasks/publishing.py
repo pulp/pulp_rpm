@@ -325,6 +325,7 @@ def cr_checksum_type_from_string(checksum_type):
 def publish(
     repository_version_pk,
     metadata_signing_service=None,
+    checkpoint=False,
     checksum_types=None,
     checksum_type=None,
     repo_config=None,
@@ -340,6 +341,7 @@ def publish(
         repository_version_pk (str): Create a publication from this repository version.
         metadata_signing_service (pulpcore.app.models.AsciiArmoredDetachedSigningService):
             A reference to an associated signing service.
+        checkpoint (bool): Whether to create a checkpoint publication.
         checksum_types (dict): Checksum types for metadata and packages.
         repo_config (JSON): repo config that will be served by distribution
         compression_type(pulp_rpm.app.constants.COMPRESSION_TYPES):
@@ -367,7 +369,7 @@ def publish(
         )
     )
     with tempfile.TemporaryDirectory(dir="."):
-        with RpmPublication.create(repository_version) as publication:
+        with RpmPublication.create(repository_version, checkpoint=checkpoint) as publication:
             checksum_type = get_checksum_type(checksum_types)
             publication.checksum_type = checksum_type
             publication.metadata_checksum_type = checksum_type

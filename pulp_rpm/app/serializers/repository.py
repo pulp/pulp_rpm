@@ -394,6 +394,7 @@ class RpmPublicationSerializer(PublicationSerializer):
         choices=CHECKSUM_CHOICES,
         required=False,
     )
+    checkpoint = serializers.BooleanField(required=False)
     checksum_type = serializers.ChoiceField(
         help_text=_("The preferred checksum type used during repo publishes."),
         choices=CHECKSUM_CHOICES,
@@ -483,6 +484,7 @@ class RpmPublicationSerializer(PublicationSerializer):
 
     class Meta:
         fields = PublicationSerializer.Meta.fields + (
+            "checkpoint",
             "checksum_type",
             "metadata_checksum_type",
             "package_checksum_type",
@@ -513,9 +515,14 @@ class RpmDistributionSerializer(DistributionSerializer):
         required=False,
         help_text=_("An option specifying whether Pulp should generate *.repo files."),
     )
+    checkpoint = serializers.BooleanField(required=False)
 
     class Meta:
-        fields = DistributionSerializer.Meta.fields + ("publication", "generate_repo_config")
+        fields = DistributionSerializer.Meta.fields + (
+            "publication",
+            "generate_repo_config",
+            "checkpoint",
+        )
         model = RpmDistribution
 
 
