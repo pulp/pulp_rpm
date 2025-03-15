@@ -539,15 +539,7 @@ class RpmPublicationViewSet(PublicationViewSet, RolesMixin):
         repository = RpmRepository.objects.get(pk=repository_version.repository.pk)
 
         checksum_type = serializer.validated_data.get("checksum_type", repository.checksum_type)
-        metadata_checksum_type = serializer.validated_data.get(
-            "metadata_checksum_type", repository.metadata_checksum_type
-        )
-        package_checksum_type = serializer.validated_data.get(
-            "package_checksum_type", repository.package_checksum_type
-        )
         checksum_types = dict(
-            metadata=metadata_checksum_type,
-            package=package_checksum_type,
             general=checksum_type,
         )
         # gpg options are deprecated in favour of repo_config
