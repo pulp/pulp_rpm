@@ -8,6 +8,17 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.19.13 (2025-03-18) {: #3.19.13 }
+
+#### Bugfixes {: #3.19.13-bugfix }
+
+- Taught tests to find centos8 at vault.centos.org.
+  [#3572](https://github.com/pulp/pulp_rpm/issues/3572)
+- Fix a flaw that still allowed to add duplicate advisories to a repository version.
+  [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
+
+---
+
 ## 3.19.12 (2024-02-09) {: #3.19.12 }
 
 ### Bugfixes
