@@ -1,1 +1,0 @@
-Added a retry mechanism for client authentication in ULN-based downloaders to improve connection stability.

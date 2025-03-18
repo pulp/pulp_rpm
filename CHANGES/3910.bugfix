@@ -1,5 +1,0 @@
-Reworked content-labeling RBAC to rely on core.manage_content_labels permission.
-
-This permission must be explicitly granted by assigning the core.content_labeler Role
-to a user.
-
