@@ -8,6 +8,34 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.29.0 (2025-03-18) {: #3.29.0 }
+
+#### Features {: #3.29.0-feature }
+
+- Make the layout of the packages in the published repository configurable.
+  [#3874](https://github.com/pulp/pulp_rpm/issues/3874)
+- Added permissions for set/unset_label on RPM content-types.
+
+  The types that support this new call include:
+    * Package
+    * UpdateRecord
+    * Modulemd
+    * ModulemdDefaults
+    * ModulemdObsoletes
+  [#3896](https://github.com/pulp/pulp_rpm/issues/3896)
+
+#### Bugfixes {: #3.29.0-bugfix }
+
+- Added a retry mechanism for client authentication in ULN-based downloaders to improve connection stability.
+  [#3891](https://github.com/pulp/pulp_rpm/issues/3891)
+- Reworked content-labeling RBAC to rely on core.manage_content_labels permission.
+
+  This permission must be explicitly granted by assigning the core.content_labeler Role
+  to a user.
+  [#3910](https://github.com/pulp/pulp_rpm/issues/3910)
+
+---
+
 ## 3.28.0 (2025-02-17) {: #3.28.0 }
 
 #### Bugfixes {: #3.28.0-bugfix }
