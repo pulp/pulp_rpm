@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.23.5 (2025-03-18) {: #3.23.5 }
+
+#### Bugfixes {: #3.23.5-bugfix }
+
+- Fixed stacktrace from create_modulemd() when trying to report an error.
+  [#3756](https://github.com/pulp/pulp_rpm/issues/3756)
+
+---
+
 ## 3.23.4 (2024-06-16) {: #3.23.4 }
 
 
