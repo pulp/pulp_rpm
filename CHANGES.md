@@ -8,6 +8,40 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.29.0 (2025-03-18) {: #3.29.0 }
+
+#### Features {: #3.29.0-feature }
+
+- Make the layout of the packages in the published repository configurable.
+  [#3874](https://github.com/pulp/pulp_rpm/issues/3874)
+- Added permissions for set/unset_label on RPM content-types.
+
+  The types that support this new call include:
+    * Package
+    * UpdateRecord
+    * Modulemd
+    * ModulemdDefaults
+    * ModulemdObsoletes
+  [#3896](https://github.com/pulp/pulp_rpm/issues/3896)
+
+#### Bugfixes {: #3.29.0-bugfix }
+
+- Added a retry mechanism for client authentication in ULN-based downloaders to improve connection stability.
+  [#3891](https://github.com/pulp/pulp_rpm/issues/3891)
+- Reworked content-labeling RBAC to rely on core.manage_content_labels permission.
+
+  This permission must be explicitly granted by assigning the core.content_labeler Role
+  to a user.
+  [#3910](https://github.com/pulp/pulp_rpm/issues/3910)
+
+---
+
+## 3.28.1 (2025-03-18) {: #3.28.1 }
+
+No significant changes.
+
+---
+
 ## 3.28.0 (2025-02-17) {: #3.28.0 }
 
 #### Bugfixes {: #3.28.0-bugfix }
@@ -80,6 +114,12 @@
   [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
 - Made sync more tolerant of poorly configured webservers.
   [#3599](https://github.com/pulp/pulp_rpm/issues/3599)
+
+---
+
+## 3.26.4 (2025-03-18) {: #3.26.4 }
+
+No significant changes.
 
 ---
 
@@ -288,6 +328,15 @@
 
 ---
 
+## 3.23.5 (2025-03-18) {: #3.23.5 }
+
+#### Bugfixes {: #3.23.5-bugfix }
+
+- Fixed stacktrace from create_modulemd() when trying to report an error.
+  [#3756](https://github.com/pulp/pulp_rpm/issues/3756)
+
+---
+
 ## 3.23.4 (2024-06-16) {: #3.23.4 }
 
 
@@ -375,6 +424,15 @@ No significant changes.
 ### Misc
 
 -   [#3217](https://github.com/pulp/pulp_rpm/issues/3217), [#3225](https://github.com/pulp/pulp_rpm/issues/3225), [#3226](https://github.com/pulp/pulp_rpm/issues/3226), [#3234](https://github.com/pulp/pulp_rpm/issues/3234), [#3254](https://github.com/pulp/pulp_rpm/issues/3254)
+
+---
+
+## 3.22.9 (2025-03-18) {: #3.22.9 }
+
+#### Bugfixes {: #3.22.9-bugfix }
+
+- Fixed stacktrace from create_modulemd() when trying to report an error.
+  [#3756](https://github.com/pulp/pulp_rpm/issues/3756)
 
 ---
 
@@ -550,6 +608,17 @@ No significant changes.
 ### Misc
 
 -   [#2242](https://github.com/pulp/pulp_rpm/issues/2242), [#2867](https://github.com/pulp/pulp_rpm/issues/2867), [#2868](https://github.com/pulp/pulp_rpm/issues/2868), [#2869](https://github.com/pulp/pulp_rpm/issues/2869), [#2870](https://github.com/pulp/pulp_rpm/issues/2870), [#2871](https://github.com/pulp/pulp_rpm/issues/2871), [#2873](https://github.com/pulp/pulp_rpm/issues/2873), [#2874](https://github.com/pulp/pulp_rpm/issues/2874), [#2875](https://github.com/pulp/pulp_rpm/issues/2875), [#2876](https://github.com/pulp/pulp_rpm/issues/2876), [#2877](https://github.com/pulp/pulp_rpm/issues/2877), [#2878](https://github.com/pulp/pulp_rpm/issues/2878), [#2879](https://github.com/pulp/pulp_rpm/issues/2879), [#2880](https://github.com/pulp/pulp_rpm/issues/2880), [#2881](https://github.com/pulp/pulp_rpm/issues/2881), [#2882](https://github.com/pulp/pulp_rpm/issues/2882), [#2883](https://github.com/pulp/pulp_rpm/issues/2883), [#2884](https://github.com/pulp/pulp_rpm/issues/2884), [#2885](https://github.com/pulp/pulp_rpm/issues/2885), [#2887](https://github.com/pulp/pulp_rpm/issues/2887), [#3076](https://github.com/pulp/pulp_rpm/issues/3076), [#3077](https://github.com/pulp/pulp_rpm/issues/3077), [#3078](https://github.com/pulp/pulp_rpm/issues/3078), [#3079](https://github.com/pulp/pulp_rpm/issues/3079), [#3095](https://github.com/pulp/pulp_rpm/issues/3095)
+
+---
+
+## 3.19.13 (2025-03-18) {: #3.19.13 }
+
+#### Bugfixes {: #3.19.13-bugfix }
+
+- Taught tests to find centos8 at vault.centos.org.
+  [#3572](https://github.com/pulp/pulp_rpm/issues/3572)
+- Fix a flaw that still allowed to add duplicate advisories to a repository version.
+  [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
 
 ---
 
