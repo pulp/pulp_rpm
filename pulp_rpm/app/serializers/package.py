@@ -345,9 +345,9 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
                 )
             )
 
-        if not validated_data.get("file"):
+        if not validated_data.get("file") and not validated_data.get("upload"):
             raise serializers.ValidationError(
-                _("To sign a package on upload, a file must be provided.")
+                _("To sign a package on upload, a file or upload must be provided.")
             )
 
         return validated_data
