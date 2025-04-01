@@ -85,15 +85,18 @@ class PackageViewSet(SingleArtifactContentUploadViewSet):
             return super().create(request)
 
         # signing case
-        request.data.pop("file")
         validated_data = serializer.validated_data
-        temp_uploaded_file = validated_data["file"]
         signing_service_pk = validated_data["repository"].package_signing_service.pk
         signing_fingerprint = validated_data["repository"].package_signing_fingerprint
+        if "file" in validated_data:
+            request.data.pop("file")
+            temp_uploaded_file = validated_data["file"]
+            pulp_temp_file = PulpTemporaryFile(file=temp_uploaded_file.temporary_file_path())
+            pulp_temp_file.save()
+        else:
+            pulp_temp_file = validated_data["upload"]
 
         # dispatch signing task
-        pulp_temp_file = PulpTemporaryFile(file=temp_uploaded_file.temporary_file_path())
-        pulp_temp_file.save()
         task_args = {
             "app_label": self.queryset.model._meta.app_label,
             "serializer_name": serializer.__class__.__name__,
