@@ -48,6 +48,9 @@ Changelog = "https://pulpproject.org/pulp_rpm/changes/"
 [project.entry-points."pulpcore.plugin"]
 pulp_rpm = "pulp_rpm:default_app_config"
 
+[project.entry-points."pytest11"]
+pulp_rpm = "pulp_rpm.pytest_plugin"
+
 [tool.setuptools.packages.find]
 where = ["."]
 
