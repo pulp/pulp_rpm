@@ -36,7 +36,7 @@ def resolve_module_packages(version, previous_version):
     def modules_packages(modules):
         packages = set()
         for module in modules:
-            packages.update(module.packages.all())
+            packages.update(module.packages.all().only("pk"))
         return packages
 
     modulemd_pulp_type = Modulemd.get_pulp_type()
