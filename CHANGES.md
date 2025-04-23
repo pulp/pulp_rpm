@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.27.3 (2025-04-23) {: #3.27.3 }
+
+#### Bugfixes {: #3.27.3-bugfix }
+
+- Fix a memory consumption issue w/ syncing repositories that contain modules.
+  [#3311](https://github.com/pulp/pulp_rpm/issues/3311)
+
+---
+
 ## 3.27.2 (2024-10-17) {: #3.27.2 }
 
 #### Bugfixes {: #3.27.2-bugfix }

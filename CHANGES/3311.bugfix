@@ -1,1 +1,0 @@
-Fix a memory consumption issue w/ syncing repositories that contain modules.
