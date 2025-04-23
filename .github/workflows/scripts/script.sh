@@ -28,6 +28,8 @@ export PULP_URL="https://pulp"
 
 REPORTED_STATUS="$(pulp status)"
 
+echo "${REPORTED_STATUS}"
+
 echo "machine pulp
 login admin
 password password
@@ -98,8 +100,11 @@ echo "::endgroup::"
 # Install test requirements
 ###########################
 
+# Carry on previous constraints (there might be no such file).
+cat *_constraints.txt > bindings_constraints.txt || true
+cat .ci/assets/ci_constraints.txt >> bindings_constraints.txt
 # Add a safeguard to make sure the proper versions of the clients are installed.
-echo "$REPORTED_STATUS" | jq -r '.versions[]|select(.package)|(.package|sub("_"; "-")) + "-client==" + .version' > bindings_constraints.txt
+echo "$REPORTED_STATUS" | jq -r '.versions[]|select(.package)|(.package|sub("_"; "-")) + "-client==" + .version' >> bindings_constraints.txt
 cmd_stdin_prefix bash -c "cat > /tmp/unittest_requirements.txt" < unittest_requirements.txt
 cmd_stdin_prefix bash -c "cat > /tmp/functest_requirements.txt" < functest_requirements.txt
 cmd_stdin_prefix bash -c "cat > /tmp/bindings_requirements.txt" < bindings_requirements.txt
@@ -114,7 +119,7 @@ echo "Checking for uncommitted migrations..."
 cmd_user_prefix bash -c "django-admin makemigrations rpm --check --dry-run"
 
 # Run unit tests.
-cmd_user_prefix bash -c "PULP_DATABASES__default__USER=postgres pytest -v -r sx --color=yes --suppress-no-test-exit-code -p no:pulpcore --pyargs pulp_rpm.tests.unit"
+cmd_user_prefix bash -c "PULP_DATABASES__default__USER=postgres pytest -v -r sx --color=yes --suppress-no-test-exit-code -p no:pulpcore --durations=20 --pyargs pulp_rpm.tests.unit"
 # Run functional tests
 if [[ "$TEST" == "performance" ]]; then
   if [[ -z ${PERFORMANCE_TEST+x} ]]; then
@@ -130,11 +135,11 @@ if [ -f "$FUNC_TEST_SCRIPT" ]; then
 else
   if [[ "$GITHUB_WORKFLOW" =~ "Nightly" ]]
   then
-    cmd_user_prefix bash -c "pytest -v --timeout=300 -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -m parallel -n 8 --nightly"
-    cmd_user_prefix bash -c "pytest -v --timeout=300 -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -m 'not parallel' --nightly"
+    cmd_user_prefix bash -c "pytest -v --timeout=300 -r sx --color=yes --suppress-no-test-exit-code --durations=20 --pyargs pulp_rpm.tests.functional -m parallel -n 8 --nightly"
+    cmd_user_prefix bash -c "pytest -v --timeout=300 -r sx --color=yes --suppress-no-test-exit-code --durations=20 --pyargs pulp_rpm.tests.functional -m 'not parallel' --nightly"
   else
-    cmd_user_prefix bash -c "pytest -v --timeout=300 -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -m parallel -n 8"
-    cmd_user_prefix bash -c "pytest -v --timeout=300 -r sx --color=yes --suppress-no-test-exit-code --pyargs pulp_rpm.tests.functional -m 'not parallel'"
+    cmd_user_prefix bash -c "pytest -v --timeout=300 -r sx --color=yes --suppress-no-test-exit-code --durations=20 --pyargs pulp_rpm.tests.functional -m parallel -n 8"
+    cmd_user_prefix bash -c "pytest -v --timeout=300 -r sx --color=yes --suppress-no-test-exit-code --durations=20 --pyargs pulp_rpm.tests.functional -m 'not parallel'"
   fi
 fi
 export PULP_FIXTURES_URL="http://pulp-fixtures:8080"
