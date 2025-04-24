@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.29.2 (2025-04-23) {: #3.29.2 }
+
+#### Bugfixes {: #3.29.2-bugfix }
+
+- Fix a memory consumption issue w/ syncing repositories that contain modules.
+  [#3311](https://github.com/pulp/pulp_rpm/issues/3311)
+
+---
+
 ## 3.29.1 (2025-04-04) {: #3.29.1 }
 
 #### Misc {: #3.29.1-misc }
@@ -78,6 +87,15 @@ No significant changes.
 
 ---
 
+## 3.27.3 (2025-04-23) {: #3.27.3 }
+
+#### Bugfixes {: #3.27.3-bugfix }
+
+- Fix a memory consumption issue w/ syncing repositories that contain modules.
+  [#3311](https://github.com/pulp/pulp_rpm/issues/3311)
+
+---
+
 ## 3.27.2 (2024-10-17) {: #3.27.2 }
 
 #### Bugfixes {: #3.27.2-bugfix }
@@ -122,6 +140,15 @@ No significant changes.
   [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
 - Made sync more tolerant of poorly configured webservers.
   [#3599](https://github.com/pulp/pulp_rpm/issues/3599)
+
+---
+
+## 3.26.5 (2025-04-23) {: #3.26.5 }
+
+#### Bugfixes {: #3.26.5-bugfix }
+
+- Fix a memory consumption issue w/ syncing repositories that contain modules.
+  [#3311](https://github.com/pulp/pulp_rpm/issues/3311)
 
 ---
 
@@ -333,6 +360,15 @@ No significant changes.
 
 -   Improved performance by reducing the number of small queries during exports.
     [#3286](https://github.com/pulp/pulp_rpm/issues/3286)
+
+---
+
+## 3.23.6 (2025-04-23) {: #3.23.6 }
+
+#### Bugfixes {: #3.23.6-bugfix }
+
+- Fix a memory consumption issue w/ syncing repositories that contain modules.
+  [#3311](https://github.com/pulp/pulp_rpm/issues/3311)
 
 ---
 
