@@ -1212,7 +1212,7 @@ class RpmFirstStage(Stage):
             nonlocal latest_build_time_by_nevra
             nonlocal skipped_packages
 
-            WARN_MSG = _(
+            WARN_MSG = (
                 "The repository metadata being synced into Pulp is erroneous in a way that "
                 "makes it ambiguous (duplicate {}). Yum, DNF and Pulp try to handle these "
                 "problems, but unexpected things may happen.\n\n"
