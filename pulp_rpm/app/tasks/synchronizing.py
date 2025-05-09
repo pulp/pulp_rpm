@@ -590,8 +590,6 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
             repo_gpgcheck = has_repomd_signature and repository.repo_config.get("repo_gpgcheck", 0)
 
             publication.checksum_type = CHECKSUM_TYPES.UNKNOWN
-            publication.package_checksum_type = CHECKSUM_TYPES.UNKNOWN
-            publication.metadata_checksum_type = CHECKSUM_TYPES.UNKNOWN
             publication.repo_config = {
                 "repo_gpgcheck": int(repo_gpgcheck),
                 "gpgcheck": int(gpgcheck),

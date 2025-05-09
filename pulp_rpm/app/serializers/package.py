@@ -140,13 +140,19 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
     )
 
     location_base = serializers.CharField(
-        help_text=_("Base location of this package"),
+        help_text=_(
+            "DEPRECATED: Base location of this package. "
+            "This field will be removed in a future release of pulp_rpm."
+        ),
         allow_blank=True,
         required=False,
         read_only=True,
     )
     location_href = serializers.CharField(
-        help_text=_("Relative location of package to the repodata"),
+        help_text=_(
+            "DEPRECATED: Relative location of package to the repodata. "
+            "This field will be removed in a future release of pulp_rpm."
+        ),
         read_only=True,
     )
 

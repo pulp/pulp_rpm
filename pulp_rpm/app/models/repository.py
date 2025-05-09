@@ -30,7 +30,11 @@ from pulpcore.plugin.repo_version_utils import (
     validate_version_paths,
 )
 
-from pulp_rpm.app.constants import CHECKSUM_CHOICES, COMPRESSION_CHOICES, LAYOUT_CHOICES
+from pulp_rpm.app.constants import (
+    CHECKSUM_CHOICES,
+    COMPRESSION_CHOICES,
+    LAYOUT_CHOICES,
+)
 from pulp_rpm.app.downloaders import RpmDownloader, RpmFileDownloader, UlnDownloader
 from pulp_rpm.app.exceptions import DistributionTreeConflict
 from pulp_rpm.app.models import (
@@ -235,7 +239,6 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
         RpmPackageSigningService, on_delete=models.SET_NULL, null=True
     )
     package_signing_fingerprint = models.TextField(null=True, max_length=40)
-    original_checksum_types = models.JSONField(default=dict)  # DEPRECATED, remove in 3.29+
     last_sync_details = models.JSONField(default=dict)
     retain_package_versions = models.PositiveIntegerField(default=0)
 
@@ -243,8 +246,12 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
     checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
     compression_type = models.TextField(null=True, choices=COMPRESSION_CHOICES)
     layout = models.TextField(null=True, choices=LAYOUT_CHOICES)
-    metadata_checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
-    package_checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
+    metadata_checksum_type = models.TextField(
+        null=True, choices=CHECKSUM_CHOICES
+    )  # DEPRECATED, remove in 3.31+
+    package_checksum_type = models.TextField(
+        null=True, choices=CHECKSUM_CHOICES
+    )  # DEPRECATED, remove in 3.31+
     repo_config = models.JSONField(default=dict)
 
     def on_new_version(self, version):
@@ -263,11 +270,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
             tasks.publish(
                 repository_version_pk=version.pk,
                 metadata_signing_service=self.metadata_signing_service,
-                checksum_types={
-                    "general": self.checksum_type,
-                    "metadata": self.metadata_checksum_type,
-                    "package": self.package_checksum_type,
-                },
+                checksum_type=self.checksum_type,
                 repo_config=self.repo_config,
                 compression_type=self.compression_type,
                 layout=self.layout,
@@ -502,8 +505,8 @@ class RpmPublication(Publication, AutoAddObjPermsMixin):
     TYPE = "rpm"
     checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
     compression_type = models.TextField(null=True, choices=COMPRESSION_CHOICES)
-    metadata_checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
-    package_checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
+    metadata_checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
+    package_checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
     layout = models.TextField(null=True, choices=LAYOUT_CHOICES)
     repo_config = models.JSONField(default=dict)
 

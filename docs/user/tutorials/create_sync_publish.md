@@ -248,12 +248,6 @@ run a full sync.
 
 A publication can only be created once a sync task completes. The following optional parameters are available:
 
-- metadata_checksum_type (deprecated): affects all the repodata, including primary.xml, repomd.xml, etc.
-  If not specified, the default SHA256 algorithm will be used.
-- package_checksum_type (deprecated): affects package checksum type in all repo metadata files.
-  If not specified, the default SHA256 algorithm will be used.
-  Because of on_demand sync, it is possible that the requested checksum is not available.
-  In such case the one from the remote repo will be used.
 - checksum_type: Sets the checksum type to be used by the repository metadata, including primary.xml, repomd.xml, etc.
   If not specified, the default SHA256 algorithm will be used. Because of on_demand sync, it is possible that the
   requested checksum is not available. In such case the available checksum supplied by the remote repo will be used.
