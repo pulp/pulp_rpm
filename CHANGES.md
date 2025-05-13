@@ -8,6 +8,30 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.30.0 (2025-05-12) {: #3.30.0 }
+
+#### Features {: #3.30.0-feature }
+
+- Enabled the checkpoint feature in pulp_rpm.
+  [#3907](https://github.com/pulp/pulp_rpm/issues/3907)
+
+#### Bugfixes {: #3.30.0-bugfix }
+
+- Fix a memory consumption issue w/ syncing repositories that contain modules.
+  [#3311](https://github.com/pulp/pulp_rpm/issues/3311)
+- Fixed RPM signing with chunked uploads
+  [#3927](https://github.com/pulp/pulp_rpm/issues/3927)
+
+#### Deprecations and Removals {: #3.30.0-removal }
+
+- Using the 'gpgcheck', 'repo_gpgcheck', 'package_checksum_type', or 'checksum_type' options, which have been deprecated for some time, will no longer have any effect. In the case of 'gpgcheck' or 'repo_gpgcheck', please use the 'repo_config' option instead. In the case of 'package_checksum_type' or 'metadata_checksum_type', please use 'checksum_type' instead.
+
+#### Misc {: #3.30.0-misc }
+
+- 
+
+---
+
 ## 3.29.2 (2025-04-23) {: #3.29.2 }
 
 #### Bugfixes {: #3.29.2-bugfix }
