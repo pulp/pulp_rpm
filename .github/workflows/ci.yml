@@ -69,8 +69,8 @@ jobs:
         shell: bash
         id: check
         run: |
-          result=$(python skip_tests.py origin/${{ github.base_ref || 'main' }})
-          echo "run_tests=$result" >> $GITHUB_OUTPUT
+          python skip_tests.py origin/${{ github.base_ref || 'main' }}
+          echo "run_tests=$?" >> $GITHUB_OUTPUT
 
   lint:
     needs: check-changes
