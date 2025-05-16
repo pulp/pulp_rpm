@@ -22,8 +22,8 @@ import re
 import git
 import textwrap
 
-SKIP="0"
-NO_SKIP="1"
+SKIP=0
+NO_SKIP=1
 
 def get_changed_files(reference_branch):
     """Get list of files changed between current branch and reference branch."""
@@ -82,7 +82,7 @@ def main():
     reference_branch = sys.argv[1]    
     changed_files = get_changed_files(reference_branch)
     if not changed_files or changed_files == [""]:
-       sys.exit(SKIP)
+       return SKIP
     
     non_doc_files = [f for f in changed_files if not is_doc_file(f)]
     doc_files = set(changed_files) - set(non_doc_files)
@@ -99,10 +99,10 @@ def main():
         print(textwrap.indent(display_non_doc, "    "))
 
     if non_doc_files:
-        sys.exit(NO_SKIP)
+        return NO_SKIP
     else:
-        sys.exit(SKIP)
+        return SKIP
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())
