@@ -12,6 +12,8 @@ from pulp_rpm.tests.functional.constants import (
     RPM_KICKSTART_COUNT,
     CENTOS8_STREAM_APPSTREAM_URL,
     CENTOS8_STREAM_BASEOS_URL,
+    CENTOS10_STREAM_APPSTREAM_URL,
+    CENTOS10_STREAM_BASEOS_URL,
     EPEL8_MIRRORLIST_URL,
     RAWHIDE_KICKSTART_URL,
 )
@@ -44,6 +46,8 @@ def parse_date_from_string(s, parse_format="%Y-%m-%dT%H:%M:%S.%fZ"):
         (CENTOS8_STREAM_APPSTREAM_URL, "on_demand", True, True),
         (EPEL8_MIRRORLIST_URL, "on_demand", False, False),
         (RAWHIDE_KICKSTART_URL, "on_demand", True, True),
+        (CENTOS10_STREAM_BASEOS_URL, "on_demand", True, True),
+        (CENTOS10_STREAM_APPSTREAM_URL, "on_demand", True, True),
     ],
 )
 def test_rpm_sync(

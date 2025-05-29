@@ -618,21 +618,33 @@ RPM_DIFF_NAME_SAME_CONTENT_URL = urljoin(PULP_FIXTURES_BASE_URL, "diff-name-same
 
 RPM_ONLY_METADATA_REPO_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-unsigned-meta-only")
 
+# Various real-world remotes to use for testing
 AMAZON_MIRROR = "http://amazonlinux.us-east-1.amazonaws.com/2/core/latest/x86_64/mirror.list"
+
+# el6
+RHEL6_KICKSTART_CDN_URL = "https://cdn.redhat.com/content/dist/rhel/server/6/6.10/x86_64/kickstart/"
+# el8
 CENTOS8_STREAM_BASEOS_URL = "http://vault.centos.org/centos/8-stream/BaseOS/x86_64/os/"
 CENTOS8_STREAM_APPSTREAM_URL = "http://vault.centos.org/centos/8-stream/AppStream/x86_64/os/"
-CENTOS9_STREAM_BASEOS_URL = "http://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/"
-CENTOS9_STREAM_APPSTREAM_URL = "http://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/"
+RHEL8_BASEOS_CDN_URL = "https://cdn.redhat.com/content/dist/rhel8/8/x86_64/baseos/os/"
+RHEL8_APPSTREAM_CDN_URL = "https://cdn.redhat.com/content/dist/rhel8/8/x86_64/appstream/os/"
 EPEL8_URL = "https://dl.fedoraproject.org/pub/epel/8/Everything/x86_64/"
 EPEL8_MIRRORLIST_URL = "https://mirrors.fedoraproject.org/mirrorlist?repo=epel-8&arch=x86_64"
+# el9
+CENTOS9_STREAM_BASEOS_URL = "http://mirror.stream.centos.org/9-stream/BaseOS/x86_64/os/"
+CENTOS9_STREAM_APPSTREAM_URL = "http://mirror.stream.centos.org/9-stream/AppStream/x86_64/os/"
+RHEL9_BASEOS_CDN_URL = "https://cdn.redhat.com/content/dist/rhel9/9/x86_64/baseos/os/"
+RHEL9_APPSTREAM_CDN_URL = "https://cdn.redhat.com/content/dist/rhel9/9/x86_64/appstream/os/"
+# el10
+CENTOS10_STREAM_BASEOS_URL = "http://mirror.stream.centos.org/10-stream/BaseOS/x86_64/os/"
+CENTOS10_STREAM_APPSTREAM_URL = "http://mirror.stream.centos.org/10-stream/AppStream/x86_64/os/"
+RHEL10_BASEOS_CDN_URL = "https://cdn.redhat.com/content/dist/rhel10/10/x86_64/baseos/os/"
+RHEL10_APPSTREAM_CDN_URL = "https://cdn.redhat.com/content/dist/rhel10/10/x86_64/appstream/os/"
+EPEL10_URL = "https://dl.fedoraproject.org/pub/epel/10/Everything/x86_64/"
+
 RAWHIDE_KICKSTART_URL = (
     "https://dl.fedoraproject.org/pub/fedora/linux/development/rawhide/Server/x86_64/os/"
 )
-RHEL6_KICKSTART_CDN_URL = "https://cdn.redhat.com/content/dist/rhel/server/6/6.10/x86_64/kickstart/"
-RHEL8_BASEOS_CDN_URL = "https://cdn.redhat.com/content/dist/rhel8/8/x86_64/baseos/os/"
-RHEL8_APPSTREAM_CDN_URL = "https://cdn.redhat.com/content/dist/rhel8/8/x86_64/appstream/os/"
-RHEL9_BASEOS_CDN_URL = "https://cdn.redhat.com/content/dist/rhel9/9/x86_64/baseos/os/"
-RHEL9_APPSTREAM_CDN_URL = "https://cdn.redhat.com/content/dist/rhel9/9/x86_64/appstream/os/"
 
 # TODO: static test fixtures for these
 REPO_WITH_XML_BASE_URL = "https://harbottle.gitlab.io/harbottle-main/8/x86_64/"
