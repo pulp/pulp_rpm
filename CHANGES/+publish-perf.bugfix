@@ -1,0 +1,1 @@
+Significantly improved publish performance (more than double in some cases) by fixing some Django queries.
