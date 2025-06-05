@@ -31,6 +31,9 @@ from pulp_rpm.app.models import RpmDistribution, RpmPublication, RpmRemote, RpmR
 from pulp_rpm.app.schema import COPY_CONFIG_SCHEMA
 from urllib.parse import urlparse
 
+# avoid calling into dynaconf many times
+ALLOWED_CONTENT_CHECKSUMS = settings.ALLOWED_CONTENT_CHECKSUMS
+
 
 class RpmRepositorySerializer(RepositorySerializer):
     """
@@ -124,7 +127,7 @@ class RpmRepositorySerializer(RepositorySerializer):
         """Validate data."""
         for field in ("checksum_type", "metadata_checksum_type", "package_checksum_type"):
             if field in data and data[field]:
-                if data[field] not in settings.ALLOWED_CONTENT_CHECKSUMS:
+                if data[field] not in ALLOWED_CONTENT_CHECKSUMS:
                     raise serializers.ValidationError({field: _(ALLOWED_CHECKSUM_ERROR_MSG)})
 
                 if data[field] not in ALLOWED_PUBLISH_CHECKSUMS:
@@ -385,7 +388,7 @@ class RpmPublicationSerializer(PublicationSerializer):
         """Validate data."""
         for field in ("checksum_type", "metadata_checksum_type", "package_checksum_type"):
             if field in data and data[field]:
-                if data[field] not in settings.ALLOWED_CONTENT_CHECKSUMS:
+                if data[field] not in ALLOWED_CONTENT_CHECKSUMS:
                     raise serializers.ValidationError({field: _(ALLOWED_CHECKSUM_ERROR_MSG)})
 
                 if data[field] not in ALLOWED_PUBLISH_CHECKSUMS:
