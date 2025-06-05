@@ -18,6 +18,9 @@ from pulp_rpm.app.constants import (
 )
 from pulp_rpm.app.shared_utils import format_nevra, format_nevra_short, format_nvra
 
+# avoid calling into dynaconf many times
+ALLOWED_CONTENT_CHECKSUMS = settings.ALLOWED_CONTENT_CHECKSUMS
+KEEP_CHANGELOG_LIMIT = settings.KEEP_CHANGELOG_LIMIT
 
 log = getLogger(__name__)
 
@@ -317,9 +320,9 @@ class Package(Content):
         # make sure the changelogs are sorted by date
         changelogs.sort(key=lambda t: t[1])
 
-        if settings.KEEP_CHANGELOG_LIMIT is not None:
+        if KEEP_CHANGELOG_LIMIT is not None:
             # always keep at least one changelog, even if the limit is set to 0
-            changelog_limit = settings.KEEP_CHANGELOG_LIMIT or 1
+            changelog_limit = KEEP_CHANGELOG_LIMIT or 1
             # changelogs are listed in chronological order, grab the last N changelogs from the list
             changelogs = changelogs[-changelog_limit:]
         files = getattr(package, CR_PACKAGE_ATTRS.FILES, [])
