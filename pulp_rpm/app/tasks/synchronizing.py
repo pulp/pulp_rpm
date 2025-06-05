@@ -110,6 +110,8 @@ MIRROR_INCOMPATIBLE_REPO_ERR_MSG = (
     "This repository uses features which are incompatible with 'mirror' sync. "
     "Please sync without mirroring enabled."
 )
+# lift dynaconf lookups outside of loops
+ALLOWED_CONTENT_CHECKSUMS = settings.ALLOWED_CONTENT_CHECKSUMS
 
 
 def store_metadata_for_mirroring(repo, md_path, relative_path):
@@ -848,7 +850,7 @@ class RpmFirstStage(Stage):
                                     filtered_checksums = {
                                         digest: value
                                         for digest, value in data["checksums"].items()
-                                        if digest in settings.ALLOWED_CONTENT_CHECKSUMS
+                                        if digest in ALLOWED_CONTENT_CHECKSUMS
                                     }
                                     downloader = self.remote.get_downloader(
                                         url=urlpath_sanitize(self.remote_url, data["file"]),
