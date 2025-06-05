@@ -43,10 +43,15 @@ from pulp_rpm.app.models import (
     RpmPublication,
     UpdateRecord,
 )
+from pulp_rpm.app.shared_utils import format_nevra
 
 log = logging.getLogger(__name__)
 
 REPODATA_PATH = "repodata"
+
+# lift dynaconf lookups outside of loops
+ALLOWED_CONTENT_CHECKSUMS = settings.ALLOWED_CONTENT_CHECKSUMS
+RPM_METADATA_USE_REPO_PACKAGE_TIME = settings.RPM_METADATA_USE_REPO_PACKAGE_TIME
 
 
 class PublicationData:
@@ -455,7 +460,7 @@ def generate_repo_metadata(
         cwd = os.path.join(cwd, sub_folder)
         repodata_path = os.path.join(sub_folder, repodata_path)
 
-    if package_checksum_type and package_checksum_type not in settings.ALLOWED_CONTENT_CHECKSUMS:
+    if package_checksum_type and package_checksum_type not in ALLOWED_CONTENT_CHECKSUMS:
         raise ValueError(
             "Repository contains disallowed package checksum type '{}', "
             "thus can't be published. {}".format(package_checksum_type, ALLOWED_CHECKSUM_ERROR_MSG)
@@ -495,7 +500,7 @@ def generate_repo_metadata(
             pkgid = ca.get(artifact_checksum, None)
 
         if not package_checksum_type or not pkgid:
-            if ca["content__rpm_package__checksum_type"] not in settings.ALLOWED_CONTENT_CHECKSUMS:
+            if ca["content__rpm_package__checksum_type"] not in ALLOWED_CONTENT_CHECKSUMS:
                 raise ValueError(
                     "Package with pkgId {} as content unit {} contains forbidden checksum type "
                     "'{}', thus can't be published. {}".format(
@@ -515,10 +520,17 @@ def generate_repo_metadata(
     pkg_pks_to_ignore = set()
     latest_build_time_by_nevra = defaultdict(list)
     packages = Package.objects.filter(pk__in=content)
-    for pkg in packages.only(
-        "pk", "name", "epoch", "version", "release", "arch", "time_build"
+    for pkg in packages.values(
+        "pk",
+        "name",
+        "epoch",
+        "version",
+        "release",
+        "arch",
+        "time_build",
     ).iterator():
-        latest_build_time_by_nevra[pkg.nevra].append((pkg.time_build, pkg.pk))
+        nevra = format_nevra(pkg["name"], pkg["epoch"], pkg["version"], pkg["release"], pkg["arch"])
+        latest_build_time_by_nevra[nevra].append((pkg["time_build"], pkg["pk"]))
     for nevra, pkg_data in latest_build_time_by_nevra.items():
         # sort the packages by when they were built
         if len(pkg_data) > 1:
@@ -533,7 +545,7 @@ def generate_repo_metadata(
 
     total_packages = packages.count() - len(pkg_pks_to_ignore)
 
-    if settings.RPM_METADATA_USE_REPO_PACKAGE_TIME:
+    if RPM_METADATA_USE_REPO_PACKAGE_TIME:
         # gather the times the packages were added to the repo
         repo_content = (
             RepositoryContent.objects.filter(
@@ -584,7 +596,7 @@ def generate_repo_metadata(
 
             pkg.location_href = pkg_path
 
-            if settings.RPM_METADATA_USE_REPO_PACKAGE_TIME:
+            if RPM_METADATA_USE_REPO_PACKAGE_TIME:
                 pkg.time_file = repo_pkg_times[package.pk]
 
             writer.add_pkg(pkg)
