@@ -45,6 +45,9 @@ from pulp_rpm.app.schema import COPY_CONFIG_SCHEMA
 from urllib.parse import urlparse
 from textwrap import dedent
 
+# avoid calling into dynaconf many times
+ALLOWED_CONTENT_CHECKSUMS = settings.ALLOWED_CONTENT_CHECKSUMS
+
 
 @extend_schema_serializer(
     deprecate_fields=[
@@ -193,7 +196,7 @@ class RpmRepositorySerializer(RepositorySerializer):
     def validate(self, data):
         """Validate data."""
         if checksum_type := data.get("checksum_type"):
-            if checksum_type not in settings.ALLOWED_CONTENT_CHECKSUMS:
+            if checksum_type not in ALLOWED_CONTENT_CHECKSUMS:
                 raise serializers.ValidationError({"checksum_type": _(ALLOWED_CHECKSUM_ERROR_MSG)})
 
             if checksum_type not in ALLOWED_PUBLISH_CHECKSUMS:
@@ -397,7 +400,7 @@ class RpmPublicationSerializer(PublicationSerializer):
     def validate(self, data):
         """Validate data."""
         if checksum_type := data.get("checksum_type"):
-            if checksum_type not in settings.ALLOWED_CONTENT_CHECKSUMS:
+            if checksum_type not in ALLOWED_CONTENT_CHECKSUMS:
                 raise serializers.ValidationError(ALLOWED_CHECKSUM_ERROR_MSG)
 
             if checksum_type not in ALLOWED_PUBLISH_CHECKSUMS:
