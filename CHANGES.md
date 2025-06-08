@@ -8,6 +8,109 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.30.0 (2025-05-12) {: #3.30.0 }
+
+#### Features {: #3.30.0-feature }
+
+- Enabled the checkpoint feature in pulp_rpm.
+  [#3907](https://github.com/pulp/pulp_rpm/issues/3907)
+
+#### Bugfixes {: #3.30.0-bugfix }
+
+- Fix a memory consumption issue w/ syncing repositories that contain modules.
+  [#3311](https://github.com/pulp/pulp_rpm/issues/3311)
+- Fixed RPM signing with chunked uploads
+  [#3927](https://github.com/pulp/pulp_rpm/issues/3927)
+
+#### Deprecations and Removals {: #3.30.0-removal }
+
+- Using the 'gpgcheck', 'repo_gpgcheck', 'package_checksum_type', or 'checksum_type' options, which have been deprecated for some time, will no longer have any effect. In the case of 'gpgcheck' or 'repo_gpgcheck', please use the 'repo_config' option instead. In the case of 'package_checksum_type' or 'metadata_checksum_type', please use 'checksum_type' instead.
+
+#### Misc {: #3.30.0-misc }
+
+- 
+
+---
+
+## 3.29.2 (2025-04-23) {: #3.29.2 }
+
+#### Bugfixes {: #3.29.2-bugfix }
+
+- Fix a memory consumption issue w/ syncing repositories that contain modules.
+  [#3311](https://github.com/pulp/pulp_rpm/issues/3311)
+
+---
+
+## 3.29.1 (2025-04-04) {: #3.29.1 }
+
+#### Misc {: #3.29.1-misc }
+
+- 
+
+---
+
+## 3.29.0 (2025-03-18) {: #3.29.0 }
+
+#### Features {: #3.29.0-feature }
+
+- Make the layout of the packages in the published repository configurable.
+  [#3874](https://github.com/pulp/pulp_rpm/issues/3874)
+- Added permissions for set/unset_label on RPM content-types.
+
+  The types that support this new call include:
+    * Package
+    * UpdateRecord
+    * Modulemd
+    * ModulemdDefaults
+    * ModulemdObsoletes
+  [#3896](https://github.com/pulp/pulp_rpm/issues/3896)
+
+#### Bugfixes {: #3.29.0-bugfix }
+
+- Added a retry mechanism for client authentication in ULN-based downloaders to improve connection stability.
+  [#3891](https://github.com/pulp/pulp_rpm/issues/3891)
+- Reworked content-labeling RBAC to rely on core.manage_content_labels permission.
+
+  This permission must be explicitly granted by assigning the core.content_labeler Role
+  to a user.
+  [#3910](https://github.com/pulp/pulp_rpm/issues/3910)
+
+---
+
+## 3.28.1 (2025-03-18) {: #3.28.1 }
+
+No significant changes.
+
+---
+
+## 3.28.0 (2025-02-17) {: #3.28.0 }
+
+#### Bugfixes {: #3.28.0-bugfix }
+
+- Honor repository's compression_type for publications unless overridden
+  [#3614](https://github.com/pulp/pulp_rpm/issues/3614)
+- Declared compatibility against pulpcore<3.70.
+  [#3620](https://github.com/pulp/pulp_rpm/issues/3620)
+- Fixed the JSONField specification so it doesn't break ruby bindings.
+  [#3639](https://github.com/pulp/pulp_rpm/issues/3639)
+- Fixed stacktrace from create_modulemd() when trying to report an error.
+  [#3756](https://github.com/pulp/pulp_rpm/issues/3756)
+- Make it possible to sync repositories without filelists.xml or other.xml metadata
+  [#3777](https://github.com/pulp/pulp_rpm/issues/3777)
+- Extended PRN support to Advanced Copy API and DistributionTree.
+  [#3853](https://github.com/pulp/pulp_rpm/issues/3853)
+
+#### Improved Documentation {: #3.28.0-doc }
+
+- Updated documentation for prune and advanced-copy to use pulp-cli examples.
+  [#3622](https://github.com/pulp/pulp_rpm/issues/3622)
+
+#### Misc {: #3.28.0-misc }
+
+- [#3828](https://github.com/pulp/pulp_rpm/issues/3828), [#3854](https://github.com/pulp/pulp_rpm/issues/3854), [#3856](https://github.com/pulp/pulp_rpm/issues/3856)
+
+---
+
 ## 3.27.3 (2025-04-23) {: #3.27.3 }
 
 #### Bugfixes {: #3.27.3-bugfix }
@@ -64,6 +167,57 @@
 
 ---
 
+## 3.26.5 (2025-04-23) {: #3.26.5 }
+
+#### Bugfixes {: #3.26.5-bugfix }
+
+- Fix a memory consumption issue w/ syncing repositories that contain modules.
+  [#3311](https://github.com/pulp/pulp_rpm/issues/3311)
+
+---
+
+## 3.26.4 (2025-03-18) {: #3.26.4 }
+
+No significant changes.
+
+---
+
+## 3.26.3 (2024-10-21) {: #3.26.3 }
+
+#### Bugfixes {: #3.26.3-bugfix }
+
+- Fixed the JSONField specification so it doesn't break ruby bindings.
+  [#3639](https://github.com/pulp/pulp_rpm/issues/3639)
+
+---
+
+## 3.26.2 (2024-10-17) {: #3.26.2 }
+
+#### Bugfixes {: #3.26.2-bugfix }
+
+- Honor repository's compression_type for publications unless overridden
+  [#3614](https://github.com/pulp/pulp_rpm/issues/3614)
+- Declared compatibility against pulpcore<3.70.
+  [#3620](https://github.com/pulp/pulp_rpm/issues/3620)
+- Fixed stacktrace from create_modulemd() when trying to report an error.
+  [#3756](https://github.com/pulp/pulp_rpm/issues/3756)
+
+---
+
+## 3.26.1 (2024-06-16) {: #3.26.1 }
+
+
+#### Bugfixes {: #3.26.1-bugfix }
+
+- Taught tests to find centos8 at vault.centos.org.
+  [#3572](https://github.com/pulp/pulp_rpm/issues/3572)
+- Fix a flaw that still allowed to add duplicate advisories to a repository version.
+  [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
+- Made sync more tolerant of poorly configured webservers.
+  [#3599](https://github.com/pulp/pulp_rpm/issues/3599)
+
+---
+
 ## 3.26.0 (2024-05-28) {: #3.26.0 }
 
 ### Features
@@ -94,6 +248,37 @@
 ### Misc
 
 -   [#3445](https://github.com/pulp/pulp_rpm/issues/3445), [#3520](https://github.com/pulp/pulp_rpm/issues/3520), [#3526](https://github.com/pulp/pulp_rpm/issues/3526)
+
+---
+
+## 3.25.6 (2024-10-17) {: #3.25.6 }
+
+#### Bugfixes {: #3.25.6-bugfix }
+
+- Honor repository's compression_type for publications unless overridden
+  [#3614](https://github.com/pulp/pulp_rpm/issues/3614)
+- Declared compatibility against pulpcore<3.70.
+  [#3620](https://github.com/pulp/pulp_rpm/issues/3620)
+- Fixed stacktrace from create_modulemd() when trying to report an error.
+  [#3756](https://github.com/pulp/pulp_rpm/issues/3756)
+
+---
+
+## 3.25.5 (2024-06-16) {: #3.25.5 }
+
+
+#### Bugfixes {: #3.25.5-bugfix }
+
+- Taught tests to find centos8 at vault.centos.org.
+  [#3572](https://github.com/pulp/pulp_rpm/issues/3572)
+- Fix a flaw that still allowed to add duplicate advisories to a repository version.
+  [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
+- Made sync more tolerant of poorly configured webservers.
+  [#3599](https://github.com/pulp/pulp_rpm/issues/3599)
+
+#### Misc {: #3.25.5-misc }
+
+- [#3520](https://github.com/pulp/pulp_rpm/issues/3520)
 
 ---
 
@@ -202,6 +387,42 @@
 
 ---
 
+## 3.23.6 (2025-04-23) {: #3.23.6 }
+
+#### Bugfixes {: #3.23.6-bugfix }
+
+- Fix a memory consumption issue w/ syncing repositories that contain modules.
+  [#3311](https://github.com/pulp/pulp_rpm/issues/3311)
+
+---
+
+## 3.23.5 (2025-03-18) {: #3.23.5 }
+
+#### Bugfixes {: #3.23.5-bugfix }
+
+- Fixed stacktrace from create_modulemd() when trying to report an error.
+  [#3756](https://github.com/pulp/pulp_rpm/issues/3756)
+
+---
+
+## 3.23.4 (2024-06-16) {: #3.23.4 }
+
+
+#### Bugfixes {: #3.23.4-bugfix }
+
+- Fixed modulemd upload raising an error when "packages" parameter was passed.
+  [#3427](https://github.com/pulp/pulp_rpm/issues/3427)
+- Fixed modulemd_defaults create endpoint not setting the content digest.
+  [#3495](https://github.com/pulp/pulp_rpm/issues/3495)
+- Taught tests to find centos8 at vault.centos.org.
+  [#3572](https://github.com/pulp/pulp_rpm/issues/3572)
+- Fix a flaw that still allowed to add duplicate advisories to a repository version.
+  [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
+- Made sync more tolerant of poorly configured webservers.
+  [#3599](https://github.com/pulp/pulp_rpm/issues/3599)
+
+---
+
 ## 3.23.3 (2024-02-09) {: #3.23.3 }
 
 ### Bugfixes
@@ -271,6 +492,27 @@ No significant changes.
 ### Misc
 
 -   [#3217](https://github.com/pulp/pulp_rpm/issues/3217), [#3225](https://github.com/pulp/pulp_rpm/issues/3225), [#3226](https://github.com/pulp/pulp_rpm/issues/3226), [#3234](https://github.com/pulp/pulp_rpm/issues/3234), [#3254](https://github.com/pulp/pulp_rpm/issues/3254)
+
+---
+
+## 3.22.9 (2025-03-18) {: #3.22.9 }
+
+#### Bugfixes {: #3.22.9-bugfix }
+
+- Fixed stacktrace from create_modulemd() when trying to report an error.
+  [#3756](https://github.com/pulp/pulp_rpm/issues/3756)
+
+---
+
+## 3.22.8 (2024-06-16) {: #3.22.8 }
+
+
+#### Bugfixes {: #3.22.8-bugfix }
+
+- Taught tests to find centos8 at vault.centos.org.
+  [#3572](https://github.com/pulp/pulp_rpm/issues/3572)
+- Fix a flaw that still allowed to add duplicate advisories to a repository version.
+  [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
 
 ---
 
@@ -434,6 +676,17 @@ No significant changes.
 ### Misc
 
 -   [#2242](https://github.com/pulp/pulp_rpm/issues/2242), [#2867](https://github.com/pulp/pulp_rpm/issues/2867), [#2868](https://github.com/pulp/pulp_rpm/issues/2868), [#2869](https://github.com/pulp/pulp_rpm/issues/2869), [#2870](https://github.com/pulp/pulp_rpm/issues/2870), [#2871](https://github.com/pulp/pulp_rpm/issues/2871), [#2873](https://github.com/pulp/pulp_rpm/issues/2873), [#2874](https://github.com/pulp/pulp_rpm/issues/2874), [#2875](https://github.com/pulp/pulp_rpm/issues/2875), [#2876](https://github.com/pulp/pulp_rpm/issues/2876), [#2877](https://github.com/pulp/pulp_rpm/issues/2877), [#2878](https://github.com/pulp/pulp_rpm/issues/2878), [#2879](https://github.com/pulp/pulp_rpm/issues/2879), [#2880](https://github.com/pulp/pulp_rpm/issues/2880), [#2881](https://github.com/pulp/pulp_rpm/issues/2881), [#2882](https://github.com/pulp/pulp_rpm/issues/2882), [#2883](https://github.com/pulp/pulp_rpm/issues/2883), [#2884](https://github.com/pulp/pulp_rpm/issues/2884), [#2885](https://github.com/pulp/pulp_rpm/issues/2885), [#2887](https://github.com/pulp/pulp_rpm/issues/2887), [#3076](https://github.com/pulp/pulp_rpm/issues/3076), [#3077](https://github.com/pulp/pulp_rpm/issues/3077), [#3078](https://github.com/pulp/pulp_rpm/issues/3078), [#3079](https://github.com/pulp/pulp_rpm/issues/3079), [#3095](https://github.com/pulp/pulp_rpm/issues/3095)
+
+---
+
+## 3.19.13 (2025-03-18) {: #3.19.13 }
+
+#### Bugfixes {: #3.19.13-bugfix }
+
+- Taught tests to find centos8 at vault.centos.org.
+  [#3572](https://github.com/pulp/pulp_rpm/issues/3572)
+- Fix a flaw that still allowed to add duplicate advisories to a repository version.
+  [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
 
 ---
 
@@ -648,6 +901,18 @@ No significant changes.
 ### Misc
 
 -   [#2718](https://github.com/pulp/pulp_rpm/issues/2718), [#2791](https://github.com/pulp/pulp_rpm/issues/2791), [#2805](https://github.com/pulp/pulp_rpm/issues/2805), [#2832](https://github.com/pulp/pulp_rpm/issues/2832), [#2886](https://github.com/pulp/pulp_rpm/issues/2886), [#2905](https://github.com/pulp/pulp_rpm/issues/2905)
+
+---
+
+## 3.18.21 (2024-06-20) {: #3.18.21 }
+
+
+#### Bugfixes {: #3.18.21-bugfix }
+
+- Taught tests to find centos8 at vault.centos.org.
+  [#3572](https://github.com/pulp/pulp_rpm/issues/3572)
+- Fix a flaw that still allowed to add duplicate advisories to a repository version.
+  [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
 
 ---
 
