@@ -8,6 +8,14 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.30.1 (2025-06-08) {: #3.30.1 }
+
+#### Bugfixes {: #3.30.1-bugfix }
+
+- Significantly improved publish performance (more than double in some cases) by fixing some Django queries.
+
+---
+
 ## 3.30.0 (2025-05-12) {: #3.30.0 }
 
 #### Features {: #3.30.0-feature }
