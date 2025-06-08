@@ -8,6 +8,16 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.29.3 (2025-06-08) {: #3.29.3 }
+
+#### Bugfixes {: #3.29.3-bugfix }
+
+- Fixed RPM signing with chunked uploads
+  [#3927](https://github.com/pulp/pulp_rpm/issues/3927)
+- Significantly improved publish performance (more than double in some cases) by fixing some Django queries.
+
+---
+
 ## 3.29.2 (2025-04-23) {: #3.29.2 }
 
 #### Bugfixes {: #3.29.2-bugfix }
