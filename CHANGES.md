@@ -8,6 +8,14 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.30.1 (2025-06-08) {: #3.30.1 }
+
+#### Bugfixes {: #3.30.1-bugfix }
+
+- Significantly improved publish performance (more than double in some cases) by fixing some Django queries.
+
+---
+
 ## 3.30.0 (2025-05-12) {: #3.30.0 }
 
 #### Features {: #3.30.0-feature }
@@ -29,6 +37,16 @@
 #### Misc {: #3.30.0-misc }
 
 - 
+
+---
+
+## 3.29.3 (2025-06-08) {: #3.29.3 }
+
+#### Bugfixes {: #3.29.3-bugfix }
+
+- Fixed RPM signing with chunked uploads
+  [#3927](https://github.com/pulp/pulp_rpm/issues/3927)
+- Significantly improved publish performance (more than double in some cases) by fixing some Django queries.
 
 ---
 
@@ -108,6 +126,16 @@ No significant changes.
 #### Misc {: #3.28.0-misc }
 
 - [#3828](https://github.com/pulp/pulp_rpm/issues/3828), [#3854](https://github.com/pulp/pulp_rpm/issues/3854), [#3856](https://github.com/pulp/pulp_rpm/issues/3856)
+
+---
+
+## 3.27.4 (2025-06-08) {: #3.27.4 }
+
+#### Bugfixes {: #3.27.4-bugfix }
+
+- Fixed RPM signing with chunked uploads
+  [#3927](https://github.com/pulp/pulp_rpm/issues/3927)
+- Significantly improved publish performance (more than double in some cases) by fixing some Django queries.
 
 ---
 
