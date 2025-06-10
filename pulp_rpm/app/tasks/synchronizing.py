@@ -117,6 +117,7 @@ ALLOWED_CONTENT_CHECKSUMS = settings.ALLOWED_CONTENT_CHECKSUMS
 def store_metadata_for_mirroring(repo, md_path, relative_path):
     """Used to store data about the downloaded metadata for mirror-publishing after the sync.
 
+
     Args:
         repo: Which repository the metadata is associated with
         md_path: The path to the metadata file
