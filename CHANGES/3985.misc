@@ -1,0 +1,1 @@
+Removed deprecated `TaskGroup.finish` calls.
