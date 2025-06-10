@@ -98,6 +98,57 @@ Package upload requires a valid RPM package.
       },
     ```
 
+### Directory of Packages
+
+!!! info "New in [pulp-cli] 0.27.0"
+
+It's also possible to upload all the packages inside a directory at once.
+
+=== "Upload a Directory of Packages"
+
+    ```bash
+    # Optionally get a sample of packages
+    wget -r -np https://fixtures.pulpproject.org/rpm-unsigned/
+    UPLOAD_DIR="./fixtures.pulpproject.org/rpm-unsigned"
+
+    # Upload all at once
+    pulp rpm content -t package upload \
+        --directory "${UPLOAD_DIR}" \
+        --repository "${REPOSITORY}"
+    ```
+
+    !!! tip "Atomic upload"
+        Using `--use-temp-repository` will make the operation atomic and create a single repository version.
+        See `pulp rpm content -t package --help` for more options.
+
+=== "Output"
+
+    ```
+    About to upload 35 files for r1.
+    Started background task /pulp/api/v3/tasks/01975b5f-4a5a-7032-8248-1dc1601296e0/
+    .Done.
+
+    ...
+
+    {
+      "pulp_href": "/pulp/api/v3/publications/rpm/rpm/01975b60-3677-7b4d-aefc-3e45c9f0230c/",
+      "prn": "prn:rpm.rpmpublication:01975b60-3677-7b4d-aefc-3e45c9f0230c",
+      "pulp_created": "2025-06-10T19:45:21.528686Z",
+      "pulp_last_updated": "2025-06-10T19:45:21.657136Z",
+      "repository_version": "/pulp/api/v3/repositories/rpm/rpm/01975b5e-cf09-7821-bb05-f978349cbfae/versions/35/",
+      "repository": "/pulp/api/v3/repositories/rpm/rpm/01975b5e-cf09-7821-bb05-f978349cbfae/",
+      "checkpoint": false,
+      "checksum_type": "sha256",
+      "metadata_checksum_type": null,
+      "package_checksum_type": null,
+      "sqlite_metadata": false,
+      "repo_config": {},
+      "compression_type": null,
+      "layout": "nested_alphabetically"
+    }
+
+    ```
+
 ### Advisory Example
 
 Advisory upload requires a file or an artifact containing advisory information in the JSON format.
@@ -183,3 +234,4 @@ There are several architectural reasons for that, one of which is that multiple 
 
 If you want to remove *Content*, consider using the [Modify API](site:pulp_rpm/docs/user/guides/modify/#remove-content-from-a-repository) to remove the content *from a Repository*, and not from Pulp itself. The latter should be handled by Admins, who should configure Pulp to handle cleanups safely.
 
+[pulp-cli]: site:pulp-cli/changes/#0.27.0
