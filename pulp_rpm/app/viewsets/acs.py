@@ -171,9 +171,6 @@ class RpmAlternateContentSourceViewSet(AlternateContentSourceViewSet, RolesMixin
                 },
             )
 
-        # Update TaskGroup that all child task are dispatched
-        task_group.finish()
-
         acs.last_refreshed = now()
         acs.save()
 

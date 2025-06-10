@@ -166,4 +166,3 @@ def prune_packages(
             ),
             task_group=task_group,
         )
-    task_group.finish()
