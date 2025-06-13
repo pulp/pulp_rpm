@@ -191,6 +191,10 @@ class RpmRepositorySerializer(RepositorySerializer):
             field_data = data.get(field)
             if field_data == "":
                 data[field] = None
+        # The current API field definition expects empty string for nullable values,
+        # but some migration paths can set an empty string to none in the database.
+        if data["package_signing_fingerprint"] is None:
+            data["package_signing_fingerprint"] = ""
         return data
 
     def validate(self, data):
