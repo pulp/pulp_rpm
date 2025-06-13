@@ -1,0 +1,1 @@
+Ensure API responses for `Repository.package_signing_fingerprint` returns an empty string instead of null.
