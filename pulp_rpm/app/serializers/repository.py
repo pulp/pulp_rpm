@@ -148,6 +148,26 @@ class RpmRepositorySerializer(RepositorySerializer):
         help_text=_("A JSON document describing config.repo file"),
     )
 
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        # Import workflow may cause these fields to be stored as "" in the database
+        # This ensure the correct type of  None | Enum in the response
+        for field in (
+            "checksum_type",
+            "metadata_checksum_type",
+            "package_checksum_type",
+            "compression_type",
+            "layout",
+        ):
+            field_data = data.get(field)
+            if field_data == "":
+                data[field] = None
+        # The current API field definition expects empty string for nullable values,
+        # but some migration paths can set an empty string to none in the database.
+        if data["package_signing_fingerprint"] is None:
+            data["package_signing_fingerprint"] = ""
+        return data
+
     def validate(self, data):
         """Validate data."""
         for field in ("checksum_type", "metadata_checksum_type", "package_checksum_type"):
