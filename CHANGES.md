@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.30.2 (2025-06-23) {: #3.30.2 }
+
+#### Bugfixes {: #3.30.2-bugfix }
+
+- Ensure API responses for `Repository.package_signing_fingerprint` returns an empty string instead of null.
+  [#3995](https://github.com/pulp/pulp_rpm/issues/3995)
+
+---
+
 ## 3.30.1 (2025-06-08) {: #3.30.1 }
 
 #### Bugfixes {: #3.30.1-bugfix }
