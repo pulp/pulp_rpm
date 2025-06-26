@@ -114,30 +114,51 @@ Removing a content means creating a new *Repository Version* that won't contain 
 
 ### Copy content from a Repository Version
 
-This operation will create a new *Repository Version* in the current Repository based on a previous version (that belongs to the same Repository).
-It will contain the exact same contents as in the `base_version`, regardless of what content was previously present.
+This operation will create a new *Repository Version* based on another *Repository Version*.
+
+The base Repository Version can belong to any RPM repository and the result is an exact copy,
+regardless of what content was previously present.
 
 This can be combined with adding and removing content units in the same call.
 
 1. Sets required variables:
-    * `REPONAME`: The repository to create a copy and get a `base_version` from.
-    * `REPOVERSION`: The repository version number to roll-back to.
+    * `REPONAME`: The repository where the copy will be created.
+    * `BASE_REPOSITORY`: The repository to be copied. Default to `REPONAME`.
+    * `BASE_VERSION`: The repository version number from `BASE_REPOSITORY`. If omitted the last one is used.
 2. Runs the modify command
 3. Inspects the created Repository Version
 
-=== "Clone a Repository Version"
+=== "Clone from Same Repository"
 
     ```bash
     # Set required variables
     REPONAME=modify_test_repo
-    REPOVERSION=1
+    BASE_VERSION=1
 
     # Run the modify command
     pulp rpm repository content modify \
         --repository "${REPONAME}" \
-        --base-version "${REPOVERSION}"
+        --base-version "${BASE_VERSION}"
+    ```
 
-    # Inspect the Repository Version and its Contents
+=== "Clone from Different Repository"
+
+    ```bash
+    # Set required variables
+    REPONAME=modify_test_repo
+    BASE_VERSION=1
+    BASE_REPOSITORY=another_repo
+
+    # Run the modify command
+    pulp rpm repository content modify \
+        --repository "${REPONAME}" \
+        --base-repository "${BASE_REPOSITORY}" \
+        --base-version "${BASE_VERSION}"
+    ```
+
+=== "Inspect"
+
+    ```bash
     pulp rpm repository show --name modify_test_repo | jq '.latest_version_href'
     pulp rpm repository content list --repository modify_test_repo | jq '.[].location_href'
     ```
