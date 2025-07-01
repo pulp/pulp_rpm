@@ -1,3 +1,4 @@
+from django.db import transaction
 from django_filters import CharFilter
 from drf_spectacular.utils import extend_schema
 from pulpcore.plugin.models import PulpTemporaryFile
@@ -8,10 +9,17 @@ from pulpcore.plugin.viewsets import (
     OperationPostponedResponse,
     SingleArtifactContentUploadViewSet,
 )
+from rest_framework import status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 
 from pulp_rpm.app import tasks as rpm_tasks
 from pulp_rpm.app.models import Package
-from pulp_rpm.app.serializers import MinimalPackageSerializer, PackageSerializer
+from pulp_rpm.app.serializers import (
+    MinimalPackageSerializer,
+    PackageSerializer,
+    PackageUploadSerializer,
+)
 
 
 class PackageFilter(ContentFilter):
@@ -69,6 +77,14 @@ class PackageViewSet(SingleArtifactContentUploadViewSet):
                 ],
             },
             {
+                "action": ["upload"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": [
+                    "has_model_or_domain_perms:rpm.upload_rpm_packages",
+                ],
+            },
+            {
                 "action": ["set_label", "unset_label"],
                 "principal": "authenticated",
                 "effect": "allow",
@@ -78,6 +94,12 @@ class PackageViewSet(SingleArtifactContentUploadViewSet):
             },
         ],
         "queryset_scoping": {"function": "scope_queryset"},
+    }
+
+    LOCKED_ROLES = {
+        "rpm.rpm_package_uploader": [
+            "rpm.upload_rpm_packages",
+        ],
     }
 
     @extend_schema(
@@ -127,3 +149,22 @@ class PackageViewSet(SingleArtifactContentUploadViewSet):
             },
         )
         return OperationPostponedResponse(task, request)
+
+    @extend_schema(
+        description="Synchronously upload an RPM package.",
+        request=PackageUploadSerializer,
+        responses={201: PackageSerializer},
+        summary="Upload an RPM package synchronously.",
+    )
+    @action(detail=False, methods=["post"], serializer_class=PackageUploadSerializer)
+    def upload(self, request):
+        """Create an RPM package."""
+        serializer = self.get_serializer(data=request.data)
+        with transaction.atomic():
+            # Create the artifact
+            serializer.is_valid(raise_exception=True)
+            # Create the Package
+            serializer.save()
+
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)

@@ -6,6 +6,7 @@ from tempfile import NamedTemporaryFile
 import pytest
 import requests
 
+from pulpcore.client.pulp_rpm import ApiException
 from pulpcore.tests.functional.utils import PulpTaskError
 from pulp_rpm.tests.functional.constants import (
     BIG_COMPS_XML,
@@ -204,6 +205,46 @@ def test_upload_comps_xml_into_repo_replace(
     assert len(vers_resp.content_summary.added) == 3
     assert len(vers_resp.content_summary.present) == 3
     eval_counts(vers_resp.content_summary.added, is_small=False)
+
+
+def test_synchronous_package_upload(delete_orphans_pre, rpm_package_api, gen_user):
+    """Test synchronously uploading an RPM.
+
+    1. Upload a unit
+    2. Attempt to upload same unit with different labels
+    3. Assert that labels don't change.
+    """
+    # Single unit upload
+    file_to_use = os.path.join(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
+
+    with gen_user(model_roles=["rpm.rpm_package_uploader"]):
+        labels = {"key_1": "value_1"}
+        with NamedTemporaryFile() as file_to_upload:
+            file_to_upload.write(requests.get(file_to_use).content)
+            upload_attrs = {"file": file_to_upload.name, "pulp_labels": labels}
+            package = rpm_package_api.upload(**upload_attrs)
+
+        assert package.location_href == RPM_PACKAGE_FILENAME
+        assert package.pulp_labels == labels
+
+        # Duplicate unit
+        with NamedTemporaryFile() as file_to_upload:
+            new_labels = {"key_2": "value_2"}
+            file_to_upload.write(requests.get(file_to_use).content)
+            upload_attrs = {"file": file_to_upload.name, "pulp_labels": new_labels}
+            duplicate_package = rpm_package_api.upload(**upload_attrs)
+
+        assert duplicate_package.pulp_href == package.pulp_href
+        assert duplicate_package.pulp_labels == package.pulp_labels
+        assert duplicate_package.pulp_labels != new_labels
+
+    with gen_user(model_roles=[]), pytest.raises(ApiException) as ctx:
+        labels = {"key_1": "value_1"}
+        with NamedTemporaryFile() as file_to_upload:
+            file_to_upload.write(requests.get(file_to_use).content)
+            upload_attrs = {"file": file_to_upload.name, "pulp_labels": labels}
+            rpm_package_api.upload(**upload_attrs)
+    assert ctx.value.status == 403
 
 
 def eval_resources(resources, is_small=True):

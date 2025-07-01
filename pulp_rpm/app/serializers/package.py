@@ -1,12 +1,17 @@
+import createrepo_c as cr
 import logging
 import traceback
 from gettext import gettext as _
 
+from django.conf import settings
+from django.db import DatabaseError
 from drf_spectacular.utils import extend_schema_serializer
 from rest_framework import serializers
 from rest_framework.exceptions import NotAcceptable
 
+from pulpcore.plugin.models import Artifact
 from pulpcore.plugin.serializers import (
+    ArtifactSerializer,
     ContentChecksumSerializer,
     SingleArtifactContentUploadSerializer,
 )
@@ -382,3 +387,67 @@ class MinimalPackageSerializer(PackageSerializer):
             "checksum_type",
         )
         model = Package
+
+
+class PackageUploadSerializer(PackageSerializer):
+    """
+    Serializer for requests to synchronously upload RPM packages.
+    """
+
+    class Meta(PackageSerializer.Meta):
+        # This API does not support uploading to a repository.
+        # It doesn't support custom relative_path either.
+        fields = tuple(
+            f for f in PackageSerializer.Meta.fields if f not in ["repository", "relative_path"]
+        )
+        model = Package
+        # Name used for the OpenAPI request object
+        ref_name = "PackageUpload"
+
+    def validate(self, data):
+        uploaded_file = data.get("file")
+        # export META from rpm and prepare dict as saveable format
+        try:
+            cr_object = cr.package_from_rpm(
+                uploaded_file.file.name, changelog_limit=settings.KEEP_CHANGELOG_LIMIT
+            )
+            new_pkg = Package.createrepo_to_dict(cr_object)
+        except OSError as e:
+            log.info(traceback.format_exc())
+            raise NotAcceptable(detail="RPM file cannot be parsed for metadata") from e
+
+        # Get or create the Artifact
+        if "file" in data:
+            file = data.pop("file")
+            # if artifact already exists, let's use it
+            try:
+                artifact = Artifact.objects.get(
+                    sha256=file.hashers["sha256"].hexdigest(), pulp_domain=get_domain_pk()
+                )
+                if not artifact.pulp_domain.get_storage().exists(artifact.file.name):
+                    artifact.file = file
+                    artifact.save()
+                else:
+                    artifact.touch()
+            except (Artifact.DoesNotExist, DatabaseError):
+                artifact_data = {"file": file}
+                serializer = ArtifactSerializer(data=artifact_data)
+                serializer.is_valid(raise_exception=True)
+                artifact = serializer.save()
+            data["artifact"] = artifact
+
+        filename = (
+            format_nvra(
+                new_pkg["name"],
+                new_pkg["version"],
+                new_pkg["release"],
+                new_pkg["arch"],
+            )
+            + ".rpm"
+        )
+
+        data["relative_path"] = filename
+        new_pkg["location_href"] = filename
+
+        data.update(new_pkg)
+        return data
