@@ -299,6 +299,9 @@ class Package(Content):
             "checksum_type",
             "pkgId",
         )
+        permissions = [
+            ("upload_rpm_packages", "Can upload RPM packages using synchronous API."),
+        ]
 
     class ReadonlyMeta:
         readonly = ["evr"]
