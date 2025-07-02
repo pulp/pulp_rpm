@@ -1185,7 +1185,9 @@ No significant changes.
 
 ---
 
-## 3.18.0 (2022-09-12) {: #3.18.0 }
+## YANKED 3.18.0 (2022-09-12) {: #3.18.0 }
+
+Yank reason: broken against some releases of pulpcore
 
 ### Features
 
@@ -1542,7 +1544,9 @@ No significant changes.
 
 ---
 
-## 3.17.0 (2022-01-17) {: #3.17.0 }
+## YANKED 3.17.0 (2022-01-17) {: #3.17.0 }
+
+Yank reason: Broken migration
 
 ### Features
 
@@ -2069,7 +2073,9 @@ No significant changes.
 
 ---
 
-## 3.13.3 (2021-07-07) {: #3.13.3 }
+## YANKED 3.13.3 (2021-07-07) {: #3.13.3 }
+
+Yank reason: Metadata corruption problem on Python 3.6
 
 ### Bugfixes
 
@@ -2087,7 +2093,9 @@ No significant changes.
 
 ---
 
-## 3.13.2 (2021-06-23) {: #3.13.2 }
+## YANKED 3.13.2 (2021-06-23) {: #3.13.2 }
+
+Yank reason: Metadata corruption problem on Python 3.6
 
 ### Bugfixes
 
@@ -2097,7 +2105,9 @@ No significant changes.
 
 ---
 
-## 3.13.1 (2021-06-23) {: #3.13.1 }
+## YANKED 3.13.1 (2021-06-23) {: #3.13.1 }
+
+Yank reason: Metadata corruption problem on Python 3.6
 
 ### Bugfixes
 
@@ -2110,7 +2120,9 @@ No significant changes.
 
 ---
 
-## 3.13.0 (2021-06-17) {: #3.13.0 }
+## YANKED 3.13.0 (2021-06-17) {: #3.13.0 }
+
+Yank reason: A bug resulted in incorrect syncing for some repos, please use 3.13.1
 
 ### Features
 
