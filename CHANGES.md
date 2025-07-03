@@ -8,6 +8,32 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.31.0 (2025-07-02) {: #3.31.0 }
+
+#### Features {: #3.31.0-feature }
+
+- Added a synchronous RPM upload API. It's available at /pulp/api/v3/content/rpm/packages/upload/.
+  [#4027](https://github.com/pulp/pulp_rpm/issues/4027)
+
+#### Bugfixes {: #3.31.0-bugfix }
+
+- Ensure API responses for `Repository.package_signing_fingerprint` returns an empty string instead of null.
+  [#3995](https://github.com/pulp/pulp_rpm/issues/3995)
+- Significantly improved publish performance (more than double in some cases) by fixing some Django queries.
+
+#### Improved Documentation {: #3.31.0-doc }
+
+- Added an example of uploading all packages inside a repository using the --directory option.
+  [#3709](https://github.com/pulp/pulp_rpm/issues/3709)
+- Updated the modify guides to reflect a fix in the pulp-cli modify command.
+  [#3881](https://github.com/pulp/pulp_rpm/issues/3881)
+
+#### Misc {: #3.31.0-misc }
+
+- [#3985](https://github.com/pulp/pulp_rpm/issues/3985)
+
+---
+
 ## 3.30.2 (2025-06-23) {: #3.30.2 }
 
 #### Bugfixes {: #3.30.2-bugfix }
