@@ -14,10 +14,7 @@ from django.db import (
 )
 from django.utils.dateparse import parse_datetime
 
-from pulpcore.plugin.models import (
-    Content,
-    RepositoryContent,
-)
+from pulpcore.plugin.models import Content
 
 from pulp_rpm.app.exceptions import AdvisoryConflict
 from pulp_rpm.app.models import (
@@ -158,11 +155,7 @@ def resolve_advisories(version, previous_version):
         version.remove_content(Content.objects.filter(pk__in=content_pks_to_remove))
 
     if content_pks_to_exclude:
-        RepositoryContent.objects.filter(
-            repository=version.repository,
-            content_id__in=content_pks_to_exclude,
-            version_added=version,
-        ).delete()
+        version.remove_content(Content.objects.filter(pk__in=content_pks_to_exclude))
 
 
 def resolve_advisory_conflict(previous_advisory, added_advisory):
