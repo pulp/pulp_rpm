@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.31.2 (2025-07-17) {: #3.31.2 }
+
+#### Bugfixes {: #3.31.2-bugfix }
+
+- Adapt to a pulpcore change that inadvertently broke pulp_rpm, due to a slightly improper use of an API.
+  [#4054](https://github.com/pulp/pulp_rpm/issues/4054)
+
+---
+
 ## 3.31.1 (2025-07-07) {: #3.31.1 }
 
 #### Bugfixes {: #3.31.1-bugfix }
