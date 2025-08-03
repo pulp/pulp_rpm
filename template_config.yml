@@ -20,6 +20,7 @@ deploy_client_to_rubygems: true
 deploy_to_pypi: true
 disabled_redis_runners: []
 docker_fixtures: true
+extra_files: []
 flake8: true
 flake8_ignore: []
 github_org: pulp
