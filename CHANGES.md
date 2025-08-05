@@ -202,6 +202,12 @@ No significant changes.
 
 ---
 
+## 3.27.6 (2025-08-04) {: #3.27.6 }
+
+No significant changes.
+
+---
+
 ## 3.27.5 (2025-07-17) {: #3.27.5 }
 
 #### Bugfixes {: #3.27.5-bugfix }
