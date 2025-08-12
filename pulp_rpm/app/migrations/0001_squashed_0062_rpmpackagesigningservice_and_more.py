@@ -438,12 +438,6 @@ class Migration(migrations.Migration):
                 'unique_together': {('addon_id', 'uid', 'name', 'type', 'packages', 'distribution_tree')},
             },
         ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0003_DATA_incorrect_json.unflatten_json,
-        ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0003_DATA_incorrect_json.replace_emptystring_with_null,
-        ),
         migrations.AlterField(
             model_name='updatecollection',
             name='module',
@@ -510,9 +504,6 @@ class Migration(migrations.Migration):
             model_name='updatecollectionpackage',
             name='sum_type_temp',
             field=models.PositiveIntegerField(choices=[(0, 0), (1, 1), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6), (7, 7)], default=None, null=True),
-        ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0008_advisory_pkg_sumtype_as_int.translate_sum_type,
         ),
         migrations.RemoveField(
             model_name='updatecollectionpackage',
@@ -589,33 +580,15 @@ class Migration(migrations.Migration):
             name='repometadatafile',
             unique_together={('data_type', 'checksum', 'relative_path')},
         ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0015_repo_metadata.assign_relative_path,
-        ),
         migrations.AlterField(
             model_name='variant',
             name='repository',
             field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.PROTECT, related_name='+', to='core.repository'),
         ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0016_dist_tree_nofk.unset_main_repo_fk,
-        ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0017_merge_advisory_collections.clone_reused_update_collections,
-        ),
         migrations.AddField(
             model_name='updatecollection',
             name='_update_record',
             field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.CASCADE, related_name='_collections', to='rpm.updaterecord'),
-        ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0019_migrate_updatecollection_data.rename_update_collections,
-        ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0019_migrate_updatecollection_data.delete_orphan_collections,
-        ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0019_migrate_updatecollection_data.map_update_collection_to_update_record,
         ),
         migrations.RemoveField(
             model_name='updatecollection',
@@ -655,9 +628,6 @@ class Migration(migrations.Migration):
             name='repository',
             field=models.ForeignKey(null=True, on_delete=django.db.models.deletion.PROTECT, related_name='variants', to='core.repository'),
         ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0025_remove_orphaned_subrepos.delete_orphan_subrepos,
-        ),
         migrations.AddField(
             model_name='rpmpublication',
             name='gpgcheck',
@@ -667,9 +637,6 @@ class Migration(migrations.Migration):
             model_name='rpmpublication',
             name='repo_gpgcheck',
             field=models.IntegerField(choices=[(0, 0), (1, 1)], default=0),
-        ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0027_checksum_null.check_checksum,
         ),
         migrations.AlterField(
             model_name='checksum',
@@ -687,16 +654,10 @@ class Migration(migrations.Migration):
             name='sqlite_metadata',
             field=models.BooleanField(default=False),
         ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0029_rpmpublication_sqlite_metadata.set_true,
-        ),
         migrations.AlterField(
             model_name='updaterecord',
             name='updated_date',
             field=models.TextField(null=True),
-        ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0030_DATA_fix_updaterecord.replace_nonestring_with_null,
         ),
         migrations.AddField(
             model_name='modulemd',
@@ -765,10 +726,6 @@ class Migration(migrations.Migration):
             name='sqlite_metadata',
             field=models.BooleanField(default=False),
         ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0035_fix_auto_publish.remove_publications_from_auto_distributed,
-            reverse_code=pulp_rpm.app.migrations.0035_fix_auto_publish.add_publications_to_auto_distributed,
-        ),
         migrations.AlterField(
             model_name='rpmrepository',
             name='metadata_checksum_type',
@@ -778,9 +735,6 @@ class Migration(migrations.Migration):
             model_name='rpmrepository',
             name='package_checksum_type',
             field=models.CharField(choices=[('unknown', 'unknown'), ('md5', 'md5'), ('sha1', 'sha1'), ('sha1', 'sha1'), ('sha224', 'sha224'), ('sha256', 'sha256'), ('sha384', 'sha384'), ('sha512', 'sha512')], max_length=10, null=True),
-        ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0037_DATA_remove_rpmrepository_sub_repo.migrate_sub_repo_value,
         ),
         migrations.RemoveField(
             model_name='rpmrepository',
@@ -942,9 +896,6 @@ class Migration(migrations.Migration):
             name='digest',
             field=models.CharField(default='', max_length=64),
             preserve_default=False,
-        ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0039_disttree_digest.generate_fake_digest,
         ),
         migrations.AlterUniqueTogether(
             name='distributiontree',
@@ -1303,9 +1254,6 @@ class Migration(migrations.Migration):
             field=models.TextField(default=''),
             preserve_default=False,
         ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0044_noartifact_modules.convert_artifact_to_snippets,
-        ),
         migrations.AddField(
             model_name='modulemd',
             name='description',
@@ -1316,9 +1264,6 @@ class Migration(migrations.Migration):
             model_name='modulemd',
             name='profiles',
             field=models.JSONField(default=dict),
-        ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0045_modulemd_fields.populate_new_fields,
         ),
         migrations.AlterModelOptions(
             name='rpmalternatecontentsource',
@@ -1354,9 +1299,6 @@ class Migration(migrations.Migration):
             name='eol_date',
             field=models.DateTimeField(null=True),
         ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0047_modulemd_datefield.clean_date_fields,
-        ),
         migrations.AlterField(
             model_name='modulemdobsolete',
             name='eol_date',
@@ -1366,15 +1308,6 @@ class Migration(migrations.Migration):
             model_name='modulemdobsolete',
             name='modified',
             field=models.TextField(),
-        ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0047_modulemd_datefield.parse_date,
-        ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0048_artifacts_dependencies_fix.fixup_modulemd_artifacts_dependencies,
-        ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0049_profiles_fix.fixup_modulemd_profiles,
         ),
         migrations.AlterField(
             model_name='checksum',
@@ -1713,9 +1646,6 @@ class Migration(migrations.Migration):
             name='checksum_type',
             field=models.TextField(choices=[('unknown', 'unknown'), ('md5', 'md5'), ('sha1', 'sha1'), ('sha1', 'sha1'), ('sha224', 'sha224'), ('sha256', 'sha256'), ('sha384', 'sha384'), ('sha512', 'sha512')], null=True),
         ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0057_rpmpublication_checksum_type_and_more.set_publication_checksum,
-        ),
         migrations.AlterField(
             model_name='rpmpublication',
             name='checksum_type',
@@ -1745,13 +1675,6 @@ class Migration(migrations.Migration):
             model_name='rpmrepository',
             name='compression_type',
             field=models.TextField(choices=[('zstd', 'zstd'), ('gz', 'gz')], null=True),
-        ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0060_rpmpublication_compression_type_empty.set_publication_checksum,
-        ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0061_fix_modulemd_defaults_digest.add_snippet_hash,
-            reverse_code=django.db.migrations.operations.special.RunPython.noop,
         ),
         migrations.CreateModel(
             name='RpmPackageSigningService',
