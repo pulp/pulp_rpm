@@ -10,32 +10,6 @@ import pulpcore.app.util
 import uuid
 
 
-# Functions from the following migrations need manual copying.
-# Move them and any dependencies into this file, then update the
-# RunPython operations to refer to the local versions:
-# pulp_rpm.app.migrations.0003_DATA_incorrect_json
-# pulp_rpm.app.migrations.0008_advisory_pkg_sumtype_as_int
-# pulp_rpm.app.migrations.0015_repo_metadata
-# pulp_rpm.app.migrations.0016_dist_tree_nofk
-# pulp_rpm.app.migrations.0017_merge_advisory_collections
-# pulp_rpm.app.migrations.0019_migrate_updatecollection_data
-# pulp_rpm.app.migrations.0025_remove_orphaned_subrepos
-# pulp_rpm.app.migrations.0027_checksum_null
-# pulp_rpm.app.migrations.0029_rpmpublication_sqlite_metadata
-# pulp_rpm.app.migrations.0030_DATA_fix_updaterecord
-# pulp_rpm.app.migrations.0033_new_distribution_model
-# pulp_rpm.app.migrations.0035_fix_auto_publish
-# pulp_rpm.app.migrations.0037_DATA_remove_rpmrepository_sub_repo
-# pulp_rpm.app.migrations.0039_disttree_digest
-# pulp_rpm.app.migrations.0044_noartifact_modules
-# pulp_rpm.app.migrations.0045_modulemd_fields
-# pulp_rpm.app.migrations.0047_modulemd_datefield
-# pulp_rpm.app.migrations.0048_artifacts_dependencies_fix
-# pulp_rpm.app.migrations.0049_profiles_fix
-# pulp_rpm.app.migrations.0057_rpmpublication_checksum_type_and_more
-# pulp_rpm.app.migrations.0060_rpmpublication_compression_type_empty
-# pulp_rpm.app.migrations.0061_fix_modulemd_defaults_digest
-
 class Migration(migrations.Migration):
 
     replaces = [('rpm', '0001_initial'), ('rpm', '0002_updaterecord_reboot_suggested'), ('rpm', '0003_DATA_incorrect_json'), ('rpm', '0004_add_metadata_signing_service_fk'), ('rpm', '0005_optimize_sync'), ('rpm', '0006_opensuse_support'), ('rpm', '0007_checksum_types'), ('rpm', '0008_advisory_pkg_sumtype_as_int'), ('rpm', '0009_revision_null'), ('rpm', '0010_revision_null_redo'), ('rpm', '0011_rpmremote_sles_auth_token'), ('rpm', '0012_remove_pkg_group_env_cat_related_pkgs'), ('rpm', '0013_RAW_rpm_evr_extension'), ('rpm', '0014_rpmrepository_package_retention_policy'), ('rpm', '0015_repo_metadata'), ('rpm', '0016_dist_tree_nofk'), ('rpm', '0017_merge_advisory_collections'), ('rpm', '0018_updatecollection__update_record'), ('rpm', '0019_migrate_updatecollection_data'), ('rpm', '0020_remove_updatecollection_m2m'), ('rpm', '0021_rename_updatecollection_update_record'), ('rpm', '0022_add_collections_related_name'), ('rpm', '0023_increase_distribution_release_short'), ('rpm', '0024_change_subrepo_relation_properties'), ('rpm', '0025_remove_orphaned_subrepos'), ('rpm', '0026_add_gpgcheck_options'), ('rpm', '0027_checksum_null'), ('rpm', '0028_rpmrepository_last_sync_repomd_cheksum'), ('rpm', '0029_rpmpublication_sqlite_metadata'), ('rpm', '0030_DATA_fix_updaterecord'), ('rpm', '0031_modulemd_static_context'), ('rpm', '0032_ulnremote'), ('rpm', '0033_new_distribution_model'), ('rpm', '0034_auto_publish'), ('rpm', '0035_fix_auto_publish'), ('rpm', '0036_checksum_type'), ('rpm', '0037_DATA_remove_rpmrepository_sub_repo'), ('rpm', '0037_update_json_field'), ('rpm', '0038_fix_sync_optimization'), ('rpm', '0039_disttree_digest'), ('rpm', '0040_rpmalternatecontentsource'), ('rpm', '0041_modulemdobsolete'), ('rpm', '0042_alter_repometadatafile_data_type'), ('rpm', '0043_textfield_conversion'), ('rpm', '0044_noartifact_modules'), ('rpm', '0045_modulemd_fields'), ('rpm', '0046_rbac_perms'), ('rpm', '0047_modulemd_datefield'), ('rpm', '0048_artifacts_dependencies_fix'), ('rpm', '0049_profiles_fix'), ('rpm', '0050_alter_addon_pulp_id_alter_checksum_pulp_id_and_more'), ('rpm', '0051_alter_distributiontree_unique_together_and_more'), ('rpm', '0052_modulemd_digest'), ('rpm', '0053_rpmdistribution_generate_repo_config'), ('rpm', '0054_remove_gpg_fields'), ('rpm', '0055_add_repo_config_field'), ('rpm', '0056_remove_rpmpublication_sqlite_metadata_and_more'), ('rpm', '0057_rpmpublication_checksum_type_and_more'), ('rpm', '0058_alter_addon_repository_alter_variant_repository'), ('rpm', '0059_rpmpublication_compression_type_and_more'), ('rpm', '0060_rpmpublication_compression_type_empty'), ('rpm', '0061_fix_modulemd_defaults_digest'), ('rpm', '0062_rpmpackagesigningservice_and_more')]
@@ -265,13 +239,12 @@ class Migration(migrations.Migration):
         migrations.CreateModel(
             name='RpmDistribution',
             fields=[
-                ('basedistribution_ptr', models.OneToOneField(auto_created=True, on_delete=django.db.models.deletion.CASCADE, parent_link=True, primary_key=True, related_name='rpm_rpmdistribution', serialize=False, to='core.basedistribution')),
-                ('publication', models.ForeignKey(null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='rpm_rpmdistribution', to='core.publication')),
+                ('distribution_ptr', models.OneToOneField(auto_created=True, on_delete=django.db.models.deletion.CASCADE, parent_link=True, primary_key=True, related_name='rpm_rpmdistribution', serialize=False, to='core.distribution')),
             ],
             options={
                 'default_related_name': '%(app_label)s_%(model_name)s',
             },
-            bases=('core.basedistribution',),
+            bases=('core.distribution',),
         ),
         migrations.CreateModel(
             name='RepoMetadataFile',
@@ -674,27 +647,6 @@ class Migration(migrations.Migration):
                 'default_related_name': '%(app_label)s_%(model_name)s',
             },
             bases=('core.remote',),
-        ),
-        migrations.CreateModel(
-            name='NewRpmDistribution',
-            fields=[
-                ('distribution_ptr', models.OneToOneField(auto_created=True, on_delete=django.db.models.deletion.CASCADE, parent_link=True, primary_key=True, related_name='rpm_rpmdistribution', serialize=False, to='core.distribution')),
-            ],
-            options={
-                'default_related_name': '%(app_label)s_%(model_name)s',
-            },
-            bases=('core.distribution',),
-        ),
-        migrations.RunPython(
-            code=pulp_rpm.app.migrations.0033_new_distribution_model.migrate_data_from_old_model_to_new_model_up,
-            reverse_code=pulp_rpm.app.migrations.0033_new_distribution_model.migrate_data_from_old_model_to_new_model_down,
-        ),
-        migrations.DeleteModel(
-            name='RpmDistribution',
-        ),
-        migrations.RenameModel(
-            old_name='NewRpmDistribution',
-            new_name='RpmDistribution',
         ),
         migrations.AddField(
             model_name='rpmrepository',
