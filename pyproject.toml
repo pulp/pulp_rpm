@@ -20,17 +20,16 @@ classifiers = [
   "Framework :: Django",
   "Programming Language :: Python",
   "Programming Language :: Python :: 3",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
   "Programming Language :: Python :: 3.11",
   "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
 ]
 requires-python = ">=3.9"
 dependencies = [
     "createrepo_c~=1.2.1",
     "django_readonly_field~=1.1.1",
     "jsonschema>=4.6,<5.0",
-    "libcomps>=0.1.20.post1,<0.2",
+    "libcomps>=0.1.21.post1,<0.2",
     "productmd~=1.33.0",
     "pulpcore>=3.81.0,<3.85",
     "solv~=0.7.21",
