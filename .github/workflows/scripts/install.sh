@@ -77,7 +77,7 @@ VARSYAML
 
 cat >> vars/main.yaml << VARSYAML
 pulp_env: {}
-pulp_settings: {"allowed_content_checksums": ["sha1", "sha224", "sha256", "sha512"], "allowed_export_paths": ["/tmp"], "allowed_import_paths": ["/tmp"], "orphan_protection_time": 0}
+pulp_settings: {"SPECTACULAR_SETTINGS__OAS_VERSION": "3.0.3", "allowed_content_checksums": ["sha1", "sha224", "sha256", "sha512"], "allowed_export_paths": ["/tmp"], "allowed_import_paths": ["/tmp"], "orphan_protection_time": 0}
 pulp_scheme: https
 pulp_default_container: ghcr.io/pulp/pulp-ci-centos9:latest
 VARSYAML
@@ -107,7 +107,7 @@ minio_access_key: "'$MINIO_ACCESS_KEY'"\
 minio_secret_key: "'$MINIO_SECRET_KEY'"\
 pulp_scenario_settings: null\
 pulp_scenario_env: {}\
-test_storages_compat_layer: true\
+test_storages_compat_layer: false\
 ' vars/main.yaml
   export PULP_API_ROOT="/rerouted/djnd/"
 fi
@@ -122,7 +122,7 @@ if [ "$TEST" = "azure" ]; then
   sed -i -e '$a azure_test: true\
 pulp_scenario_settings: {"domain_enabled": true}\
 pulp_scenario_env: {}\
-test_storages_compat_layer: true\
+test_storages_compat_layer: false\
 ' vars/main.yaml
 fi
 
