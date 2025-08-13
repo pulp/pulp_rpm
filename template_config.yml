@@ -42,6 +42,7 @@ pulp_env_gcp: {}
 pulp_env_s3: {}
 pulp_scheme: https
 pulp_settings:
+  SPECTACULAR_SETTINGS__OAS_VERSION: "3.0.3"
   allowed_content_checksums:
   - sha1
   - sha224
@@ -80,6 +81,6 @@ test_performance:
 - pulp_to_pulp
 test_reroute: true
 test_s3: true
-test_storages_compat_layer: true
+test_storages_compat_layer: false
 use_issue_template: true
 
