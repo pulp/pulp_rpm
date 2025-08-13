@@ -945,6 +945,7 @@ def test_core_metadata(init_and_sync, rpm_package_api, get_content):
             "pulp_href",
             "prn",
             "pulp_labels",
+            "vuln_report",
         },
     )
     assert list(diff) == [], list(diff)
@@ -1048,19 +1049,38 @@ def test_modular_metadata(
                 "pulp_href",
                 "prn",
                 "pulp_labels",
+                "vuln_report",
             },
         )
         assert list(diff) == [], list(diff)
 
     for m1, m2 in zip(module_defaults, RPM_MODULEMD_DEFAULTS_DATA):
         diff = dictdiffer.diff(
-            m1, m2, ignore={"pulp_created", "pulp_last_updated", "pulp_href", "prn", "pulp_labels"}
+            m1,
+            m2,
+            ignore={
+                "pulp_created",
+                "pulp_last_updated",
+                "pulp_href",
+                "prn",
+                "pulp_labels",
+                "vuln_report",
+            },
         )
         assert list(diff) == [], list(diff)
 
     for m1, m2 in zip(module_obsoletes, RPM_MODULEMD_OBSOLETES_DATA):
         diff = dictdiffer.diff(
-            m1, m2, ignore={"pulp_created", "pulp_last_updated", "pulp_href", "prn", "pulp_labels"}
+            m1,
+            m2,
+            ignore={
+                "pulp_created",
+                "pulp_last_updated",
+                "pulp_href",
+                "prn",
+                "pulp_labels",
+                "vuln_report",
+            },
         )
         assert list(diff) == [], list(diff)
 
