@@ -287,8 +287,7 @@ def test_sign_packages_on_sync(
         downloaded_package = tmp_path / "package.rpm"
         downloaded_package.write_bytes(
             download_content_unit(
-                distribution.base_path,
-                get_package_repo_path(test_package.location_href)
+                distribution.base_path, get_package_repo_path(test_package.location_href)
             )
         )
         assert rpm_tool.verify_signature(downloaded_package)

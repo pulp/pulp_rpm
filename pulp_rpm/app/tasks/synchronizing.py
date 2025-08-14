@@ -1596,7 +1596,6 @@ class RpmArtifactSigningStage(Stage):
         _ = self.repository.package_signing_service
         _ = self.repository.package_signing_fingerprint
 
-
     async def run(self):
         """
         Process DeclarativeContent items and sign RPM packages if signing service is configured.
@@ -1606,19 +1605,20 @@ class RpmArtifactSigningStage(Stage):
         signing_service = self.repository.package_signing_service
         fingerprint = self.repository.package_signing_fingerprint
         if signing_service and fingerprint:
-            log.info(f"Repository {self.repository.name} has signing service configured: {signing_service.name} with fingerprint {fingerprint}")
+            log.info(
+                f"Repository {self.repository.name} has signing service configured: {signing_service.name} with fingerprint {fingerprint}"
+            )
         else:
-            log.debug(f"No package signing service configured for repository {self.repository.name}")
+            log.debug(
+                f"No package signing service configured for repository {self.repository.name}"
+            )
 
         async for batch in self.batches():
             for d_content in batch:
                 if signing_service and fingerprint:
                     for d_artifact in d_content.d_artifacts:
-                        await self._sign_rpm_artifact(
-                            d_artifact, signing_service, fingerprint
-                        )
+                        await self._sign_rpm_artifact(d_artifact, signing_service, fingerprint)
                 await self.put(d_content)
-
 
     async def _sign_rpm_artifact(self, d_artifact, signing_service, fingerprint):
         """
@@ -1630,9 +1630,14 @@ class RpmArtifactSigningStage(Stage):
             fingerprint: GPG fingerprint to use for signing
         """
 
-        if not hasattr(d_artifact, 'artifact') or not d_artifact.artifact \
-            or not hasattr(d_artifact.artifact, 'file') or not d_artifact.artifact.file \
-            or not hasattr(d_artifact.artifact.file, 'file') or not d_artifact.artifact.file.file:
+        if (
+            not hasattr(d_artifact, "artifact")
+            or not d_artifact.artifact
+            or not hasattr(d_artifact.artifact, "file")
+            or not d_artifact.artifact.file
+            or not hasattr(d_artifact.artifact.file, "file")
+            or not d_artifact.artifact.file.file
+        ):
             raise ValueError("No file found in d_artifact.artifact.file")
 
         # Extract the full path for the artifact file
@@ -1643,14 +1648,19 @@ class RpmArtifactSigningStage(Stage):
             raise FileNotFoundError(f"Downloaded file does not exist: {temp_file_path}")
 
         # Sign the temporary file in-place
-        log.info(f"Calling signing service with file {temp_file_path} and fingerprint {fingerprint}")
+        log.info(
+            f"Calling signing service with file {temp_file_path} and fingerprint {fingerprint}"
+        )
         signing_service.sign(temp_file_path, pubkey_fingerprint=fingerprint)
 
         # Recalculate artifact metadata for the signed file
-        with open(temp_file_path, 'rb') as f:
+        with open(temp_file_path, "rb") as f:
             file_content = f.read()
 
         d_artifact.artifact.size = len(file_content)
         for hash in "md5", "sha1", "sha224", "sha256", "sha384", "sha512":
-            if hasattr(d_artifact.artifact, hash) and getattr(d_artifact.artifact, hash) is not None:
+            if (
+                hasattr(d_artifact.artifact, hash)
+                and getattr(d_artifact.artifact, hash) is not None
+            ):
                 setattr(d_artifact.artifact, hash, getattr(hashlib, hash)(file_content).hexdigest())
