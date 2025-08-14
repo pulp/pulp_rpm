@@ -577,7 +577,7 @@ def generate_repo_metadata(
         pkg.checksum_type = checksum
         pkg.pkgId = pkgId
 
-        pkg_filename = os.path.basename(package.location_href)
+        pkg_filename = package.filename
         # this can cause an issue when two same RPM package names appears
         # a/name1.rpm b/name1.rpm
         pkg.location_href = os.path.join(PACKAGES_DIRECTORY, pkg_filename[0].lower(), pkg_filename)
