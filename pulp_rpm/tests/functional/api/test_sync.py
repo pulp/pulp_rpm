@@ -3,10 +3,13 @@
 import pytest
 from random import choice
 
+from urllib.parse import urljoin
 import dictdiffer
 import requests
+from pathlib import Path
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
+import createrepo_c as cr
 
 from pulpcore.tests.functional.utils import PulpTaskError
 
@@ -1185,3 +1188,101 @@ def test_config_repo_mirror_sync(
         )
         assert bytes("gpgcheck=1\n", "utf-8") in content
         assert bytes("repo_gpgcheck=0", "utf-8") in content
+
+
+@pytest.fixture
+def repo_4073_url(
+    tmp_path,
+    rpm_repository_factory,
+    rpm_rpmremote_factory,
+    rpm_publication_factory,
+    rpm_distribution_factory,
+    init_and_sync,
+):
+    REPODIR = tmp_path / "repo_4073"
+
+    def download_fixture(fixture_name: str, to_relative_path: str) -> Path:
+        url = urljoin(RPM_UNSIGNED_FIXTURE_URL, fixture_name)
+        response = requests.get(url)
+        response.raise_for_status()
+        pkg = REPODIR / to_relative_path
+        pkg.parent.mkdir(parents=True, exist_ok=True)
+        pkg.write_bytes(response.content)
+        return pkg
+
+    def get_package_list_from_repodata(repodata_dir: Path):
+        assert repodata_dir.exists()
+        primary_xml_file = next(repodata_dir.glob("*primary.xml*"))
+        result_repo = cr.RepositoryReader.from_metadata_files(str(primary_xml_file), None, None)
+        parsed = result_repo.parse_packages(only_primary=True)[0]  # {<checksum>: <cr.Package>}
+        return list(parsed.values())
+
+    # Setup repository packages layout
+    BEAR_FILENAME = "bear-4.1-1.noarch.rpm"
+    BEAR_RELATIVE_PATH = f"bear/{BEAR_FILENAME}"
+    CAMEL_FILENAME = "camel-0.1-1.noarch.rpm"
+    CAMEL_RELATIVE_PATH = f"camel/{BEAR_FILENAME}"  # yes, we're faking the filename
+
+    bear_rpm = download_fixture(BEAR_FILENAME, to_relative_path=BEAR_RELATIVE_PATH)
+    camel_rpm = download_fixture(CAMEL_FILENAME, to_relative_path=CAMEL_RELATIVE_PATH)
+    BEAR_NAME = cr.package_from_rpm(str(bear_rpm)).name
+    CAMEL_NAME = cr.package_from_rpm(str(camel_rpm)).name
+
+    # Create repository with messed location_hrefs
+    with cr.RepositoryWriter(str(REPODIR), compression=2) as writer:
+        writer.set_num_of_pkgs(2)
+        bear_pkg = cr.package_from_rpm(str(bear_rpm), location_href=BEAR_RELATIVE_PATH)
+        camel_pkg = cr.package_from_rpm(str(camel_rpm), location_href=CAMEL_RELATIVE_PATH)
+        writer.add_pkg(bear_pkg)
+        writer.add_pkg(camel_pkg)
+
+    # Assert it's what we expect
+    repodata_dir = REPODIR / "repodata"
+    packages_from_repodata = get_package_list_from_repodata(repodata_dir)
+    name_location_pkg_map = [(p.name, p.location_href) for p in packages_from_repodata]
+
+    assert (BEAR_NAME, BEAR_RELATIVE_PATH) in name_location_pkg_map
+    assert (CAMEL_NAME, CAMEL_RELATIVE_PATH) in name_location_pkg_map
+    # TODO: maybe do a mirror_complete sync and provide that as a server instead...
+    return f"file://{REPODIR.absolute()}"
+
+
+def test_repo_4073(repo_4073_url):
+    assert repo_4073_url
+
+
+@pytest.mark.parallel
+def test_repo_with_different_nevra_same_location_href(
+    repo_4073_url,
+    rpm_repository_factory,
+    rpm_rpmremote_factory,
+    init_and_sync,
+    rpm_publication_factory,
+    rpm_distribution_factory,
+    rpm_package_api,
+    distribution_base_url,
+):
+    """Test syncing repository with packages having different NEVRA and same relative_path."""
+    repository, remote = init_and_sync(url=repo_4073_url)
+    distribution = rpm_distribution_factory(repository=repository.pulp_href)
+    dist_base_url = distribution_base_url(distribution.base_url)
+
+    # Check that both packages are present
+    packages = rpm_package_api.list(repository_version=repository.latest_version_href)
+    package_names = [pkg.name for pkg in packages.results]
+    assert "bear" in package_names
+    assert "camel" in package_names
+
+    # Check bear package at Packages/b/bear-4.1-1.noarch.rpm
+    bear_package_url = urljoin(distribution.base_url, "Packages/b/bear-4.1-1.noarch.rpm")
+    bear_response = requests.get(bear_package_url)
+    print(bear_package_url)
+
+    # import time
+    # time.sleep(1000000)
+    assert bear_response.status_code == 200, (bear_package_url, bear_response.text)
+
+    # Check camel package at Packages/c/camel-0.1-1.noarch.rpm
+    camel_package_url = f"{dist_base_url}/Packages/c/camel-0.1-1.noarch.rpm"
+    camel_response = requests.get(camel_package_url)
+    assert camel_response.status_code == 200
