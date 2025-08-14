@@ -1328,15 +1328,21 @@ class RpmFirstStage(Stage):
                 url = urlpath_sanitize(base_url, package.location_href)
                 del pkg  # delete it as soon as we're done with it
 
-                store_package_for_mirroring(self.repository, package.pkgId, package.location_href)
+                # Location_href is not a property of the Package in isolation [0], and Pulp has
+                # a well defined way of generating the layout/locations on publication time.
+                # We only need to use the original location_href for metadata mirroring
+                # [0] https://github.com/pulp/pulp_rpm/issues/2580
+                original_location_href = package.location_href
+                package.location_href = package.filename
+                store_package_for_mirroring(self.repository, package.pkgId, original_location_href)
+
                 artifact = Artifact(size=package.size_package)
                 checksum_type = getattr(CHECKSUM_TYPES, package.checksum_type.upper())
                 setattr(artifact, checksum_type, package.pkgId)
-                filename = os.path.basename(package.location_href)
                 da = DeclarativeArtifact(
                     artifact=artifact,
                     url=url,
-                    relative_path=filename,
+                    relative_path=package.location_href,
                     remote=self.remote,
                     deferred_download=self.deferred_download,
                 )
