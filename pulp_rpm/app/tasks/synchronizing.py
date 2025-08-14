@@ -1606,7 +1606,8 @@ class RpmArtifactSigningStage(Stage):
         fingerprint = self.repository.package_signing_fingerprint
         if signing_service and fingerprint:
             log.info(
-                f"Repository {self.repository.name} has signing service configured: {signing_service.name} with fingerprint {fingerprint}"
+                f"Repository {self.repository.name} has signing service configured: "
+                f"{signing_service.name} with fingerprint {fingerprint}"
             )
         else:
             log.debug(
