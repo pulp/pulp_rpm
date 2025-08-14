@@ -276,11 +276,11 @@ def test_create_modulemds(
         "version": "foo",
         "context": "foo",
         "arch": "foo",
-        "artifacts": "[]",
-        "dependencies": "[]",
+        "artifacts": [],
+        "dependencies": [],
         "packages": [package.pulp_href],
         "snippet": "foobar",
-        "profiles": "[]",
+        "profiles": [],
         "description": "foo",
     }
 
