@@ -3,10 +3,13 @@
 import pytest
 from random import choice
 
+from urllib.parse import urljoin
 import dictdiffer
 import requests
+from pathlib import Path
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
+import createrepo_c as cr
 
 from pulpcore.tests.functional.utils import PulpTaskError
 
@@ -1185,3 +1188,104 @@ def test_config_repo_mirror_sync(
         )
         assert bytes("gpgcheck=1\n", "utf-8") in content
         assert bytes("repo_gpgcheck=0", "utf-8") in content
+
+
+@pytest.fixture
+def repo_4073_url(
+    tmp_path,
+    rpm_repository_factory,
+    rpm_rpmremote_factory,
+    rpm_publication_factory,
+    rpm_distribution_factory,
+    init_and_sync,
+):
+    REPODIR = tmp_path / "repo_4073"
+
+    def download_fixture(fixture_name: str, to_relative_path: str) -> Path:
+        url = urljoin(RPM_UNSIGNED_FIXTURE_URL, fixture_name)
+        response = requests.get(url)
+        response.raise_for_status()
+        pkg = REPODIR / to_relative_path
+        pkg.parent.mkdir(parents=True, exist_ok=True)
+        pkg.write_bytes(response.content)
+        return pkg
+
+    def get_package_list_from_repodata(repodata_dir: Path):
+        assert repodata_dir.exists()
+        primary_xml_file = next(repodata_dir.glob("*primary.xml*"))
+        result_repo = cr.RepositoryReader.from_metadata_files(str(primary_xml_file), None, None)
+        parsed = result_repo.parse_packages(only_primary=True)[0]  # {<checksum>: <cr.Package>}
+        return list(parsed.values())
+
+    # Setup repository packages layout
+    BEAR_FILENAME = "bear-4.1-1.noarch.rpm"
+    BEAR_RELATIVE_PATH = f"bear/{BEAR_FILENAME}"
+    CAMEL_FILENAME = "camel-0.1-1.noarch.rpm"
+    CAMEL_RELATIVE_PATH = f"camel/{BEAR_FILENAME}"  # yes, we're faking the filename
+
+    bear_rpm = download_fixture(BEAR_FILENAME, to_relative_path=BEAR_RELATIVE_PATH)
+    camel_rpm = download_fixture(CAMEL_FILENAME, to_relative_path=CAMEL_RELATIVE_PATH)
+    bear_pkg = cr.package_from_rpm(str(bear_rpm), location_href=BEAR_RELATIVE_PATH)
+    camel_pkg = cr.package_from_rpm(str(camel_rpm), location_href=CAMEL_RELATIVE_PATH)
+    BEAR_NAME = bear_pkg.name
+    CAMEL_NAME = camel_pkg.name
+
+    # Create repository with messed location_hrefs
+    with cr.RepositoryWriter(str(REPODIR), compression=cr.NO_COMPRESSION) as writer:
+        writer.set_num_of_pkgs(2)
+        writer.add_pkg(bear_pkg)
+        writer.add_pkg(camel_pkg)
+
+    # Assert it's what we expect
+    repodata_dir = REPODIR / "repodata"
+    packages_from_repodata = get_package_list_from_repodata(repodata_dir)
+    name_location_pkg_map = [(p.name, p.location_href) for p in packages_from_repodata]
+
+    assert (BEAR_NAME, BEAR_RELATIVE_PATH) in name_location_pkg_map
+    assert (CAMEL_NAME, CAMEL_RELATIVE_PATH) in name_location_pkg_map
+    return f"file://{REPODIR.absolute()}"
+
+
+def test_repo_4073(repo_4073_url):
+    assert repo_4073_url
+
+
+def test_repo_with_different_nevra_same_location_href(
+    repo_4073_url,
+    rpm_repository_factory,
+    rpm_rpmremote_factory,
+    init_and_sync,
+    rpm_publication_factory,
+    rpm_distribution_factory,
+    rpm_package_api,
+    distribution_base_url,
+    delete_orphans_pre,
+):
+    """Test syncing repository with packages having different NEVRA and same relative_path."""
+
+    # utils
+    def get_packages_in(repository) -> list[str]:
+        packages = rpm_package_api.list(repository_version=repository.latest_version_href)
+        package_name_location_href = [(pkg.name, pkg.location_href) for pkg in packages.results]
+        return package_name_location_href
+
+    def is_pkg_in_(distribution, pkg_relative_path) -> bool:
+        base_url = distribution_base_url(distribution.base_url)
+        pkg_url = urljoin(base_url, pkg_relative_path)
+        response = requests.get(pkg_url)
+        return response.status_code == 200
+
+    # when
+    REMOTE_URL = repo_4073_url
+    SYNC_POLICY = "mirror_content_only"
+    repository, _ = init_and_sync(url=REMOTE_URL, sync_policy=SYNC_POLICY)
+    rpm_publication_factory(repository=repository.pulp_href)
+    distribution = rpm_distribution_factory(repository=repository.pulp_href)
+
+    # then
+    package_name_location_href = get_packages_in(repository)
+    assert ("bear", "bear-4.1-1.noarch.rpm") in package_name_location_href
+    assert ("camel", "camel-0.1-1.noarch.rpm") in package_name_location_href
+
+    assert is_pkg_in_(distribution, "Packages/b/bear-4.1-1.noarch.rpm") is True
+    assert is_pkg_in_(distribution, "Packages/c/camel-0.1-1.noarch.rpm") is True
