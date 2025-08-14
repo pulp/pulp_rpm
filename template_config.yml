@@ -42,7 +42,6 @@ pulp_env_gcp: {}
 pulp_env_s3: {}
 pulp_scheme: https
 pulp_settings:
-  SPECTACULAR_SETTINGS__OAS_VERSION: "3.0.3"
   allowed_content_checksums:
   - sha1
   - sha224
