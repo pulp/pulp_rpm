@@ -77,7 +77,7 @@ VARSYAML
 
 cat >> vars/main.yaml << VARSYAML
 pulp_env: {}
-pulp_settings: {"SPECTACULAR_SETTINGS__OAS_VERSION": "3.0.3", "allowed_content_checksums": ["sha1", "sha224", "sha256", "sha512"], "allowed_export_paths": ["/tmp"], "allowed_import_paths": ["/tmp"], "orphan_protection_time": 0}
+pulp_settings: {"allowed_content_checksums": ["sha1", "sha224", "sha256", "sha512"], "allowed_export_paths": ["/tmp"], "allowed_import_paths": ["/tmp"], "orphan_protection_time": 0}
 pulp_scheme: https
 pulp_default_container: ghcr.io/pulp/pulp-ci-centos9:latest
 VARSYAML
