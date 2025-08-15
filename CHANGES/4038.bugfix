@@ -1,1 +1,0 @@
-Fixed: KeyError: 'package_signing_fingerprint' in pulp_rpm/app/serializers/repository.py
