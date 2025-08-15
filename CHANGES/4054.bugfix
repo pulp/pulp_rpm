@@ -1,1 +1,0 @@
-Adapt to a pulpcore change that inadvertently broke pulp_rpm, due to a slightly improper use of an API.
