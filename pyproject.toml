@@ -24,14 +24,14 @@ classifiers = [
   "Programming Language :: Python :: 3.12",
   "Programming Language :: Python :: 3.13",
 ]
-requires-python = ">=3.9"
+requires-python = ">=3.11"
 dependencies = [
     "createrepo_c~=1.2.1",
     "django_readonly_field~=1.1.1",
     "jsonschema>=4.6,<5.0",
-    "libcomps>=0.1.20.post1,<0.2",
+    "libcomps>=0.1.22.post1,<0.2",
     "productmd~=1.33.0",
-    "pulpcore>=3.81.0,<3.100",
+    "pulpcore>=3.85.0,<3.100",
     "solv~=0.7.21",
     "aiohttp_xmlrpc~=1.5.0",
     "importlib-resources~=6.4.0",
