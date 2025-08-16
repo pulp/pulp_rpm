@@ -8,6 +8,17 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.32.0 (2025-08-15) {: #3.32.0 }
+
+#### Bugfixes {: #3.32.0-bugfix }
+
+- Fixed: KeyError: 'package_signing_fingerprint' in pulp_rpm/app/serializers/repository.py
+  [#4038](https://github.com/pulp/pulp_rpm/issues/4038)
+- Adapt to a pulpcore change that inadvertently broke pulp_rpm, due to a slightly improper use of an API.
+  [#4054](https://github.com/pulp/pulp_rpm/issues/4054)
+
+---
+
 ## 3.31.2 (2025-07-17) {: #3.31.2 }
 
 #### Bugfixes {: #3.31.2-bugfix }
