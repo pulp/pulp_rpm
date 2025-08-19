@@ -1251,7 +1251,6 @@ def test_repo_4073(repo_4073_url):
     assert repo_4073_url
 
 
-@pytest.mark.parallel
 def test_repo_with_different_nevra_same_location_href(
     repo_4073_url,
     rpm_repository_factory,
@@ -1261,14 +1260,15 @@ def test_repo_with_different_nevra_same_location_href(
     rpm_distribution_factory,
     rpm_package_api,
     distribution_base_url,
+    delete_orphans_pre,
 ):
     """Test syncing repository with packages having different NEVRA and same relative_path."""
 
     # utils
     def get_packages_in(repository) -> list[str]:
         packages = rpm_package_api.list(repository_version=repository.latest_version_href)
-        package_names = [pkg.name for pkg in packages.results]
-        return package_names
+        package_name_location_href = [(pkg.name, pkg.location_href) for pkg in packages.results]
+        return package_name_location_href
 
     def is_pkg_in_(distribution, pkg_relative_path) -> bool:
         base_url = distribution_base_url(distribution.base_url)
@@ -1284,9 +1284,9 @@ def test_repo_with_different_nevra_same_location_href(
     distribution = rpm_distribution_factory(repository=repository.pulp_href)
 
     # then
-    package_names = get_packages_in(repository)
-    assert "bear" in package_names
-    assert "camel" in package_names
+    package_name_location_href = get_packages_in(repository)
+    assert ("bear", "bear-4.1-1.noarch.rpm") in package_name_location_href
+    assert ("camel", "camel-0.1-1.noarch.rpm") in package_name_location_href
 
     assert is_pkg_in_(distribution, "Packages/b/bear-4.1-1.noarch.rpm") is True
     assert is_pkg_in_(distribution, "Packages/c/camel-0.1-1.noarch.rpm") is True

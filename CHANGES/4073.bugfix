@@ -1,0 +1,2 @@
+On non-mirror_complete repository.sync, force a package location_href to
+match it's package 'cannonical' filename, `{NEVRA}.rpm`.
