@@ -1326,6 +1326,9 @@ class RpmFirstStage(Stage):
                 url = urlpath_sanitize(base_url, package.location_href)
                 del pkg  # delete it as soon as we're done with it
 
+                # if not self.mirror_metadata:
+                #     package.location_href = package.filename
+
                 store_package_for_mirroring(self.repository, package.pkgId, package.location_href)
                 artifact = Artifact(size=package.size_package)
                 checksum_type = getattr(CHECKSUM_TYPES, package.checksum_type.upper())
