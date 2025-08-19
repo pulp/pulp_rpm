@@ -719,9 +719,17 @@ def test_sync_modular_static_context(init_and_sync, get_content_summary, get_con
 
 
 @pytest.mark.parallel
-@pytest.mark.parametrize("sync_policy", ["mirror_content_only", "additive"])
+@pytest.mark.parametrize(
+    "sync_policy",
+    [
+        "mirror_content_only",
+        "mirror_content_only_sign",
+        "additive",
+        "additive_sign",
+    ],
+)
 def test_sync_skip_srpm(init_and_sync, sync_policy, get_content):
-    """In mirror_content_only mode, skip_types is allowed."""
+    """In mirror_content_only* mode, skip_types is allowed."""
     repository, _ = init_and_sync(
         url=SRPM_UNSIGNED_FIXTURE_URL, skip_types=["srpm"], sync_policy=sync_policy
     )
@@ -1116,7 +1124,14 @@ def test_additive_mode(init_and_sync, get_content):
 
 
 @pytest.mark.parallel
-@pytest.mark.parametrize("sync_policy", ["mirror_complete", "mirror_content_only"])
+@pytest.mark.parametrize(
+    "sync_policy",
+    [
+        "mirror_complete",
+        "mirror_content_only",
+        "mirror_content_only_sign",
+    ],
+)
 def test_mirror_mode(sync_policy, init_and_sync, rpm_publication_api, get_content_summary):
     """Test of mirror mode."""
     repository, remote = init_and_sync(url=SRPM_UNSIGNED_FIXTURE_URL, policy="on_demand")

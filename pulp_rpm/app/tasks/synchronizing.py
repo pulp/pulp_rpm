@@ -566,7 +566,9 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
                 namespace=directory,
             )
 
-            dv = RpmDeclarativeVersion(first_stage=stage, repository=repo, mirror=mirror)
+            dv = RpmDeclarativeVersion(
+                first_stage=stage, repository=repo, mirror=mirror, sync_policy=sync_policy
+            )
             repo_version = dv.create() or repo.latest_version()
 
             repo_config["sync_details"]["most_recent_version"] = repo_version.number
@@ -626,6 +628,7 @@ class RpmDeclarativeVersion(DeclarativeVersion):
 
         Adding it here, because we call RpmDeclarativeVersion multiple times in sync.
         """
+        self.sync_policy = kwargs.pop("sync_policy", None)
         kwargs["acs"] = True
         super().__init__(*args, **kwargs)
 
@@ -652,7 +655,7 @@ class RpmDeclarativeVersion(DeclarativeVersion):
         pipeline.extend(
             [
                 ArtifactDownloader(),
-                RpmArtifactSigningStage(self.repository),
+                RpmArtifactSigningStage(self.repository, self.sync_policy),
                 ArtifactSaver(),
                 QueryExistingContents(),
                 RpmContentSaver(),
@@ -1599,15 +1602,17 @@ class RpmArtifactSigningStage(Stage):
     This stage runs after ArtifactSaver, allowing us to sign the synchronized rpms
     """
 
-    def __init__(self, repository):
+    def __init__(self, repository, sync_policy=None):
         """
         Initialize the signing stage.
 
         Args:
             repository: RpmRepository instance that may have signing service configured
+            sync_policy: Sync policy being used for this sync operation
         """
         super().__init__()
         self.repository = repository
+        self.sync_policy = sync_policy
         # Populate the repository package signing service and fingerprint as they can't be
         # populated asynchronously
         _ = self.repository.package_signing_service
@@ -1631,9 +1636,24 @@ class RpmArtifactSigningStage(Stage):
                 f"No package signing service configured for repository {self.repository.name}"
             )
 
+        # Check if this is a re-sign sync policy
+        should_sign = (
+            self.sync_policy
+            in (SYNC_POLICIES.MIRROR_CONTENT_ONLY_SIGN, SYNC_POLICIES.ADDITIVE_SIGN)
+            and signing_service
+            and fingerprint
+        )
+
+        if should_sign:
+            log.info(f"Re-signing RPM packages during sync with policy: {self.sync_policy}")
+        elif signing_service and fingerprint:
+            log.info(
+                f"Signing service configured but not re-signing with policy: {self.sync_policy}"
+            )
+
         async for batch in self.batches():
             for d_content in batch:
-                if signing_service and fingerprint:
+                if should_sign:
                     for d_artifact in d_content.d_artifacts:
                         await self._sign_rpm_artifact(d_artifact, signing_service, fingerprint)
                 await self.put(d_content)
