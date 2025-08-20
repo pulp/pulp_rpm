@@ -1251,7 +1251,6 @@ def test_repo_4073(repo_4073_url):
     assert repo_4073_url
 
 
-# @pytest.mark.parallel
 def test_repo_with_different_nevra_same_location_href(
     repo_4073_url,
     rpm_repository_factory,
