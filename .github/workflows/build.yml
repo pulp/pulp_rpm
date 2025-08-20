@@ -28,6 +28,7 @@ jobs:
           fetch-depth: 1
           repository: "pulp/pulp-openapi-generator"
           path: "pulp-openapi-generator"
+          ref: "refs/pull/116/head"
       - uses: "actions/setup-python@v5"
         with:
           python-version: "3.11"
