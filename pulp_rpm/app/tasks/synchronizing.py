@@ -1,6 +1,7 @@
 import asyncio
 import collections
 import functools
+import hashlib
 import json
 import logging
 import os
@@ -565,7 +566,9 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
                 namespace=directory,
             )
 
-            dv = RpmDeclarativeVersion(first_stage=stage, repository=repo, mirror=mirror)
+            dv = RpmDeclarativeVersion(
+                first_stage=stage, repository=repo, mirror=mirror, sync_policy=sync_policy
+            )
             repo_version = dv.create() or repo.latest_version()
 
             repo_config["sync_details"]["most_recent_version"] = repo_version.number
@@ -614,6 +617,7 @@ class RpmDeclarativeVersion(DeclarativeVersion):
 
         Adding it here, because we call RpmDeclarativeVersion multiple times in sync.
         """
+        self.sync_policy = kwargs.pop("sync_policy", None)
         kwargs["acs"] = True
         super().__init__(*args, **kwargs)
 
@@ -640,6 +644,7 @@ class RpmDeclarativeVersion(DeclarativeVersion):
         pipeline.extend(
             [
                 ArtifactDownloader(),
+                RpmArtifactSigningStage(self.repository, self.sync_policy),
                 ArtifactSaver(),
                 QueryExistingContents(),
                 RpmContentSaver(),
@@ -1571,3 +1576,110 @@ class RpmContentSaver(ContentSaver):
 
         if update_references_to_save:
             UpdateReference.objects.bulk_create(update_references_to_save, ignore_conflicts=True)
+
+
+class RpmArtifactSigningStage(Stage):
+    """
+    Stage for signing RPM artifacts during sync when repository has signing service configured.
+
+    This stage runs after ArtifactSaver, allowing us to sign the synchronized rpms
+    """
+
+    def __init__(self, repository, sync_policy=None):
+        """
+        Initialize the signing stage.
+
+        Args:
+            repository: RpmRepository instance that may have signing service configured
+            sync_policy: Sync policy being used for this sync operation
+        """
+        super().__init__()
+        self.repository = repository
+        self.sync_policy = sync_policy
+        # Populate the repository package signing service and fingerprint as they can't be
+        # populated asynchronously
+        _ = self.repository.package_signing_service
+        _ = self.repository.package_signing_fingerprint
+
+    async def run(self):
+        """
+        Process DeclarativeContent items and sign RPM packages if signing service is configured.
+        """
+
+        # Get the signing service
+        signing_service = self.repository.package_signing_service
+        fingerprint = self.repository.package_signing_fingerprint
+        if signing_service and fingerprint:
+            log.info(
+                f"Repository {self.repository.name} has signing service configured: "
+                f"{signing_service.name} with fingerprint {fingerprint}"
+            )
+        else:
+            log.debug(
+                f"No package signing service configured for repository {self.repository.name}"
+            )
+
+        # Check if this is a re-sign sync policy
+        should_sign = (
+            self.sync_policy
+            in (SYNC_POLICIES.MIRROR_CONTENT_ONLY_SIGN, SYNC_POLICIES.ADDITIVE_SIGN)
+            and signing_service
+            and fingerprint
+        )
+
+        if should_sign:
+            log.info(f"Re-signing RPM packages during sync with policy: {self.sync_policy}")
+        elif signing_service and fingerprint:
+            log.info(
+                f"Signing service configured but not re-signing with policy: {self.sync_policy}"
+            )
+
+        async for batch in self.batches():
+            for d_content in batch:
+                if should_sign:
+                    for d_artifact in d_content.d_artifacts:
+                        await self._sign_rpm_artifact(d_artifact, signing_service, fingerprint)
+                await self.put(d_content)
+
+    async def _sign_rpm_artifact(self, d_artifact, signing_service, fingerprint):
+        """
+        Sign an RPM artifact and update its metadata.
+
+        Args:
+            d_artifact: Artifact containing an RPM package
+            signing_service: RpmPackageSigningService instance
+            fingerprint: GPG fingerprint to use for signing
+        """
+
+        if (
+            not hasattr(d_artifact, "artifact")
+            or not d_artifact.artifact
+            or not hasattr(d_artifact.artifact, "file")
+            or not d_artifact.artifact.file
+        ):
+            raise ValueError("No file found in d_artifact.artifact")
+
+        # Extract the full path for the artifact file
+        temp_file_path = str(d_artifact.artifact.file)
+
+        # Verify file exists and is accessible
+        if not os.path.exists(temp_file_path):
+            raise FileNotFoundError(f"Downloaded file does not exist: {temp_file_path}")
+
+        # Sign the temporary file in-place
+        log.info(
+            f"Calling signing service with file {temp_file_path} and fingerprint {fingerprint}"
+        )
+        signing_service.sign(temp_file_path, pubkey_fingerprint=fingerprint)
+
+        # Recalculate artifact metadata for the signed file
+        with open(temp_file_path, "rb") as f:
+            file_content = f.read()
+
+        d_artifact.artifact.size = len(file_content)
+        for hash in "md5", "sha1", "sha224", "sha256", "sha384", "sha512":
+            if (
+                hasattr(d_artifact.artifact, hash)
+                and getattr(d_artifact.artifact, hash) is not None
+            ):
+                setattr(d_artifact.artifact, hash, getattr(hashlib, hash)(file_content).hexdigest())
