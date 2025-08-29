@@ -1,0 +1,2 @@
+On sync, force a Package's location_href to match it's filename (derived from NEVRA).
+On publish, force the metadata to also use this filename.
