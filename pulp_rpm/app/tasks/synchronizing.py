@@ -1,7 +1,6 @@
 import asyncio
 import collections
 import functools
-import hashlib
 import json
 import logging
 import os
@@ -1660,10 +1659,10 @@ class RpmArtifactSigningStage(Stage):
 
     async def _sign_rpm_artifact(self, d_artifact, signing_service, fingerprint):
         """
-        Sign an RPM artifact and update its metadata.
+        Sign an RPM artifact and create a new artifact with updated metadata.
 
         Args:
-            d_artifact: Artifact containing an RPM package
+            d_artifact: DeclarativeArtifact containing an RPM package
             signing_service: RpmPackageSigningService instance
             fingerprint: GPG fingerprint to use for signing
         """
@@ -1689,14 +1688,8 @@ class RpmArtifactSigningStage(Stage):
         )
         signing_service.sign(temp_file_path, pubkey_fingerprint=fingerprint)
 
-        # Recalculate artifact metadata for the signed file
-        with open(temp_file_path, "rb") as f:
-            file_content = f.read()
+        # Create a new artifact from the signed file (this handles all checksums automatically)
+        new_artifact = Artifact.init_and_validate(temp_file_path)
 
-        d_artifact.artifact.size = len(file_content)
-        for hash in "md5", "sha1", "sha224", "sha256", "sha384", "sha512":
-            if (
-                hasattr(d_artifact.artifact, hash)
-                and getattr(d_artifact.artifact, hash) is not None
-            ):
-                setattr(d_artifact.artifact, hash, getattr(hashlib, hash)(file_content).hexdigest())
+        # Update the DeclarativeArtifact to use the new artifact
+        d_artifact.artifact = new_artifact
