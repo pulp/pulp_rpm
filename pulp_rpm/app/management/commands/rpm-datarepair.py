@@ -3,6 +3,8 @@ from gettext import gettext as _
 
 from django.core.management import BaseCommand, CommandError
 
+from django.db.models import F, Value
+from django.db.models.functions import Concat
 from pulp_rpm.app.models import Package  # noqa
 from pulp_rpm.app.models.advisory import UpdateCollection, UpdateRecord  # noqa
 
@@ -24,8 +26,10 @@ class Command(BaseCommand):
 
         if issue == "2460":
             self.repair_2460()
-        if issue == "3127":
+        elif issue == "3127":
             self.repair_3127()
+        elif issue == "4073":
+            self.repair_4073()
         else:
             raise CommandError(_("Unknown issue: '{}'").format(issue))
 
@@ -56,3 +60,37 @@ class Command(BaseCommand):
         for collection in update_collections:
             collection.name = "collection-autofill-" + uuid.uuid4().hex[:12]
             collection.save()
+
+    def repair_4073(self):
+        """Perform data repair for issue #4073.
+
+        For each updated ContentArtifact, print:
+            {ca.pkg_uuid} {ca_uuid} {old_relpath} {new_relpath}
+        """
+        mismatched_packages = Package.objects.annotate(
+            computed_filename=Concat(
+                F("name"),
+                Value("-"),
+                F("version"),
+                Value("-"),
+                F("release"),
+                Value("."),
+                F("arch"),
+                Value(".rpm"),
+            )
+        ).exclude(location_href__endswith=F("computed_filename"))
+
+        UPDATE_MSG = "{pkg_uuid!r} {ca_uuid!r} {old_relpath!r} {new_relpath!r}"
+        for pkg in mismatched_packages.iterator():
+            for ca in pkg.contentartifact_set.exclude(relative_path=pkg.filename):
+                original_relpath = ca.relative_path
+                ca.relative_path = pkg.filename
+                ca.save()
+                self.stdout.write(
+                    UPDATE_MSG.format(
+                        pkg_uuid=str(pkg.pk),
+                        ca_uuid=str(ca.pk),
+                        old_relpath=original_relpath,
+                        new_relpath=ca.relative_path,
+                    )
+                )
