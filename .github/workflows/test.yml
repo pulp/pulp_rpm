@@ -13,10 +13,6 @@ on:
       matrix_env:
         required: true
         type: string
-      skip:
-        required: false
-        type: boolean
-        default: false
 
 defaults:
   run:
@@ -25,7 +21,6 @@ defaults:
 jobs:
   test:
     runs-on: "ubuntu-latest"
-    continue-on-error: ${{ inputs.skip }}
     strategy:
       fail-fast: false
       matrix:
@@ -36,10 +31,6 @@ jobs:
         with:
           fetch-depth: 1
           path: "pulp_rpm"
-
-      - name: "Skip check"
-        if: ${{ inputs.skip }}
-        run: exit 0
 
       - uses: "actions/checkout@v4"
         with:

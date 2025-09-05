@@ -9,11 +9,6 @@
 name: "Lint"
 on:
   workflow_call:
-    inputs:
-      skip:
-        required: false
-        type: boolean
-        default: false
 
 defaults:
   run:
@@ -22,17 +17,12 @@ defaults:
 jobs:
   lint:
     runs-on: "ubuntu-latest"
-    continue-on-error: ${{ inputs.skip }}
 
     steps:
       - uses: "actions/checkout@v4"
         with:
           fetch-depth: 1
           path: "pulp_rpm"
-
-      - name: "Skip check"
-        if: ${{ inputs.skip }}
-        run: exit 0
 
       - uses: "actions/setup-python@v5"
         with:

@@ -10,17 +10,13 @@ name: "Rpm CI"
 on:
   pull_request:
     branches: ['*']
-    paths-ignore:
+    paths:
       - 'docs/**'
       - '.github/**'  # Added for testing purposes - remove in production
 
 concurrency:
   group: ${{ github.ref_name }}-${{ github.workflow }}
   cancel-in-progress: true
-
-defaults:
-  run:
-    working-directory: "pulp_rpm"
 
 jobs:
   check-commits:
@@ -34,12 +30,14 @@ jobs:
         with:
           python-version: "3.11"
       - name: "Install python dependencies"
+        working-directory: "pulp_rpm"
         run: |
           echo ::group::PYDEPS
           pip install requests pygithub pyyaml
           echo ::endgroup::
       - name: "Check commit message"
         if: github.event_name == 'pull_request'
+        working-directory: "pulp_rpm"
         env:
           PY_COLORS: "1"
           ANSIBLE_FORCE_COLOR: "1"
@@ -56,34 +54,17 @@ jobs:
 
   build:
     needs: "lint"
-    uses: "./.github/workflows/build.yml"
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Skip - docs only changes"
+        run: echo "Skipping build for docs-only changes"
 
   test:
     needs: "build"
-    uses: "./.github/workflows/test.yml"
+    uses: "./.github/workflows/test-skip.yml"
     with:
       matrix_env: |
-        [{"TEST": "pulp"}, {"TEST": "azure"}, {"TEST": "s3"}, {"TEST": "lowerbounds"}]
-
-  deprecations:
-    runs-on: "ubuntu-latest"
-    if: github.base_ref == 'main'
-    needs: "test"
-    steps:
-      - name: "Create working directory"
-        run: |
-          mkdir -p "pulp_rpm"
-        working-directory: "."
-      - name: "Download Deprecations"
-        uses: actions/download-artifact@v4
-        with:
-          pattern: "deprecations-*"
-          path: "pulp_rpm"
-          merge-multiple: true
-      - name: "Print deprecations"
-        run: |
-          cat deprecations-*.txt | sort -u
-          ! cat deprecations-*.txt | grep '[^[:space:]]'
+        [{"TEST": "pulp"}, {"TEST": "azure"}, {"TEST": "s3"}]
 
   ready-to-ship:
     # This is a dummy dependent task to have a single entry for the branch protection rules.
@@ -100,4 +81,4 @@ jobs:
         run: |
           echo '${{toJson(needs)}}' | jq -r 'to_entries[]|select(.value.result!="success")|.key + ": " + .value.result'
           echo '${{toJson(needs)}}' | jq -e 'to_entries|map(select(.value.result!="success"))|length == 0'
-          echo "CI says: Looks good!"
+          echo "CI says: Looks good! (docs-only changes)"
