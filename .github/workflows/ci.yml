@@ -48,11 +48,33 @@ jobs:
     outputs:
       run_tests: ${{ steps.check.outputs.run_tests }}
     steps:
-      - name: Analyze changed files (disabled)
+      - uses: "actions/checkout@v4"
+        with:
+          fetch-depth: 0
+          path: "pulp_rpm"
+
+      - uses: "actions/setup-python@v5"
+        with:
+          python-version: "3.12"
+
+      - name: "Install python dependencies"
+        run: |
+          echo ::group::PYDEPS
+          pip install gitpython
+          echo ::endgroup::
+
+      - name: Analyze changed files
         shell: bash
         id: check
         run: |
-            echo "run_tests=true" >> $GITHUB_OUTPUT
+          set +e
+          python3 .ci/scripts/skip_tests.py . origin/main
+          exit_code=$?
+          if [ $exit_code -ne 0 ] && [ $exit_code -ne 1 ]; then
+            echo "Error: skip_tests.py returned unexpected exit code $exit_code"
+            exit $exit_code
+          fi
+          echo "run_tests=$exit_code" >> $GITHUB_OUTPUT
 
   docs:
     uses: "./.github/workflows/docs.yml"

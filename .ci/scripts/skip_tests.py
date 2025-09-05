@@ -29,7 +29,11 @@ DOC_PATTERNS = [
     r"LICENSE.*",
     r"CHANGELOG.*",
     r"CHANGES.*",
-    r"CONTRIBUTING.*",
+    # !!! the lines below are an override for testing purposes, otherwise
+    # !!! the skip would never happen in this same PR
+    r".github/workflows/ci.yml",
+    r".ci/scripts/skip_tests.py",
+    r"template_config.yml",
 ]
 
 # Exit codes

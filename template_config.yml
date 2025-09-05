@@ -20,7 +20,6 @@ deploy_client_to_rubygems: true
 deploy_to_pypi: true
 disabled_redis_runners: []
 docker_fixtures: true
-enable_skip_tests: false
 extra_files: []
 flake8: true
 flake8_ignore: []
@@ -89,6 +88,7 @@ pulp_settings_s3:
 pydocstyle: true
 release_email: pulp-infra@redhat.com
 release_user: pulpbot
+skip_tests_on_doc_only_changes: true
 stalebot: true
 stalebot_days_until_close: 30
 stalebot_days_until_stale: 90
