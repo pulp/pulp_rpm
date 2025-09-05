@@ -12,6 +12,8 @@ from pulp_rpm.app.tasks import synchronize as rpm_synchronize
 
 
 class RpmReplicator(Replicator):
+    """Some 'code' changes, so to speak."""
+
     repository_ctx_cls = PulpRpmRepositoryContext
     distribution_ctx_cls = PulpRpmDistributionContext
     publication_ctx_cls = PulpRpmPublicationContext
