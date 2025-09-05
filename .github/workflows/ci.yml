@@ -121,15 +121,15 @@ jobs:
     needs:
       - "check-changes"
       - "check-commits"
-      - "docs"
       - "lint"
       - "test"
-    if: always()
+      - "docs"
+    if: "always()"
     steps:
       - name: "Collect needed jobs results"
         working-directory: "."
         run: |
-          if [ "${{ needs.check-changes.outputs.run_tests }}" == "1" ]; then
+          if [ ${{ needs.check-changes.outputs.run_tests }} == "1" ]; then
             # Full test run - check all jobs
             echo '${{toJson(needs)}}' | jq -r 'to_entries[]|select(.value.result!="success")|.key + ": " + .value.result'
             echo '${{toJson(needs)}}' | jq -e 'to_entries|map(select(.value.result!="success"))|length == 0'
