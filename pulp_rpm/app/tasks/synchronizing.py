@@ -631,6 +631,33 @@ class RpmDeclarativeVersion(DeclarativeVersion):
         kwargs["acs"] = True
         super().__init__(*args, **kwargs)
 
+    def should_sign(self):
+        """
+        Check if the repository should do signing during sync.
+
+        Returns:
+            bool: True, if the repostiory should sign; False, otherwise.
+
+        """
+        # Get the signing service
+        signing_service = self.repository.package_signing_service
+        fingerprint = self.repository.package_signing_fingerprint
+        if signing_service and fingerprint:
+            log.info(
+                f"Re-signing RPM packages in {self.repository.name} with signing service "
+                f"{signing_service.name} with fingerprint {fingerprint}"
+            )
+
+        # Check if this is a re-sign sync policy
+        should_sign = (
+            self.sync_policy
+            in (SYNC_POLICIES.MIRROR_CONTENT_ONLY_SIGN, SYNC_POLICIES.ADDITIVE_SIGN)
+            and signing_service
+            and fingerprint
+        )
+
+        return should_sign
+
     def pipeline_stages(self, new_version):
         """
         Build a list of stages feeding into the ContentUnitAssociation stage.
@@ -651,10 +678,18 @@ class RpmDeclarativeVersion(DeclarativeVersion):
         ]
         if self.acs:
             pipeline.append(ACSArtifactHandler())
+        pipeline.append(ArtifactDownloader())
+
+        if self.should_sign():
+            pipeline.append(
+                RpmArtifactSigningStage(
+                    self.repository.package_signing_service,
+                    self.repository.package_signing_fingerprint,
+                )
+            )
+
         pipeline.extend(
             [
-                ArtifactDownloader(),
-                RpmArtifactSigningStage(self.repository, self.sync_policy),
                 ArtifactSaver(),
                 QueryExistingContents(),
                 RpmContentSaver(),
@@ -1601,64 +1636,31 @@ class RpmArtifactSigningStage(Stage):
     This stage runs after ArtifactDownloader, allowing us to sign the synchronized rpms
     """
 
-    def __init__(self, repository, sync_policy=None):
+    def __init__(self, signing_service, fingerprint):
         """
         Initialize the signing stage.
 
         Args:
-            repository: RpmRepository instance that may have signing service configured
-            sync_policy: Sync policy being used for this sync operation
+            signing_service: RpmPackageSigningService instance
+            fingerprint: GPG fingerprint to use for signing
         """
         super().__init__()
-        self.repository = repository
-        self.sync_policy = sync_policy
-        # Populate the repository package signing service and fingerprint as they can't be
-        # populated asynchronously
-        _ = self.repository.package_signing_service
-        _ = self.repository.package_signing_fingerprint
+        self.signing_service = signing_service
+        self.fingerprint = fingerprint
 
     async def run(self):
         """
-        Process DeclarativeContent items and sign RPM packages if signing service is configured.
+        Process DeclarativeContent items and sign RPM packages.
         """
-
-        # Get the signing service
-        signing_service = self.repository.package_signing_service
-        fingerprint = self.repository.package_signing_fingerprint
-        if signing_service and fingerprint:
-            log.info(
-                f"Repository {self.repository.name} has signing service configured: "
-                f"{signing_service.name} with fingerprint {fingerprint}"
-            )
-        else:
-            log.debug(
-                f"No package signing service configured for repository {self.repository.name}"
-            )
-
-        # Check if this is a re-sign sync policy
-        should_sign = (
-            self.sync_policy
-            in (SYNC_POLICIES.MIRROR_CONTENT_ONLY_SIGN, SYNC_POLICIES.ADDITIVE_SIGN)
-            and signing_service
-            and fingerprint
-        )
-
-        if should_sign:
-            log.info(f"Re-signing RPM packages during sync with policy: {self.sync_policy}")
-        elif signing_service and fingerprint:
-            log.info(
-                f"Signing service configured but not re-signing with policy: {self.sync_policy}"
-            )
 
         async for batch in self.batches():
             for d_content in batch:
-                if isinstance(d_content.content, Package) and should_sign:
-                    await self._sign_rpm_content(d_content, signing_service, fingerprint)
-                    log.info(f"Package {d_content.content.name} size {d_content.content.size_package} hash {d_content.content.pkgId}")
+                if isinstance(d_content.content, Package):
+                    await self._sign_rpm_content(d_content)
 
                 await self.put(d_content)
 
-    async def _sign_rpm_content(self, d_content, signing_service, fingerprint):
+    async def _sign_rpm_content(self, d_content):
         """
         Sign an RPM content and create a new content with updated metadata.
 
@@ -1689,9 +1691,9 @@ class RpmArtifactSigningStage(Stage):
 
         # Sign the temporary file in-place
         log.info(
-            f"Calling signing service with file {temp_file_path} and fingerprint {fingerprint}"
+            f"Calling signing service with file {temp_file_path} and fingerprint {self.fingerprint}"
         )
-        signing_service.sign(temp_file_path, pubkey_fingerprint=fingerprint)
+        self.signing_service.sign(temp_file_path, pubkey_fingerprint=self.fingerprint)
 
         # Create a new artifact from the signed file (this handles all checksums automatically)
         new_artifact = Artifact.init_and_validate(temp_file_path)
