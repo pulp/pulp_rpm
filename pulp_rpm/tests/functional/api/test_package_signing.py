@@ -237,7 +237,7 @@ def test_sign_chunked_package_on_upload(
         assert rpm_tool.verify_signature(downloaded_package)
 
 
-def test_no_sign_packages_on_sync_if_additive(
+def test_no_sign_packages_on_sync_if_no_signing_service(
     init_and_sync,
     tmp_path,
     gen_object_with_cleanup,
@@ -264,10 +264,7 @@ def test_no_sign_packages_on_sync_if_additive(
     rpm_tool.import_pubkey_string(gpg_a.pubkey)
 
     # Create repository with package signing service configured
-    repository = rpm_repository_factory(
-        package_signing_service=rpm_package_signing_service.pulp_href,
-        package_signing_fingerprint=fingerprint,
-    )
+    repository = rpm_repository_factory()
     init_and_sync(repository=repository)
 
     # Get synced packages - refresh repository to get latest version
@@ -325,7 +322,7 @@ def test_sign_packages_on_sync(
             package_signing_service=rpm_package_signing_service.pulp_href,
             package_signing_fingerprint=fingerprint,
         )
-        init_and_sync(repository=repository, sync_policy="additive_sign")
+        init_and_sync(repository=repository)
 
         # Get synced packages - refresh repository to get latest version
         updated_repository = rpm_repository_api.read(repository.pulp_href)

@@ -218,14 +218,10 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin, Roles
             sync_policy = SYNC_POLICIES.ADDITIVE if not mirror else SYNC_POLICIES.MIRROR_COMPLETE
 
         # validate some invariants that involve repository-wide settings.
-        if sync_policy in (
-            SYNC_POLICIES.MIRROR_COMPLETE,
-            SYNC_POLICIES.MIRROR_CONTENT_ONLY,
-            SYNC_POLICIES.MIRROR_CONTENT_ONLY_SIGN,
-        ):
+        if sync_policy in (SYNC_POLICIES.MIRROR_COMPLETE, SYNC_POLICIES.MIRROR_CONTENT_ONLY):
             err_msg = (
-                "Cannot use '{}' in combination with a 'mirror_complete', "
-                "'mirror_content_only' or 'mirror_content_only_sign' sync policy."
+                "Cannot use '{}' in combination with a 'mirror_complete' or "
+                "'mirror_content_only' sync policy."
             )
             if repository.retain_package_versions > 0:
                 raise DRFValidationError(err_msg.format("retain_package_versions"))

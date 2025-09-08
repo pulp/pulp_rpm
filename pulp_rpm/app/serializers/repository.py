@@ -472,16 +472,14 @@ class RpmRepositorySyncURLSerializer(RepositorySyncURLSerializer):
     )
     sync_policy = serializers.ChoiceField(
         help_text=_(
-            "Options: 'additive', 'additive_sign', 'mirror_complete', 'mirror_content_only', "
-            "'mirror_content_only_sign'. Default: 'additive'. "
+            "Options: 'additive', 'mirror_complete', 'mirror_content_only'. Default: 'additive'. "
             "Modifies how the sync is performed. 'mirror_complete' will clone the original "
             "metadata and create an automatic publication from it, but comes with some "
             "limitations and does not work for certain repositories. 'mirror_content_only' will "
             "change the repository contents to match the remote but the metadata will be "
             "regenerated and will not be bit-for-bit identical. 'additive' will retain the "
             "existing contents of the repository and add the contents of the repository being "
-            "synced. The '_sign' variants will also sign RPM packages during sync if the "
-            "repository has a signing service configured."
+            "synced."
         ),
         choices=SYNC_POLICY_CHOICES,
         required=False,

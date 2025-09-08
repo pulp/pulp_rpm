@@ -642,19 +642,19 @@ class RpmDeclarativeVersion(DeclarativeVersion):
         # Get the signing service
         signing_service = self.repository.package_signing_service
         fingerprint = self.repository.package_signing_fingerprint
-        if signing_service and fingerprint:
+
+        # Check if this is a re-sign sync policy
+        should_sign = (
+            self.sync_policy in (SYNC_POLICIES.MIRROR_CONTENT_ONLY, SYNC_POLICIES.ADDITIVE)
+            and signing_service
+            and fingerprint
+        )
+
+        if should_sign:
             log.info(
                 f"Re-signing RPM packages in {self.repository.name} with signing service "
                 f"{signing_service.name} with fingerprint {fingerprint}"
             )
-
-        # Check if this is a re-sign sync policy
-        should_sign = (
-            self.sync_policy
-            in (SYNC_POLICIES.MIRROR_CONTENT_ONLY_SIGN, SYNC_POLICIES.ADDITIVE_SIGN)
-            and signing_service
-            and fingerprint
-        )
 
         return should_sign
 
