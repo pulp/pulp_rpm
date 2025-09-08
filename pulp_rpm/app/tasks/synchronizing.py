@@ -1598,7 +1598,7 @@ class RpmArtifactSigningStage(Stage):
     """
     Stage for signing RPM artifacts during sync when repository has signing service configured.
 
-    This stage runs after ArtifactSaver, allowing us to sign the synchronized rpms
+    This stage runs after ArtifactDownloader, allowing us to sign the synchronized rpms
     """
 
     def __init__(self, repository, sync_policy=None):
@@ -1652,21 +1652,26 @@ class RpmArtifactSigningStage(Stage):
 
         async for batch in self.batches():
             for d_content in batch:
-                if should_sign:
-                    for d_artifact in d_content.d_artifacts:
-                        await self._sign_rpm_artifact(d_artifact, signing_service, fingerprint)
+                if isinstance(d_content.content, Package) and should_sign:
+                    await self._sign_rpm_content(d_content, signing_service, fingerprint)
+                    log.info(f"Package {d_content.content.name} size {d_content.content.size_package} hash {d_content.content.pkgId}")
+
                 await self.put(d_content)
 
-    async def _sign_rpm_artifact(self, d_artifact, signing_service, fingerprint):
+    async def _sign_rpm_content(self, d_content, signing_service, fingerprint):
         """
-        Sign an RPM artifact and create a new artifact with updated metadata.
+        Sign an RPM content and create a new content with updated metadata.
 
         Args:
-            d_artifact: DeclarativeArtifact containing an RPM package
+            d_content: DeclarativeContent containing an RPM package
             signing_service: RpmPackageSigningService instance
             fingerprint: GPG fingerprint to use for signing
         """
 
+        if len(d_content.d_artifacts) != 1:
+            raise ValueError("Expected exactly one artifact for signing")
+
+        d_artifact = d_content.d_artifacts[0]
         if (
             not hasattr(d_artifact, "artifact")
             or not d_artifact.artifact
@@ -1693,3 +1698,5 @@ class RpmArtifactSigningStage(Stage):
 
         # Update the DeclarativeArtifact to use the new artifact
         d_artifact.artifact = new_artifact
+        d_content.content.size_package = new_artifact.size
+        d_content.content.pkgId = getattr(new_artifact, d_content.content.checksum_type)
