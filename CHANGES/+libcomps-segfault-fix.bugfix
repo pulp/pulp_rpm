@@ -1,0 +1,1 @@
+Update the required version of the libcomps package to ensure a bugfix is present which was resulting in memory corruption and segfaults in some cases.
