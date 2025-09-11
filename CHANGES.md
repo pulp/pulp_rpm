@@ -104,6 +104,21 @@
 
 ---
 
+## 3.29.6 (2025-09-10) {: #3.29.6 }
+
+#### Bugfixes {: #3.29.6-bugfix }
+
+- Fixed a bug where syncing from a remote repository with duplicate filenames and different paths
+  would result in one of these packages being missing from a Pulp distribution.
+  This is known to happen in some JFrog repositories.
+
+  On systems that have synced from such repositories before, it is required to clean up the related
+  packages with orphan cleanup or use the provided "pulpcore-manager rpm-datarepair 4073",
+  which forces internal objects to use non-ambiguous filenames.
+  [#4073](https://github.com/pulp/pulp_rpm/issues/4073)
+
+---
+
 ## 3.29.5 (2025-07-17) {: #3.29.5 }
 
 #### Bugfixes {: #3.29.5-bugfix }
@@ -210,6 +225,12 @@ No significant changes.
 #### Misc {: #3.28.0-misc }
 
 - [#3828](https://github.com/pulp/pulp_rpm/issues/3828), [#3854](https://github.com/pulp/pulp_rpm/issues/3854), [#3856](https://github.com/pulp/pulp_rpm/issues/3856)
+
+---
+
+## 3.27.7 (2025-09-10) {: #3.27.7 }
+
+No significant changes.
 
 ---
 
