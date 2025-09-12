@@ -8,6 +8,14 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.29.7 (2025-09-12) {: #3.29.7 }
+
+#### Bugfixes {: #3.29.7-bugfix }
+
+- Update the required version of the libcomps package to ensure a bugfix is present which was resulting in memory corruption and segfaults in some cases.
+
+---
+
 ## 3.29.6 (2025-09-10) {: #3.29.6 }
 
 #### Bugfixes {: #3.29.6-bugfix }
