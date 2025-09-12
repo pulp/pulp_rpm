@@ -8,6 +8,14 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.32.1 (2025-09-12) {: #3.32.1 }
+
+#### Bugfixes {: #3.32.1-bugfix }
+
+- Update the required version of the libcomps package to ensure a bugfix is present which was resulting in memory corruption and segfaults in some cases.
+
+---
+
 ## 3.32.0 (2025-08-15) {: #3.32.0 }
 
 #### Bugfixes {: #3.32.0-bugfix }
@@ -101,6 +109,14 @@
 #### Misc {: #3.30.0-misc }
 
 - 
+
+---
+
+## 3.29.7 (2025-09-12) {: #3.29.7 }
+
+#### Bugfixes {: #3.29.7-bugfix }
+
+- Update the required version of the libcomps package to ensure a bugfix is present which was resulting in memory corruption and segfaults in some cases.
 
 ---
 
@@ -228,6 +244,12 @@ No significant changes.
 
 ---
 
+## 3.27.8 (2025-09-12) {: #3.27.8 }
+
+No significant changes.
+
+---
+
 ## 3.27.7 (2025-09-10) {: #3.27.7 }
 
 No significant changes.
@@ -316,6 +338,16 @@ No significant changes.
   [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
 - Made sync more tolerant of poorly configured webservers.
   [#3599](https://github.com/pulp/pulp_rpm/issues/3599)
+
+---
+
+## 3.26.6 (2025-09-12) {: #3.26.6 }
+
+#### Bugfixes {: #3.26.6-bugfix }
+
+- Adapt to a pulpcore change that inadvertently broke pulp_rpm, due to a slightly improper use of an API.
+  [#4054](https://github.com/pulp/pulp_rpm/issues/4054)
+- Significantly improved publish performance (more than double in some cases) by fixing some Django queries.
 
 ---
 
