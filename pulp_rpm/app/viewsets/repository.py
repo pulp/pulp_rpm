@@ -217,6 +217,19 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin, Roles
         if not sync_policy:
             sync_policy = SYNC_POLICIES.ADDITIVE if not mirror else SYNC_POLICIES.MIRROR_COMPLETE
 
+        # Check for incompatible combinations of signing service and remote or sync policies
+        if repository.package_signing_service and repository.package_signing_fingerprint:
+            if remote.policy == remote.ON_DEMAND:
+                raise DRFValidationError(
+                    "Cannot use 'on_demand' remote policy when repository has a package signing "
+                    "service."
+                )
+            if sync_policy == SYNC_POLICIES.MIRROR_COMPLETE:
+                raise DRFValidationError(
+                    "Cannot use 'mirror_complete' sync policy when repository has a package "
+                    "signing service."
+                )
+
         # validate some invariants that involve repository-wide settings.
         if sync_policy in (SYNC_POLICIES.MIRROR_COMPLETE, SYNC_POLICIES.MIRROR_CONTENT_ONLY):
             err_msg = (

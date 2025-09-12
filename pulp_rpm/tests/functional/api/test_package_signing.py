@@ -1,10 +1,12 @@
 from dataclasses import dataclass
 import hashlib
+import json
 from pathlib import Path
 import uuid
 
 import pytest
 import requests
+from pulpcore.client.pulp_rpm import ApiException
 from pulpcore.exceptions.validation import InvalidSignatureError
 
 from pulp_rpm.app.shared_utils import RpmTool
@@ -342,3 +344,73 @@ def test_sign_packages_on_sync(
             )
         )
         assert rpm_tool.verify_signature(downloaded_package)
+
+
+@pytest.mark.parallel
+def test_error_signing_with_on_demand_sync(
+    init_and_sync,
+    tmp_path,
+    gen_object_with_cleanup,
+    download_content_unit,
+    signing_gpg_extra,
+    rpm_package_signing_service,
+    rpm_repository_factory,
+):
+    """
+    Ensure that signed syncing with 'on_demand' policy raises an error as it's not supported
+    """
+    from pulp_rpm.app.shared_utils import RpmTool
+
+    # Setup GPG and RPM tool
+    gpg_a, _ = signing_gpg_extra
+
+    rpm_tool = RpmTool(tmp_path)
+    rpm_tool.import_pubkey_string(gpg_a.pubkey)
+
+    # Create repository with package signing service configured
+    repository = rpm_repository_factory(
+        package_signing_service=rpm_package_signing_service.pulp_href,
+        package_signing_fingerprint=gpg_a.fingerprint,
+    )
+
+    with pytest.raises(ApiException) as e:
+        init_and_sync(repository=repository, policy="on_demand")
+    assert e.value.status == 400
+    assert json.loads(e.value.body) == [
+        "Cannot use 'on_demand' remote policy when repository has a package signing service."
+    ]
+
+
+@pytest.mark.parallel
+def test_error_signing_with_mirror_complete_sync(
+    init_and_sync,
+    tmp_path,
+    gen_object_with_cleanup,
+    download_content_unit,
+    signing_gpg_extra,
+    rpm_package_signing_service,
+    rpm_repository_factory,
+):
+    """
+    Ensure that signed syncing with 'mirror_complete' policy raises an error as it's not supported
+    """
+    from pulp_rpm.app.shared_utils import RpmTool
+
+    # Setup GPG and RPM tool
+    gpg_a, _ = signing_gpg_extra
+
+    rpm_tool = RpmTool(tmp_path)
+    rpm_tool.import_pubkey_string(gpg_a.pubkey)
+
+    # Create repository with package signing service configured
+    repository = rpm_repository_factory(
+        package_signing_service=rpm_package_signing_service.pulp_href,
+        package_signing_fingerprint=gpg_a.fingerprint,
+    )
+
+    with pytest.raises(ApiException) as e:
+        init_and_sync(repository=repository, sync_policy="mirror_complete")
+    assert e.value.status == 400
+    assert json.loads(e.value.body) == [
+        "Cannot use 'mirror_complete' sync policy when repository has a package signing service."
+    ]
