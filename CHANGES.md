@@ -8,6 +8,16 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.26.6 (2025-09-12) {: #3.26.6 }
+
+#### Bugfixes {: #3.26.6-bugfix }
+
+- Adapt to a pulpcore change that inadvertently broke pulp_rpm, due to a slightly improper use of an API.
+  [#4054](https://github.com/pulp/pulp_rpm/issues/4054)
+- Significantly improved publish performance (more than double in some cases) by fixing some Django queries.
+
+---
+
 ## 3.26.5 (2025-04-23) {: #3.26.5 }
 
 #### Bugfixes {: #3.26.5-bugfix }
