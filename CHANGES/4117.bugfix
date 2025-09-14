@@ -1,0 +1,1 @@
+Changed sync/pub task.results to be str-representation of the resulting repo-version.
