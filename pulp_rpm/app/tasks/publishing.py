@@ -421,7 +421,9 @@ def publish(
 
             log.info(_("Publication: {publication} created").format(publication=publication.pk))
 
-            return publication
+            return "<Repository: {}; Version: {}>".format(
+                publication.repository.name, publication.repository_version.number
+            )
 
 
 def generate_repo_metadata(
