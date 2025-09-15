@@ -600,7 +600,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
             for path, repo_version in repo_sync_results.items():
                 add_metadata_to_publication(publication, repo_version, prefix=path)
 
-    return str(repo_sync_results[PRIMARY_REPO])
+    return repo_sync_results[PRIMARY_REPO]
 
 
 class RpmDeclarativeVersion(DeclarativeVersion):
