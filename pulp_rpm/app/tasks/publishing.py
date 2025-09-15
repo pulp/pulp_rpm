@@ -10,6 +10,8 @@ import libcomps
 from django.conf import settings
 from django.core.files import File
 from django.db.models import Q
+
+from pulp_rpm.app.serializers import RpmPublicationSerializer
 from pulpcore.plugin.models import (
     AsciiArmoredDetachedSigningService,
     ContentArtifact,
@@ -420,8 +422,10 @@ def publish(
                     publish_pb.increment()
 
             log.info(_("Publication: {publication} created").format(publication=publication.pk))
-
-            return publication
+            serialized_pub = RpmPublicationSerializer(
+                instance=publication, context={"request": None}
+            ).data
+            return serialized_pub
 
 
 def generate_repo_metadata(

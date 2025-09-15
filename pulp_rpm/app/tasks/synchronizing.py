@@ -600,7 +600,18 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
             for path, repo_version in repo_sync_results.items():
                 add_metadata_to_publication(publication, repo_version, prefix=path)
 
-    return repo_sync_results[PRIMARY_REPO]
+    try:
+        # This isn't exported for plugins until core/3.88 - but neither is the deprecation around
+        # the return-value. So we'll make the attempt to "play nice", and just return None
+        # if we're on previous versions of core.
+        from pulpcore.plugin.serializers import RepositoryVersionSerializer
+
+        serialized_vers = RepositoryVersionSerializer(
+            instance=repo_sync_results[PRIMARY_REPO], context={"request": None}
+        ).data
+        return serialized_vers
+    except ImportError:
+        return None
 
 
 class RpmDeclarativeVersion(DeclarativeVersion):
