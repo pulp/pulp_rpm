@@ -17,3 +17,5 @@ SOLVER_DEBUG_LOGS = True
 RPM_METADATA_USE_REPO_PACKAGE_TIME = False
 NOCACHE_LIST = ["repomd.xml", "repomd.xml.asc", "repomd.xml.key"]
 PRUNE_WORKERS_MAX = 5
+# workaround for: https://github.com/pulp/pulp_rpm/issues/4125
+SPECTACULAR_SETTINGS__OAS_VERSION = "3.0.1"
