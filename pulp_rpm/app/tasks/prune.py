@@ -1,3 +1,4 @@
+from collections import defaultdict
 from datetime import datetime, timedelta
 from logging import getLogger, DEBUG
 
@@ -15,6 +16,8 @@ from pulpcore.plugin.models import (
 from pulpcore.plugin.tasking import dispatch
 from pulp_rpm.app.models.package import Package
 from pulp_rpm.app.models.repository import RpmRepository
+from pulp_rpm.app.rpm_version import RpmVersion
+
 
 log = getLogger(__name__)
 
@@ -35,17 +38,33 @@ def prune_repo_packages(repo_pk, keep_days, dry_run):
     log.debug(f">>> TOTAL RPMS: {curr_vers.get_content(Package.objects).count()}")
 
     # We only care about RPM-Names that have more than one EVRA - "singles" are always kept.
-    rpm_by_name_age = (
-        curr_vers.get_content(Package.objects.with_age())
-        .filter(age__gt=1)
-        .order_by("name", "epoch", "version", "release", "arch")
-        .values("pk")
+    rpm_by_name = (
+        curr_vers.get_content(Package.objects)
+        .order_by(
+            "name", "epoch", "version", "release", "arch"
+        )  # why sort by all of these values?  lexicographical sort is not "accurate"
+        .values("pk", "name", "epoch", "version", "release", "arch")
     )
-    log.debug(f">>> NAME/AGE COUNT {rpm_by_name_age.count()}")
+
+    # Pick the latest version of each package available which isn't already present
+    # in the content set.
+    latest_packages_by_arch_and_name = defaultdict(lambda: defaultdict(list))
+    latest_packages = []
+
+    for pkg in rpm_by_name.iterator():
+        pkg_evr = RpmVersion(pkg.epoch, pkg.version, pkg.release)
+        latest_packages_by_arch_and_name[pkg.arch][pkg.name].append((pkg.pk, pkg_evr))
+
+    for arch, packages in latest_packages_by_arch_and_name.items():
+        for name, versions in packages.items():
+            versions.sort(key=lambda p: p[1], reverse=True)
+            latest_packages.add(versions[0].pk)
+
+    log.debug(f">>> NAME/AGE COUNT {latest_packages.count()}")
     log.debug(
         ">>> # NAME/ARCH w/ MULTIPLE EVRs: {}".format(
             curr_vers.get_content(Package.objects)
-            .filter(pk__in=rpm_by_name_age)
+            .filter(pk__in=latest_packages)
             .values("name", "arch")
             .distinct()
             .count()
@@ -64,7 +83,7 @@ def prune_repo_packages(repo_pk, keep_days, dry_run):
     # limiting ourselves to the list of ids that we know are in the repo's current latest-version!
     target_ids_q = (
         RepositoryContent.objects.filter(
-            content__in=Subquery(rpm_by_name_age), repository=repo, version_removed=None
+            content__in=Subquery(latest_packages), repository=repo, version_removed=None
         )
         .filter(pulp_created__lt=eldest_datetime)
         .values("content_id")
