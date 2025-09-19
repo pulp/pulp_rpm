@@ -1,6 +1,7 @@
 import os
 import re
 import textwrap
+from collections import defaultdict
 from gettext import gettext as _
 from logging import getLogger
 
@@ -52,6 +53,7 @@ from pulp_rpm.app.models import (
     UpdateRecord,
 )
 from pulp_rpm.app.shared_utils import urlpath_sanitize
+from pulp_rpm.app.rpm_version import RpmVersion
 
 log = getLogger(__name__)
 
@@ -449,27 +451,26 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
         ), "Cannot apply retention policy to completed repository versions"
 
         if self.retain_package_versions > 0:
-            # It would be more ideal if, instead of annotating with an age and filtering manually,
-            # we could use Django to filter the particular Package content we want to delete.
-            # Something like ".filter(F('age') > self.retain_package_versions)" would be better
-            # however this is not currently possible with Django. It would be possible with raw
-            # SQL but the repository version content membership subquery is currently
-            # django-managed and would be difficult to share.
-            #
-            # Instead we have to do the filtering manually.
-            nonmodular_packages = (
-                Package.objects.with_age()
-                .filter(
-                    pk__in=new_version.content.filter(pulp_type=Package.get_pulp_type()),
-                    is_modular=False,  # don't want to filter out modular RPMs
-                )
-                .only("pk")
-            )
+            nonmodular_packages = Package.objects.filter(
+                pk__in=new_version.content.filter(pulp_type=Package.get_pulp_type()),
+                is_modular=False,  # don't want to filter out modular RPMs
+            ).only("pk", "name", "epoch", "version", "release")
 
+            # Pick the latest version of each package available which isn't already present
+            # in the content set.
             old_packages = []
-            for package in nonmodular_packages:
-                if package.age > self.retain_package_versions:
-                    old_packages.append(package.pk)
+            latest_packages_by_arch_and_name = defaultdict(lambda: defaultdict(list))
+
+            for pkg in nonmodular_packages.iterator():
+                pkg_evr = RpmVersion(pkg.epoch, pkg.version, pkg.release)
+                latest_packages_by_arch_and_name[pkg.arch][pkg.name].append((pkg.pk, pkg_evr))
+
+            for arch, packages in latest_packages_by_arch_and_name.items():
+                for name, versions in packages.items():
+                    versions.sort(key=lambda p: p[1], reverse=True)
+                    old_packages.append(
+                        [pkg[0] for pkg in versions[-self.retain_package_versions :]]
+                    )
 
             new_version.remove_content(Content.objects.filter(pk__in=old_packages))
 

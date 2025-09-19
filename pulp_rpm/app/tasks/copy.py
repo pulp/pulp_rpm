@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from django.db import transaction
 from django.db.models import Q
 
@@ -14,6 +16,7 @@ from pulp_rpm.app.models import (
     RpmRepository,
     Modulemd,
 )
+from pulp_rpm.app.rpm_version import RpmVersion
 
 
 def find_children_of_content(content, src_repo_version):
@@ -111,15 +114,22 @@ def find_children_of_content(content, src_repo_version):
 
     missing_package_names = packagegroup_package_names - set(existing_package_names)
 
-    needed_packages = Package.objects.with_age().filter(
+    needed_packages = Package.objects.filter(
         name__in=missing_package_names, pk__in=src_repo_version.content
-    )
+    ).only("pk", "name", "epoch", "version", "release", "arch")
 
     # Pick the latest version of each package available which isn't already present
     # in the content set.
+    latest_packages_by_arch_and_name = defaultdict(lambda: defaultdict(list))
+
     for pkg in needed_packages.iterator():
-        if pkg.age == 1:
-            children.add(pkg.pk)
+        pkg_evr = RpmVersion(pkg.epoch, pkg.version, pkg.release)
+        latest_packages_by_arch_and_name[pkg.arch][pkg.name].append((pkg.pk, pkg_evr))
+
+    for arch, packages in latest_packages_by_arch_and_name.items():
+        for name, versions in packages.items():
+            versions.sort(key=lambda p: p[1], reverse=True)
+            children.add(versions[0].pk)
 
     return Content.objects.filter(pk__in=children)
 
