@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.32.2 (2025-09-18) {: #3.32.2 }
+
+#### Bugfixes {: #3.32.2-bugfix }
+
+- Downgraded openapi spec version from 3.1 to 3.0 to revert regression in the published Ruby bindings.
+  [#4125](https://github.com/pulp/pulp_rpm/issues/4125)
+
+---
+
 ## 3.32.1 (2025-09-12) {: #3.32.1 }
 
 #### Bugfixes {: #3.32.1-bugfix }
