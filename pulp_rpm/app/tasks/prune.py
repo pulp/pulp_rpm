@@ -1,9 +1,8 @@
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from logging import getLogger, DEBUG
 
 from django.conf import settings
 from django.db.models import F, Subquery
-from django.utils import timezone
 
 from pulpcore.plugin.models import ProgressReport
 from pulpcore.plugin.constants import TASK_STATES
