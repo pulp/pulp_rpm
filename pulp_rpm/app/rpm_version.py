@@ -203,19 +203,16 @@ def _compare_version_strings(first, second):
         version2_stripped, version2_had_caret = strip_prefix(version2_part, b"^")
 
         if version1_had_caret and not version2_had_caret:
-            # first has caret but second doesn't
             if not version2_part:  # second has ended
                 return 1  # first > second
             else:  # second continues
                 return -1  # first < second
         elif not version1_had_caret and version2_had_caret:
-            # second has caret but first doesn't
             if not version1_part:  # first has ended
                 return -1  # first < second
             else:  # first continues
                 return 1  # first > second
         elif version1_had_caret and version2_had_caret:
-            # both have caret, strip and continue
             version1_part = version1_stripped
             version2_part = version2_stripped
             continue
@@ -287,4 +284,4 @@ def _compare_version_strings(first, second):
                 # Equal, continue to next segment
 
     # Should not reach here due to the checks above, but just in case
-    return 0
+    raise RuntimeError("somehow escaped the loop during version comparison")
