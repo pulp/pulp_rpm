@@ -2,6 +2,7 @@ from itertools import chain
 
 from import_export import fields
 from import_export.widgets import ForeignKeyWidget, ManyToManyWidget
+from pulpcore.plugin.util import get_domain
 
 from pulpcore.plugin.importexport import BaseContentResource, QueryModelResource
 from pulpcore.plugin.modelresources import RepositoryResource
@@ -92,7 +93,7 @@ class ModulemdResource(RpmContentResource):
             pulp_ids = row["packages"].split(",")
             pkgids = (
                 Package.objects.select_related("content_ptr")
-                .filter(content_ptr__upstream_id__in=pulp_ids)
+                .filter(content_ptr__upstream_id__in=pulp_ids, pulp_domain=get_domain())
                 .values_list("pkgId", flat=True)
             )
             row["package_ids"] = ",".join(pkgids)
@@ -297,7 +298,9 @@ class AddonResource(QueryModelResource):
         """
         super().before_import_row(row, **kwargs)
 
-        tree = DistributionTree.objects.get(upstream_id=row["distribution_tree"])
+        tree = DistributionTree.objects.get(
+            upstream_id=row["distribution_tree"], pulp_domain=get_domain()
+        )
         row["distribution_tree"] = str(tree.pk)
 
     def set_up_queryset(self):
@@ -341,7 +344,9 @@ class VariantResource(QueryModelResource):
         """
         super().before_import_row(row, **kwargs)
 
-        tree = DistributionTree.objects.get(upstream_id=row["distribution_tree"])
+        tree = DistributionTree.objects.get(
+            upstream_id=row["distribution_tree"], pulp_domain=get_domain()
+        )
         row["distribution_tree"] = str(tree.pk)
 
     def set_up_queryset(self):
@@ -470,9 +475,9 @@ class UpdateCollectionPackageResource(QueryModelResource):
         Format is str(<name>|<update_record.digest>), to be used at import-row time.
         """
 
-        def render(self, value, obj):
+        def render(self, value, obj=None, **kwargs):
             """Render formatted string to use as unique-identifier."""
-            return f"{obj.update_collection.name}|{obj.update_collection.update_record.digest}"
+            return f"{value.name}|{value.update_record.digest}" if value else ""
 
     update_collection = fields.Field(
         column_name="update_collection",
@@ -495,7 +500,9 @@ class UpdateCollectionPackageResource(QueryModelResource):
         super().before_import_row(row, **kwargs)
 
         (uc_name, uc_updrec_digest) = row["update_collection"].split("|")
-        uc_updrecord = UpdateRecord.objects.filter(digest=uc_updrec_digest).first()
+        uc_updrecord = UpdateRecord.objects.filter(
+            digest=uc_updrec_digest, pulp_domain=get_domain()
+        ).first()
         uc = UpdateCollection.objects.filter(name=uc_name, update_record=uc_updrecord).first()
         row["update_collection"] = str(uc.pulp_id)
 
