@@ -12,16 +12,11 @@ from collections import namedtuple
 
 from pulp_rpm.tests.functional.constants import RPM_KICKSTART_FIXTURE_URL, RPM_UNSIGNED_FIXTURE_URL
 
-from pulpcore.app import settings
-
 from pulpcore.client.pulp_rpm import RpmRepositorySyncURL
 
 NUM_REPOS = 2
 
 ExportFileInfo = namedtuple("ExportFileInfo", "output_file_info")
-
-if settings.DOMAIN_ENABLED:
-    pytest.skip("Domains do not support import.", allow_module_level=True)
 
 
 @pytest.fixture
