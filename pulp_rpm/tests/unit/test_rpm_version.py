@@ -1,8 +1,5 @@
 """
 Unit tests for RPM version comparison functionality.
-
-These tests are designed to match the behavior tested in the Rust implementation
-to ensure compatibility between different RPM version comparison implementations.
 """
 
 from pulp_rpm.app.rpm_version import (
