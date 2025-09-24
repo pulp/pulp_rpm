@@ -3,7 +3,6 @@ Unit tests for Package.objects.with_age() functionality.
 """
 
 from django.test import TestCase
-from unittest import skip
 
 from pulp_rpm.app.models import Package
 
@@ -236,7 +235,6 @@ class TestPackageAge(TestCase):
         self.assertEqual(packages[2].release, "1.el8")  # age=3
         self.assertEqual(packages[2].age, 3)
 
-    @skip("The implementation of package age is broken w/r/t '^' and '~' characters")
     def test_age_with_tilde_and_caret_versions(self):
         """Test age calculation with tilde and caret version characters."""
         # Create packages with tilde and caret versions
@@ -484,7 +482,6 @@ class TestPackageAge(TestCase):
         self.assertIn("4_0", remaining_versions)
         self.assertIn("4+0", remaining_versions)
 
-    @skip("Non-ASCII character handling do not work correctly with current implementation")
     def test_age_with_non_ascii_character_versions(self):
         """Test age calculation with non-ASCII character handling."""
         # Create packages with non-ASCII characters
