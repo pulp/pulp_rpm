@@ -1,11 +1,10 @@
 from logging import getLogger
+from collections import defaultdict
 
 import createrepo_c as cr
 
 from django.conf import settings
 from django.db import models
-from django.db.models import Window, F
-from django.db.models.functions import RowNumber
 
 from pulpcore.plugin.models import Content, ContentManager
 from pulpcore.plugin.util import get_domain_pk
@@ -17,6 +16,7 @@ from pulp_rpm.app.constants import (
     PULP_PACKAGE_ATTRS,
 )
 from pulp_rpm.app.shared_utils import format_nevra, format_nevra_short, format_nvra
+from pulp_rpm.app.rpm_version import RpmVersion
 
 # avoid calling into dynaconf many times
 ALLOWED_CONTENT_CHECKSUMS = settings.ALLOWED_CONTENT_CHECKSUMS
@@ -34,29 +34,91 @@ class RpmVersionField(models.Field):
         return "pulp_evr_t"
 
 
-class PackageManager(ContentManager):
-    """Custom Package object manager."""
+class AgeAnnotatedQuerySet(models.QuerySet):
+    """A QuerySet that computes age annotations on evaluation."""
+
+    def __init__(self, *args, **kwargs):
+        self._needs_age_annotation = kwargs.pop("_needs_age_annotation", False)
+        super().__init__(*args, **kwargs)
+
+    def _clone(self):
+        """Clone the queryset preserving the age annotation flag."""
+        clone = super()._clone()
+        clone._needs_age_annotation = getattr(self, "_needs_age_annotation", False)
+        return clone
 
     def with_age(self):
-        """Provide an "age" score for each Package object in the queryset.
+        """Mark this queryset as needing age annotation."""
+        clone = self._clone()
+        clone._needs_age_annotation = True
+        return clone
 
-        Annotate the Package objects with an "age". Age is calculated with a postgresql
-        window function which partitions the Packages by name and architecture, orders the
-        packages in each group by 'evr', and returns the row number of each package, which
-        is the relative "age" within the group. The newest package gets age=1, second newest
-        age=2, and so on.
+    def _fetch_all(self):
+        """Override to add age annotation before fetching if needed."""
+        if getattr(self, "_needs_age_annotation", False) and not hasattr(self, "_age_annotated"):
+            self._apply_age_annotation()
+        super()._fetch_all()
 
-        A second partition by architecture is important because there can be packages with
-        the same name and verison numbers but they are not interchangeable because they have
-        differing arch, such as 'x86_64' and 'i686', or 'src' (SRPM) and any other arch.
-        """
-        return self.annotate(
-            age=Window(
-                expression=RowNumber(),
-                partition_by=[F("name"), F("arch")],
-                order_by=F("evr").desc(),
+    def _apply_age_annotation(self):
+        """Apply age annotation to the current queryset."""
+        # Create a plain queryset to get the package data without triggering annotation
+        base_qs = models.QuerySet(model=self.model, query=self.query.clone(), using=self._db)
+        packages = list(base_qs.values("pk", "name", "arch", "epoch", "version", "release"))
+
+        # Group packages by name and arch
+        groups = defaultdict(list)
+        for pkg in packages:
+            key = (pkg["name"], pkg["arch"])
+            groups[key].append(pkg)
+
+        # Calculate age for each group
+        age_mapping = {}
+        for group_packages in groups.values():
+            # Sort by EVR (newest first)
+            group_packages.sort(
+                key=lambda p: RpmVersion(p["epoch"], p["version"], p["release"]), reverse=True
             )
-        )
+
+            # Assign ages (1 = newest, 2 = second newest, etc.)
+            for age, pkg in enumerate(group_packages, 1):
+                age_mapping[pkg["pk"]] = age
+
+        # Create age annotation
+        from django.db.models import Case, When, IntegerField
+
+        if not age_mapping:
+            # If no packages, add a default age annotation
+            age_annotation = Case(default=1, output_field=IntegerField())
+        else:
+            when_clauses = [When(pk=pk, then=age) for pk, age in age_mapping.items()]
+            age_annotation = Case(*when_clauses, output_field=IntegerField())
+
+        # Apply the annotation to self
+        self.query.add_annotation(age_annotation, "age")
+        self._age_annotated = True
+
+
+class PackageQuerySet(AgeAnnotatedQuerySet):
+    """Custom QuerySet for Package model."""
+
+    pass
+
+
+class PackageManager(ContentManager):
+    """Custom manager for Package model."""
+
+    def get_queryset(self):
+        """Return the custom queryset."""
+        return PackageQuerySet(self.model, using=self._db)
+
+    def with_age(self):
+        """
+        Annotate packages with an 'age' field indicating their relative version age.
+
+        Higher age values indicate older versions. Packages are grouped by name and arch,
+        and age is calculated within each group.
+        """
+        return self.get_queryset().with_age()
 
 
 class Package(Content):
