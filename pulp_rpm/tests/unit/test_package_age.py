@@ -544,9 +544,8 @@ class TestPackageAge(TestCase):
         self.assertEqual(packages[3].version, "1.1Á1")
         self.assertEqual(packages[3].age, 4)
 
-    def test_age_with_mixed_complex_scenarios(self):
-        """Test age calculation with mixed complex version scenarios."""
-        # Create a comprehensive mix of different version types
+    def test_age_with_mixed_scenarios(self):
+        """Test age calculation with mixed version scenarios."""
         Package.objects.create(
             name="mixedpkg",
             epoch="0",
@@ -600,3 +599,147 @@ class TestPackageAge(TestCase):
         self.assertIn("2.0.0", versions)
         self.assertIn("2.0", versions)
         self.assertIn("2.0.rc1", versions)
+
+    def test_age_with_filtered_queryset(self):
+        """Test age calculation when applied to a filtered queryset."""
+        # Create packages in database
+        pkg1 = Package.objects.create(  # noqa: F841
+            name="filterpkg",
+            epoch="0",
+            version="1.0",
+            release="1.el8",
+            arch="x86_64",
+            pkgId="filter1",
+            checksum_type="sha256",
+        )
+
+        pkg2 = Package.objects.create(  # noqa: F841
+            name="filterpkg",
+            epoch="0",
+            version="2.0",
+            release="1.el8",
+            arch="x86_64",
+            pkgId="filter2",
+            checksum_type="sha256",
+        )
+
+        Package.objects.create(
+            name="filterpkg",
+            epoch="0",
+            version="3.0",
+            release="1.el8",
+            arch="x86_64",
+            pkgId="filter3",
+            checksum_type="sha256",
+        )
+
+        # Test with filtered queryset (only older versions)
+        filtered_packages = (
+            Package.objects.with_age()
+            .filter(name="filterpkg", version__in=["1.0", "2.0"])
+            .order_by("age")
+        )
+
+        self.assertEqual(filtered_packages.count(), 2)
+        # In the filtered set, 2.0 should be newest (age=1), 1.0 should be oldest (age=2)
+        self.assertEqual(filtered_packages[0].version, "2.0")
+        self.assertEqual(filtered_packages[0].age, 1)
+        self.assertEqual(filtered_packages[1].version, "1.0")
+        self.assertEqual(filtered_packages[1].age, 2)
+
+    def test_age_with_empty_queryset(self):
+        """Test age calculation with empty queryset."""
+        empty_packages = Package.objects.with_age().filter(name="nonexistent")
+        self.assertEqual(len(empty_packages.all()), 0)
+
+    def test_age_with_mixed_filtering_scenarios(self):
+        """Test age calculation with various filtering scenarios that might cause bugs."""
+        # Create packages across multiple groups
+        for i in range(5):
+            Package.objects.create(
+                name="grouppkg",
+                epoch="0",
+                version=f"{i}.0",
+                release="1.el8",
+                arch="x86_64",
+                pkgId=f"group{i}",
+                checksum_type="sha256",
+            )
+
+        # Create another group
+        for i in range(3):
+            Package.objects.create(
+                name="otherpkg",
+                epoch="0",
+                version=f"{i}.0",
+                release="1.el8",
+                arch="x86_64",
+                pkgId=f"other{i}",
+                checksum_type="sha256",
+            )
+
+        # Test 1: Filter to get partial group from first package set
+        partial_group = (
+            Package.objects.with_age()
+            .filter(name="grouppkg", version__in=["2.0", "3.0", "4.0"])
+            .order_by("age")
+        )
+
+        self.assertEqual(partial_group.count(), 3)
+        # In this filtered set: 4.0 (age=1), 3.0 (age=2), 2.0 (age=3)
+        self.assertEqual(partial_group[0].version, "4.0")
+        self.assertEqual(partial_group[0].age, 1)
+        self.assertEqual(partial_group[1].version, "3.0")
+        self.assertEqual(partial_group[1].age, 2)
+        self.assertEqual(partial_group[2].version, "2.0")
+        self.assertEqual(partial_group[2].age, 3)
+
+        # Test 2: Filter across multiple package groups
+        cross_group = Package.objects.with_age().filter(
+            name__in=["grouppkg", "otherpkg"], version="2.0"
+        )
+
+        # Should have one package from each group, both with age=1 in their respective groups
+        for pkg in cross_group:
+            self.assertEqual(pkg.version, "2.0")
+            self.assertEqual(pkg.age, 1)  # Each is newest in its filtered group
+
+    def test_age_consistency_with_retention_scenario(self):
+        """Test age calculation in a scenario similar to how retention policies work"""
+        packages_data = [
+            ("retentiontestpkg", "1.0", "1.el8"),
+            ("retentiontestpkg", "1.1", "1.el8"),
+            ("retentiontestpkg", "1.2", "1.el8"),
+            ("retentiontestpkg", "2.0", "1.el8"),
+            ("retentiontestpkg", "2.1", "1.el8"),
+        ]
+
+        created_packages = []
+        for i, (name, version, release) in enumerate(packages_data):
+            pkg = Package.objects.create(
+                name=name,
+                epoch="0",
+                version=version,
+                release=release,
+                arch="x86_64",
+                pkgId=f"retention{i}",
+                checksum_type="sha256",
+            )
+            created_packages.append(pkg)
+
+        # Test: Get packages and apply age - this should match what retention logic does
+        all_packages = Package.objects.with_age().filter(name="retentiontestpkg")
+
+        # Verify all packages have correct age values
+        for pkg in all_packages:
+            self.assertIsNotNone(pkg.age)
+            self.assertGreater(pkg.age, 0)
+
+        # Test different retention scenarios
+        # Scenario 1: Keep only newest 2 versions (should remove 3 packages)
+        oldest_packages = all_packages.filter(age__gt=2)
+        self.assertEqual(oldest_packages.count(), 3)
+
+        # Scenario 2: Keep only newest 3 versions (should remove 2 packages)
+        oldest_packages = all_packages.filter(age__gt=3)
+        self.assertEqual(oldest_packages.count(), 2)
