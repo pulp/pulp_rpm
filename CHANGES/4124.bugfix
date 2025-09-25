@@ -1,0 +1,1 @@
+Fixed an issue with the way package versions were ordered, potentially affecting users of the `retain_package_versions` and prune features.

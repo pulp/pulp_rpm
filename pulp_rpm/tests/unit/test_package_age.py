@@ -236,7 +236,6 @@ class TestPackageAge(TestCase):
         self.assertEqual(packages[2].release, "1.el8")  # age=3
         self.assertEqual(packages[2].age, 3)
 
-    @skip("The implementation of package age is broken w/r/t '^' and '~' characters")
     def test_age_with_tilde_and_caret_versions(self):
         """Test age calculation with tilde and caret version characters."""
         # Create packages with tilde and caret versions
