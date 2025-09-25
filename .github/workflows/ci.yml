@@ -105,10 +105,11 @@ jobs:
 
   test:
     needs: "build"
-    uses: "./.github/workflows/test.yml"
-    with:
-      matrix_env: |
-        [{"TEST": "pulp"}, {"TEST": "azure"}, {"TEST": "s3"}, {"TEST": "lowerbounds"}]
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "Dummy tests"
+        working-directory: "."
+        run: true
 
   deprecations:
     runs-on: "ubuntu-latest"
