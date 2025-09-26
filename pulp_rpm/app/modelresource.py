@@ -47,7 +47,9 @@ class RpmContentResource(BaseContentResource):
         if not uuids.exists():
             return
 
-        self.content_mapping[repo.name] = list(map(str, uuids))
+        uuids_list = list(map(str, uuids))
+        uuids_list.sort()
+        self.content_mapping[repo.name] = uuids_list
 
     def set_up_queryset(self):
         """
@@ -386,7 +388,7 @@ class DistributionTreeRepositoryResource(QueryModelResource):
         except Content.DoesNotExist:
             return []
         else:
-            return tree.cast().repositories()
+            return tree.cast().repositories().order_by("pulp_id")
 
     class Meta:
         model = RpmRepository
