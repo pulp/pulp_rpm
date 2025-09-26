@@ -189,7 +189,11 @@ def test_kickstart(policy, init_and_sync, rpm_content_distribution_trees_api, ge
     assert "RHEL" == distribution_tree.release_short
 
 
-def test_mutated_packages(init_and_sync, get_content_summary, get_content):
+# With the latest changes, if the same NEVRA is synced, we do _not_ expect the new package
+# to be imported, but instead to be skipped. So this test is no longer valid.
+#
+# This will probably be reverted when we add a field for the original pkgId to the database.
+def dont_test_mutated_packages(init_and_sync, get_content_summary, get_content):
     """Sync two copies of the same packages.
 
     Make sure we end up with only one copy.
@@ -249,7 +253,11 @@ def test_mutated_packages(init_and_sync, get_content_summary, get_content):
         assert original_packages[nevra]["pkgId"] != mutated_packages[nevra]["pkgId"]
 
 
-def test_sync_diff_checksum_packages(init_and_sync, get_content, get_content_summary):
+# With the latest changes, if the same NEVRA is synced, we do _not_ expect the new package
+# to be imported, but instead to be skipped. So this test is no longer valid.
+#
+# This will probably be reverted when we add a field for the original pkgId to the database.
+def dont_test_sync_diff_checksum_packages(init_and_sync, get_content, get_content_summary):
     """Sync two fixture content with same NEVRA and different checksum.
 
     Make sure we end up with the most recently synced content.
@@ -389,7 +397,8 @@ def test_optimize(
     assert prev_repo_version != current_repo_version
     prev_repo_version = current_repo_version
 
-    # change download policy to 'immediate', sync again, assert not optimized, repo version unchanged
+    # change download policy to 'immediate', sync again, assert not optimized, repo version
+    # unchanged
     body = {"policy": "immediate"}
     monitor_task(rpm_rpmremote_api.partial_update(remote.pulp_href, body).task)
 
@@ -400,7 +409,8 @@ def test_optimize(
     assert all(report.code != "sync.was_skipped" for report in task.progress_reports)
     assert prev_repo_version == current_repo_version
 
-    # create new remote with the same URL and download_policy as the first and run a sync task, repo version unchanged
+    # create new remote with the same URL and download_policy as the first and run a sync task, repo
+    # version unchanged
     new_remote = rpm_rpmremote_factory()
     repository_sync_data = RpmRepositorySyncURL(
         remote=new_remote.pulp_href, sync_policy="mirror_content_only"

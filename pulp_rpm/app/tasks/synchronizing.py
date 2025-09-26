@@ -5,6 +5,7 @@ import json
 import logging
 import os
 import re
+import shutil
 import tempfile
 import uuid
 
@@ -1264,9 +1265,31 @@ class RpmFirstStage(Stage):
                 # Get package object from content
                 pkg = content.rpm_package
                 nevra = format_nevra(pkg.name, pkg.epoch, pkg.version, pkg.release, pkg.arch)
-                # Create a DeclarativeContent object for the existing package
-                dc = DeclarativeContent(content=pkg)
-                nevra_to_declarative[nevra] = dc
+
+                # Get the associated ContentArtifact for this package
+                content_artifacts = ContentArtifact.objects.filter(content=content)
+                d_artifacts = []
+
+                base_url = pkg.location_base
+                url = urlpath_sanitize(base_url, pkg.location_href)
+
+                for ca in content_artifacts:
+                    if ca.artifact:
+                        # Create DeclarativeArtifact with the existing artifact
+                        da = DeclarativeArtifact(
+                            artifact=ca.artifact,
+                            url=url,  # No URL needed for existing artifacts
+                            relative_path=ca.relative_path,
+                            remote=None,  # No remote needed for existing artifacts
+                            extra_data={"already_in_repo": True},
+                            deferred_download=False,
+                        )
+                        d_artifacts.append(da)
+
+                if len(d_artifacts) > 0:
+                    # Create a DeclarativeContent object for the existing package with artifacts
+                    dc = DeclarativeContent(content=pkg, d_artifacts=d_artifacts)
+                    nevra_to_declarative[nevra] = dc
 
             return nevra_to_declarative
 
@@ -1711,6 +1734,12 @@ class RpmArtifactSigningStage(Stage):
             raise ValueError("Expected exactly one artifact for signing")
 
         d_artifact = d_content.d_artifacts[0]
+
+        # If the artifact is already in the repo, it should already be signed, so let's not sign it
+        # again.
+        if "already_in_repo" in d_artifact.extra_data and d_artifact.extra_data["already_in_repo"]:
+            return
+
         if (
             not hasattr(d_artifact, "artifact")
             or not d_artifact.artifact
@@ -1721,6 +1750,29 @@ class RpmArtifactSigningStage(Stage):
 
         # Extract the full path for the artifact file
         temp_file_path = str(d_artifact.artifact.file)
+
+        # There are situations where deduplication before now has caused the artifact to point to
+        # a file that's already in the database, but still needs to be signed. In this case we
+        # need to copy the file to a temporary location for signing.
+        if not os.path.exists(temp_file_path):
+
+            @sync_to_async
+            def copy_artifact_to_temp_file(artifact):
+                """Copy artifact from storage to a temporary file for signing."""
+                filename = f"{artifact.pulp_id}.rpm"
+                artifact_file = artifact.pulp_domain.get_storage().open(artifact.file.name)
+                temp_file = tempfile.NamedTemporaryFile(
+                    "wb", dir=".", suffix=filename, delete=False
+                )
+                try:
+                    shutil.copyfileobj(artifact_file, temp_file)
+                    temp_file.flush()
+                    return temp_file.name
+                finally:
+                    artifact_file.close()
+                    temp_file.close()
+
+            temp_file_path = await copy_artifact_to_temp_file(d_artifact.artifact)
 
         # Verify file exists and is accessible
         if not os.path.exists(temp_file_path):
