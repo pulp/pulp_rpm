@@ -161,7 +161,7 @@ CREATE OR REPLACE FUNCTION pulp_vercmp(first_array pulp_evr_array_item[], second
           return 1;
         elsif second_item.s != '^' then
           -- first has caret but second continues
-          return -1;
+          return 1;
         else
           -- both have caret, continue
           i := i + 1;
@@ -173,7 +173,7 @@ CREATE OR REPLACE FUNCTION pulp_vercmp(first_array pulp_evr_array_item[], second
           return -1;
         else
           -- second has caret but first continues
-          return 1;
+          return -1;
         end if;
       end if;
 
