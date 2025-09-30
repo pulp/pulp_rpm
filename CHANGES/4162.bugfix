@@ -1,0 +1,6 @@
+Added an AttributeError exception handling in synchronous upload API to instead raise ParseError
+for malformed uploads.
+
+The package upload endpoint now catches AttributeError exceptions that occur when files don't upload
+properly or are incomplete, and raises a ParseError instead. This provides a more appropriate
+HTTP 400 response for clients when upload data is malformed.

@@ -1,5 +1,6 @@
 from django.db import transaction
 from django_filters import CharFilter
+from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import extend_schema
 from pulpcore.plugin.models import PulpTemporaryFile
 from pulpcore.plugin.serializers import AsyncOperationResponseSerializer
@@ -11,6 +12,7 @@ from pulpcore.plugin.viewsets import (
 )
 from rest_framework import status
 from rest_framework.decorators import action
+from rest_framework.exceptions import ParseError
 from rest_framework.response import Response
 
 from pulp_rpm.app import tasks as rpm_tasks
@@ -153,13 +155,17 @@ class PackageViewSet(SingleArtifactContentUploadViewSet):
     @extend_schema(
         description="Synchronously upload an RPM package.",
         request=PackageUploadSerializer,
-        responses={201: PackageSerializer},
+        responses={201: PackageSerializer, 400: OpenApiTypes.STR},
         summary="Upload an RPM package synchronously.",
     )
     @action(detail=False, methods=["post"], serializer_class=PackageUploadSerializer)
     def upload(self, request):
         """Create an RPM package."""
-        serializer = self.get_serializer(data=request.data)
+        try:
+            serializer = self.get_serializer(data=request.data)
+        except AttributeError:
+            # File didn't upload or incomplete file.
+            raise ParseError()
         with transaction.atomic():
             # Create the artifact
             serializer.is_valid(raise_exception=True)
