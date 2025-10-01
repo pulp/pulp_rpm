@@ -154,26 +154,28 @@ CREATE OR REPLACE FUNCTION pulp_vercmp(first_array pulp_evr_array_item[], second
         continue;
       end if;
 
-      -- Handle caret
-      if first_item.s = '^' then
+      -- Handle caret: ^ sorts after regular content, but context matters
+      if first_item.s = '^' and second_item.s = '^' then
+        -- both have caret, continue comparing
+        i := i + 1;
+        continue;
+      elsif first_item.s = '^' and second_item.s != '^' then
+        -- first has caret, second doesn't
         if second_item.s is null and second_item.n is null then
-          -- first has caret but second has ended
-          return 1;
-        elsif second_item.s != '^' then
-          -- first has caret but second continues
+          -- second has ended, first with caret wins
           return 1;
         else
-          -- both have caret, continue
-          i := i + 1;
-          continue;
+          -- second continues with regular content, caret loses
+          return -1;
         end if;
-      elsif second_item.s = '^' then
+      elsif first_item.s != '^' and second_item.s = '^' then
+        -- second has caret, first doesn't
         if first_item.s is null and first_item.n is null then
-          -- second has caret but first has ended
+          -- first has ended, second with caret loses
           return -1;
         else
-          -- second has caret but first continues
-          return -1;
+          -- first continues with regular content, caret loses
+          return 1;
         end if;
       end if;
 
