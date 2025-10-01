@@ -117,108 +117,195 @@ create or replace FUNCTION pulp_rpmver_array (string1 IN VARCHAR)
   END ;
 $$ language 'plpgsql';
 
--- Version comparison function that matches Python Vercmp.compare logic
+-- Version comparison function that matches C rpmvercmp logic exactly
 CREATE OR REPLACE FUNCTION pulp_vercmp(first_array pulp_evr_array_item[], second_array pulp_evr_array_item[])
   RETURNS INTEGER AS $$
   declare
-    i INTEGER := 1;
-    max_len INTEGER := greatest(array_length(first_array, 1), array_length(second_array, 1));
-    first_item pulp_evr_array_item;
-    second_item pulp_evr_array_item;
+    first_str TEXT := '';
+    second_str TEXT := '';
+    i INTEGER;
   BEGIN
-    if first_array = second_array then
+    -- Convert arrays back to strings for C-style processing
+    -- This is necessary because the C algorithm works on strings, not pre-parsed arrays
+
+    -- Reconstruct first string
+    for i in 1..coalesce(array_length(first_array, 1), 0) loop
+      if first_array[i].n IS NOT NULL then
+        first_str := first_str || first_array[i].n::text;
+      elsif first_array[i].s IS NOT NULL then
+        first_str := first_str || first_array[i].s;
+      end if;
+    end loop;
+
+    -- Reconstruct second string
+    for i in 1..coalesce(array_length(second_array, 1), 0) loop
+      if second_array[i].n IS NOT NULL then
+        second_str := second_str || second_array[i].n::text;
+      elsif second_array[i].s IS NOT NULL then
+        second_str := second_str || second_array[i].s;
+      end if;
+    end loop;
+
+    -- Now call the C-style comparison
+    return pulp_vercmp_string(first_str, second_str);
+  END;
+$$ LANGUAGE 'plpgsql';
+
+-- Direct port of C rpmvercmp logic
+CREATE OR REPLACE FUNCTION pulp_vercmp_string(str1 TEXT, str2 TEXT)
+  RETURNS INTEGER AS $$
+  declare
+    one_pos INTEGER := 1;
+    two_pos INTEGER := 1;
+    str1_len INTEGER := length(str1);
+    str2_len INTEGER := length(str2);
+    one_char TEXT;
+    two_char TEXT;
+    seg1_start INTEGER;
+    seg2_start INTEGER;
+    seg1_end INTEGER;
+    seg2_end INTEGER;
+    seg1 TEXT;
+    seg2 TEXT;
+    isnum BOOLEAN;
+    one_len INTEGER;
+    two_len INTEGER;
+    cmp_result INTEGER;
+  BEGIN
+    -- Easy comparison to see if versions are identical
+    if str1 = str2 then
       return 0;
     end if;
 
-    while i <= coalesce(max_len, 0) loop
-      -- Get current segments or null if we've run out
-      if i <= array_length(first_array, 1) then
-        first_item := first_array[i];
-      else
-        first_item := (NULL, NULL)::pulp_evr_array_item;
-      end if;
+    -- Loop through each version segment and compare them
+    while one_pos <= str1_len OR two_pos <= str2_len loop
+      -- Skip non-alphanumeric characters except ~ and ^
+      while one_pos <= str1_len loop
+        one_char := substring(str1, one_pos, 1);
+        if (one_char >= 'a' and one_char <= 'z') or
+           (one_char >= 'A' and one_char <= 'Z') or
+           (one_char >= '0' and one_char <= '9') or
+           one_char = '~' or one_char = '^' then
+          exit;
+        end if;
+        one_pos := one_pos + 1;
+      end loop;
 
-      if i <= array_length(second_array, 1) then
-        second_item := second_array[i];
-      else
-        second_item := (NULL, NULL)::pulp_evr_array_item;
-      end if;
+      while two_pos <= str2_len loop
+        two_char := substring(str2, two_pos, 1);
+        if (two_char >= 'a' and two_char <= 'z') or
+           (two_char >= 'A' and two_char <= 'Z') or
+           (two_char >= '0' and two_char <= '9') or
+           two_char = '~' or two_char = '^' then
+          exit;
+        end if;
+        two_pos := two_pos + 1;
+      end loop;
 
-      -- Handle tilde: ~ sorts before everything else
-      if first_item.s = '~' and (second_item.s != '~' OR second_item.s IS NULL) then
-        return -1;
-      elsif (first_item.s != '~' OR first_item.s IS NULL) and second_item.s = '~' then
-        return 1;
-      elsif first_item.s = '~' and second_item.s = '~' then
-        i := i + 1;
+      -- Get current characters (or empty if past end)
+      one_char := case when one_pos <= str1_len then substring(str1, one_pos, 1) else '' end;
+      two_char := case when two_pos <= str2_len then substring(str2, two_pos, 1) else '' end;
+
+      -- Handle tilde separator - sorts before everything else
+      if one_char = '~' or two_char = '~' then
+        if one_char != '~' then return 1; end if;
+        if two_char != '~' then return -1; end if;
+        one_pos := one_pos + 1;
+        two_pos := two_pos + 1;
         continue;
       end if;
 
-      -- Handle caret: ^ behavior depends on whether the other version continues
-      if first_item.s = '^' and second_item.s != '^' then
-        -- first has caret, second doesn't
-        if second_item.s is null and second_item.n is null then
-          -- second has ended, first with caret wins
-          return 1;
-        else
-          -- second continues with regular content, first with caret loses
-          return -1;
-        end if;
-      elsif first_item.s != '^' and second_item.s = '^' then
-        -- second has caret, first doesn't
-        if first_item.s is null and first_item.n is null then
-          -- first has ended, second with caret loses
-          return -1;
-        else
-          -- first continues with regular content, second with caret loses
-          return 1;
-        end if;
-      elsif first_item.s = '^' and second_item.s = '^' then
-        -- both have caret, continue comparing
-        i := i + 1;
+      -- Handle caret separator - context dependent like C code
+      if one_char = '^' or two_char = '^' then
+        if one_pos > str1_len then return -1; end if;  -- !*one
+        if two_pos > str2_len then return 1; end if;   -- !*two
+        if one_char != '^' then return 1; end if;
+        if two_char != '^' then return -1; end if;
+        one_pos := one_pos + 1;
+        two_pos := two_pos + 1;
         continue;
       end if;
 
-      -- Both items are null (end of both arrays)
-      if (first_item.s is null and first_item.n is null) and
-         (second_item.s is null and second_item.n is null) then
-        return 0;
+      -- If we ran to the end of either, we are finished with the loop
+      if not (one_pos <= str1_len and two_pos <= str2_len) then
+        exit;
       end if;
 
-      -- One array ended but the other continues
-      if (first_item.s is null and first_item.n is null) then
+      -- Grab first completely alpha or completely numeric segment
+      seg1_start := one_pos;
+      seg2_start := two_pos;
+
+      if one_char >= '0' and one_char <= '9' then
+        -- Numeric segment
+        while one_pos <= str1_len and substring(str1, one_pos, 1) >= '0' and substring(str1, one_pos, 1) <= '9' loop
+          one_pos := one_pos + 1;
+        end loop;
+        while two_pos <= str2_len and substring(str2, two_pos, 1) >= '0' and substring(str2, two_pos, 1) <= '9' loop
+          two_pos := two_pos + 1;
+        end loop;
+        isnum := true;
+      else
+        -- Alpha segment
+        while one_pos <= str1_len loop
+          one_char := substring(str1, one_pos, 1);
+          if not ((one_char >= 'a' and one_char <= 'z') or (one_char >= 'A' and one_char <= 'Z')) then
+            exit;
+          end if;
+          one_pos := one_pos + 1;
+        end loop;
+        while two_pos <= str2_len loop
+          two_char := substring(str2, two_pos, 1);
+          if not ((two_char >= 'a' and two_char <= 'z') or (two_char >= 'A' and two_char <= 'Z')) then
+            exit;
+          end if;
+          two_pos := two_pos + 1;
+        end loop;
+        isnum := false;
+      end if;
+
+      -- Extract the segments
+      seg1 := substring(str1, seg1_start, one_pos - seg1_start);
+      seg2 := substring(str2, seg2_start, two_pos - seg2_start);
+
+      -- Handle empty segments (matching C logic exactly)
+      if seg1_start = one_pos then return -1; end if;  -- arbitrary, matches C
+
+      -- Take care of different types: numeric vs alpha
+      if seg2_start = two_pos then
+        return case when isnum then 1 else -1 end;
+      end if;
+
+      if isnum then
+        -- Numeric comparison
+        -- Throw away leading zeros
+        seg1 := ltrim(seg1, '0');
+        seg2 := ltrim(seg2, '0');
+
+        -- Whichever number has more digits wins
+        one_len := length(seg1);
+        two_len := length(seg2);
+        if one_len > two_len then return 1; end if;
+        if two_len > one_len then return -1; end if;
+      end if;
+
+      -- String comparison (works for both alpha and same-length numeric)
+      if seg1 < seg2 then
         return -1;
-      elsif (second_item.s is null and second_item.n is null) then
+      elsif seg1 > seg2 then
         return 1;
       end if;
+      -- Equal segments, continue to next
 
-      -- Compare numeric vs alphabetic (numeric wins)
-      if first_item.n is not null and second_item.s is not null then
-        return 1;
-      elsif first_item.s is not null and second_item.n is not null then
-        return -1;
-      end if;
-
-      -- Both numeric
-      if first_item.n is not null and second_item.n is not null then
-        if first_item.n < second_item.n then
-          return -1;
-        elsif first_item.n > second_item.n then
-          return 1;
-        end if;
-      -- Both alphabetic
-      elsif first_item.s is not null and second_item.s is not null then
-        if first_item.s < second_item.s then
-          return -1;
-        elsif first_item.s > second_item.s then
-          return 1;
-        end if;
-      end if;
-
-      i := i + 1;
     end loop;
 
-    return 0;
+    -- Handle end conditions
+    if one_pos > str1_len and two_pos > str2_len then
+      return 0;  -- both ended
+    elsif one_pos > str1_len then
+      return -1;  -- first ended, second continues
+    else
+      return 1;   -- second ended, first continues
+    end if;
   END;
 $$ LANGUAGE 'plpgsql';
 

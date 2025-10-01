@@ -13,7 +13,7 @@ from pulpcore.plugin.exceptions import InvalidSignatureError
 
 
 def annotate_with_age(qs):
- """Provide an "age" score for each Package object in the queryset.
+    """Provide an "age" score for each Package object in the queryset.
 
     Annotate the Package objects with an "age". Age is calculated with a postgresql
     window function which partitions the Packages by name and architecture, orders the
