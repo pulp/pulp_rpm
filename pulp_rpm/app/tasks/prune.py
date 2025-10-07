@@ -14,6 +14,7 @@ from pulpcore.plugin.models import (
 from pulpcore.plugin.tasking import dispatch
 from pulp_rpm.app.models.package import Package
 from pulp_rpm.app.models.repository import RpmRepository
+from pulp_rpm.app.shared_utils import annotate_with_age
 
 log = getLogger(__name__)
 
@@ -35,7 +36,7 @@ def prune_repo_packages(repo_pk, keep_days, dry_run):
 
     # We only care about RPM-Names that have more than one EVRA - "singles" are always kept.
     rpm_by_name_age = (
-        curr_vers.get_content(Package.objects.with_age())
+        annotate_with_age(curr_vers.get_content(Package.objects))
         .filter(age__gt=1)
         .order_by("name", "epoch", "version", "release", "arch")
         .values("pk")
