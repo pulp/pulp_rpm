@@ -4,12 +4,56 @@ import tempfile
 import typing as t
 from hashlib import sha256
 from pathlib import Path
+from collections import defaultdict
 
 import createrepo_c as cr
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
 from importlib_resources import files
 from pulpcore.plugin.exceptions import InvalidSignatureError
+from pulp_rpm.app.rpm_version import RpmVersion
+
+
+def annotate_with_age(qs):
+    """Provide an "age" score for each Package object in the queryset.
+
+    Annotate the Package objects with an "age". Age is calculated by partitioning the
+    Packages by name and architecture and ordering the packages in each group by 'evr',
+    which is the relative "age" within the group. The newest package gets age=1, second
+    newest age=2, and so on.
+
+    A second partition by architecture is important because there can be packages with
+    the same name and version numbers but they are not interchangeable because they have
+    differing arch, such as 'x86_64' and 'i686', or 'src' (SRPM) and any other arch.
+    """
+    # Get packages in current queryset with their basic info
+    packages = list(qs.values("pk", "name", "arch", "epoch", "version", "release"))
+
+    # Group packages by name and arch
+    groups = defaultdict(list)
+    for pkg in packages:
+        key = (pkg["name"], pkg["arch"])
+        groups[key].append(pkg)
+
+    # Calculate age for each group
+    age_mapping = {}
+    for group_packages in groups.values():
+        # Sort by EVR (newest first)
+        group_packages.sort(
+            key=lambda p: RpmVersion(p["epoch"], p["version"], p["release"]), reverse=True
+        )
+
+        # Assign ages (1 = newest, 2 = second newest, etc.)
+        for age, pkg in enumerate(group_packages, 1):
+            age_mapping[pkg["pk"]] = age
+
+    # Create a queryset with age annotation
+    # We'll use a CASE statement to map PKs to ages
+    from django.db.models import Case, When, IntegerField
+
+    when_clauses = [When(pk=pk, then=age) for pk, age in age_mapping.items()]
+
+    return qs.annotate(age=Case(*when_clauses, output_field=IntegerField()))
 
 
 def format_nevra(name=None, epoch=0, version=None, release=None, arch=None):
