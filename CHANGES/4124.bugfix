@@ -1,0 +1,1 @@
+Fix a bug where the `retain_package_versions` feature (and prune and a few others) was not correctly determining which packages were most recent.
