@@ -47,7 +47,7 @@ from pulp_rpm.app.models import (
     RpmPackageSigningService,
     UpdateRecord,
 )
-from pulp_rpm.app.shared_utils import urlpath_sanitize
+from pulp_rpm.app.shared_utils import urlpath_sanitize, annotate_with_age
 
 log = getLogger(__name__)
 
@@ -454,13 +454,11 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
             # django-managed and would be difficult to share.
             #
             # Instead we have to do the filtering manually.
-            nonmodular_packages = (
-                Package.objects.with_age()
-                .filter(
+            nonmodular_packages = annotate_with_age(
+                Package.objects.filter(
                     pk__in=new_version.content.filter(pulp_type=Package.get_pulp_type()),
                     is_modular=False,  # don't want to filter out modular RPMs
-                )
-                .only("pk")
+                ).only("pk")
             )
 
             old_packages = []
