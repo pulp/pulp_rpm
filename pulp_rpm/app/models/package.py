@@ -4,10 +4,8 @@ import createrepo_c as cr
 
 from django.conf import settings
 from django.db import models
-from django.db.models import Window, F
-from django.db.models.functions import RowNumber
 
-from pulpcore.plugin.models import Content, ContentManager
+from pulpcore.plugin.models import Content
 from pulpcore.plugin.util import get_domain_pk
 
 from pulp_rpm.app.constants import (
@@ -32,31 +30,6 @@ class RpmVersionField(models.Field):
     def db_type(self, connection):
         """Returns the database column type."""
         return "pulp_evr_t"
-
-
-class PackageManager(ContentManager):
-    """Custom Package object manager."""
-
-    def with_age(self):
-        """Provide an "age" score for each Package object in the queryset.
-
-        Annotate the Package objects with an "age". Age is calculated with a postgresql
-        window function which partitions the Packages by name and architecture, orders the
-        packages in each group by 'evr', and returns the row number of each package, which
-        is the relative "age" within the group. The newest package gets age=1, second newest
-        age=2, and so on.
-
-        A second partition by architecture is important because there can be packages with
-        the same name and verison numbers but they are not interchangeable because they have
-        differing arch, such as 'x86_64' and 'i686', or 'src' (SRPM) and any other arch.
-        """
-        return self.annotate(
-            age=Window(
-                expression=RowNumber(),
-                partition_by=[F("name"), F("arch")],
-                order_by=F("evr").desc(),
-            )
-        )
 
 
 class Package(Content):
@@ -154,8 +127,6 @@ class Package(Content):
             The mtime of the package file in seconds since the epoch; this is the 'file' time
             attribute in the primary XML.
     """
-
-    objects = PackageManager()
 
     PROTECTED_FROM_RECLAIM = False
 
