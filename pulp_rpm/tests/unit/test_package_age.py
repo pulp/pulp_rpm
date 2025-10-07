@@ -1,11 +1,11 @@
 """
-Unit tests for Package.objects.with_age() functionality.
+Unit tests for Package age calculation functionality.
 """
 
 from django.test import TestCase
-from unittest import skip
 
 from pulp_rpm.app.models import Package
+from pulp_rpm.app.shared_utils import annotate_with_age
 
 
 class TestPackageAge(TestCase):
@@ -99,7 +99,9 @@ class TestPackageAge(TestCase):
 
     def test_age_calculation_basic_versions(self):
         """Test that age is calculated correctly for basic version differences."""
-        packages = Package.objects.with_age().filter(name="testpkg", arch="x86_64").order_by("age")
+        packages = annotate_with_age(
+            Package.objects.filter(name="testpkg", arch="x86_64")
+        ).order_by("age")
 
         # Expected order: 2.0.0 (age=1), 1.5.0-2 (age=2), 1.0.0 (age=3)
         self.assertEqual(packages.count(), 3)
@@ -123,18 +125,18 @@ class TestPackageAge(TestCase):
     def test_age_calculation_different_architectures(self):
         """Test that packages with different architectures are aged separately."""
         # x86_64 packages
-        x86_packages = (
-            Package.objects.with_age().filter(name="testpkg", arch="x86_64").order_by("age")
-        )
+        x86_packages = annotate_with_age(
+            Package.objects.filter(name="testpkg", arch="x86_64")
+        ).order_by("age")
         self.assertEqual(x86_packages.count(), 3)
         self.assertEqual(x86_packages[0].age, 1)  # 2.0.0
         self.assertEqual(x86_packages[1].age, 2)  # 1.5.0-2
         self.assertEqual(x86_packages[2].age, 3)  # 1.0.0
 
         # i686 packages
-        i686_packages = (
-            Package.objects.with_age().filter(name="testpkg", arch="i686").order_by("age")
-        )
+        i686_packages = annotate_with_age(
+            Package.objects.filter(name="testpkg", arch="i686")
+        ).order_by("age")
         self.assertEqual(i686_packages.count(), 2)
 
         # Even though i686 3.0.0 is newer than any x86_64 version, it should still have age=1
@@ -147,13 +149,13 @@ class TestPackageAge(TestCase):
     def test_age_calculation_different_names(self):
         """Test that packages with different names are aged separately."""
         # Different package name should have its own age calculation
-        other_packages = Package.objects.with_age().filter(name="otherpkg")
+        other_packages = annotate_with_age(Package.objects.filter(name="otherpkg"))
         self.assertEqual(other_packages.count(), 1)
         self.assertEqual(other_packages[0].age, 1)
 
     def test_age_calculation_with_epochs(self):
         """Test that epoch is considered in age calculation."""
-        epoch_packages = Package.objects.with_age().filter(name="epochpkg").order_by("age")
+        epoch_packages = annotate_with_age(Package.objects.filter(name="epochpkg")).order_by("age")
         self.assertEqual(epoch_packages.count(), 2)
 
         # Epoch 1 should be newer than epoch 0, regardless of version numbers
@@ -169,7 +171,7 @@ class TestPackageAge(TestCase):
 
     def test_age_all_packages(self):
         """Test age calculation when querying all packages."""
-        all_packages = Package.objects.with_age()
+        all_packages = annotate_with_age(Package.objects.all())
 
         # Verify each package has an age
         for pkg in all_packages:
@@ -224,7 +226,7 @@ class TestPackageAge(TestCase):
             checksum_type="sha256",
         )
 
-        packages = Package.objects.with_age().filter(name="relpkg").order_by("age")
+        packages = annotate_with_age(Package.objects.filter(name="relpkg")).order_by("age")
 
         # Expected order: 10.el8 > 2.el8 > 1.el8 (numeric comparison of release)
         self.assertEqual(packages[0].release, "10.el8")  # age=1
@@ -236,7 +238,6 @@ class TestPackageAge(TestCase):
         self.assertEqual(packages[2].release, "1.el8")  # age=3
         self.assertEqual(packages[2].age, 3)
 
-    @skip("The implementation of package age is broken w/r/t '^' and '~' characters")
     def test_age_with_tilde_and_caret_versions(self):
         """Test age calculation with tilde and caret version characters."""
         # Create packages with tilde and caret versions
@@ -280,7 +281,7 @@ class TestPackageAge(TestCase):
             checksum_type="sha256",
         )
 
-        packages = Package.objects.with_age().filter(name="tildepkg").order_by("age")
+        packages = annotate_with_age(Package.objects.filter(name="tildepkg")).order_by("age")
 
         # Expected order: 1.0^git123 (age=1), 1.0 (age=2), 1.0~rc2 (age=3), 1.0~rc1 (age=4)
         # Caret sorts higher than regular, regular sorts higher than tilde
@@ -349,7 +350,7 @@ class TestPackageAge(TestCase):
             checksum_type="sha256",
         )
 
-        packages = Package.objects.with_age().filter(name="numpkg").order_by("age")
+        packages = annotate_with_age(Package.objects.filter(name="numpkg")).order_by("age")
 
         # Expected order: 202405210 > 20240521 > 10.10001 > 10.1 == 10.0001
         # Leading zeros are ignored in numeric segments
@@ -401,7 +402,7 @@ class TestPackageAge(TestCase):
             checksum_type="sha256",
         )
 
-        packages = Package.objects.with_age().filter(name="intuitivepkg").order_by("age")
+        packages = annotate_with_age(Package.objects.filter(name="intuitivepkg")).order_by("age")
 
         # Expected order: 1g.fc33 > 1.fc33 > 1e.fc33
         # 'e' comes before numeric in comparison, 'g' comes after numeric
@@ -467,7 +468,7 @@ class TestPackageAge(TestCase):
             checksum_type="sha256",
         )
 
-        packages = Package.objects.with_age().filter(name="alphapkg").order_by("age")
+        packages = annotate_with_age(Package.objects.filter(name="alphapkg")).order_by("age")
 
         # Expected behavior: 4.999.9 > 4.999 > 4.0 == 4_0 == 4+0
         # Non-alphanumeric characters are treated as equivalent separators
@@ -484,7 +485,6 @@ class TestPackageAge(TestCase):
         self.assertIn("4_0", remaining_versions)
         self.assertIn("4+0", remaining_versions)
 
-    @skip("Non-ASCII character handling do not work correctly with current implementation")
     def test_age_with_non_ascii_character_versions(self):
         """Test age calculation with non-ASCII character handling."""
         # Create packages with non-ASCII characters
@@ -528,7 +528,7 @@ class TestPackageAge(TestCase):
             checksum_type="sha256",
         )
 
-        packages = Package.objects.with_age().filter(name="asciipkg").order_by("age")
+        packages = annotate_with_age(Package.objects.filter(name="asciipkg")).order_by("age")
 
         # Expected behavior: 1.11 > 1.1.1 == 1.1.Á.1 > 1.1Á1
         # Non-ASCII chars are ignored unless they break up alphanumeric sequences
@@ -586,7 +586,7 @@ class TestPackageAge(TestCase):
             checksum_type="sha256",
         )
 
-        packages = Package.objects.with_age().filter(name="mixedpkg").order_by("age")
+        packages = annotate_with_age(Package.objects.filter(name="mixedpkg")).order_by("age")
 
         # Expected order: 1:1.0 (epoch wins) > 2.0.0 > 2.0 > 2.0.rc1
         self.assertEqual(packages[0].epoch, "1")
@@ -634,11 +634,9 @@ class TestPackageAge(TestCase):
         )
 
         # Test with filtered queryset (only older versions)
-        filtered_packages = (
-            Package.objects.with_age()
-            .filter(name="filterpkg", version__in=["1.0", "2.0"])
-            .order_by("age")
-        )
+        filtered_packages = annotate_with_age(
+            Package.objects.filter(name="filterpkg", version__in=["1.0", "2.0"])
+        ).order_by("age")
 
         self.assertEqual(filtered_packages.count(), 2)
         # In the filtered set, 2.0 should be newest (age=1), 1.0 should be oldest (age=2)
@@ -649,7 +647,7 @@ class TestPackageAge(TestCase):
 
     def test_age_with_empty_queryset(self):
         """Test age calculation with empty queryset."""
-        empty_packages = Package.objects.with_age().filter(name="nonexistent")
+        empty_packages = annotate_with_age(Package.objects.filter(name="nonexistent"))
         self.assertEqual(len(empty_packages.all()), 0)
 
     def test_age_with_mixed_filtering_scenarios(self):
@@ -679,11 +677,9 @@ class TestPackageAge(TestCase):
             )
 
         # Test 1: Filter to get partial group from first package set
-        partial_group = (
-            Package.objects.with_age()
-            .filter(name="grouppkg", version__in=["2.0", "3.0", "4.0"])
-            .order_by("age")
-        )
+        partial_group = annotate_with_age(
+            Package.objects.filter(name="grouppkg", version__in=["2.0", "3.0", "4.0"])
+        ).order_by("age")
 
         self.assertEqual(partial_group.count(), 3)
         # In this filtered set: 4.0 (age=1), 3.0 (age=2), 2.0 (age=3)
@@ -695,8 +691,8 @@ class TestPackageAge(TestCase):
         self.assertEqual(partial_group[2].age, 3)
 
         # Test 2: Filter across multiple package groups
-        cross_group = Package.objects.with_age().filter(
-            name__in=["grouppkg", "otherpkg"], version="2.0"
+        cross_group = annotate_with_age(
+            Package.objects.filter(name__in=["grouppkg", "otherpkg"], version="2.0")
         )
 
         # Should have one package from each group, both with age=1 in their respective groups
@@ -728,7 +724,7 @@ class TestPackageAge(TestCase):
             created_packages.append(pkg)
 
         # Test: Get packages and apply age - this should match what retention logic does
-        all_packages = Package.objects.with_age().filter(name="retentiontestpkg")
+        all_packages = annotate_with_age(Package.objects.filter(name="retentiontestpkg"))
 
         # Verify all packages have correct age values
         for pkg in all_packages:

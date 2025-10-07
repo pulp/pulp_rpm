@@ -14,6 +14,7 @@ from pulp_rpm.app.models import (
     RpmRepository,
     Modulemd,
 )
+from pulp_rpm.app.shared_utils import annotate_with_age
 
 
 def find_children_of_content(content, src_repo_version):
@@ -111,8 +112,8 @@ def find_children_of_content(content, src_repo_version):
 
     missing_package_names = packagegroup_package_names - set(existing_package_names)
 
-    needed_packages = Package.objects.with_age().filter(
-        name__in=missing_package_names, pk__in=src_repo_version.content
+    needed_packages = annotate_with_age(
+        Package.objects.filter(name__in=missing_package_names, pk__in=src_repo_version.content)
     )
 
     # Pick the latest version of each package available which isn't already present
