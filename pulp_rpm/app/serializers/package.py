@@ -2,6 +2,7 @@ import createrepo_c as cr
 import logging
 import traceback
 from gettext import gettext as _
+from tempfile import TemporaryDirectory
 
 from django.conf import settings
 from django.db import DatabaseError
@@ -406,12 +407,19 @@ class PackageUploadSerializer(PackageSerializer):
 
     def validate(self, data):
         uploaded_file = data.get("file")
+        artifact = data.get("artifact")
         # export META from rpm and prepare dict as saveable format
         try:
-            cr_object = cr.package_from_rpm(
-                uploaded_file.file.name, changelog_limit=settings.KEEP_CHANGELOG_LIMIT
-            )
-            new_pkg = Package.createrepo_to_dict(cr_object)
+            if uploaded_file:
+                cr_object = cr.package_from_rpm(
+                    uploaded_file.file.name, changelog_limit=settings.KEEP_CHANGELOG_LIMIT
+                )
+                new_pkg = Package.createrepo_to_dict(cr_object)
+            elif artifact:
+                with TemporaryDirectory(dir=settings.WORKING_DIRECTORY) as working_dir_rel_path:
+                    new_pkg = Package.createrepo_to_dict(
+                        read_crpackage_from_artifact(artifact, working_dir=working_dir_rel_path)
+                    )
         except OSError as e:
             log.info(traceback.format_exc())
             raise NotAcceptable(detail="RPM file cannot be parsed for metadata") from e
