@@ -6,6 +6,7 @@ from tempfile import NamedTemporaryFile
 import pytest
 import requests
 
+from pulpcore.client.pulpcore.exceptions import BadRequestException
 from pulpcore.client.pulp_rpm import ApiException
 from pulpcore.tests.functional.utils import PulpTaskError
 from pulp_rpm.tests.functional.constants import (
@@ -20,6 +21,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_PACKAGELANGPACKS_CONTENT_NAME,
     RPM_UNSIGNED_FIXTURE_URL,
     RPM_PACKAGE_FILENAME,
+    RPM_PACKAGE_FILENAME2,
     RPM_WITH_NON_ASCII_URL,
     SMALL_COMPS_XML,
     SMALL_CATEGORY,
@@ -245,6 +247,29 @@ def test_synchronous_package_upload(delete_orphans_pre, rpm_package_api, gen_use
             upload_attrs = {"file": file_to_upload.name, "pulp_labels": labels}
             rpm_package_api.upload(**upload_attrs)
     assert ctx.value.status == 403
+
+
+def test_synchronous_package_upload_from_artifact(rpm_package_api, gen_user, pulpcore_bindings):
+    """Test synchronously uploading an RPM.
+
+    1. Create an Artifact from an RPM, if it doesn't exist.
+    2. Use synchronous RPM upload API with an Artifact.
+    3. Assert that the RPM package created has a matching artifact.
+    """
+    file_to_use = os.path.join(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME2)
+    with NamedTemporaryFile() as file_to_upload:
+        file_to_upload.write(requests.get(file_to_use).content)
+        try:
+            artifact = pulpcore_bindings.ArtifactsApi.create(file_to_upload.name)
+        except BadRequestException as exc:
+            sha256sum = exc.body.split("'")[1]
+            artifact = pulpcore_bindings.ArtifactsApi.list(sha256=sha256sum).results[0]
+
+    with gen_user(model_roles=["rpm.rpm_package_uploader"]):
+        # Using an existing artifact
+        upload_attrs = {"artifact": artifact.pulp_href}
+        package_from_artifact = rpm_package_api.upload(**upload_attrs)
+    assert package_from_artifact.artifact == artifact.pulp_href
 
 
 def eval_resources(resources, is_small=True):
