@@ -80,7 +80,7 @@ def format_nevra_short(name=None, epoch=0, version=None, release=None, arch=None
     return format_nvra(name, version, release, arch)
 
 
-def read_crpackage_from_artifact(artifact):
+def read_crpackage_from_artifact(artifact, working_dir="."):
     """
     Helper function for creating package.
 
@@ -93,7 +93,7 @@ def read_crpackage_from_artifact(artifact):
     """
     filename = f"{artifact.pulp_id}.rpm"
     artifact_file = artifact.pulp_domain.get_storage().open(artifact.file.name)
-    with tempfile.NamedTemporaryFile("wb", dir=".", suffix=filename) as temp_file:
+    with tempfile.NamedTemporaryFile("wb", dir=working_dir, suffix=filename) as temp_file:
         shutil.copyfileobj(artifact_file, temp_file)
         temp_file.flush()
         cr_pkginfo = cr.package_from_rpm(
