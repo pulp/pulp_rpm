@@ -82,8 +82,26 @@ create or replace FUNCTION pulp_rpmver_array (string1 IN VARCHAR)
         segm1 VARCHAR;
         segm1_n NUMERIC := 0;
       begin
-        -- Throw out all non-alphanum characters
-        while one <> '' and not pulp_isalphanum(one)
+        -- Handle tilde separator: it sorts before everything else
+        -- Tilde is represented as a special marker in the array
+        if one <> '' and substr(one, 1, 1) = '~'
+        then
+          ver_array := array_append(ver_array, (-2, '~')::pulp_evr_array_item);
+          one := substr(one, 2);
+          continue;
+        end if;
+
+        -- Handle caret separator: it sorts after base version
+        -- Caret is represented as a special marker in the array
+        if one <> '' and substr(one, 1, 1) = '^'
+        then
+          ver_array := array_append(ver_array, (-1, '^')::pulp_evr_array_item);
+          one := substr(one, 2);
+          continue;
+        end if;
+
+        -- Throw out all non-alphanum characters (except ~ and ^)
+        while one <> '' and not pulp_isalphanum(one) and substr(one, 1, 1) <> '~' and substr(one, 1, 1) <> '^'
         loop
           one := substr(one, 2);
         end loop;
