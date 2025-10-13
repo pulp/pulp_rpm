@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.32.4 (2025-10-13) {: #3.32.4 }
+
+#### Bugfixes {: #3.32.4-bugfix }
+
+- Fixed synchronous RPM upload using an existing artifact.
+  [#4148](https://github.com/pulp/pulp_rpm/issues/4148)
+
+---
+
 ## 3.32.3 (2025-10-13) {: #3.32.3 }
 
 #### Bugfixes {: #3.32.3-bugfix }
