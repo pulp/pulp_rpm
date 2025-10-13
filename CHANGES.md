@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.29.8 (2025-10-13) {: #3.29.8 }
+
+#### Bugfixes {: #3.29.8-bugfix }
+
+- Fix a bug where the `retain_package_versions` feature (and prune and a few others) was not correctly determining which packages were most recent.
+  [#4124](https://github.com/pulp/pulp_rpm/issues/4124)
+
+---
+
 ## 3.29.7 (2025-09-12) {: #3.29.7 }
 
 #### Bugfixes {: #3.29.7-bugfix }
