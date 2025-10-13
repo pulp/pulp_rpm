@@ -8,6 +8,23 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.32.3 (2025-10-13) {: #3.32.3 }
+
+#### Bugfixes {: #3.32.3-bugfix }
+
+- Fixed a bug where syncing from a remote repository with duplicate filenames and different paths
+  would result in one of these packages being missing from a Pulp distribution.
+  This is known to happen in some JFrog repositories.
+
+  On systems that have synced from such repositories before, it is required to clean up the related
+  packages with orphan cleanup or use the provided "pulpcore-manager rpm-datarepair 4073",
+  which forces internal objects to use non-ambiguous filenames.
+  [#4073](https://github.com/pulp/pulp_rpm/issues/4073)
+- Fix a bug where the `retain_package_versions` feature (and prune and a few others) was not correctly determining which packages were most recent.
+  [#4124](https://github.com/pulp/pulp_rpm/issues/4124)
+
+---
+
 ## 3.32.2 (2025-09-18) {: #3.32.2 }
 
 #### Bugfixes {: #3.32.2-bugfix }
