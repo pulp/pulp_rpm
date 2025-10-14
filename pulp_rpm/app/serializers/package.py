@@ -16,8 +16,8 @@ from pulpcore.plugin.serializers import (
     ContentChecksumSerializer,
     SingleArtifactContentUploadSerializer,
 )
-from pulpcore.app.models import UploadChunk
-from pulpcore.app.files import PulpTemporaryUploadedFile
+from pulpcore.plugin.models import UploadChunk
+from pulpcore.plugin.files import PulpTemporaryUploadedFile
 from tempfile import NamedTemporaryFile
 from pulpcore.plugin.util import get_domain_pk
 
