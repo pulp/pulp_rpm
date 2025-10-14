@@ -8,6 +8,32 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.32.4 (2025-10-13) {: #3.32.4 }
+
+#### Bugfixes {: #3.32.4-bugfix }
+
+- Fixed synchronous RPM upload using an existing artifact.
+  [#4148](https://github.com/pulp/pulp_rpm/issues/4148)
+
+---
+
+## 3.32.3 (2025-10-13) {: #3.32.3 }
+
+#### Bugfixes {: #3.32.3-bugfix }
+
+- Fixed a bug where syncing from a remote repository with duplicate filenames and different paths
+  would result in one of these packages being missing from a Pulp distribution.
+  This is known to happen in some JFrog repositories.
+
+  On systems that have synced from such repositories before, it is required to clean up the related
+  packages with orphan cleanup or use the provided "pulpcore-manager rpm-datarepair 4073",
+  which forces internal objects to use non-ambiguous filenames.
+  [#4073](https://github.com/pulp/pulp_rpm/issues/4073)
+- Fix a bug where the `retain_package_versions` feature (and prune and a few others) was not correctly determining which packages were most recent.
+  [#4124](https://github.com/pulp/pulp_rpm/issues/4124)
+
+---
+
 ## 3.32.2 (2025-09-18) {: #3.32.2 }
 
 #### Bugfixes {: #3.32.2-bugfix }
@@ -118,6 +144,15 @@
 #### Misc {: #3.30.0-misc }
 
 - 
+
+---
+
+## 3.29.8 (2025-10-13) {: #3.29.8 }
+
+#### Bugfixes {: #3.29.8-bugfix }
+
+- Fix a bug where the `retain_package_versions` feature (and prune and a few others) was not correctly determining which packages were most recent.
+  [#4124](https://github.com/pulp/pulp_rpm/issues/4124)
 
 ---
 
@@ -250,6 +285,15 @@ No significant changes.
 #### Misc {: #3.28.0-misc }
 
 - [#3828](https://github.com/pulp/pulp_rpm/issues/3828), [#3854](https://github.com/pulp/pulp_rpm/issues/3854), [#3856](https://github.com/pulp/pulp_rpm/issues/3856)
+
+---
+
+## 3.27.9 (2025-10-13) {: #3.27.9 }
+
+#### Bugfixes {: #3.27.9-bugfix }
+
+- Fix a bug where the `retain_package_versions` feature (and prune and a few others) was not correctly determining which packages were most recent.
+  [#4124](https://github.com/pulp/pulp_rpm/issues/4124)
 
 ---
 
