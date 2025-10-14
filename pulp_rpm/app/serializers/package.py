@@ -425,7 +425,9 @@ class PackageUploadSerializer(PackageSerializer):
                 # Handle chunked upload
 
                 chunks = UploadChunk.objects.filter(upload=upload).order_by("offset")
-                with NamedTemporaryFile(mode="ab", dir=settings.WORKING_DIRECTORY, delete=False) as temp_file:
+                with NamedTemporaryFile(
+                    mode="ab", dir=settings.WORKING_DIRECTORY, delete=False
+                ) as temp_file:
                     for chunk in chunks:
                         temp_file.write(chunk.file.read())
                         chunk.file.close()
