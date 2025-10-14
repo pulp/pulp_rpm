@@ -315,20 +315,20 @@ def test_synchronous_package_upload_from_chunks(
 
     sha256_digest = hasher.hexdigest()
 
+    # Create an Upload object (requires core permissions, done outside gen_user)
+    upload = pulpcore_bindings.UploadsApi.create({"size": file_size})
+
+    # Upload all chunks
+    for chunk_file, content_range, chunk_sha in chunks:
+        pulpcore_bindings.UploadsApi.update(
+            upload_href=upload.pulp_href,
+            file=chunk_file,
+            content_range=content_range,
+            sha256=chunk_sha,
+        )
+
+    # Use synchronous upload API with the upload object (requires rpm uploader role)
     with gen_user(model_roles=["rpm.rpm_package_uploader"]):
-        # Create an Upload object
-        upload = pulpcore_bindings.UploadsApi.create({"size": file_size})
-
-        # Upload all chunks
-        for chunk_file, content_range, chunk_sha in chunks:
-            pulpcore_bindings.UploadsApi.update(
-                upload_href=upload.pulp_href,
-                file=chunk_file,
-                content_range=content_range,
-                sha256=chunk_sha,
-            )
-
-        # Use synchronous upload API with the upload object
         upload_attrs = {"upload": upload.pulp_href}
         package = rpm_package_api.upload(**upload_attrs)
 
