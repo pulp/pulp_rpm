@@ -209,7 +209,7 @@ def add_metadata_to_publication(publication, version, prefix=""):
             )
         )
 
-    PublishedArtifact.objects.bulk_create(published_artifacts)
+    PublishedArtifact.objects.bulk_create(published_artifacts, batch_size=2000)
 
 
 def get_repomd_file(remote, url):
