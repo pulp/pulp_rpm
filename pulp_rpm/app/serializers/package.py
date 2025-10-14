@@ -408,6 +408,8 @@ class PackageUploadSerializer(PackageSerializer):
     def validate(self, data):
         uploaded_file = data.get("file")
         artifact = data.get("artifact")
+        upload = data.get("upload")
+        
         # export META from rpm and prepare dict as saveable format
         try:
             if uploaded_file:
@@ -415,6 +417,14 @@ class PackageUploadSerializer(PackageSerializer):
                     uploaded_file.file.name, changelog_limit=settings.KEEP_CHANGELOG_LIMIT
                 )
                 new_pkg = Package.createrepo_to_dict(cr_object)
+            elif upload:
+                # Handle chunked upload - commit it to an artifact first
+                artifact = upload.commit()
+                data["artifact"] = artifact
+                with TemporaryDirectory(dir=settings.WORKING_DIRECTORY) as working_dir_rel_path:
+                    new_pkg = Package.createrepo_to_dict(
+                        read_crpackage_from_artifact(artifact, working_dir=working_dir_rel_path)
+                    )
             elif artifact:
                 with TemporaryDirectory(dir=settings.WORKING_DIRECTORY) as working_dir_rel_path:
                     new_pkg = Package.createrepo_to_dict(
