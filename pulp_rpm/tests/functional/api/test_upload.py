@@ -272,6 +272,73 @@ def test_synchronous_package_upload_from_artifact(rpm_package_api, gen_user, pul
     assert package_from_artifact.artifact == artifact.pulp_href
 
 
+def test_synchronous_package_upload_from_chunks(
+    delete_orphans_pre, rpm_package_api, gen_user, pulpcore_bindings, tmp_path
+):
+    """Test synchronously uploading an RPM using chunked upload.
+
+    1. Upload an RPM file in chunks.
+    2. Use synchronous RPM upload API with the upload object.
+    3. Assert that the RPM package is created successfully.
+    """
+    import hashlib
+    import uuid
+
+    file_to_use = os.path.join(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
+
+    # Download the file and prepare chunks
+    with NamedTemporaryFile(delete=False) as file_to_upload:
+        file_to_upload.write(requests.get(file_to_use).content)
+        file_to_upload.flush()
+        file_path = file_to_upload.name
+
+    # Create chunks (similar to pulpcore_chunked_file_factory)
+    chunk_size = 512
+    chunks = []
+    hasher = hashlib.new("sha256")
+
+    with open(file_path, "rb") as f:
+        data = f.read()
+
+    file_size = len(data)
+    start = 0
+
+    while start < len(data):
+        content = data[start : start + chunk_size]
+        chunk_file = tmp_path / str(uuid.uuid4())
+        hasher.update(content)
+        chunk_file.write_bytes(content)
+        content_sha = hashlib.sha256(content).hexdigest()
+        end = start + len(content) - 1
+        chunks.append((str(chunk_file), f"bytes {start}-{end}/{file_size}", content_sha))
+        start += len(content)
+
+    sha256_digest = hasher.hexdigest()
+
+    with gen_user(model_roles=["rpm.rpm_package_uploader"]):
+        # Create an Upload object
+        upload = pulpcore_bindings.UploadsApi.create({"size": file_size})
+
+        # Upload all chunks
+        for chunk_file, content_range, chunk_sha in chunks:
+            pulpcore_bindings.UploadsApi.update(
+                upload_href=upload.pulp_href,
+                file=chunk_file,
+                content_range=content_range,
+                sha256=chunk_sha,
+            )
+
+        # Use synchronous upload API with the upload object
+        upload_attrs = {"upload": upload.pulp_href}
+        package = rpm_package_api.upload(**upload_attrs)
+
+        assert package.location_href == RPM_PACKAGE_FILENAME
+        assert package.pkgId == sha256_digest
+
+    # Clean up
+    os.unlink(file_path)
+
+
 def eval_resources(resources, is_small=True):
     """Eval created_resources counts."""
     groups = [g for g in resources if "packagegroups" in g]

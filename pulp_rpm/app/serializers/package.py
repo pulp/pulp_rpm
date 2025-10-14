@@ -409,11 +409,11 @@ class PackageUploadSerializer(PackageSerializer):
         ref_name = "PackageUpload"
 
     def validate(self, data):
-        
+
         uploaded_file = data.get("file")
         artifact = data.get("artifact")
         upload = data.get("upload")
-        
+
         # export META from rpm and prepare dict as saveable format
         try:
             if uploaded_file:
@@ -423,20 +423,20 @@ class PackageUploadSerializer(PackageSerializer):
                 new_pkg = Package.createrepo_to_dict(cr_object)
             elif upload:
                 # Handle chunked upload
-                
+
                 chunks = UploadChunk.objects.filter(upload=upload).order_by("offset")
-                with NamedTemporaryFile(mode="ab", dir=".", delete=False) as temp_file:
+                with NamedTemporaryFile(mode="ab", dir=settings.WORKING_DIRECTORY, delete=False) as temp_file:
                     for chunk in chunks:
                         temp_file.write(chunk.file.read())
                         chunk.file.close()
                     temp_file.flush()
-                
+
                 # Now we have a file, read metadata from it
                 cr_object = cr.package_from_rpm(
                     temp_file.name, changelog_limit=settings.KEEP_CHANGELOG_LIMIT
                 )
                 new_pkg = Package.createrepo_to_dict(cr_object)
-                
+
                 # Convert to PulpTemporaryUploadedFile for later artifact creation
                 data["file"] = PulpTemporaryUploadedFile.from_file(open(temp_file.name, "rb"))
                 data.pop("upload")  # Remove upload from data
