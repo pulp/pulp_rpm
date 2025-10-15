@@ -93,33 +93,43 @@ create or replace FUNCTION pulp_rpmvercmp(a TEXT, b TEXT)
       end loop;
 
       -- Handle tilde separator - it sorts before everything else
-      if length(one) > 0 and substr(one, 1, 1) = '~' then
-        if length(two) = 0 or substr(two, 1, 1) <> '~' then
-          return -1;  -- one < two
+      if (length(one) > 0 and substr(one, 1, 1) = '~') or (length(two) > 0 and substr(two, 1, 1) = '~') then
+        if length(one) = 0 or substr(one, 1, 1) <> '~' then
+          return 1;  -- one > two (no tilde beats tilde)
         end if;
+        if length(two) = 0 or substr(two, 1, 1) <> '~' then
+          return -1;  -- one < two (tilde loses to no tilde)
+        end if;
+        -- Both have tilde, strip and continue
         one := substr(one, 2);
         two := substr(two, 2);
         continue;
-      elsif length(two) > 0 and substr(two, 1, 1) = '~' then
-        return 1;  -- one > two
       end if;
 
       -- Handle caret separator - complex logic
-      if length(one) > 0 and substr(one, 1, 1) = '^' then
-        if length(two) = 0 then
-          return 1;  -- one > two (caret vs end: caret wins)
-        elsif substr(two, 1, 1) <> '^' then
-          return -1;  -- one < two (caret vs continuation: continuation wins)
+      -- Caret vs end-of-string: caret wins (is greater)
+      -- Caret vs continuation: continuation wins (is greater)
+      if (length(one) > 0 and substr(one, 1, 1) = '^') or (length(two) > 0 and substr(two, 1, 1) = '^') then
+        if length(one) = 0 or substr(one, 1, 1) <> '^' then
+          -- one continues or ended, two has caret
+          if length(one) = 0 then
+            return -1;  -- end < caret
+          else
+            return 1;  -- continuation > caret
+          end if;
         end if;
+        if length(two) = 0 or substr(two, 1, 1) <> '^' then
+          -- one has caret, two continues or ended
+          if length(two) = 0 then
+            return 1;  -- caret > end
+          else
+            return -1;  -- caret < continuation
+          end if;
+        end if;
+        -- Both have caret, strip and continue
         one := substr(one, 2);
         two := substr(two, 2);
         continue;
-      elsif length(two) > 0 and substr(two, 1, 1) = '^' then
-        if length(one) = 0 then
-          return -1;  -- one < two (end vs caret: caret wins)
-        else
-          return 1;  -- one > two (continuation vs caret: continuation wins)
-        end if;
       end if;
 
       -- If we ran to the end of either, we are finished
