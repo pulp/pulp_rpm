@@ -277,9 +277,10 @@ recipe section below for more details on how to do this.
 
 !!! note
 
-    If a destination repository has a retain-packages policy set, it will take effect after the copy.
-    Retain package policy is set by `retain_package_versions` option.
-    When set, it identifies the maximum number of versions of each package to keep; as new versions of
+    If a destination repository has a package retention policy set, it will take effect after the copy.
+    Package retention policy is set by `retain_package_versions` option.
+    When set, it identifies the maximum number of versions of each package (as defined by
+    name-epoch-version-release-architecture) to keep; as new versions of
     packages are added by upload, sync, or copy, older versions of the same packages are automatically
     removed. A value of 0 means "unlimited" and will keep all versions of each package.
 
