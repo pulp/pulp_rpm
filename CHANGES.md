@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.32.5 (2025-10-15) {: #3.32.5 }
+
+#### Bugfixes {: #3.32.5-bugfix }
+
+- Fixed the chunk uploads as part of the synchronous RPM upload.
+  [#4179](https://github.com/pulp/pulp_rpm/issues/4179)
+
+---
+
 ## 3.32.4 (2025-10-13) {: #3.32.4 }
 
 #### Bugfixes {: #3.32.4-bugfix }
