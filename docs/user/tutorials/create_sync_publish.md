@@ -32,7 +32,7 @@ RPM Repositories support several additional options.
 - metadata_signing_service:
   : See `metadata_signing`.
 - retain_package_versions:
-  : The maximum number of versions of each package to keep; as new versions of packages are added by upload, sync, or copy, older versions of the same packages are automatically removed. A value of 0 means "unlimited".
+  : The maximum number of versions of each package to keep; as new versions of packages are added by upload, sync, or copy, older versions of the same packages (determined by version comparison, not by e.g. when packages were built or uploaded) are automatically removed. A value of 0 means "unlimited".
 - autopublish:
   : If set to True, Pulp will automatically create publications for new repository versions. It is generally intended to be used with the `Distribution` pointing to the repository, i.e. set the `repository` field on the distribution. Newly created publications (from autopublish) will then be made available automatically upon creation.
 - retain_repo_versions:
