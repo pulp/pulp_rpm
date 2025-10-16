@@ -1,3 +1,4 @@
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 from pulpcore.plugin.models import Artifact, CreatedResource, PulpTemporaryFile, Upload, UploadChunk
@@ -43,8 +44,13 @@ def sign_and_create(
             uploaded_package = Upload.objects.get(pk=temporary_file_pk)
             _save_upload(uploaded_package, final_package)
 
-        package_signing_service.sign(final_package.name, pubkey_fingerprint=signing_fingerprint)
-        artifact = Artifact.init_and_validate(final_package.name)
+        result = package_signing_service.sign(
+            final_package.name, pubkey_fingerprint=signing_fingerprint
+        )
+        signed_package_path = Path(result["rpm_package"])
+        if not signed_package_path.exists():
+            raise Exception(f"Signing script did not create the signed package: {result}")
+        artifact = Artifact.init_and_validate(str(signed_package_path))
         artifact.save()
         resource = CreatedResource(content_object=artifact)
         resource.save()
