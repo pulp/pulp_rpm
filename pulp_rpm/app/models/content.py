@@ -62,11 +62,14 @@ class RpmPackageSigningService(SigningService):
             temp_file = RpmTool.get_empty_rpm(temp_directory_name)
             return_value = self.sign(temp_file, pubkey_fingerprint=self.pubkey_fingerprint)
             try:
-                return_value["rpm_package"]
+                result = Path(return_value["rpm_package"])
             except KeyError:
                 raise PulpException(f"Malformed output from signing script: {return_value}")
+
+            if not result.exists():
+                raise PulpException(f"Signed package not found: {result}")
 
             # verify with rpm tool
             rpm_tool = RpmTool(root=Path(temp_directory_name))
             rpm_tool.import_pubkey_string(self.public_key)
-            rpm_tool.verify_signature(temp_file)
+            rpm_tool.verify_signature(result)
