@@ -24,7 +24,7 @@ pushd pulp_rpm-client
 python setup.py sdist bdist_wheel --python-tag py3
 
 twine check "dist/pulp_rpm_client-"*"-py3-none-any.whl"
-twine check "dist/pulp_rpm-client-"*".tar.gz"
+twine check "dist/pulp_rpm_client-"*".tar.gz"
 
 tar cvf "../../pulp_rpm/rpm-python-client.tar" ./dist
 
