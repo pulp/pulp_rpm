@@ -22,5 +22,5 @@ fi
 
 twine upload -u __token__ -p "${PYPI_API_TOKEN}" \
 "dist/pulp_rpm_client-${VERSION}-py3-none-any.whl" \
-"dist/pulp_rpm-client-${VERSION}.tar.gz" \
+"dist/pulp_rpm_client-${VERSION}.tar.gz" \
 ;
