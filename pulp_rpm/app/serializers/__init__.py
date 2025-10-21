@@ -26,7 +26,7 @@ from .modulemd import (  # noqa
     ModulemdDefaultsSerializer,
     ModulemdObsoleteSerializer,
 )
-from .package import PackageSerializer, PackageUploadSerializer, MinimalPackageSerializer  # noqa
+from .package import PackageSerializer, RPMPackageUploadSerializer, MinimalPackageSerializer  # noqa
 from .prune import PrunePackagesSerializer  # noqa
 from .repository import (  # noqa
     CopySerializer,
