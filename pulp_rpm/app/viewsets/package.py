@@ -18,7 +18,7 @@ from pulp_rpm.app.models import Package
 from pulp_rpm.app.serializers import (
     MinimalPackageSerializer,
     PackageSerializer,
-    RPMPackageUploadSerializer,
+    PackageUploadSerializer,
 )
 
 
@@ -152,11 +152,11 @@ class PackageViewSet(SingleArtifactContentUploadViewSet):
 
     @extend_schema(
         description="Synchronously upload an RPM package.",
-        request=RPMPackageUploadSerializer,
+        request=PackageUploadSerializer,
         responses={201: PackageSerializer},
         summary="Upload an RPM package synchronously.",
     )
-    @action(detail=False, methods=["post"], serializer_class=RPMPackageUploadSerializer)
+    @action(detail=False, methods=["post"], serializer_class=PackageUploadSerializer)
     def upload(self, request):
         """Create an RPM package."""
         serializer = self.get_serializer(data=request.data)
