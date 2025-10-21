@@ -154,7 +154,7 @@ class PackageViewSet(SingleArtifactContentUploadViewSet):
         description="Synchronously upload an RPM package.",
         request=PackageUploadSerializer,
         responses={201: PackageSerializer},
-        summary="Upload an RPM package synchronously.",
+        summary="Upload an RPM package synchronously-now.",
     )
     @action(detail=False, methods=["post"], serializer_class=PackageUploadSerializer)
     def upload(self, request):
