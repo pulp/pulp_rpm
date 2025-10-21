@@ -406,7 +406,7 @@ class RPMPackageUploadSerializer(PackageSerializer):
         )
         model = Package
         # Name used for the OpenAPI request object
-        ref_name = "PackageUpload"
+        ref_name = "RPMPackageUploadSerializer"
 
     def validate(self, data):
 
