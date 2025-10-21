@@ -393,7 +393,7 @@ class MinimalPackageSerializer(PackageSerializer):
         model = Package
 
 
-class RPMPackageUploadSerializer(PackageSerializer):
+class PackageUploadSerializer(PackageSerializer):
     """
     Serializer for requests to synchronously upload RPM packages.
     """
