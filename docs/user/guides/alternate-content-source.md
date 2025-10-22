@@ -6,7 +6,7 @@ the remote content, Alternate Content Sources will allow you to substitute
 this content, allowing for faster data transfer.
 
 *Alternate Content Sources* base is provided by pulpcore.
-You can learn more about its general usage [here](site:pulp_file/docs/admin/guides/02-alternate-content-sources/).
+You can learn more about its general usage [here](site:pulp_file/docs/admin/guides/alternate-content-sources/).
 
 To use an Alternate Content Source you need a `RPMRemote` with path of your ACS.
 
