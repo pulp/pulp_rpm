@@ -1,1 +1,0 @@
-Downgraded openapi spec version from 3.1 to 3.0 to revert regression in the published Ruby bindings.

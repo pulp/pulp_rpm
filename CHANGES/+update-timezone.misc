@@ -1,1 +1,0 @@
-Replaced the deprecated `django.utils.timezone.utc` by `datetime.timzone.utc`.

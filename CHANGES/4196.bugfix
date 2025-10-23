@@ -1,1 +1,0 @@
-Renaming PackageUploadSerializer to RPMPackageUploadSerializer to avoid the duplicating schema
