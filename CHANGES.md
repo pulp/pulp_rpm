@@ -8,6 +8,51 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.33.0 (2025-10-23) {: #3.33.0 }
+
+#### Features {: #3.33.0-feature }
+
+- Updated pulp_rpm package signing code to use "rpm_package" location instead of expecting the original file to be signed.
+  [#4189](https://github.com/pulp/pulp_rpm/issues/4189)
+
+#### Bugfixes {: #3.33.0-bugfix }
+
+- Fixed a bug where syncing from a remote repository with duplicate filenames and different paths
+  would result in one of these packages being missing from a Pulp distribution.
+  This is known to happen in some JFrog repositories.
+
+  On systems that have synced from such repositories before, it is required to clean up the related
+  packages with orphan cleanup or use the provided "pulpcore-manager rpm-datarepair 4073",
+  which forces internal objects to use non-ambiguous filenames.
+  [#4073](https://github.com/pulp/pulp_rpm/issues/4073)
+- Taught publish/synchronize to return full serialized object of their action.
+  [#4117](https://github.com/pulp/pulp_rpm/issues/4117)
+- Fix a bug where the `retain_package_versions` feature (and prune and a few others) was not correctly determining which packages were most recent.
+  [#4124](https://github.com/pulp/pulp_rpm/issues/4124)
+- Downgraded openapi spec version from 3.1 to 3.0 to revert regression in the published Ruby bindings.
+  [#4125](https://github.com/pulp/pulp_rpm/issues/4125)
+- Fixed synchronous RPM upload using an existing artifact.
+  [#4148](https://github.com/pulp/pulp_rpm/issues/4148)
+- Improved postgres memory performance on mirror complete sync
+  [#4174](https://github.com/pulp/pulp_rpm/issues/4174)
+- Fixed the chunk uploads as part of the synchronous RPM upload.
+  [#4179](https://github.com/pulp/pulp_rpm/issues/4179)
+- Renaming PackageUploadSerializer to RPMPackageUploadSerializer to avoid the duplicating schema
+  [#4196](https://github.com/pulp/pulp_rpm/issues/4196)
+- Update the required version of the libcomps package to ensure a bugfix is present which was resulting in memory corruption and segfaults in some cases.
+
+#### Improved Documentation {: #3.33.0-doc }
+
+- Clarified `retain_package_versions` function in the documentation.
+  [#4169](https://github.com/pulp/pulp_rpm/issues/4169)
+- Updated page about bindings to point to Pulp Openapi Generator documentation.
+
+#### Misc {: #3.33.0-misc }
+
+- 
+
+---
+
 ## 3.32.5 (2025-10-15) {: #3.32.5 }
 
 #### Bugfixes {: #3.32.5-bugfix }
