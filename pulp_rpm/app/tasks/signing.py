@@ -1,11 +1,26 @@
+import logging
+import re
+import subprocess
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-from pulpcore.plugin.models import Artifact, CreatedResource, PulpTemporaryFile, Upload, UploadChunk
-from pulpcore.plugin.tasking import general_create
+from pulpcore.plugin.models import (
+    Artifact,
+    ContentArtifact,
+    CreatedResource,
+    PulpTemporaryFile,
+    UploadChunk,
+    Upload,
+)
+from pulpcore.plugin.tasking import add_and_remove, general_create
 from pulpcore.plugin.util import get_url
 
-from pulp_rpm.app.models.content import RpmPackageSigningService
+from pulp_rpm.app.models.content import RpmPackageSigningResult, RpmPackageSigningService
+from pulp_rpm.app.models.package import Package
+from pulp_rpm.app.models.repository import RpmRepository
+
+
+log = logging.getLogger(__name__)
 
 
 def _save_file(fileobj, final_package):
@@ -20,6 +35,39 @@ def _save_upload(uploadobj, final_package):
         final_package.write(chunk.file.read())
         chunk.file.close()
     final_package.flush()
+
+
+def _check_package_fingerprint(package_file, signing_fingerprint):
+    completed_process = subprocess.run(
+        ("rpm", "-Kv", package_file.name),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    if completed_process.stderr:
+        raise Exception(
+            f"Failed to verify package signature: {completed_process.stdout} "
+            f"{completed_process.stderr}."
+        )
+
+    key_ids = re.findall(r"key ID ([0-9A-Fa-f]+)", completed_process.stdout, re.IGNORECASE)
+    for key_id in key_ids:
+        if signing_fingerprint.lower().endswith(key_id.lower()):
+            return True
+
+    return False
+
+
+def _sign_file(package_file, signing_service, signing_fingerprint):
+    result = signing_service.sign(package_file.name, pubkey_fingerprint=signing_fingerprint)
+    signed_package_path = Path(result["rpm_package"])
+    if not signed_package_path.exists():
+        raise Exception(f"Signing script did not create the signed package: {result}")
+    artifact = Artifact.init_and_validate(str(signed_package_path))
+    artifact.save()
+    resource = CreatedResource(content_object=artifact)
+    resource.save()
+    return artifact
 
 
 def sign_and_create(
@@ -44,16 +92,7 @@ def sign_and_create(
             uploaded_package = Upload.objects.get(pk=temporary_file_pk)
             _save_upload(uploaded_package, final_package)
 
-        result = package_signing_service.sign(
-            final_package.name, pubkey_fingerprint=signing_fingerprint
-        )
-        signed_package_path = Path(result["rpm_package"])
-        if not signed_package_path.exists():
-            raise Exception(f"Signing script did not create the signed package: {result}")
-        artifact = Artifact.init_and_validate(str(signed_package_path))
-        artifact.save()
-        resource = CreatedResource(content_object=artifact)
-        resource.save()
+        artifact = _sign_file(final_package, package_signing_service, signing_fingerprint)
     uploaded_package.delete()
 
     # Create Package content
@@ -66,3 +105,63 @@ def sign_and_create(
     if "upload" in data:
         del data["upload"]
     general_create(app_label, serializer_name, data=data, context=context, *args, **kwargs)
+
+
+def signed_add_and_remove(
+    repository_pk, add_content_units, remove_content_units, base_version_pk=None
+):
+    repo = RpmRepository.objects.get(pk=repository_pk)
+
+    if repo.package_signing_service:
+        # sign each package and replace it in the add_content_units list
+        for package in Package.objects.filter(pk__in=add_content_units):
+            content_artifact = package.contentartifact_set.first()
+            artifact_obj = content_artifact.artifact
+            package_id = str(package.pk)
+
+            with NamedTemporaryFile(mode="wb", dir=".", delete=False) as final_package:
+                artifact_file = artifact_obj.file
+                _save_file(artifact_file, final_package)
+
+                # check if the package is already signed with our fingerprint
+                if _check_package_fingerprint(final_package, repo.package_signing_fingerprint):
+                    continue
+
+                # check if the package has been signed in the past with our fingerprint
+                if existing_result := RpmPackageSigningResult.objects.filter(
+                    original_package_sha256=content_artifact.artifact.sha256,
+                    package_signing_fingerprint=repo.package_signing_fingerprint,
+                ).first():
+                    while package_id in add_content_units:
+                        add_content_units.remove(package_id)
+                    add_content_units.append(str(existing_result.result_package.pk))
+                    continue
+
+                # create a new signed version of the package
+                artifact = _sign_file(
+                    final_package, repo.package_signing_service, repo.package_signing_fingerprint
+                )
+                signed_package = package
+                signed_package.pk = None
+                signed_package.pulp_id = None
+                signed_package.pkgId = artifact.sha256
+                signed_package.checksum_type = "sha256"
+                signed_package.save()
+                ContentArtifact.objects.create(
+                    artifact=artifact,
+                    content=signed_package,
+                    relative_path=content_artifact.relative_path,
+                )
+                RpmPackageSigningResult.objects.create(
+                    original_package_sha256=artifact_obj.sha256,
+                    package_signing_fingerprint=repo.package_signing_fingerprint,
+                    result_package=signed_package,
+                )
+
+                resource = CreatedResource(content_object=signed_package)
+                resource.save()
+                while package_id in add_content_units:
+                    add_content_units.remove(package_id)
+                add_content_units.append(str(signed_package.pk))
+
+    return add_and_remove(repository_pk, add_content_units, remove_content_units, base_version_pk)

@@ -2,8 +2,9 @@ import tempfile
 from pathlib import Path
 
 from django.conf import settings
+from django.db import models
 from pulpcore.plugin.exceptions import PulpException
-from pulpcore.plugin.models import SigningService
+from pulpcore.plugin.models import BaseModel, Content, SigningService
 from typing import Optional
 
 from pulp_rpm.app.shared_utils import RpmTool
@@ -73,3 +74,30 @@ class RpmPackageSigningService(SigningService):
             rpm_tool = RpmTool(root=Path(temp_directory_name))
             rpm_tool.import_pubkey_string(self.public_key)
             rpm_tool.verify_signature(result)
+
+
+class RpmPackageSigningResult(BaseModel):
+    """
+    A model used for storing the result of signing an RPM package.
+
+    This allows us to avoid re-signing the same package multiple times by keeping a history of
+    what's been signed before.
+
+    Fields:
+        original_package_sha256 (String):
+            The sha256 digest of the original package artifact.
+        package_signing_fingerprint (String):
+            The fingerprint used to sign the package. This value is copied from the repo's
+            package_signing_fingerprint field.
+
+    Relations:
+        result_package (ForeignKey):
+            The resulting package that was signed by @package_signing_fingerprint.
+    """
+
+    original_package_sha256 = models.TextField(max_length=64)
+    package_signing_fingerprint = models.TextField(max_length=40)
+    result_package = models.ForeignKey(Content, on_delete=models.CASCADE)
+
+    class Meta:
+        unique_together = ("original_package_sha256", "package_signing_fingerprint")

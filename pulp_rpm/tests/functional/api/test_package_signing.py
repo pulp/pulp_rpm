@@ -5,6 +5,7 @@ import uuid
 
 import pytest
 import requests
+from pulpcore.client.pulp_rpm.exceptions import ApiException
 from pulpcore.exceptions.validation import InvalidSignatureError
 
 from pulp_rpm.app.shared_utils import RpmTool
@@ -235,3 +236,154 @@ def test_sign_chunked_package_on_upload(
             download_content_unit(distribution.base_path, get_package_repo_path(pkg_location_href))
         )
         assert rpm_tool.verify_signature(downloaded_package)
+
+
+@pytest.mark.parallel
+def test_signed_repo_modify(
+    tmp_path,
+    monitor_task,
+    download_content_unit,
+    signing_gpg_metadata,
+    rpm_package_signing_service,
+    rpm_repository_factory,
+    rpm_repository_api,
+    rpm_package_factory,
+    rpm_package_api,
+    rpm_publication_factory,
+    rpm_distribution_factory,
+):
+    """Ensure packages added via modify are signed before distribution."""
+
+    gpg, fingerprint, _ = signing_gpg_metadata
+
+    rpm_tool = RpmTool(tmp_path)
+    rpm_tool.import_pubkey_string(gpg.export_keys(fingerprint))
+
+    # Confirm the fixture RPM is initially unsigned.
+    unsigned_package = tmp_path / RPM_PACKAGE_FILENAME
+    unsigned_package.write_bytes(requests.get(RPM_UNSIGNED_URL).content)
+    with pytest.raises(InvalidSignatureError, match="The package is not signed: .*"):
+        rpm_tool.verify_signature(unsigned_package)
+
+    repository = rpm_repository_factory(
+        package_signing_service=rpm_package_signing_service.pulp_href,
+        package_signing_fingerprint=fingerprint,
+    )
+
+    created_package = rpm_package_factory(url=RPM_UNSIGNED_URL)
+    package_href = created_package.pulp_href
+    modify_response = rpm_repository_api.modify(
+        repository.pulp_href, {"add_content_units": [package_href]}
+    )
+    monitor_task(modify_response.task)
+
+    publication = rpm_publication_factory(repository=repository.pulp_href)
+    distribution = rpm_distribution_factory(publication=publication.pulp_href)
+
+    pkg_location_href = rpm_package_api.read(package_href).location_href
+    downloaded_package = tmp_path / "modify-package.rpm"
+    downloaded_package.write_bytes(
+        download_content_unit(distribution.base_path, get_package_repo_path(pkg_location_href))
+    )
+
+    assert rpm_tool.verify_signature(downloaded_package)
+
+    repository = rpm_repository_api.read(repository.pulp_href)
+    signed_package_href = (
+        rpm_package_api.list(repository_version=repository.latest_version_href).results[0].pulp_href
+    )
+
+    # attempt to add the package to the repository a second time (should produce same package href)
+    modify_response = rpm_repository_api.modify(
+        repository.pulp_href, {"add_content_units": [package_href]}
+    )
+    monitor_task(modify_response.task)
+
+    repository = rpm_repository_api.read(repository.pulp_href)
+    results = rpm_package_api.list(repository_version=repository.latest_version_href).results
+
+    assert signed_package_href in [pkg.pulp_href for pkg in results]
+    assert len(results) == 1  # only one package should be added to the repository
+
+
+@pytest.mark.parallel
+def test_already_signed_package(
+    monitor_task,
+    signing_gpg_metadata,
+    rpm_package_signing_service,
+    rpm_repository_factory,
+    rpm_repository_api,
+    rpm_package_factory,
+    rpm_package_api,
+):
+    """Don't sign a package if it's already signed with our key."""
+
+    _, fingerprint, _ = signing_gpg_metadata
+
+    repo_one = rpm_repository_factory(
+        package_signing_service=rpm_package_signing_service.pulp_href,
+        package_signing_fingerprint=fingerprint,
+    )
+    repo_two = rpm_repository_factory(
+        package_signing_service=rpm_package_signing_service.pulp_href,
+        package_signing_fingerprint=fingerprint,
+    )
+
+    created_package = rpm_package_factory(url=RPM_UNSIGNED_URL)
+    package_href = created_package.pulp_href
+
+    first_modify = rpm_repository_api.modify(
+        repo_one.pulp_href,
+        {"add_content_units": [package_href]},
+    )
+    monitor_task(first_modify.task)
+
+    repo_one = rpm_repository_api.read(repo_one.pulp_href)
+    repo_one_packages = rpm_package_api.list(
+        repository_version=repo_one.latest_version_href
+    ).results
+    assert len(repo_one_packages) == 1
+    signed_package_href = repo_one_packages[0].pulp_href
+
+    second_modify = rpm_repository_api.modify(
+        repo_two.pulp_href,
+        {"add_content_units": [signed_package_href]},
+    )
+    monitor_task(second_modify.task)
+
+    repo_two = rpm_repository_api.read(repo_two.pulp_href)
+    repo_two_packages = rpm_package_api.list(
+        repository_version=repo_two.latest_version_href
+    ).results
+    assert len(repo_two_packages) == 1
+
+    # The same signed package should be reused between repositories
+    assert repo_two_packages[0].pulp_href == signed_package_href
+
+
+def test_signed_repo_rejects_on_demand_content(
+    init_and_sync,
+    rpm_package_signing_service,
+    signing_gpg_metadata,
+    rpm_repository_factory,
+    rpm_repository_api,
+    rpm_package_api,
+):
+    """Ensure modify rejects on-demand content when signing is enabled."""
+    source_repo, _ = init_and_sync(policy="on_demand")
+    _, fingerprint, _ = signing_gpg_metadata
+    destination_repo = rpm_repository_factory(
+        package_signing_service=rpm_package_signing_service.pulp_href,
+        package_signing_fingerprint=fingerprint,
+    )
+
+    packages = rpm_package_api.list(repository_version=source_repo.latest_version_href).results
+    package_href = packages[0].pulp_href
+
+    with pytest.raises(ApiException) as exc:
+        rpm_repository_api.modify(
+            destination_repo.pulp_href,
+            {"add_content_units": [package_href]},
+        )
+
+    assert "Cannot add on-demand content" in exc.value.body
