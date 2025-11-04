@@ -20,21 +20,27 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         """Set up arguments."""
         parser.add_argument("issue", help=_("The github issue # of the issue to be fixed."))
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help=_("Don't make any changes, just print diagnostics."),
+        )
 
     def handle(self, *args, **options):
         """Implement the command."""
         issue = options["issue"]
+        dry_run = options["dry_run"]
 
         if issue == "2460":
-            self.repair_2460()
+            self.repair_2460(dry_run)
         elif issue == "3127":
-            self.repair_3127()
+            self.repair_3127(dry_run)
         elif issue == "4073":
-            self.repair_4073()
+            self.repair_4073(dry_run)
         else:
             raise CommandError(_("Unknown issue: '{}'").format(issue))
 
-    def repair_2460(self):
+    def repair_2460(self, dry_run):
         """Perform data repair for issue #2460."""
 
         def fix_package(package):
@@ -47,22 +53,34 @@ class Command(BaseCommand):
                     return require
 
             package.requires = [fix_requirement(require) for require in package.provides]
+            package.save()
 
         # This is the only known affected package, we can update this later if we find more.
         packages = Package.objects.filter(name="bpg-algeti-fonts")
 
         for package in packages:
-            fix_package(package)
-            package.save()
+            if not dry_run:
+                self.stdout.write(
+                    f"Fixing requirement for package '{package.nevra}' ({package.pk})"
+                )
+                fix_package(package)
+            else:
+                self.stdout.write(
+                    f"Package '{package.nevra}' ({package.pk}) has broken requirement"
+                )
 
-    def repair_3127(self):
+    def repair_3127(self, dry_run):
         """Perform data repair for issue #3127."""
         update_collections = UpdateCollection.objects.exclude(name__isnull=False)
         for collection in update_collections:
-            collection.name = "collection-autofill-" + uuid.uuid4().hex[:12]
-            collection.save()
+            if not dry_run:
+                self.stdout.write(f"Fixing missing name for UpdateCollection ({collection.pk})")
+                collection.name = "collection-autofill-" + uuid.uuid4().hex[:12]
+                collection.save()
+            else:
+                self.stdout.write(f"UpdateCollection ({collection.pk}) has missing name")
 
-    def repair_4073(self):
+    def repair_4073(self, dry_run):
         """Perform data repair for issue #4073.
 
         For each updated ContentArtifact, print:
@@ -74,7 +92,8 @@ class Command(BaseCommand):
 
         def process_batch():
             nonlocal update_count, batch, batch_msgs
-            ContentArtifact.objects.bulk_update(batch, fields=["relative_path"])
+            if not dry_run:
+                ContentArtifact.objects.bulk_update(batch, fields=["relative_path"])
             for msg in batch_msgs:
                 self.stdout.write(msg)
             self.stdout.flush()
