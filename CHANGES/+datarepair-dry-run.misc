@@ -1,0 +1,1 @@
+Added a `--dry-run` flag to the `rpm-datarepair` management command, to be able to see affected packages without making any changes.
