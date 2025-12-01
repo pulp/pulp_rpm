@@ -1,14 +1,22 @@
 from dataclasses import dataclass
 import hashlib
+import json
 from pathlib import Path
 import uuid
 
 import pytest
 import requests
+from pulpcore.client.pulp_rpm import ApiException
 from pulpcore.exceptions.validation import InvalidSignatureError
 
 from pulp_rpm.app.shared_utils import RpmTool
-from pulp_rpm.tests.functional.constants import RPM_PACKAGE_FILENAME, RPM_UNSIGNED_URL
+from pulp_rpm.tests.functional.constants import (
+    RPM_PACKAGE_FILENAME,
+    RPM_UNSIGNED_URL,
+    RPM_UNSIGNED_MODIFIED_FIXTURE_URL,
+    RPM_COMPLEX_FIXTURE_URL,
+    RPM_PACKAGE_CONTENT_NAME,
+)
 from pulp_rpm.tests.functional.utils import get_package_repo_path
 
 
@@ -235,3 +243,388 @@ def test_sign_chunked_package_on_upload(
             download_content_unit(distribution.base_path, get_package_repo_path(pkg_location_href))
         )
         assert rpm_tool.verify_signature(downloaded_package)
+
+
+def test_no_sign_packages_on_sync_if_no_signing_service(
+    init_and_sync,
+    tmp_path,
+    gen_object_with_cleanup,
+    download_content_unit,
+    signing_gpg_extra,
+    rpm_package_signing_service,
+    rpm_package_api,
+    rpm_repository_api,
+    rpm_repository_factory,
+    rpm_publication_factory,
+    rpm_distribution_factory,
+    delete_orphans_pre,
+):
+    """
+    Ensure that sync doesn't sign packages if they're synced with a non `*_sign` policy
+    """
+    from pulp_rpm.app.shared_utils import RpmTool
+
+    # Setup GPG and RPM tool
+    gpg_a, _ = signing_gpg_extra
+
+    rpm_tool = RpmTool(tmp_path)
+    rpm_tool.import_pubkey_string(gpg_a.pubkey)
+
+    # Create repository with package signing service configured
+    repository = rpm_repository_factory()
+    init_and_sync(repository=repository)
+
+    # Get synced packages - refresh repository to get latest version
+    updated_repository = rpm_repository_api.read(repository.pulp_href)
+    packages = rpm_package_api.list(repository_version=updated_repository.latest_version_href)
+    assert packages.count > 0, "No packages were synced"
+
+    # Test the first package to verify it was signed during sync
+    test_package = packages.results[0]
+
+    # Verify that the final served package is not signed
+    publication = rpm_publication_factory(repository=repository.pulp_href)
+    distribution = rpm_distribution_factory(publication=publication.pulp_href)
+    downloaded_package = tmp_path / "package.rpm"
+    downloaded_package.write_bytes(
+        download_content_unit(
+            distribution.base_path, get_package_repo_path(test_package.location_href)
+        )
+    )
+    with pytest.raises(InvalidSignatureError, match="The package is not signed: .*"):
+        rpm_tool.verify_signature(downloaded_package)
+
+
+def test_sign_packages_on_sync(
+    init_and_sync,
+    tmp_path,
+    gen_object_with_cleanup,
+    download_content_unit,
+    signing_gpg_extra,
+    rpm_package_signing_service,
+    rpm_package_api,
+    rpm_repository_api,
+    rpm_repository_factory,
+    rpm_publication_factory,
+    rpm_distribution_factory,
+    delete_orphans_pre,
+):
+    """
+    Ensure that sync does sign packages if they're synced with a `*_sign` policy
+    """
+    from pulp_rpm.app.shared_utils import RpmTool
+
+    # Setup GPG and RPM tool
+    gpg_a, gpg_b = signing_gpg_extra
+    fingerprint_set = set([gpg_a.fingerprint, gpg_b.fingerprint])
+    assert len(fingerprint_set) == 2
+
+    rpm_tool = RpmTool(tmp_path)
+    rpm_tool.import_pubkey_string(gpg_a.pubkey)
+    rpm_tool.import_pubkey_string(gpg_b.pubkey)
+
+    for fingerprint in fingerprint_set:
+        # Create repository with package signing service configured
+        repository = rpm_repository_factory(
+            package_signing_service=rpm_package_signing_service.pulp_href,
+            package_signing_fingerprint=fingerprint,
+        )
+        init_and_sync(repository=repository)
+
+        # Get synced packages - refresh repository to get latest version
+        updated_repository = rpm_repository_api.read(repository.pulp_href)
+        packages = rpm_package_api.list(repository_version=updated_repository.latest_version_href)
+        assert packages.count > 0, "No packages were synced"
+
+        # Test the first package to verify it was signed during sync
+        test_package = packages.results[0]
+
+        # Verify that the final served package is signed
+        publication = rpm_publication_factory(repository=repository.pulp_href)
+        distribution = rpm_distribution_factory(publication=publication.pulp_href)
+        downloaded_package = tmp_path / "package.rpm"
+        downloaded_package.write_bytes(
+            download_content_unit(
+                distribution.base_path, get_package_repo_path(test_package.location_href)
+            )
+        )
+        assert rpm_tool.verify_signature(downloaded_package)
+
+
+@pytest.mark.parallel
+def test_error_signing_with_on_demand_sync(
+    init_and_sync,
+    tmp_path,
+    gen_object_with_cleanup,
+    download_content_unit,
+    signing_gpg_extra,
+    rpm_package_signing_service,
+    rpm_repository_factory,
+):
+    """
+    Ensure that signed syncing with 'on_demand' policy raises an error as it's not supported
+    """
+    from pulp_rpm.app.shared_utils import RpmTool
+
+    # Setup GPG and RPM tool
+    gpg_a, _ = signing_gpg_extra
+
+    rpm_tool = RpmTool(tmp_path)
+    rpm_tool.import_pubkey_string(gpg_a.pubkey)
+
+    # Create repository with package signing service configured
+    repository = rpm_repository_factory(
+        package_signing_service=rpm_package_signing_service.pulp_href,
+        package_signing_fingerprint=gpg_a.fingerprint,
+    )
+
+    with pytest.raises(ApiException) as e:
+        init_and_sync(repository=repository, policy="on_demand")
+    assert e.value.status == 400
+    assert json.loads(e.value.body) == [
+        "Cannot use 'on_demand' remote policy when repository has a package signing service."
+    ]
+
+
+@pytest.mark.parallel
+def test_error_signing_with_mirror_complete_sync(
+    init_and_sync,
+    tmp_path,
+    gen_object_with_cleanup,
+    download_content_unit,
+    signing_gpg_extra,
+    rpm_package_signing_service,
+    rpm_repository_factory,
+):
+    """
+    Ensure that signed syncing with 'mirror_complete' policy raises an error as it's not supported
+    """
+    from pulp_rpm.app.shared_utils import RpmTool
+
+    # Setup GPG and RPM tool
+    gpg_a, _ = signing_gpg_extra
+
+    rpm_tool = RpmTool(tmp_path)
+    rpm_tool.import_pubkey_string(gpg_a.pubkey)
+
+    # Create repository with package signing service configured
+    repository = rpm_repository_factory(
+        package_signing_service=rpm_package_signing_service.pulp_href,
+        package_signing_fingerprint=gpg_a.fingerprint,
+    )
+
+    with pytest.raises(ApiException) as e:
+        init_and_sync(repository=repository, sync_policy="mirror_complete")
+    assert e.value.status == 400
+    assert json.loads(e.value.body) == [
+        "Cannot use 'mirror_complete' sync policy when repository has a package signing service."
+    ]
+
+
+def test_no_resync_of_packages_on_second_sync(
+    init_and_sync,
+    tmp_path,
+    gen_object_with_cleanup,
+    download_content_unit,
+    signing_gpg_extra,
+    rpm_package_signing_service,
+    rpm_package_api,
+    rpm_repository_api,
+    rpm_repository_factory,
+    rpm_publication_factory,
+    rpm_distribution_factory,
+    delete_orphans_pre,
+    get_content,
+):
+    """
+    Ensure that a second sync doesn't re-download and re-sign packages that haven't changed
+    """
+    from pulp_rpm.app.shared_utils import RpmTool
+
+    # Setup GPG and RPM tool
+    gpg_a, _ = signing_gpg_extra
+
+    rpm_tool = RpmTool(tmp_path)
+    rpm_tool.import_pubkey_string(gpg_a.pubkey)
+
+    # Create repository with package signing service configured
+    repository = rpm_repository_factory(
+        package_signing_service=rpm_package_signing_service.pulp_href,
+        package_signing_fingerprint=gpg_a.fingerprint,
+    )
+    init_and_sync(
+        repository=repository,
+        url=RPM_UNSIGNED_MODIFIED_FIXTURE_URL,
+        sync_policy="mirror_content_only",
+    )
+
+    # Get synced packages - refresh repository to get latest version
+    updated_repository = rpm_repository_api.read(repository.pulp_href)
+    packages = rpm_package_api.list(repository_version=updated_repository.latest_version_href)
+    assert packages.count > 0, "No packages were synced"
+
+    # Test the first package to verify it was signed during sync
+    test_package = packages.results[0]
+
+    # Verify that the final served package is signed
+    publication = rpm_publication_factory(repository=repository.pulp_href)
+    distribution = rpm_distribution_factory(publication=publication.pulp_href)
+    downloaded_package = tmp_path / "package.rpm"
+    downloaded_package.write_bytes(
+        download_content_unit(
+            distribution.base_path, get_package_repo_path(test_package.location_href)
+        )
+    )
+    assert rpm_tool.verify_signature(downloaded_package)
+
+    # Save the content information of the packages from the original sync
+    original_packages = {
+        content["name"]: content
+        for content in get_content(updated_repository)["present"][RPM_PACKAGE_CONTENT_NAME]
+    }
+
+    init_and_sync(repository=repository, sync_policy="mirror_content_only")
+    # Get synced packages - refresh repository to get latest version
+    updated_repository = rpm_repository_api.read(repository.pulp_href)
+    packages = rpm_package_api.list(repository_version=updated_repository.latest_version_href)
+    assert packages.count > 0, "No packages were synced"
+
+    # Test the first package to verify it was signed during sync
+    test_package = packages.results[0]
+
+    # Verify that the final served package is signed
+    publication = rpm_publication_factory(repository=repository.pulp_href)
+    distribution = rpm_distribution_factory(publication=publication.pulp_href)
+    downloaded_package = tmp_path / "package.rpm"
+    downloaded_package.write_bytes(
+        download_content_unit(
+            distribution.base_path, get_package_repo_path(test_package.location_href)
+        )
+    )
+    assert rpm_tool.verify_signature(downloaded_package)
+
+    # Test that the zebra package wasn't re-synced
+    mutated_packages = {
+        content["name"]: content
+        for content in get_content(updated_repository)["present"][RPM_PACKAGE_CONTENT_NAME]
+    }
+
+    assert original_packages["zebra"] == mutated_packages["zebra"]
+
+
+def test_do_resync_of_packages_on_third_sync(
+    init_and_sync,
+    tmp_path,
+    gen_object_with_cleanup,
+    download_content_unit,
+    signing_gpg_extra,
+    rpm_package_signing_service,
+    rpm_package_api,
+    rpm_repository_api,
+    rpm_repository_factory,
+    rpm_publication_factory,
+    rpm_distribution_factory,
+    delete_orphans_pre,
+    get_content,
+):
+    """
+    Ensure that a third sync where the second sync is completely different does successfully sign
+    all packages again.  This is primarily to test that the artifact downloading in
+    _sign_rpm_content is working correctly.
+    """
+    from pulp_rpm.app.shared_utils import RpmTool
+
+    # Setup GPG and RPM tool
+    gpg_a, _ = signing_gpg_extra
+
+    rpm_tool = RpmTool(tmp_path)
+    rpm_tool.import_pubkey_string(gpg_a.pubkey)
+
+    # Create repository with package signing service configured
+    repository = rpm_repository_factory(
+        package_signing_service=rpm_package_signing_service.pulp_href,
+        package_signing_fingerprint=gpg_a.fingerprint,
+    )
+    init_and_sync(
+        repository=repository,
+        sync_policy="mirror_content_only",
+    )
+
+    # Get synced packages - refresh repository to get latest version
+    updated_repository = rpm_repository_api.read(repository.pulp_href)
+    packages = rpm_package_api.list(repository_version=updated_repository.latest_version_href)
+    assert packages.count > 0, "No packages were synced"
+
+    # Test the first package to verify it was signed during sync
+    test_package = packages.results[0]
+
+    # Verify that the final served package is signed
+    publication = rpm_publication_factory(repository=repository.pulp_href)
+    distribution = rpm_distribution_factory(publication=publication.pulp_href)
+    downloaded_package = tmp_path / "package.rpm"
+    downloaded_package.write_bytes(
+        download_content_unit(
+            distribution.base_path, get_package_repo_path(test_package.location_href)
+        )
+    )
+    assert rpm_tool.verify_signature(downloaded_package)
+
+    # Save the content information of the packages from the original sync
+    original_packages = {
+        content["name"]: content
+        for content in get_content(updated_repository)["present"][RPM_PACKAGE_CONTENT_NAME]
+    }
+
+    # Second sync with completely different content
+    init_and_sync(
+        repository=repository,
+        url=RPM_COMPLEX_FIXTURE_URL,
+        sync_policy="mirror_content_only",
+    )
+    # Get synced packages - refresh repository to get latest version
+    updated_repository = rpm_repository_api.read(repository.pulp_href)
+    packages = rpm_package_api.list(repository_version=updated_repository.latest_version_href)
+    assert packages.count > 0, "No packages were synced"
+
+    # Test the first package to verify it was signed during sync
+    test_package = packages.results[0]
+
+    # Verify that the final served package is signed
+    publication = rpm_publication_factory(repository=repository.pulp_href)
+    distribution = rpm_distribution_factory(publication=publication.pulp_href)
+    downloaded_package = tmp_path / "package.rpm"
+    downloaded_package.write_bytes(
+        download_content_unit(
+            distribution.base_path, get_package_repo_path(test_package.location_href)
+        )
+    )
+    assert rpm_tool.verify_signature(downloaded_package)
+
+    # Third sync with the same content as the first sync
+    init_and_sync(repository=repository, sync_policy="mirror_content_only")
+    # Get synced packages - refresh repository to get latest version
+    updated_repository = rpm_repository_api.read(repository.pulp_href)
+    packages = rpm_package_api.list(repository_version=updated_repository.latest_version_href)
+    assert packages.count > 0, "No packages were synced"
+
+    # Test the first package to verify it was signed during sync
+    test_package = packages.results[0]
+
+    # Verify that the final served package is signed
+    publication = rpm_publication_factory(repository=repository.pulp_href)
+    distribution = rpm_distribution_factory(publication=publication.pulp_href)
+    downloaded_package = tmp_path / "package.rpm"
+    downloaded_package.write_bytes(
+        download_content_unit(
+            distribution.base_path, get_package_repo_path(test_package.location_href)
+        )
+    )
+    assert rpm_tool.verify_signature(downloaded_package)
+
+    # Test that the zebra package was re-synced this time
+    mutated_packages = {
+        content["name"]: content
+        for content in get_content(updated_repository)["present"][RPM_PACKAGE_CONTENT_NAME]
+    }
+
+    assert original_packages["zebra"] != mutated_packages["zebra"]
