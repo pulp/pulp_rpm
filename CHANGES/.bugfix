@@ -1,0 +1,1 @@
+Fixed database constraint violations during package synchronization by allowing null values for the Package.evr field. Packages with missing or incomplete Epoch-Version-Release metadata can now be synced successfully.
