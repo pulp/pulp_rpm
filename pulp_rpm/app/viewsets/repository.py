@@ -603,6 +603,9 @@ class RpmPublicationViewSet(PublicationViewSet, RolesMixin):
         }
         if checkpoint:
             kwargs["checkpoint"] = True
+        # If the repo or the api call had a layout specified, pass it to the publish task.
+        if layout := serializer.validated_data.get("layout", repository.layout):
+            kwargs["layout"] = layout
         result = dispatch(
             tasks.publish,
             shared_resources=[repository_version.repository],

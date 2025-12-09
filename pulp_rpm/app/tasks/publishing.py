@@ -2,16 +2,15 @@ import logging
 import os
 import shutil
 import tempfile
-from collections import defaultdict
 from gettext import gettext as _
+from typing import NamedTuple
+from uuid import UUID
 
 import createrepo_c as cr
 import libcomps
 from django.conf import settings
 from django.core.files import File
 from django.db.models import Q
-
-from pulp_rpm.app.serializers import RpmPublicationSerializer
 from pulpcore.plugin.models import (
     AsciiArmoredDetachedSigningService,
     ContentArtifact,
@@ -27,8 +26,8 @@ from pulp_rpm.app.constants import (
     ALLOWED_CHECKSUM_ERROR_MSG,
     CHECKSUM_TYPES,
     COMPRESSION_TYPES,
-    PACKAGES_DIRECTORY,
     LAYOUT_TYPES,
+    PACKAGES_DIRECTORY,
 )
 from pulp_rpm.app.kickstart.treeinfo import PulpTreeInfo, TreeinfoData
 from pulp_rpm.app.models import (
@@ -45,6 +44,7 @@ from pulp_rpm.app.models import (
     RpmPublication,
     UpdateRecord,
 )
+from pulp_rpm.app.serializers import RpmPublicationSerializer
 from pulp_rpm.app.shared_utils import format_nevra
 
 log = logging.getLogger(__name__)
@@ -54,6 +54,124 @@ REPODATA_PATH = "repodata"
 # lift dynaconf lookups outside of loops
 ALLOWED_CONTENT_CHECKSUMS = settings.ALLOWED_CONTENT_CHECKSUMS
 RPM_METADATA_USE_REPO_PACKAGE_TIME = settings.RPM_METADATA_USE_REPO_PACKAGE_TIME
+
+
+class PackageInfo(NamedTuple):
+    """
+    Data about a package being published that needs to be shared with the repo metadata.
+
+    Attributes:
+        caid (UUID): ContentArtifact ID.
+        path (str): The relative URL where the package will be published.
+        checksum_type (str): The type (eg. sha256) of the checksum.
+        checksum (str): The checksum value of the package.
+
+    """
+
+    caid: UUID
+    path: str
+    checksum_type: str
+    checksum: str
+
+
+class PkgBuild(NamedTuple):
+    """
+    Data about a package build for collision resolution.
+
+    Attributes:
+        cid (UUID): Content ID.
+        epoch (int): The Epoch of the package build.
+        build_time (int): The build time (unix timestamp format) of the package.
+
+    """
+
+    cid: UUID
+    epoch: int
+    build_time: int
+
+
+class _CollisionManager:
+    """Helper to collect the "winning" packages when there are collisions on NEVRA or URL path."""
+
+    def __init__(self) -> None:
+        self.cid_to_second_path: dict[UUID, str] = {}
+        self._nevra_to_pkg: dict[str, PkgBuild] = {}
+        self._path_to_pkg: dict[str, PkgBuild] = {}
+        self._second_path_to_pkg: dict[str, PkgBuild] = {}
+        self._banned_cids: set[UUID] = set()
+
+    def _pkg_to_ignore(
+        self, new: PkgBuild, index_to_pkg: dict[str, PkgBuild], index: str
+    ) -> PkgBuild | None:
+        old = index_to_pkg.get(index, None)
+        if not old or old.cid in self._banned_cids:
+            return None
+
+        log.warning(
+            _(
+                "Duplicate packages found competing for {index}, selected the one with "
+                "the most recent epoch or build time."
+            ).format(index=index)
+        )
+        if old.epoch > new.epoch or (old.epoch == new.epoch and old.build_time >= new.build_time):
+            return new
+        return old
+
+    def add(self, pkg: PkgBuild, nevra: str, path: str, second_path: str | None) -> None:
+        """
+        Add a package build to the collision manager. Ignore it if it is "worse" than an existing
+        package that collides on nevra or path. If it's "better" and collides, mark the older one as
+        ignored so it will not be included when `retained_cids` is called.
+
+        Args:
+            pkg (PkgBuild): Information about the package build we're adding.
+            nevra (str): NEVRA of the package. Checked for collisions in repo metadata.
+            path (str): URL path of the package. Checked for collisions in published artifact URLs.
+            second_path (str | None):
+                An optional secondary URL path of the package. Only will exist in the nested_by_both
+                case. Checked for collisions like `path`, except collisions here only prevent the
+                "worse" package from being published at this secondary path, not from being
+                published at in general.
+        """
+        # If there is a collision on nevra or path, ignore the older package
+        to_ignore_nevra = self._pkg_to_ignore(pkg, self._nevra_to_pkg, nevra)
+        to_ignore_path = self._pkg_to_ignore(pkg, self._path_to_pkg, path)
+
+        if to_ignore_nevra == pkg or to_ignore_path == pkg:
+            return  # Just ignore it before it's added anywhere.
+
+        # Else remember it.
+        self._nevra_to_pkg[nevra] = pkg
+        self._path_to_pkg[path] = pkg
+
+        # We have record cids that were once added but later ignored; we don't know all its keys.
+        if to_ignore_nevra:
+            self._banned_cids.add(to_ignore_nevra.cid)
+            self.cid_to_second_path.pop(to_ignore_nevra.cid, None)
+        if to_ignore_path:
+            self._banned_cids.add(to_ignore_path.cid)
+            self.cid_to_second_path.pop(to_ignore_path.cid, None)
+
+        # In the nested_by_both case we may have a package that should be published in general, but
+        # collides on the alphabetical path and should be ignored for that path only.
+        if second_path:
+            to_ignore = self._pkg_to_ignore(pkg, self._second_path_to_pkg, second_path)
+            if to_ignore == pkg:
+                return
+            elif to_ignore:
+                self.cid_to_second_path.pop(to_ignore.cid, None)
+
+            self._second_path_to_pkg[second_path] = pkg
+            self.cid_to_second_path[pkg.cid] = second_path
+
+    def retained_cids(self) -> list[UUID]:
+        """
+        Return a list of retained Content IDs, excluding those that collide on NEVRA or Path.
+
+        Returns:
+            list: List of Content IDs that should be published.
+        """
+        return [pkg.cid for pkg in self._nevra_to_pkg.values() if pkg.cid not in self._banned_cids]
 
 
 class PublicationData:
@@ -79,6 +197,7 @@ class PublicationData:
         self.sub_repos = []
         self.repomdrecords = []
         self.checksum_types = checksum_types
+        self.packages: dict[UUID, PackageInfo] = {}
 
     def prepare_metadata_files(self, content, folder=None):
         """
@@ -125,69 +244,196 @@ class PublicationData:
 
     def publish_artifacts(self, content, prefix=""):
         """
-        Publish artifacts.
+        Create PublishedArtifacts for each Artifact. Special considerations for Packages:
+
+        1. Respect the layout of the publication.
+           1. "flat": "Packages/xxx.rpm"
+           2. "nested_alphabetically": "Packages/n/name.rpm"   - The "canonical" repo format.
+           3. "nested_by_digest": "Packages/hh/hhhh/xxx.rpm"
+           4. "nested_by_both": Both 2 and 3. Each rpm will result in 2 PublishedArtifacts.
+
+        2. Handle "duplicate" packages.
+
+           There are two ways that different packages (different checksums) can "collide":
+              a) Packages with the same NEVRA (Name, Epoch, Version, Release, Arch) will
+                 collide in the repo metadata. One of them will "win" in the client. This can be the
+                 case if a signed and unsigned package are both published in the same repo for
+                 example, but also if people just reuse NEVRAs for different builds.
+              b) Packages that result in the same URL will collide at the http level. This can be
+                 different from case A if they are not using the NEVRA format for relative_path.
+                 They may not have anywhere close to the same NEVRA, just the same filename.
+
+           In both cases we have to pick one - which is essentially what the rest of the RPM
+           Ecosystem does when faced with the impossible. This code takes the one with the
+           most recent build time which is the same heuristic used by Yum/DNF/Zypper. The "winner"
+           package must be consistent here and when writing the repo metadata later.
+
+        3. Use the correct hash for artifacts.
+
+           We want to support publishing with a different checksum type than the one built-in to
+           the package itself, so we need to get the correct checksums somehow if there is an
+           override. We must also take into consideration that if the package has not been
+           downloaded the only checksum that is available is the one built-in.
+
+           Since this lookup goes from Package->Content->ContentArtifact->Artifact, performance is
+           a challenge. We use ContentArtifact as our starting point because it enables us to work
+           with simple foreign keys and avoid messing with the many-to-many relationship, which
+           doesn't work with select_related() and performs poorly with prefetch_related(). This is
+           fine because we know that Packages should only ever have one artifact per content.
+
+        All three of these considerations are relevant both here when creating the
+        PublishedArtifacts, as well as later when generating the repo metadata that references them.
+        Do these things once here and record the info for use later to avoid lots of redundant
+        lookups, as well as guarantee we're making the same decisions in both places.
+
+        Note that this only impacts user-created publications, which produce the "standard"
+        RPM layout of repo/Packages/f/foo.rpm. A publication created by mirror-sync retains
+        whatever layout their "upstream" repo-metadata dictates.
 
         Args:
             content (pulpcore.plugin.models.Content): content set.
             prefix (str): a relative path prefix for the published artifact
 
+        Returns:
+            dict: Mapping of content_id to PackageInfo for retained packages.
         """
-        published_artifacts = []
 
-        # Special case for Packages
+        def nested_alphabetically_path(pkg_filename):
+            """Returns the path to use for nested_alphabetically. Used twice, define once."""
+            return os.path.join(PACKAGES_DIRECTORY, pkg_filename[0].lower(), pkg_filename)
+
+        def nested_by_digest_path(pkg_filename, checksum):
+            """Returns the path to use for nested_by_digest. Used twice, define once."""
+            # Regardless of checksum type, let's use the first 6 characters of the checksum
+            # to create a nested directory structure.
+            if len(checksum) < 6:
+                raise ValueError(
+                    f"Checksum {checksum} is unknown or too short to use for "
+                    f"{layout} publishing."
+                )
+            return os.path.join(PACKAGES_DIRECTORY, checksum[:2], checksum[2:6], pkg_filename)
+
+        def flat_path(pkg_filename):
+            """Returns the path to use for flat layout. Define to keep it close to the others."""
+            return os.path.join(PACKAGES_DIRECTORY, pkg_filename)
+
+        published_artifacts = []
+        requested_checksum_type = get_checksum_type(self.checksum_types)
+        layout = self.publication.layout
+        collision_manager = _CollisionManager()
+        cid_to_pkginfo: dict[UUID, PackageInfo] = {}
+
+        # Special Handling for Packages first
         contentartifact_qs = ContentArtifact.objects.filter(content__in=content).filter(
             content__pulp_type=Package.get_pulp_type()
         )
 
-        rel_path_mapping = defaultdict(list)
-        # Some Suboptimal Repos have the 'same' artifact living in multiple places.
-        # Specifically, the same NEVRA, in more than once place, **with different checksums**
-        # (since if all that was different was location_href there would be only one
-        # ContentArtifact in the first place).
-        #
-        # pulp_rpm wants to publish a 'canonical' repository-layout, under which an RPM
-        # "name-version-release-arch" appears at "Packages/n/name-version-release-arch.rpm".
-        # Because the assumption is that Packages don't "own" their path, only the filename
-        # is kept as relative_path.
-        #
-        # In this case, we have to pick one - which is essentially what the rest of the RPM
-        # Ecosystem does when faced with the impossible. This code takes the one with the
-        # most recent build time which is the same heuristic used by Yum/DNF/Zypper.
-        #
-        # Note that this only impacts user-created publications, which produce the "standard"
-        # RPM layout of repo/Packages/f/foo.rpm. A publication created by mirror-sync retains
-        # whatever layout their "upstream" repo-metadata dictates.
-        fields = ["pk", "relative_path", "content__rpm_package__time_build"]
-        for content_artifact in contentartifact_qs.values(*fields).iterator():
-            relative_path = content_artifact["relative_path"]
-            time_build = content_artifact["content__rpm_package__time_build"]
+        fields = [
+            "pk",
+            "content_id",
+            "relative_path",
+            "content__rpm_package__checksum_type",
+            "content__rpm_package__pkgId",
+            "content__rpm_package__name",
+            "content__rpm_package__epoch",
+            "content__rpm_package__version",
+            "content__rpm_package__release",
+            "content__rpm_package__arch",
+            "content__rpm_package__time_build",
+        ]
+        artifact_checksum = None
+        if requested_checksum_type:
+            artifact_checksum = f"artifact__{requested_checksum_type}"
+            fields.append(artifact_checksum)
 
-            relative_path = os.path.join(
-                prefix, PACKAGES_DIRECTORY, relative_path.lower()[0], relative_path
+        for row in contentartifact_qs.values(*fields).iterator():
+            # content_id is the same as the Package PK, which is used later when generating repo
+            # metadata. The contentartifact PK is different, and is used here for PublishedArtifact.
+            # There is no such thing as a multi-Artifact RPM Package, so in practice these are 1:1,
+            # even though that's not enforced at the DB level. (There _are_ multi-Artifact Contents
+            # in general, such as deb src packages - where one logical Content maps to three actual
+            # files, and a unique file may appear in any number of deb src packages - so pulpcore
+            # allows a many-to-many relationship. But this is not applicable to RPM Packages.)
+
+            # First, get some basic package data
+            caid = row["pk"]
+            cid = row["content_id"]
+            build_time = row["content__rpm_package__time_build"]
+            epoch = row["content__rpm_package__epoch"]
+            nevra = format_nevra(
+                row["content__rpm_package__name"],
+                epoch,
+                row["content__rpm_package__version"],
+                row["content__rpm_package__release"],
+                row["content__rpm_package__arch"],
             )
-            rel_path_mapping[relative_path].append((content_artifact["pk"], time_build))
+            epoch = int(epoch) if epoch else 0  # epoch is always an int if defined
+            pkg_build = PkgBuild(cid=cid, epoch=epoch, build_time=build_time)
 
-        for rel_path, content_artifacts in rel_path_mapping.items():
-            # sort the content artifacts by when the package was built
-            if len(content_artifacts) > 1:
-                content_artifacts.sort(key=lambda p: p[1], reverse=True)
-                log.warning(
-                    "Duplicate packages found competing for {path}, selected the one with "
-                    "the most recent build time, excluding {others} others.".format(
-                        path=rel_path, others=len(content_artifacts[1:])
+            # Second, get the checksum / checksum type, defaulting to rpm_package__pkgId if needed
+            if requested_checksum_type:
+                checksum = row.get(artifact_checksum, None)
+                checksum_type = requested_checksum_type
+
+            if not requested_checksum_type or not checksum:
+                checksum = row["content__rpm_package__pkgId"]
+                checksum_type = row["content__rpm_package__checksum_type"]
+                if checksum_type not in ALLOWED_CONTENT_CHECKSUMS:
+                    raise ValueError(
+                        "Package with pkgId {} as content unit {} contains forbidden checksum type "
+                        "'{}', thus can't be published. {}".format(
+                            checksum,
+                            cid,
+                            checksum_type,
+                            ALLOWED_CHECKSUM_ERROR_MSG,
+                        )
+                    )
+
+            # Third, compute the path based on layout
+            pkg_filename = os.path.basename(row["relative_path"])
+            second_path = None
+            if layout == LAYOUT_TYPES.NESTED_ALPHABETICALLY:
+                path = nested_alphabetically_path(pkg_filename)
+            elif layout == LAYOUT_TYPES.FLAT:
+                path = flat_path(pkg_filename)
+            elif layout == LAYOUT_TYPES.NESTED_BY_DIGEST:
+                path = nested_by_digest_path(pkg_filename, checksum)
+            elif layout == LAYOUT_TYPES.NESTED_BY_BOTH:
+                path = nested_by_digest_path(pkg_filename, checksum)
+                second_path = nested_alphabetically_path(pkg_filename)
+            else:
+                raise ValueError(f"Layout value {layout} is unsupported by this version")
+
+            pkg_info = PackageInfo(
+                caid=caid, path=path, checksum_type=checksum_type, checksum=checksum
+            )
+            collision_manager.add(pkg_build, nevra, path, second_path)
+            cid_to_pkginfo[cid] = pkg_info
+
+        # Filter cid_to_pkginfo to only the retained packages
+        retained_cids = collision_manager.retained_cids()
+        cid_to_pkginfo = {k: cid_to_pkginfo[k] for k in retained_cids}
+
+        # Finally create the PublishedArtifacts for the remaining packages
+        for cid, pkg_info in cid_to_pkginfo.items():
+            published_artifacts.append(
+                PublishedArtifact(
+                    relative_path=os.path.join(prefix, pkg_info.path),
+                    publication=self.publication,
+                    content_artifact_id=pkg_info.caid,
+                )
+            )
+            if second_path := collision_manager.cid_to_second_path.get(cid, None):
+                # also add the nested_alphabetically path
+                published_artifacts.append(
+                    PublishedArtifact(
+                        relative_path=os.path.join(prefix, second_path),
+                        publication=self.publication,
+                        content_artifact_id=pkg_info.caid,
                     )
                 )
 
-            # Only add the first one (the one with the highest build time)
-            published_artifacts.append(
-                PublishedArtifact(
-                    relative_path=rel_path,
-                    publication=self.publication,
-                    content_artifact_id=content_artifacts[0][0],
-                )
-            )
-
-        # Handle everything else
+        # Handle the non-packages
         is_treeinfo = Q(relative_path__in=["treeinfo", ".treeinfo"])
         unpublishable_types = Q(
             content__pulp_type__in=[
@@ -215,6 +461,7 @@ class PublicationData:
             )
 
         PublishedArtifact.objects.bulk_create(published_artifacts, batch_size=2000)
+        return cid_to_pkginfo
 
     def handle_sub_repos(self, distribution_tree):
         """
@@ -282,7 +529,7 @@ class PublicationData:
         main_content = self.publication.repository_version.content
         self.repomdrecords = self.prepare_metadata_files(main_content)
 
-        self.publish_artifacts(main_content)
+        self.packages = self.publish_artifacts(main_content)
 
         distribution_trees = DistributionTree.objects.filter(pk__in=main_content).prefetch_related(
             "addons",
@@ -300,7 +547,7 @@ class PublicationData:
             setattr(self, f"{name}_content", content)
             setattr(self, f"{name}_checksums", self.checksum_types)
             setattr(self, f"{name}_repomdrecords", self.prepare_metadata_files(content, name))
-            self.publish_artifacts(content, prefix=name)
+            setattr(self, f"{name}_packages", self.publish_artifacts(content, prefix=name))
 
 
 def get_checksum_type(checksum_types, default=CHECKSUM_TYPES.SHA256):
@@ -337,7 +584,7 @@ def publish(
     checksum_type=None,
     repo_config=None,
     compression_type=COMPRESSION_TYPES.GZ,
-    layout=LAYOUT_TYPES.NESTED_ALPHABETICALLY,
+    layout=None,
     *args,
     **kwargs,
 ):
@@ -368,6 +615,11 @@ def publish(
         metadata_signing_service = AsciiArmoredDetachedSigningService.objects.get(
             pk=metadata_signing_service
         )
+
+    if layout is None:
+        # Can't simply set a default in the function signature because some code calls this function
+        # with an explicit None value.
+        layout = LAYOUT_TYPES.NESTED_ALPHABETICALLY
 
     log.info(
         _("Publishing: repository={repo}, version={version}").format(
@@ -403,6 +655,7 @@ def publish(
                     publication_data.repomdrecords,
                     metadata_signing_service=metadata_signing_service,
                     compression_type=compression_type,
+                    retained_packages=publication_data.packages,
                 )
                 publish_pb.increment()
 
@@ -410,6 +663,7 @@ def publish(
                     name = sub_repo[0]
                     content = getattr(publication_data, f"{name}_content")
                     extra_repomdrecords = getattr(publication_data, f"{name}_repomdrecords")
+                    packages = getattr(publication_data, f"{name}_packages")
                     generate_repo_metadata(
                         content,
                         publication,
@@ -418,6 +672,7 @@ def publish(
                         name,
                         metadata_signing_service=metadata_signing_service,
                         compression_type=compression_type,
+                        retained_packages=packages,
                     )
                     publish_pb.increment()
 
@@ -436,13 +691,13 @@ def generate_repo_metadata(
     sub_folder=None,
     metadata_signing_service=None,
     compression_type=COMPRESSION_TYPES.GZ,
-    layout=LAYOUT_TYPES.NESTED_ALPHABETICALLY,
+    retained_packages: dict[UUID, PackageInfo] = {},
 ):
     """
     Creates a repomd.xml file.
 
     Args:
-        content(app.models.Content): content set
+        content(app.models.Content): A DB Content set of all original artifacts in the publication.
         publication(pulpcore.plugin.models.Publication): the publication
         extra_repomdrecords(list): list with data relative to repo metadata files
         sub_folder(str): name of the folder for sub repos
@@ -450,8 +705,9 @@ def generate_repo_metadata(
             A reference to an associated signing service.
         compression_type(pulp_rpm.app.constants.COMPRESSION_TYPES):
             Compression type to use for metadata files.
-        layout(pulp_rpm.app.constants.LAYOUT_TYPES):
-            How to layout the package files within the publication (flat, nested, etc.)
+        retained_packages(dict):
+            A dictionary of content_id to PackageInfo for packages that should actually be included
+            in the repository metadata. Will be used to filter `content` and add additional info.
 
     """
     cwd = os.getcwd()
@@ -473,82 +729,7 @@ def generate_repo_metadata(
 
     # Prepare metadata files
     cr_compression_type = cr.ZSTD if compression_type == COMPRESSION_TYPES.ZSTD else cr.GZ
-
-    # We want to support publishing with a different checksum type than the one built-in to the
-    # package itself, so we need to get the correct checksums somehow if there is an override.
-    # We must also take into consideration that if the package has not been downloaded the only
-    # checksum that is available is the one built-in.
-    #
-    # Since this lookup goes from Package->Content->ContentArtifact->Artifact, performance is a
-    # challenge. We use ContentArtifact as our starting point because it enables us to work with
-    # simple foreign keys and avoid messing with the many-to-many relationship, which doesn't
-    # work with select_related() and performs poorly with prefetch_related(). This is fine
-    # because we know that Packages should only ever have one artifact per content.
-    fields = [
-        "content_id",
-        "content__rpm_package__checksum_type",
-        "content__rpm_package__pkgId",
-    ]
-    artifact_checksum = None
-    if requested_checksum_type:
-        artifact_checksum = f"artifact__{requested_checksum_type}"
-        fields.append(artifact_checksum)
-
-    contentartifact_qs = ContentArtifact.objects.filter(
-        content__in=content, content__pulp_type=Package.get_pulp_type()
-    ).values(*fields)
-
-    pkg_to_hash = {}
-    for ca in contentartifact_qs.iterator():
-        if requested_checksum_type:
-            pkgid = ca.get(artifact_checksum, None)
-            package_checksum_type = requested_checksum_type
-
-        if not requested_checksum_type or not pkgid:
-            if ca["content__rpm_package__checksum_type"] not in ALLOWED_CONTENT_CHECKSUMS:
-                raise ValueError(
-                    "Package with pkgId {} as content unit {} contains forbidden checksum type "
-                    "'{}', thus can't be published. {}".format(
-                        ca["content__rpm_package__pkgId"],
-                        ca["content_id"],
-                        ca["content__rpm_package__checksum_type"],
-                        ALLOWED_CHECKSUM_ERROR_MSG,
-                    )
-                )
-            pkgid = ca["content__rpm_package__pkgId"]
-            package_checksum_type = ca["content__rpm_package__checksum_type"]
-
-        pkg_to_hash[ca["content_id"]] = (package_checksum_type, pkgid)
-
-    # TODO: this is meant to be a !! *temporary* !! fix for
-    # https://github.com/pulp/pulp_rpm/issues/2407
-    pkg_pks_to_ignore = set()
-    latest_build_time_by_nevra = defaultdict(list)
-    packages = Package.objects.filter(pk__in=content)
-    for pkg in packages.values(
-        "pk",
-        "name",
-        "epoch",
-        "version",
-        "release",
-        "arch",
-        "time_build",
-    ).iterator():
-        nevra = format_nevra(pkg["name"], pkg["epoch"], pkg["version"], pkg["release"], pkg["arch"])
-        latest_build_time_by_nevra[nevra].append((pkg["time_build"], pkg["pk"]))
-    for nevra, pkg_data in latest_build_time_by_nevra.items():
-        # sort the packages by when they were built
-        if len(pkg_data) > 1:
-            pkg_data.sort(key=lambda p: p[0], reverse=True)
-            pkg_pks_to_ignore |= set(entry[1] for entry in pkg_data[1:])
-            log.warning(
-                "Duplicate packages found competing for NEVRA {nevra}, selected the one with "
-                "the most recent build time, excluding {others} others.".format(
-                    nevra=nevra, others=len(pkg_data[1:])
-                )
-            )
-
-    total_packages = packages.count() - len(pkg_pks_to_ignore)
+    total_packages = len(retained_packages)
 
     if RPM_METADATA_USE_REPO_PACKAGE_TIME:
         # gather the times the packages were added to the repo
@@ -578,28 +759,16 @@ def generate_repo_metadata(
         # See: https://pulp.plan.io/issues/9402
         if not content.exists():
             writer.repomd.revision = "0"
-
-        for package in packages.order_by("name", "evr").iterator():
-            if package.pk in pkg_pks_to_ignore:  # Temporary!
+        for package in Package.objects.filter(pk__in=content).order_by("name", "evr").iterator():
+            if package.pk not in retained_packages:
                 continue
             pkg = package.to_createrepo_c()
 
-            # rewrite the checksum and checksum type with the desired ones
-            (checksum, pkgId) = pkg_to_hash[package.pk]
-            pkg.checksum_type = checksum
-            pkg.pkgId = pkgId
-
-            pkg_filename = package.filename
-            if layout == LAYOUT_TYPES.NESTED_ALPHABETICALLY:
-                # this can cause an issue when two same RPM package names appears
-                # a/name1.rpm b/name1.rpm
-                pkg_path = os.path.join(PACKAGES_DIRECTORY, pkg_filename[0].lower(), pkg_filename)
-            elif layout == LAYOUT_TYPES.FLAT:
-                pkg_path = os.path.join(PACKAGES_DIRECTORY, pkg_filename)
-            else:
-                raise ValueError("Layout value is unsupported by this version")
-
-            pkg.location_href = pkg_path
+            # rewrite these fields with the desired ones
+            retained_pkg_info = retained_packages[package.pk]
+            pkg.checksum_type = retained_pkg_info.checksum_type
+            pkg.pkgId = retained_pkg_info.checksum
+            pkg.location_href = retained_pkg_info.path
 
             if RPM_METADATA_USE_REPO_PACKAGE_TIME:
                 pkg.time_file = repo_pkg_times[package.pk]

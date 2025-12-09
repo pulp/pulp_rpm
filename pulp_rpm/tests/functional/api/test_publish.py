@@ -2,6 +2,7 @@
 
 import os
 import pytest
+import re
 
 import collections
 from lxml import etree
@@ -251,7 +252,9 @@ def get_metadata_content_helper(base_url, repomd_elem, meta_type):
     return download_and_decompress_file(os.path.join(base_url, location_href))
 
 
-@pytest.mark.parametrize("layout", ["flat", "nested_alphabetically"])
+@pytest.mark.parametrize(
+    "layout", ["flat", "nested_alphabetically", "nested_by_digest", "nested_by_both"]
+)
 def test_repo_layout(
     layout,
     init_and_sync,
@@ -292,11 +295,16 @@ def test_repo_layout(
 
     for package in packages:
         if layout == "flat":
-            assert package["location"]["@href"].startswith("Packages/{}".format(package["name"][0]))
+            assert package["location"]["@href"].startswith("Packages/{}".format(package["name"]))
         elif layout == "nested_alphabetically":
             assert package["location"]["@href"].startswith(
                 "Packages/{}/".format(package["name"][0])
             )
+        elif layout in ("nested_by_digest", "nested_by_both"):
+            assert re.match(r"^Packages/[0-9a-f]{2}/[0-9a-f]{4}/", package["location"]["@href"])
+
+    # Do a smoke-test request for a package to ensure they're actually available.
+    assert requests.head(os.path.join(distribution.base_url, packages[0]["location"]["@href"])).ok
 
 
 @pytest.mark.parametrize("repo_url", [RPM_COMPLEX_FIXTURE_URL, RPM_MODULAR_FIXTURE_URL])
