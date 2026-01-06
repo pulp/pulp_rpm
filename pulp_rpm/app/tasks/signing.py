@@ -15,6 +15,7 @@ from pulpcore.plugin.models import (
 from pulpcore.plugin.tasking import add_and_remove, general_create
 from pulpcore.plugin.util import get_url
 
+from pulp_rpm.app.constants import CHECKSUM_TYPES
 from pulp_rpm.app.models.content import RpmPackageSigningResult, RpmPackageSigningService
 from pulp_rpm.app.models.package import Package
 from pulp_rpm.app.models.repository import RpmRepository
@@ -37,7 +38,8 @@ def _save_upload(uploadobj, final_package):
     final_package.flush()
 
 
-def _check_package_fingerprint(package_file, signing_fingerprint):
+def _verify_package_fingerprint(package_file, signing_fingerprint):
+    """Verify if the packge_file is signed with signing_fingerprint or not."""
     completed_process = subprocess.run(
         ("rpm", "-Kv", package_file.name),
         stdout=subprocess.PIPE,
@@ -51,8 +53,11 @@ def _check_package_fingerprint(package_file, signing_fingerprint):
         )
 
     key_ids = re.findall(r"key ID ([0-9A-Fa-f]+)", completed_process.stdout, re.IGNORECASE)
-    for key_id in key_ids:
-        if signing_fingerprint.lower().endswith(key_id.lower()):
+    fingerprints = re.findall(
+        r"key fingerprint:\s*([0-9A-Fa-f ]+)", completed_process.stdout, re.IGNORECASE
+    )
+    for candidate in key_ids + fingerprints:
+        if signing_fingerprint.lower().endswith(candidate.lower()):
             return True
 
     return False
@@ -114,7 +119,9 @@ def signed_add_and_remove(
 
     if repo.package_signing_service:
         # sign each package and replace it in the add_content_units list
-        for package in Package.objects.filter(pk__in=add_content_units):
+        for package in Package.objects.filter(pk__in=add_content_units).iterator():
+            # the viewset is currently already checking (and rejecting) on demand content
+            # but in the future we could just download it instead
             content_artifact = package.contentartifact_set.first()
             artifact_obj = content_artifact.artifact
             package_id = str(package.pk)
@@ -124,10 +131,11 @@ def signed_add_and_remove(
                 _save_file(artifact_file, final_package)
 
                 # check if the package is already signed with our fingerprint
-                if _check_package_fingerprint(final_package, repo.package_signing_fingerprint):
+                if _verify_package_fingerprint(final_package, repo.package_signing_fingerprint):
                     continue
 
-                # check if the package has been signed in the past with our fingerprint
+                # check if the package has been signed in the past with our fingerprint and replace
+                # it with the previously-created signed package if so
                 if existing_result := RpmPackageSigningResult.objects.filter(
                     original_package_sha256=content_artifact.artifact.sha256,
                     package_signing_fingerprint=repo.package_signing_fingerprint,
@@ -145,7 +153,7 @@ def signed_add_and_remove(
                 signed_package.pk = None
                 signed_package.pulp_id = None
                 signed_package.pkgId = artifact.sha256
-                signed_package.checksum_type = "sha256"
+                signed_package.checksum_type = CHECKSUM_TYPES.SHA256
                 signed_package.save()
                 ContentArtifact.objects.create(
                     artifact=artifact,
