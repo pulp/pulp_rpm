@@ -9,7 +9,7 @@ import pulpcore.app.models.base
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('rpm', '0065_alter_package_options'),
+        ('rpm', '0066_layout_choices'),
     ]
 
     operations = [

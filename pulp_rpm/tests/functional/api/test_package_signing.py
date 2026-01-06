@@ -238,10 +238,10 @@ def test_sign_chunked_package_on_upload(
         assert rpm_tool.verify_signature(downloaded_package)
 
 
-@pytest.mark.parallel
 def test_signed_repo_modify(
     tmp_path,
     monitor_task,
+    pulpcore_bindings,
     download_content_unit,
     signing_gpg_metadata,
     rpm_package_signing_service,
@@ -253,6 +253,7 @@ def test_signed_repo_modify(
     rpm_distribution_factory,
 ):
     """Ensure packages added via modify are signed before distribution."""
+    monitor_task(pulpcore_bindings.OrphansCleanupApi.cleanup({"orphan_protection_time": 0}).task)
 
     gpg, fingerprint, _ = signing_gpg_metadata
 
@@ -275,7 +276,15 @@ def test_signed_repo_modify(
     modify_response = rpm_repository_api.modify(
         repository.pulp_href, {"add_content_units": [package_href]}
     )
-    monitor_task(modify_response.task)
+    task_result = monitor_task(modify_response.task)
+
+    repository = rpm_repository_api.read(repository.pulp_href)
+    signed_package = rpm_package_api.list(
+        repository_version=repository.latest_version_href
+    ).results[0]
+    assert sorted(task_result.created_resources) == sorted(
+        [repository.latest_version_href, signed_package.pulp_href, signed_package.artifact]
+    )
 
     publication = rpm_publication_factory(repository=repository.pulp_href)
     distribution = rpm_distribution_factory(publication=publication.pulp_href)
@@ -288,27 +297,22 @@ def test_signed_repo_modify(
 
     assert rpm_tool.verify_signature(downloaded_package)
 
-    repository = rpm_repository_api.read(repository.pulp_href)
-    signed_package_href = (
-        rpm_package_api.list(repository_version=repository.latest_version_href).results[0].pulp_href
-    )
-
     # attempt to add the package to the repository a second time (should produce same package href)
     modify_response = rpm_repository_api.modify(
         repository.pulp_href, {"add_content_units": [package_href]}
     )
-    monitor_task(modify_response.task)
+    task_result = monitor_task(modify_response.task)
 
     repository = rpm_repository_api.read(repository.pulp_href)
     results = rpm_package_api.list(repository_version=repository.latest_version_href).results
 
-    assert signed_package_href in [pkg.pulp_href for pkg in results]
-    assert len(results) == 1  # only one package should be added to the repository
+    assert [signed_package.pulp_href] == [pkg.pulp_href for pkg in results]
+    assert task_result.created_resources == []
 
 
-@pytest.mark.parallel
 def test_already_signed_package(
     monitor_task,
+    pulpcore_bindings,
     signing_gpg_metadata,
     rpm_package_signing_service,
     rpm_repository_factory,
@@ -317,6 +321,7 @@ def test_already_signed_package(
     rpm_package_api,
 ):
     """Don't sign a package if it's already signed with our key."""
+    monitor_task(pulpcore_bindings.OrphansCleanupApi.cleanup({"orphan_protection_time": 0}).task)
 
     _, fingerprint, _ = signing_gpg_metadata
 
@@ -336,20 +341,23 @@ def test_already_signed_package(
         repo_one.pulp_href,
         {"add_content_units": [package_href]},
     )
-    monitor_task(first_modify.task)
+    task_result = monitor_task(first_modify.task)
 
     repo_one = rpm_repository_api.read(repo_one.pulp_href)
     repo_one_packages = rpm_package_api.list(
         repository_version=repo_one.latest_version_href
     ).results
-    assert len(repo_one_packages) == 1
     signed_package_href = repo_one_packages[0].pulp_href
+    assert len(repo_one_packages) == 1
+    assert sorted(task_result.created_resources) == sorted(
+        [signed_package_href, repo_one_packages[0].artifact, repo_one.latest_version_href]
+    )
 
     second_modify = rpm_repository_api.modify(
         repo_two.pulp_href,
         {"add_content_units": [signed_package_href]},
     )
-    monitor_task(second_modify.task)
+    task_result = monitor_task(second_modify.task)
 
     repo_two = rpm_repository_api.read(repo_two.pulp_href)
     repo_two_packages = rpm_package_api.list(
@@ -359,6 +367,7 @@ def test_already_signed_package(
 
     # The same signed package should be reused between repositories
     assert repo_two_packages[0].pulp_href == signed_package_href
+    assert task_result.created_resources == [repo_two.latest_version_href]
 
 
 def test_signed_repo_rejects_on_demand_content(
