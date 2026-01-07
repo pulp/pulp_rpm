@@ -1,1 +1,0 @@
-Fixes the 'flat' publication layout option, which previously resulted in 404s for all packages.
