@@ -52,9 +52,11 @@ def _verify_package_fingerprint(package_file, signing_fingerprint):
             f"{completed_process.stderr}."
         )
 
+    # check for `key ID` followed by a string of hex digits
     key_ids = re.findall(r"key ID ([0-9A-Fa-f]+)", completed_process.stdout, re.IGNORECASE)
+    # check for `key fingerprint:` followed by a string of hex digits
     fingerprints = re.findall(
-        r"key fingerprint:\s*([0-9A-Fa-f ]+)", completed_process.stdout, re.IGNORECASE
+        r"key fingerprint:\s*([0-9A-Fa-f]+)", completed_process.stdout, re.IGNORECASE
     )
     for candidate in key_ids + fingerprints:
         if signing_fingerprint.lower().endswith(candidate.lower()):

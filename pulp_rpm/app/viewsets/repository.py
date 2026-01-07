@@ -45,7 +45,33 @@ from pulp_rpm.app.serializers import (
 from pulp_rpm.app.tasks.signing import signed_add_and_remove
 
 
-class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin, RolesMixin):
+class RpmModifyRepositoryActionMixin(ModifyRepositoryActionMixin):
+    modify_task = signed_add_and_remove
+
+    @extend_schema(
+        description="Trigger an asynchronous task to create a new repository version.",
+        summary="Modify Repository Content",
+        responses={202: AsyncOperationResponseSerializer},
+    )
+    @action(detail=True, methods=["post"], serializer_class=RepositoryAddRemoveContentSerializer)
+    def modify(self, request, pk):
+        add_content_units = request.data.get("add_content_units", [])
+        package_ids = [extract_pk(href) for href in add_content_units if "/packages/" in href]
+        repository = self.get_object()
+
+        if package_ids and repository.package_signing_service:
+            ondemand_ca = ContentArtifact.objects.filter(
+                content_id__in=package_ids, artifact__isnull=True
+            )
+            if ondemand_ca.count() > 0:
+                raise DRFValidationError(
+                    _("Cannot add on-demand packages to repo with set package signing service.")
+                )
+
+        return super().modify(request, pk)
+
+
+class RpmRepositoryViewSet(RepositoryViewSet, RpmModifyRepositoryActionMixin, RolesMixin):
     """
     A ViewSet for RpmRepository.
     """
@@ -248,49 +274,6 @@ class RpmRepositoryViewSet(RepositoryViewSet, ModifyRepositoryActionMixin, Roles
             },
         )
         return OperationPostponedResponse(result, request)
-
-    @extend_schema(
-        description="Trigger an asynchronous task to create a new repository version.",
-        summary="Modify Repository Content",
-        responses={202: AsyncOperationResponseSerializer},
-    )
-    @action(detail=True, methods=["post"], serializer_class=RepositoryAddRemoveContentSerializer)
-    def modify(self, request, pk):
-        """
-        Queues a task that creates a new RepositoryVersion by adding and removing content units
-
-        Also handles signing if the repo has a package signing service and fingerprint set.
-        """
-        repository = self.get_object()
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-
-        add_content_units = serializer.validated_data.get("add_content_units", [])
-        if add_content_units and repository.package_signing_service:
-            ondemand_ca = ContentArtifact.objects.filter(
-                content_id__in=add_content_units, artifact__isnull=True
-            )
-            if ondemand_ca.count() > 0:
-                raise DRFValidationError(
-                    _("Cannot add on-demand content to repo with set package signing service.")
-                )
-
-        if "base_version" in request.data:
-            base_version_pk = self.get_resource(request.data["base_version"], RepositoryVersion).pk
-        else:
-            base_version_pk = None
-
-        task = dispatch(
-            signed_add_and_remove,
-            exclusive_resources=[repository],
-            kwargs={
-                "repository_pk": pk,
-                "base_version_pk": base_version_pk,
-                "add_content_units": add_content_units,
-                "remove_content_units": serializer.validated_data.get("remove_content_units", []),
-            },
-        )
-        return OperationPostponedResponse(task, request)
 
 
 class RpmRepositoryVersionViewSet(RepositoryVersionViewSet):
