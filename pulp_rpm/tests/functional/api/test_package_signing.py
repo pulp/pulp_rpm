@@ -395,4 +395,4 @@ def test_signed_repo_rejects_on_demand_content(
             {"add_content_units": [package_href]},
         )
 
-    assert "Cannot add on-demand content" in exc.value.body
+    assert "Cannot add on-demand packages" in exc.value.body
