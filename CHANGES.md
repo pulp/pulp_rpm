@@ -8,6 +8,27 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.34.0 (2026-01-07) {: #3.34.0 }
+
+#### Features {: #3.34.0-feature }
+
+- Implement `nested_by_digest` and `nested_by_both` and cache-friendly repo layout options.
+  [#4215](https://github.com/pulp/pulp_rpm/issues/4215)
+- Added feature to sign packages when they are added via the repo modify endpoint.
+  [#4234](https://github.com/pulp/pulp_rpm/issues/4234)
+- Bump pulpcore upperbound to <3.115.
+
+#### Bugfixes {: #3.34.0-bugfix }
+
+- Fixes the 'flat' publication layout option, which previously resulted in 404s for all packages.
+  [#4242](https://github.com/pulp/pulp_rpm/issues/4242)
+
+#### Misc {: #3.34.0-misc }
+
+- 
+
+---
+
 ## 3.33.1 (2025-11-04) {: #3.33.1 }
 
 #### Misc {: #3.33.1-misc }
