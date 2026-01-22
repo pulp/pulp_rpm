@@ -311,7 +311,9 @@ class PublicationData:
                     f"Checksum {checksum} is unknown or too short to use for "
                     f"{layout} publishing."
                 )
-            return os.path.join(PACKAGES_DIRECTORY, checksum[:2], checksum[2:6], pkg_filename)
+            return os.path.join(
+                PACKAGES_DIRECTORY, "by-digest", checksum[:2], checksum[2:6], pkg_filename
+            )
 
         def flat_path(pkg_filename):
             """Returns the path to use for flat layout. Define to keep it close to the others."""
