@@ -301,7 +301,9 @@ def test_repo_layout(
                 "Packages/{}/".format(package["name"][0])
             )
         elif layout in ("nested_by_digest", "nested_by_both"):
-            assert re.match(r"^Packages/[0-9a-f]{2}/[0-9a-f]{4}/", package["location"]["@href"])
+            assert re.match(
+                r"^Packages/by-digest/[0-9a-f]{2}/[0-9a-f]{4}/", package["location"]["@href"]
+            )
 
     # Do a smoke-test request for a package to ensure they're actually available.
     assert requests.head(os.path.join(distribution.base_url, packages[0]["location"]["@href"])).ok
