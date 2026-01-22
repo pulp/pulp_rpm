@@ -1,0 +1,2 @@
+Improved safety of [#3285 bugfix implementation](https://github.com/pulp/pulp_rpm/issues/3285)
+against CWE-502 (Deserialization of Untrusted Data) attacks.
