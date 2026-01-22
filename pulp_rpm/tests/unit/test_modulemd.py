@@ -1,4 +1,5 @@
-from pulp_rpm.app.modulemd import parse_modular
+from pulp_rpm.app.modulemd import parse_modular, disable_pyyaml_magic_casting
+import yaml
 import os
 
 sample_file_data = """
@@ -129,3 +130,44 @@ def test_parse_modular_preserves_literal_unquoted_values_3285(tmp_path):
     )
     assert modulemd_obsoletes["obsoleted_by_module_name"] == "perl"
     assert modulemd_obsoletes["obsoleted_by_module_stream"] == "5.40"
+
+
+def test_disabling_pyyaml_magic_casting():
+    text = """
+  floaty: 00.123
+  inty: 00123
+  dicty:
+    floaty: 00.123
+    inty: 00123
+  listy:
+    floaty: 00.123
+    inty: 00123
+  """
+    # In yaml 1.1, 00123 is seen as an octal, which is 83 in decimal. Try:
+    # >>> oct(83)
+    # '0o123'
+    # >>> int(0o123)
+    # 83
+    # This first assertion is to prove that - although surprising - this is
+    # the 'default' parsing behavior.
+    result = yaml.load(text, Loader=yaml.SafeLoader)
+    assert result["inty"] == 83
+
+    with disable_pyyaml_magic_casting():
+        result = yaml.load(text, Loader=yaml.SafeLoader)
+        assert result["floaty"] == "00.123"
+        assert result["dicty"]["floaty"] == "00.123"
+        assert result["listy"]["floaty"] == "00.123"
+
+        assert result["inty"] == "00123"
+        assert result["dicty"]["inty"] == "00123"
+        assert result["listy"]["inty"] == "00123"
+
+    result = yaml.load(text, Loader=yaml.SafeLoader)
+    assert result["floaty"] == 0.123
+    assert result["dicty"]["floaty"] == 0.123
+    assert result["listy"]["floaty"] == 0.123
+
+    assert result["inty"] == 83
+    assert result["dicty"]["inty"] == 83
+    assert result["listy"]["inty"] == 83

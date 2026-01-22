@@ -4,10 +4,10 @@ import logging
 import os
 import tempfile
 import yaml
-import collections
 
 from jsonschema import Draft7Validator
 from gettext import gettext as _  # noqa:F401
+from contextlib import contextmanager
 
 from pulp_rpm.app.models import Modulemd, Package
 from pulp_rpm.app.constants import (
@@ -191,7 +191,8 @@ def parse_modular(file: str):
     modulemd_obsoletes_all = []
 
     for module in split_modulemd_file(file):
-        parsed_data = yaml.load(module, Loader=ModularYamlLoader)
+        with disable_pyyaml_magic_casting():
+            parsed_data = yaml.load(module, Loader=yaml.SafeLoader)
         # here we check the modulemd document as we don't store all info, so serializers
         # are not enough then we only need to take required data from dict which is
         # parsed by pyyaml library
@@ -220,39 +221,25 @@ def parse_modular(file: str):
     return modulemd_all, modulemd_defaults_all, modulemd_obsoletes_all
 
 
-class ModularYamlLoader(yaml.SafeLoader):
+@contextmanager
+def disable_pyyaml_magic_casting():
+    """Temporarily disable SafeLoader from casting some unquoted values.
+
+    See issue: <https://github.com/pulp/pulp_rpm/issues/3285>
     """
-    Custom Loader that preserve unquoted float in specific fields (see #3285).
+    # It's implemented in a context manager to avoid surprise side-effects if
+    # by any chance the loader is called in other context where the default
+    # pyyaml behavior is expected.
+    FLOAT_TAG = "tag:yaml.org,2002:float"
+    INT_TAG = "tag:yaml.org,2002:int"
+    float_old_constructor = yaml.SafeLoader.yaml_constructors[FLOAT_TAG]
+    int_old_constructor = yaml.SafeLoader.yaml_constructors[INT_TAG]
 
-    Motivation (for customizing YAML parsing) is that libmodulemd also implement safe-quoting:
-    https://github.com/fedora-modularity/libmodulemd/blob/main/modulemd/tests/test-modulemd-quoting.c
+    def string_constructor(self, node):
+        return node.value
 
-    This class is based on https://stackoverflow.com/a/74334992
-    """
-
-    # Field to preserve (will bypass yaml casting)
-    PRESERVED_FIELDS = ("name", "stream", "version", "context", "arch")
-
-    def construct_mapping(self, node, deep=False):
-        if not isinstance(node, yaml.MappingNode):
-            raise yaml.constructor.ConstructorError(
-                None, None, "expected a mapping node, but found %s" % node.id, node.start_mark
-            )
-        mapping = {}
-        for key_node, value_node in node.value:
-            key = self.construct_object(key_node, deep=deep)
-            if not isinstance(key, collections.abc.Hashable):
-                raise yaml.constructor.ConstructorError(
-                    "while constructing a mapping",
-                    node.start_mark,
-                    "found unhashable key",
-                    key_node.start_mark,
-                )
-            if key in ModularYamlLoader.PRESERVED_FIELDS and isinstance(
-                value_node, yaml.ScalarNode
-            ):
-                value = value_node.value
-            else:
-                value = self.construct_object(value_node, deep=deep)
-            mapping[key] = value
-        return mapping
+    yaml.SafeLoader.yaml_constructors[FLOAT_TAG] = string_constructor
+    yaml.SafeLoader.yaml_constructors[INT_TAG] = string_constructor
+    yield
+    yaml.SafeLoader.yaml_constructors[FLOAT_TAG] = float_old_constructor
+    yaml.SafeLoader.yaml_constructors[INT_TAG] = int_old_constructor
