@@ -103,6 +103,36 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
                 assert md_href.endswith(compression_ext)
 
     @pytest.mark.parallel
+    def test_publish_with_no_compression(
+        self,
+        distribution_base_url,
+        rpm_unsigned_repo_immediate,
+        rpm_publication_api,
+        rpm_distribution_api,
+        monitor_task,
+        rpm_distribution_factory,
+    ):
+        """Sync and publish an RPM repository w/o compression and verify it exists."""
+        # 1. Publish and distribute
+        publish_data = RpmRpmPublication(
+            repository=rpm_unsigned_repo_immediate.pulp_href, compression_type="none"
+        )
+        publish_response = rpm_publication_api.create(publish_data)
+        created_resources = monitor_task(publish_response.task).created_resources
+        publication_href = created_resources[0]
+
+        distribution = rpm_distribution_factory(publication=publication_href)
+
+        # 2. Check "primary", "filelists", "other", "updateinfo" have no compression ext
+        for md_type, md_href in self.get_repomd_metadata_urls(
+            distribution_base_url(distribution.base_url)
+        ).items():
+            if md_type in ("primary", "filelists", "other", "updateinfo"):
+                assert not md_href.endswith(".gz")
+                assert not md_href.endswith(".zst")
+                assert md_href.endswith(".xml")
+
+    @pytest.mark.parallel
     def test_validate_no_checksum_tag(
         self,
         distribution_base_url,
