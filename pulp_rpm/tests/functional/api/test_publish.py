@@ -71,7 +71,9 @@ class TestPublishWithUnsignedRepoSyncedImmediate:
             }
             rpm_publication_api.create(body)
 
-    @pytest.mark.parametrize("compression_type,compression_ext", (("gz", ".gz"), ("zstd", ".zst")))
+    @pytest.mark.parametrize(
+        "compression_type,compression_ext", (("gz", ".gz"), ("zstd", ".zst"), ("none", ".xml"))
+    )
     @pytest.mark.parallel
     def test_publish_with_compression_types(
         self,
