@@ -4,11 +4,13 @@ from types import SimpleNamespace
 COMPRESSION_TYPES = SimpleNamespace(
     ZSTD="zstd",
     GZ="gz",
+    NONE="none",
 )
 
 COMPRESSION_CHOICES = (
     (COMPRESSION_TYPES.ZSTD, COMPRESSION_TYPES.ZSTD),
     (COMPRESSION_TYPES.GZ, COMPRESSION_TYPES.GZ),
+    (COMPRESSION_TYPES.NONE, COMPRESSION_TYPES.NONE),
 )
 
 # publication layout

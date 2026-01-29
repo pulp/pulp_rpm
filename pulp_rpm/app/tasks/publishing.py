@@ -730,7 +730,13 @@ def generate_repo_metadata(
         repodata_path = os.path.join(sub_folder, repodata_path)
 
     # Prepare metadata files
-    cr_compression_type = cr.ZSTD if compression_type == COMPRESSION_TYPES.ZSTD else cr.GZ
+    if compression_type == COMPRESSION_TYPES.ZSTD:
+        cr_compression_type = cr.ZSTD
+    elif compression_type == COMPRESSION_TYPES.NONE:
+        cr_compression_type = cr.NO_COMPRESSION
+    else:
+        # Gzip is the default option & fallback should the value be something unexpected
+        cr_compression_type = cr.GZ
     total_packages = len(retained_packages)
 
     if RPM_METADATA_USE_REPO_PACKAGE_TIME:
