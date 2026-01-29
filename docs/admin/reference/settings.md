@@ -64,3 +64,8 @@ When publishing RPM metadata, if this is true, Pulp will use the timestamp that 
 added to the repo rather than the timestamp that the package first appeared in Pulp. This timestamp
 appears in the "file" field of the time element for each package in primary.xml. Defaults to
 `False`.
+
+
+## MAX_PACKAGE_SIGNING_WORKERS
+
+Sets the number of workers that pulp_rpm uses when concurrently signing packages. Defaults to 5.
