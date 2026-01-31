@@ -82,6 +82,15 @@
 
 ---
 
+## 3.32.6 (2026-01-30) {: #3.32.6 }
+
+#### Bugfixes {: #3.32.6-bugfix }
+
+- Improved postgres memory performance on mirror complete sync
+  [#4174](https://github.com/pulp/pulp_rpm/issues/4174)
+
+---
+
 ## 3.32.5 (2025-10-15) {: #3.32.5 }
 
 #### Bugfixes {: #3.32.5-bugfix }
