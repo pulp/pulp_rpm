@@ -140,7 +140,7 @@ class Package(Content):
     arch = models.CharField(max_length=20)
 
     # Currently filled by a database trigger - consider eventually switching to generated column
-    evr = RpmVersionField()
+    evr = RpmVersionField(null=True, blank=True, default=None)
 
     pkgId = models.TextField(db_index=True)  # formerly "checksum" in Pulp 2
     checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
