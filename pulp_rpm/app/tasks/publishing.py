@@ -249,7 +249,7 @@ class PublicationData:
         1. Respect the layout of the publication.
            1. "flat": "Packages/xxx.rpm"
            2. "nested_alphabetically": "Packages/f/filename.rpm"   - The "canonical" repo format.
-           3. "nested_by_digest": "Packages/by-digest/f/xxxxxx-filename.rpm"
+           3. "nested_by_digest": "Packages/f/by-digest/xxxxxx-filename.rpm"
            4. "nested_by_both": Both 2 and 3. Each rpm will result in 2 PublishedArtifacts.
 
         2. Handle "duplicate" packages.
@@ -313,8 +313,8 @@ class PublicationData:
                 )
             return os.path.join(
                 PACKAGES_DIRECTORY,
-                "by-digest",
                 pkg_filename[0].lower(),
+                "by-digest",
                 f"{checksum[:6]}-{pkg_filename}",
             )
 
