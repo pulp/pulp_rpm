@@ -3,7 +3,7 @@ from pathlib import Path
 
 from django.conf import settings
 from django.db import models
-from pulpcore.plugin.exceptions import PulpException
+from pulpcore.plugin.exceptions import ExternalServiceError
 from pulpcore.plugin.models import BaseModel, Content, SigningService
 from typing import Optional
 
@@ -65,10 +65,10 @@ class RpmPackageSigningService(SigningService):
             try:
                 result = Path(return_value["rpm_package"])
             except KeyError:
-                raise PulpException(f"Malformed output from signing script: {return_value}")
+                raise ExternalServiceError(f"Malformed output from signing script: {return_value}")
 
             if not result.exists():
-                raise PulpException(f"Signed package not found: {result}")
+                raise ExternalServiceError(f"Signed package not found: {result}")
 
             # verify with rpm tool
             rpm_tool = RpmTool(root=Path(temp_directory_name))
