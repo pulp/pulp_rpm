@@ -48,12 +48,10 @@
 
 - Fixed a bug where syncing from a remote repository with duplicate filenames and different paths
   would result in one of these packages being missing from a Pulp distribution.
-  This is known to happen in some JFrog repositories.
-
-  On systems that have synced from such repositories before, it is required to clean up the related
-  packages with orphan cleanup or use the provided "pulpcore-manager rpm-datarepair 4073",
-  which forces internal objects to use non-ambiguous filenames.
-  [#4073](https://github.com/pulp/pulp_rpm/issues/4073)
+  This is known to happen in some JFrog repositories. On systems that have synced from such
+  repositories before, it is required to clean up the related packages with orphan cleanup or use
+  the provided `pulpcore-manager rpm-datarepair 4073` command, which forces internal objects to use
+  non-ambiguous filenames. [#4073](https://github.com/pulp/pulp_rpm/issues/4073)
 - Taught publish/synchronize to return full serialized object of their action.
   [#4117](https://github.com/pulp/pulp_rpm/issues/4117)
 - Fix a bug where the `retain_package_versions` feature (and prune and a few others) was not correctly determining which packages were most recent.
