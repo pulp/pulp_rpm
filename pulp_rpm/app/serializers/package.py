@@ -283,12 +283,8 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
             )
             + ".rpm"
         )
-        if not data.get("relative_path"):
-            data["relative_path"] = filename
-            new_pkg["location_href"] = filename
-        else:
-            new_pkg["location_href"] = data["relative_path"]
-
+        data["relative_path"] = filename
+        new_pkg["location_href"] = filename
         data.update(new_pkg)
         return data
 
