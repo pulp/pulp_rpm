@@ -1,0 +1,1 @@
+Made the `relative_path` argument to package upload no-op. In #4073 we started enforcing that the value of `location_href` and `relative_path` should be the canonicalized filename of the package.
