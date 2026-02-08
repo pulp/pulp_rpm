@@ -61,3 +61,25 @@ class UlnCredentialsError(PulpException):
         Return a message for the exception.
         """
         return self.msg
+
+
+class SyncError(PulpException):
+    """
+    Raised when a synchronization operation encounters an error.
+    """
+
+    def __init__(self, msg):
+        """
+        Set the exception identifier and msg.
+
+        Args:
+            msg(str): Detailed message about the synchronization error
+        """
+        super().__init__("RPM0004")
+        self.msg = msg
+
+    def __str__(self):
+        """
+        Return a message for the exception.
+        """
+        return self.msg
