@@ -4,7 +4,7 @@ from logging import getLogger, DEBUG
 from django.conf import settings
 from django.db.models import F, Subquery
 
-from pulpcore.plugin.models import ProgressReport
+from pulpcore.plugin.models import Content, ProgressReport
 from pulpcore.plugin.constants import TASK_STATES
 from pulpcore.plugin.models import (
     GroupProgressReport,
@@ -67,10 +67,10 @@ def prune_repo_packages(repo_pk, keep_days, dry_run):
             content__in=Subquery(rpm_by_name_age), repository=repo, version_removed=None
         )
         .filter(pulp_created__lt=eldest_datetime)
-        .values("content_id")
+        .values_list("content_id", flat=True)
     )
-    log.debug(f">>> TARGET IDS: {target_ids_q.count()}.")
-    to_be_removed = target_ids_q.count()
+    to_be_removed = len(target_ids_q)
+    log.debug(f">>> TARGET IDS: {to_be_removed}.")
     # Use the progressreport to report back numbers. The prune happens as one
     # action.
     data = dict(
@@ -92,7 +92,7 @@ def prune_repo_packages(repo_pk, keep_days, dry_run):
                 log.debug(f'{p["name"]}-{p["epoch"]}:{p["version"]}-{p["release"]}.{p["arch"]}')
     else:
         with repo.new_version(base_version=None) as new_version:
-            new_version.remove_content(target_ids_q)
+            new_version.remove_content(Content.objects.filter(pk__in=target_ids_q))
         data["done"] = to_be_removed
 
     pb = ProgressReport(**data)
