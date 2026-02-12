@@ -202,7 +202,7 @@ jobs:
         with:
           fetch-depth: 0
           path: "pulp_rpm"
-          ref: "3.34"
+          ref: "3.35"
 
       - name: "Run update"
         working-directory: "pulp_rpm"
@@ -211,21 +211,21 @@ jobs:
 
       - name: "Create Pull Request for CI files"
         uses: "peter-evans/create-pull-request@v6"
-        id: "create_pr_3_34"
+        id: "create_pr_3_35"
         with:
           token: "${{ secrets.RELEASE_TOKEN }}"
           path: "pulp_rpm"
           committer: "pulpbot <pulp-infra@redhat.com>"
           author: "pulpbot <pulp-infra@redhat.com>"
-          title: "Update CI files for branch 3.34"
-          branch: "update-ci/3.34"
-          base: "3.34"
+          title: "Update CI files for branch 3.35"
+          branch: "update-ci/3.35"
+          base: "3.35"
           delete-branch: true
       - name: "Mark PR automerge"
         working-directory: "pulp_rpm"
         run: |
-          gh pr merge --rebase --auto "${{ steps.create_pr_3_34.outputs.pull-request-number }}"
-        if: "steps.create_pr_3_34.outputs.pull-request-number"
+          gh pr merge --rebase --auto "${{ steps.create_pr_3_35.outputs.pull-request-number }}"
+        if: "steps.create_pr_3_35.outputs.pull-request-number"
         env:
           GH_TOKEN: "${{ secrets.RELEASE_TOKEN }}"
         continue-on-error: true
