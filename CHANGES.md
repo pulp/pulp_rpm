@@ -8,6 +8,40 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.35.0 (2026-02-12) {: #3.35.0 }
+
+#### Features {: #3.35.0-feature }
+
+- Support publishing uncompressed repository metadata.
+  [#4281](https://github.com/pulp/pulp_rpm/issues/4281)
+
+#### Bugfixes {: #3.35.0-bugfix }
+
+- Nest the package URLs in nested_by_digest or nested_by_both repo layout options, improving browsability.
+  [#4268](https://github.com/pulp/pulp_rpm/issues/4268)
+- Reduce the number of directories implicit in the nested_by_digest and nested_by_both repo layouts
+
+  Previously many new URL paths could be created:
+  Packages/by-digest/00/0000/
+  Packages/by-digest/00/0001/
+  Packages/by-digest/00/0002/
+  ...
+  Packages/by-digest/ff/ffff/
+
+  While not every one of these possible directories exist, enough of them did to meaningfully increase the number of requests that scrapers generate. And since directory listings are not very cacheable, these requests all filtered down to the DB, resulting in very meaningful increase in DB load.
+
+  Instead let's make the by-digest URLs use a very similar (and manageable) directory structure to the alphabetical nesting, and prepend the digest to the filename.
+  Packages/f/by-digest/xxxxxx-foo-1.0.0-1.noarch.rpm
+  [#4287](https://github.com/pulp/pulp_rpm/issues/4287)
+- Fixed problems with the prune operation. Additional remediation may be required: see https://github.com/pulp/pulpcore/issues/7272
+- Made the `relative_path` argument to package upload no-op. In #4073 we started enforcing that the value of `location_href` and `relative_path` should be the canonicalized filename of the package.
+
+#### Misc {: #3.35.0-misc }
+
+- 
+
+---
+
 ## 3.34.0 (2026-01-07) {: #3.34.0 }
 
 #### Features {: #3.34.0-feature }
