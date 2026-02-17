@@ -2,18 +2,21 @@
 # were not present before running plugin-template have been added with their default values.
 
 # generated with plugin_template
+#
+# After editing this file please always reapply the plugin template before committing any changes.
 
-api_root: /pulp/
+---
+api_root: "/pulp/"
 black: true
 check_commit_message: true
 check_gettext: true
 check_manifest: true
 check_stray_pulpcore_imports: true
-ci_base_image: ghcr.io/pulp/pulp-ci-centos9
+ci_base_image: "ghcr.io/pulp/pulp-ci-centos9"
 ci_env: {}
-ci_trigger: '{pull_request: {branches: [''*'']}}'
-cli_package: pulp-cli
-cli_repo: https://github.com/pulp/pulp-cli.git
+ci_trigger: "{pull_request: {branches: ['*']}}"
+cli_package: "pulp-cli"
+cli_repo: "https://github.com/pulp/pulp-cli.git"
 core_import_allowed: []
 deploy_client_to_pypi: true
 deploy_client_to_rubygems: true
@@ -23,37 +26,34 @@ docker_fixtures: true
 extra_files: []
 flake8: true
 flake8_ignore: []
-github_org: pulp
-latest_release_branch: '3.31'
+github_org: "pulp"
+latest_release_branch: "3.31"
 lint_requirements: true
 os_required_packages: []
 parallel_test_workers: 8
-plugin_app_label: rpm
-plugin_default_branch: main
-plugin_name: pulp_rpm
+plugin_app_label: "rpm"
+plugin_default_branch: "main"
+plugin_name: "pulp_rpm"
 plugins:
-- app_label: rpm
-  name: pulp_rpm
-post_job_template: null
-pre_job_template: null
+  - app_label: "rpm"
+    name: "pulp_rpm"
 pulp_env: {}
 pulp_env_azure: {}
 pulp_env_gcp: {}
 pulp_env_s3: {}
-pulp_scheme: https
+pulp_scheme: "https"
 pulp_settings:
   allowed_content_checksums:
-  - sha1
-  - sha224
-  - sha256
-  - sha512
+    - "sha1"
+    - "sha224"
+    - "sha256"
+    - "sha512"
   allowed_export_paths:
-  - /tmp
+    - "/tmp"
   allowed_import_paths:
-  - /tmp
+    - "/tmp"
   orphan_protection_time: 0
 pulp_settings_azure:
-  domain_enabled: true
   MEDIA_ROOT: ""
   STORAGES:
     default:
@@ -61,13 +61,14 @@ pulp_settings_azure:
       OPTIONS:
         account_key: "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw=="
         account_name: "devstoreaccount1"
-        location: "pulp3"
         azure_container: "pulp-test"
-        overwrite_files: true
-        expiration_secs: 120
         connection_string: "DefaultEndpointsProtocol=http;AccountName=devstoreaccount1;AccountKey=Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/K1SZFPTOtr/KBHBeksoGMGw==;BlobEndpoint=http://ci-azurite:10000/devstoreaccount1;"
+        expiration_secs: 120
+        location: "pulp3"
+        overwrite_files: true
     staticfiles:
       BACKEND: "django.contrib.staticfiles.storage.StaticFilesStorage"
+  domain_enabled: true
 pulp_settings_gcp: null
 pulp_settings_s3:
   MEDIA_ROOT: ""
@@ -76,27 +77,27 @@ pulp_settings_s3:
       BACKEND: "storages.backends.s3boto3.S3Boto3Storage"
       OPTIONS:
         access_key: "AKIAIT2Z5TDYPX3ARJBA"
-        secret_key: "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"
-        region_name: "eu-central-1"
         addressing_style: "path"
-        signature_version: "s3v4"
         bucket_name: "pulp3"
-        endpoint_url: "http://minio:9000"
         default_acl: "@none"
+        endpoint_url: "http://minio:9000"
+        region_name: "eu-central-1"
+        secret_key: "fqRvjWaPU5o0fCqQuUWbj9Fainj2pVZtBCiDiieS"
+        signature_version: "s3v4"
     staticfiles:
       BACKEND: "django.contrib.staticfiles.storage.StaticFilesStorage"
 pydocstyle: true
-release_email: pulp-infra@redhat.com
-release_user: pulpbot
+release_email: "pulp-infra@redhat.com"
+release_user: "pulpbot"
 stalebot: true
 stalebot_days_until_close: 30
 stalebot_days_until_stale: 90
 stalebot_limit_to_pulls: true
 supported_release_branches:
-- '3.23'
-- '3.26'
-- '3.27'
-- '3.29'
+  - "3.23"
+  - "3.26"
+  - "3.27"
+  - "3.29"
 sync_ci: true
 test_azure: true
 test_cli: true
@@ -104,10 +105,11 @@ test_deprecations: true
 test_gcp: false
 test_lowerbounds: true
 test_performance:
-- sync
-- publish
-- pulp_to_pulp
+  - "sync"
+  - "publish"
+  - "pulp_to_pulp"
 test_reroute: true
 test_s3: true
 use_issue_template: true
+...
 
