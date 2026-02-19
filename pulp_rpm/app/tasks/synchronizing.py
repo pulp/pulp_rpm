@@ -110,6 +110,14 @@ MIRROR_INCOMPATIBLE_REPO_ERR_MSG = (
     "This repository uses features which are incompatible with 'mirror' sync. "
     "Please sync without mirroring enabled."
 )
+
+DUPLICATE_WARN_MSG = (
+    "The repository metadata being synced into Pulp is erroneous in a way that "
+    "makes it ambiguous (duplicate {}). Yum, DNF and Pulp try to handle these "
+    "problems, but unexpected things may happen.\n\n"
+    "Please read https://github.com/pulp/pulp_rpm/issues/2402 for more details."
+)
+
 # lift dynaconf lookups outside of loops
 ALLOWED_CONTENT_CHECKSUMS = settings.ALLOWED_CONTENT_CHECKSUMS
 
@@ -1210,40 +1218,35 @@ class RpmFirstStage(Stage):
         # duplicate NEVRA tiebreaker - if we have multiple packages with the same nevra then
         # we might want to pick the latest based on the build time.
         latest_build_time_by_nevra = {}
-
+        # used to decide whether interning mechanisms are necessary for memory saving purposes
+        file_counts = {}
+        version_counts = collections.defaultdict(int)
         # Perform various checks and potentially filter out unwanted packages
         # We parse all of primary.xml first and fail fast if something is wrong.
-        # Collect a list of any package nevras() we don't want to include.
-        def verification_and_skip_callback(pkg):
-            nonlocal pkgid_warning_triggered
-            nonlocal nevra_warning_triggered
-            nonlocal package_skip_nevras
-            nonlocal latest_packages_by_arch_and_name
-            nonlocal total_packages
-            nonlocal latest_build_time_by_nevra
-            nonlocal skipped_packages
-
-            WARN_MSG = (
-                "The repository metadata being synced into Pulp is erroneous in a way that "
-                "makes it ambiguous (duplicate {}). Yum, DNF and Pulp try to handle these "
-                "problems, but unexpected things may happen.\n\n"
-                "Please read https://github.com/pulp/pulp_rpm/issues/2402 for more details."
-            )
-
+        # Collect a list of any package nevras() we don't want to include, and other checks
+        for pkg in parser.iter_packages():
             total_packages += 1
             pkg_nevra = pkg.nevra()
+            pkg_name = pkg.name
 
             duplicate_nevra = pkg_nevra in nevras
             duplicate_pkgid = pkg.pkgId in checksums
 
+            # Part of a heuristic to determine whether interning should be used for memory saving
+            if pkg_name not in file_counts:
+                # we just assume that the number of files in the first package of $pkgname we see
+                # is representative of all versions. It would be too expensive to check them all.
+                file_counts[pkg_name] = len(pkg.files)
+            version_counts[pkg_name] += 1
+
             # Check for packages with duplicate pkgids
             if not pkgid_warning_triggered and duplicate_pkgid:
                 pkgid_warning_triggered = True
-                log.warn(WARN_MSG.format("PKGIDs"))
+                log.warn(DUPLICATE_WARN_MSG.format("PKGIDs"))
             # Check for packages with duplicate NEVRAs
             if not nevra_warning_triggered and duplicate_nevra:
                 nevra_warning_triggered = True
-                log.warn(WARN_MSG.format("NEVRAs"))
+                log.warn(DUPLICATE_WARN_MSG.format("NEVRAs"))
 
             # Keep track of the latest build time for each package - all but the latest should be
             # rejected. This matches what DNF ought to do, and should prevent Pulp from ever
@@ -1280,11 +1283,7 @@ class RpmFirstStage(Stage):
             # newer modular packages existing.
             if self.repository.retain_package_versions and pkg_nevra not in modular_artifact_nevras:
                 pkg_evr = RpmVersion(pkg.epoch, pkg.version, pkg.release)
-                latest_packages_by_arch_and_name[pkg.arch][pkg.name].append((pkg_evr, pkg_nevra))
-
-        # Ew, callback-based API, gross. The streaming API doesn't support optionally
-        # specifying particular files yet so we have to use the old way.
-        cr.xml_parse_primary(primary_xml.path, pkgcb=verification_and_skip_callback, do_files=False)
+                latest_packages_by_arch_and_name[pkg.arch][pkg_name].append((pkg_evr, pkg_nevra))
 
         # Go through the package lists, sort them descending by EVR, ignore the first N and then
         # add the remaining ones to the skip list.
@@ -1320,6 +1319,24 @@ class RpmFirstStage(Stage):
             "total": total_packages,
         }
         async with ProgressReport(**progress_data) as packages_pb:
+            # simple heuristic to determine whether global caching is suitable for this repository.
+            # It's suitable when there are multiple packages that share files, e.g. many versions
+            # of the same packages. If there is insufficient duplication within the repo, the
+            # global cache will consume more memory than it saves.
+            heuristic_score = sum(
+                file_counts[pkg_name] * (version_counts[pkg_name] - 1)
+                for pkg_name in version_counts.keys()
+            )
+            # rationale: 240mb / (assume) 20 bytes per string ~= 12,000,000.
+            # It's very fuzzy and "good enough", don't overthink it.
+            use_global_caching = heuristic_score > 12_000_000
+            log.debug(
+                f"Sync Global Caching Enabled = {use_global_caching} (score: {heuristic_score})"
+            )
+
+            string_cache = {} if use_global_caching else None
+            tuple_cache = {} if use_global_caching else None
+
             for pkg in parser.iter_packages():
                 pkg_nevra = pkg.nevra()
                 # Skip over packages (retention feature, skip_types feature)
@@ -1332,7 +1349,11 @@ class RpmFirstStage(Stage):
                 # Implicit: There can be multiple package entries that are completely identical
                 # (same NEVRA, same build time, same checksum / pkgid) and the same or different
                 # location_href. We're not explicitly handling this, the pipeline will deduplicate.
-                package = Package(**Package.createrepo_to_dict(pkg))
+                package = Package(
+                    **Package.createrepo_to_dict(
+                        pkg, string_cache=string_cache, tuple_cache=tuple_cache
+                    )
+                )
                 base_url = pkg.location_base or self.remote_url
                 url = urlpath_sanitize(base_url, package.location_href)
                 del pkg  # delete it as soon as we're done with it

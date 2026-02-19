@@ -770,7 +770,9 @@ def generate_repo_metadata(
         # See: https://pulp.plan.io/issues/9402
         if not content.exists():
             writer.repomd.revision = "0"
-        for package in Package.objects.filter(pk__in=content).order_by("name", "evr").iterator():
+        for package in (
+            Package.objects.filter(pk__in=content).order_by("name", "evr").iterator(chunk_size=200)
+        ):
             if package.pk not in retained_packages:
                 continue
             pkg = package.to_createrepo_c()
