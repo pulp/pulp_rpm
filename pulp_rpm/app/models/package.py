@@ -158,8 +158,8 @@ class Package(Content):
     #   changelog (str: changelog text
     changelogs = models.JSONField(default=list)
 
-    # A JSON-encoded list of dictionaries, each of which represents a single file.
-    # Each file dict contains the following fields:
+    # A JSON-encoded list of tuples / arrays, each of which represents a single file.
+    # Each file tuple contains the following fields:
     #
     #   type (str):     one of "" (regular file), "dir", "ghost"
     #   path (str):     path to file
@@ -275,12 +275,18 @@ class Package(Content):
         readonly = ["evr"]
 
     @classmethod
-    def createrepo_to_dict(cls, package):
+    def createrepo_to_dict(cls, package, tuple_cache=None, string_cache=None):
         """
         Convert createrepo_c package object to dict for instantiating Package object.
 
         Args:
             package(createrepo_c.Package): a RPM/SRPM package to convert
+            tuple_cache(dict): A dictionary used to intern file entry tuples - helpful to avoid
+                duplicate objects in memory by converting them into shallow refcounted "copies"
+                of existing objects
+            string_cache(dict): A dictionary used to intern strings - helpful to avoid
+                duplicate strings in memory by converting them into shallow refcounted "copies"
+                of existing strings
 
         Returns:
             dict: all data for RPM/SRPM content creation
@@ -296,19 +302,44 @@ class Package(Content):
             changelog_limit = KEEP_CHANGELOG_LIMIT or 1
             # changelogs are listed in chronological order, grab the last N changelogs from the list
             changelogs = changelogs[-changelog_limit:]
-        files = getattr(package, CR_PACKAGE_ATTRS.FILES, [])
+
+        uninterned_files = getattr(package, CR_PACKAGE_ATTRS.FILES, [])
         seen = set()
         deduplicated_files = []
         has_duplicates = False
-        for fileentry in files:
-            if fileentry in seen:
+
+        string_cache = string_cache or {}
+
+        for file_entry in uninterned_files:
+            # length of this tuple could be 3 or 4 depending on whether the file digest is included
+            # see https://github.com/pulp/pulp_rpm/issues/4328
+            no_file_digest = len(file_entry) == 3
+            if no_file_digest:
+                (typ, parent_dir, name) = file_entry
+            else:
+                # currently this should ONLY happen during upload
+                (typ, parent_dir, name, digest) = file_entry
+            # check if the "parent_dir" string exists in our cache. If it does, we replace it
+            # with the cached copy, to take advantage of Python's refcounting behavior. We do
+            # this separately from the tuple itself, because the parent_dir path is frequently
+            # long and repeated.
+            parent_dir = string_cache.setdefault(parent_dir, parent_dir)
+            file_entry = (typ, parent_dir, name)
+
+            if tuple_cache is not None:
+                # check if the file entry exists in our cache. If it does, we replace it with the
+                # cached copy, to take advantage of Python's refcounting behavior.
+                file_entry = tuple_cache.setdefault(file_entry, file_entry)
+
+            if file_entry in seen:
                 has_duplicates = True
-                continue
-            seen.add(fileentry)
-            deduplicated_files.append(fileentry)
+            else:
+                seen.add(file_entry)
+                deduplicated_files.append(file_entry)
+
         if has_duplicates:
             log.warn(f"Package {package.nevra()} lists some files more than once")
-        files = deduplicated_files
+
         return {
             PULP_PACKAGE_ATTRS.ARCH: getattr(package, CR_PACKAGE_ATTRS.ARCH),
             PULP_PACKAGE_ATTRS.CHANGELOGS: changelogs,
@@ -321,7 +352,7 @@ class Package(Content):
             # it is possible but rare for packages to have no epoch metadata at all,
             # and RpmVersionField wants a numeric value
             PULP_PACKAGE_ATTRS.EPOCH: getattr(package, CR_PACKAGE_ATTRS.EPOCH) or "0",
-            PULP_PACKAGE_ATTRS.FILES: files,
+            PULP_PACKAGE_ATTRS.FILES: deduplicated_files,
             PULP_PACKAGE_ATTRS.LOCATION_BASE: "",  # TODO, delete this entirely
             PULP_PACKAGE_ATTRS.LOCATION_HREF: getattr(package, CR_PACKAGE_ATTRS.LOCATION_HREF),
             PULP_PACKAGE_ATTRS.NAME: getattr(package, CR_PACKAGE_ATTRS.NAME),

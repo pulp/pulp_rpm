@@ -12,3 +12,5 @@ include requirements.txt
 include test_requirements.txt
 include unittest_requirements.txt
 exclude releasing.md
+exclude AGENTS.md
+exclude CLAUDE.md
