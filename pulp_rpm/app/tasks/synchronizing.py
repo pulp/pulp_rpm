@@ -111,6 +111,14 @@ MIRROR_INCOMPATIBLE_REPO_ERR_MSG = (
     "This repository uses features which are incompatible with 'mirror' sync. "
     "Please sync without mirroring enabled."
 )
+
+DUPLICATE_WARN_MSG = (
+    "The repository metadata being synced into Pulp is erroneous in a way that "
+    "makes it ambiguous (duplicate {}). Yum, DNF and Pulp try to handle these "
+    "problems, but unexpected things may happen.\n\n"
+    "Please read https://github.com/pulp/pulp_rpm/issues/2402 for more details."
+)
+
 # lift dynaconf lookups outside of loops
 ALLOWED_CONTENT_CHECKSUMS = settings.ALLOWED_CONTENT_CHECKSUMS
 
@@ -928,7 +936,7 @@ class RpmFirstStage(Stage):
             # can't be flagged as 'modular' thus broken repository!
             if modulemd_result.url.endswith("zck"):
                 raise TypeError(_("Modular data compressed with ZCK is not supported."))
-            (modulemd_dcs, modulemd_list) = await self.parse_modules_metadata(modulemd_result)
+            modulemd_dcs, modulemd_list = await self.parse_modules_metadata(modulemd_result)
 
         # **Now** we can successfully parse package-metadata
         await self.parse_packages(
@@ -1198,10 +1206,12 @@ class RpmFirstStage(Stage):
         # duplicate NEVRA tiebreaker - if we have multiple packages with the same nevra then
         # we might want to pick the latest based on the build time.
         latest_build_time_by_nevra = {}
+        # A list of package names seen in which order - used to calculate heuristics used by caching
+        pkg_names_seen_order = []
 
         # Perform various checks and potentially filter out unwanted packages
         # We parse all of primary.xml first and fail fast if something is wrong.
-        # Collect a list of any package nevras() we don't want to include.
+        # Collect a list of any package nevras() we don't want to include, and other checks
         def verification_and_skip_callback(pkg):
             nonlocal pkgid_warning_triggered
             nonlocal nevra_warning_triggered
@@ -1211,15 +1221,11 @@ class RpmFirstStage(Stage):
             nonlocal latest_build_time_by_nevra
             nonlocal skipped_packages
 
-            WARN_MSG = (
-                "The repository metadata being synced into Pulp is erroneous in a way that "
-                "makes it ambiguous (duplicate {}). Yum, DNF and Pulp try to handle these "
-                "problems, but unexpected things may happen.\n\n"
-                "Please read https://github.com/pulp/pulp_rpm/issues/2402 for more details."
-            )
-
             total_packages += 1
             pkg_nevra = pkg.nevra()
+            pkg_name = pkg.name
+
+            pkg_names_seen_order.append(pkg_name)
 
             duplicate_nevra = pkg_nevra in nevras
             duplicate_pkgid = pkg.pkgId in checksums
@@ -1227,11 +1233,11 @@ class RpmFirstStage(Stage):
             # Check for packages with duplicate pkgids
             if not pkgid_warning_triggered and duplicate_pkgid:
                 pkgid_warning_triggered = True
-                log.warn(WARN_MSG.format("PKGIDs"))
+                log.warn(DUPLICATE_WARN_MSG.format("PKGIDs"))
             # Check for packages with duplicate NEVRAs
             if not nevra_warning_triggered and duplicate_nevra:
                 nevra_warning_triggered = True
-                log.warn(WARN_MSG.format("NEVRAs"))
+                log.warn(DUPLICATE_WARN_MSG.format("NEVRAs"))
 
             # Keep track of the latest build time for each package - all but the latest should be
             # rejected. This matches what DNF ought to do, and should prevent Pulp from ever
@@ -1268,7 +1274,7 @@ class RpmFirstStage(Stage):
             # newer modular packages existing.
             if self.repository.retain_package_versions and pkg_nevra not in modular_artifact_nevras:
                 pkg_evr = RpmVersion(pkg.epoch, pkg.version, pkg.release)
-                latest_packages_by_arch_and_name[pkg.arch][pkg.name].append((pkg_evr, pkg_nevra))
+                latest_packages_by_arch_and_name[pkg.arch][pkg_name].append((pkg_evr, pkg_nevra))
 
         # Ew, callback-based API, gross. The streaming API doesn't support optionally
         # specifying particular files yet so we have to use the old way.
@@ -1280,7 +1286,7 @@ class RpmFirstStage(Stage):
             for name, versions in packages.items():
                 versions.sort(key=lambda p: p[0], reverse=True)
                 for pkg in versions[self.repository.retain_package_versions :]:
-                    (evr, nevra) = pkg
+                    evr, nevra = pkg
                     package_skip_nevras.add(nevra)
                     skipped_packages += 1
 
@@ -1292,6 +1298,62 @@ class RpmFirstStage(Stage):
                 "(duplicates, outdated or skipping was requested e.g. 'skip_types')"
             )
             log.info(msg.format(skipped_packages))
+
+        def score_grouping(items):
+            """
+            Score how well items are grouped together in a list.
+
+            Returns:
+                float: Score from 0 (completely scattered) to 1 (perfectly grouped)
+
+            Examples:
+                >>> score_grouping(["apple", "apple", "banana", "banana", "pear"])
+                1.0
+                >>> score_grouping(["apple", "banana", "apple", "banana", "pear"])
+                0.0 (or close to it)
+            """
+            if not items:
+                return 1.0
+
+            # Count actual number of runs (consecutive groups)
+            actual_runs = 1
+            for i in range(1, len(items)):
+                if items[i] != items[i - 1]:
+                    actual_runs += 1
+
+            # Count frequency of each item
+            from collections import Counter
+
+            counts = Counter(items)
+
+            # Minimum runs = number of unique items (best case: all grouped)
+            min_runs = len(counts)
+
+            # Maximum runs for this distribution (worst case: maximally scattered)
+            # Formula: min(total_items, 2 * sum_of_smaller_counts + 1)
+            sorted_counts = sorted(counts.values(), reverse=True)
+            other_counts_sum = sum(sorted_counts[1:])
+            max_runs = min(len(items), 2 * other_counts_sum + 1)
+
+            # Edge case: if all items are the same
+            if min_runs == max_runs:
+                return 1.0
+
+            # Normalize score: 1 = perfectly grouped, 0 = maximally scattered
+            score = (max_runs - actual_runs) / (max_runs - min_runs)
+
+            return score
+
+        last_seen_package_name = None
+        # for specific repos that are highly random but also have a small nubmer of unique names,
+        # let's use global caching for all packages instead of just like consecutive ones
+        pkg_names_count = len(set(pkg_names_seen_order))
+        repo_grouping_score = score_grouping(pkg_names_seen_order)
+        use_global_caching = repo_grouping_score < 0.25 and pkg_names_count < 25
+        log.debug(
+            f"use_global_caching: {use_global_caching} repo_grouping_score: {repo_grouping_score} "
+            f" pkg_names_count: {pkg_names_count}"
+        )
 
         progress_data = {
             "message": "Skipping Packages",
@@ -1308,6 +1370,9 @@ class RpmFirstStage(Stage):
             "total": total_packages,
         }
         async with ProgressReport(**progress_data) as packages_pb:
+            string_cache = {}
+            tuple_cache = {}
+
             for pkg in parser.as_iterator():
                 pkg_nevra = pkg.nevra()
                 # Skip over packages (retention feature, skip_types feature)
@@ -1317,12 +1382,24 @@ class RpmFirstStage(Stage):
                 # entries with the same NEVRA, pick the one with the larger build time
                 elif pkg.time_build != latest_build_time_by_nevra[pkg_nevra]:
                     continue
+                # Typically (not always, but 90% of the time) like (same name, different arch
+                # or version) packages are grouped together metadata - this means that re-using
+                # the cache for runs of consecutive like packages is highly effective at saving
+                # memory yet while avoiding the overhead of the cache when it will go unused.
+                if pkg.name != last_seen_package_name and not use_global_caching:
+                    string_cache.clear()
+                    tuple_cache.clear()
                 # Implicit: There can be multiple package entries that are completely identical
                 # (same NEVRA, same build time, same checksum / pkgid) and the same or different
                 # location_href. We're not explicitly handling this, the pipeline will deduplicate.
-                package = Package(**Package.createrepo_to_dict(pkg))
+                package = Package(
+                    **Package.createrepo_to_dict(
+                        pkg, string_cache=string_cache, tuple_cache=tuple_cache
+                    )
+                )
                 base_url = pkg.location_base or self.remote_url
                 url = urlpath_sanitize(base_url, package.location_href)
+                last_seen_package_name = pkg.name
                 del pkg  # delete it as soon as we're done with it
 
                 store_package_for_mirroring(self.repository, package.pkgId, package.location_href)

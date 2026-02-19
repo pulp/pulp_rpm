@@ -567,7 +567,7 @@ def generate_repo_metadata(
         repo_pkg_times = {pk: created.timestamp() for pk, created in repo_content}
 
     # Process all packages
-    for package in packages.order_by("name", "evr").iterator():
+    for package in packages.order_by("name", "evr").iterator(chunk_size=200):
         if package.pk in pkg_pks_to_ignore:  # Temporary!
             continue
         pkg = package.to_createrepo_c()
