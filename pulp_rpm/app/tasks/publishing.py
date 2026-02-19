@@ -574,7 +574,7 @@ def generate_repo_metadata(
         if not content.exists():
             writer.repomd.revision = "0"
 
-        for package in packages.order_by("name", "evr").iterator():
+        for package in packages.order_by("name", "evr").iterator(chunk_size=200):
             if package.pk in pkg_pks_to_ignore:  # Temporary!
                 continue
             pkg = package.to_createrepo_c()
