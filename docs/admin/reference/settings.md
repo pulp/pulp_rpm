@@ -64,3 +64,10 @@ When publishing RPM metadata, if this is true, Pulp will use the timestamp that 
 added to the repo rather than the timestamp that the package first appeared in Pulp. This timestamp
 appears in the "file" field of the time element for each package in primary.xml. Defaults to
 `False`.
+
+
+## RPM_SIGNING_FINGERPRINT_LABEL
+
+When pulp_rpm signs an RPM, it will populate whatever label name is specified by this setting with
+the fingerprint of the key used to sign the rpm. Defaults to `None` which means that no label gets
+populated.

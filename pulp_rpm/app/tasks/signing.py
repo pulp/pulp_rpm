@@ -4,6 +4,8 @@ import subprocess
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
+from django.conf import settings
+
 from pulpcore.plugin.models import (
     Artifact,
     ContentArtifact,
@@ -111,6 +113,14 @@ def sign_and_create(
     # request data like we do for a file.  Instead, we'll delete it here.
     if "upload" in data:
         del data["upload"]
+
+    if settings.RPM_SIGNING_FINGERPRINT_LABEL:
+        existing_labels = data.get("pulp_labels") or {}
+        data["pulp_labels"] = {
+            **existing_labels,
+            settings.RPM_SIGNING_FINGERPRINT_LABEL: signing_fingerprint,
+        }
+
     general_create(app_label, serializer_name, data=data, context=context, *args, **kwargs)
 
 
@@ -156,6 +166,12 @@ def signed_add_and_remove(
                 signed_package.pulp_id = None
                 signed_package.pkgId = artifact.sha256
                 signed_package.checksum_type = CHECKSUM_TYPES.SHA256
+                if settings.RPM_SIGNING_FINGERPRINT_LABEL:
+                    existing_labels = signed_package.pulp_labels or {}
+                    signed_package.pulp_labels = {
+                        **existing_labels,
+                        settings.RPM_SIGNING_FINGERPRINT_LABEL: repo.package_signing_fingerprint,
+                    }
                 signed_package.save()
                 ContentArtifact.objects.create(
                     artifact=artifact,
