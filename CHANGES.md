@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.26.7 (2026-02-24) {: #3.26.7 }
+
+#### Bugfixes {: #3.26.7-bugfix }
+
+- Improved postgres memory performance on mirror complete sync
+  [#4174](https://github.com/pulp/pulp_rpm/issues/4174)
+
+---
+
 ## 3.26.6 (2025-09-12) {: #3.26.6 }
 
 #### Bugfixes {: #3.26.6-bugfix }
