@@ -8,6 +8,20 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.27.10 (2026-02-24) {: #3.27.10 }
+
+#### Bugfixes {: #3.27.10-bugfix }
+
+- Improved postgres memory performance on mirror complete sync
+  [#4174](https://github.com/pulp/pulp_rpm/issues/4174)
+- Fixed problems with the prune operation. Additional remediation may be required: see https://github.com/pulp/pulpcore/issues/7272
+
+#### Misc {: #3.27.10-misc }
+
+- 
+
+---
+
 ## 3.27.9 (2025-10-13) {: #3.27.9 }
 
 #### Bugfixes {: #3.27.9-bugfix }

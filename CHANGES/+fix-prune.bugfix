@@ -1,1 +1,0 @@
-Fixed problems with the prune operation. Additional remediation may be required: see https://github.com/pulp/pulpcore/issues/7272
