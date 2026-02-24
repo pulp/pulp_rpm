@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.35.1 (2026-02-24) {: #3.35.1 }
+
+#### Bugfixes {: #3.35.1-bugfix }
+
+- Significantly improved worst-case sync memory consumption and moderately improved worst-case publish memory consumption for most repos.
+  [#4086](https://github.com/pulp/pulp_rpm/issues/4086)
+
+---
+
 ## 3.35.0 (2026-02-12) {: #3.35.0 }
 
 #### Features {: #3.35.0-feature }
