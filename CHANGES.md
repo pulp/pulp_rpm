@@ -8,6 +8,18 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.32.7 (2026-02-24) {: #3.32.7 }
+
+#### Bugfixes {: #3.32.7-bugfix }
+
+- Fixed problems with the prune operation. Additional remediation may be required: see https://github.com/pulp/pulpcore/issues/7272
+
+#### Misc {: #3.32.7-misc }
+
+- 
+
+---
+
 ## 3.32.6 (2026-01-30) {: #3.32.6 }
 
 #### Bugfixes {: #3.32.6-bugfix }
