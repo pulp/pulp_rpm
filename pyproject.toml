@@ -7,7 +7,7 @@ build-backend = 'setuptools.build_meta'
 
 [project]
 name = "pulp-rpm"
-version = "3.35.1"
+version = "3.35.2.dev"
 description = "Pulp plugin to manage RPM repositories"
 readme = "README.rst"
 authors = [
@@ -99,7 +99,7 @@ exclude = '''
 [tool.bumpversion]
 # This section is managed by the plugin template. Do not edit manually.
 
-current_version = "3.35.1"
+current_version = "3.35.2.dev"
 commit = false
 tag = false
 parse = "(?P<major>\\d+)\\.(?P<minor>\\d+)\\.(?P<alpha>0a)?(?P<patch>\\d+)(\\.(?P<release>[a-z]+))?"
