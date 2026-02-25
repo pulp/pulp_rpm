@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.35.1 (2026-02-24) {: #3.35.1 }
+
+#### Bugfixes {: #3.35.1-bugfix }
+
+- Significantly improved worst-case sync memory consumption and moderately improved worst-case publish memory consumption for most repos.
+  [#4086](https://github.com/pulp/pulp_rpm/issues/4086)
+
+---
+
 ## 3.35.0 (2026-02-12) {: #3.35.0 }
 
 #### Features {: #3.35.0-feature }
@@ -109,6 +118,27 @@
 - Updated page about bindings to point to Pulp Openapi Generator documentation.
 
 #### Misc {: #3.33.0-misc }
+
+- 
+
+---
+
+## 3.32.8 (2026-02-24) {: #3.32.8 }
+
+#### Bugfixes {: #3.32.8-bugfix }
+
+- Significantly improved worst-case sync memory consumption and moderately improved worst-case publish memory consumption for most repos.
+  [#4086](https://github.com/pulp/pulp_rpm/issues/4086)
+
+---
+
+## 3.32.7 (2026-02-24) {: #3.32.7 }
+
+#### Bugfixes {: #3.32.7-bugfix }
+
+- Fixed problems with the prune operation. Additional remediation may be required: see https://github.com/pulp/pulpcore/issues/7272
+
+#### Misc {: #3.32.7-misc }
 
 - 
 
@@ -271,6 +301,29 @@
 
 ---
 
+## 3.29.10 (2026-02-24) {: #3.29.10 }
+
+#### Bugfixes {: #3.29.10-bugfix }
+
+- Significantly improved worst-case sync memory consumption and moderately improved worst-case publish memory consumption for most repos.
+  [#4086](https://github.com/pulp/pulp_rpm/issues/4086)
+
+---
+
+## 3.29.9 (2026-02-24) {: #3.29.9 }
+
+#### Bugfixes {: #3.29.9-bugfix }
+
+- Improved postgres memory performance on mirror complete sync
+  [#4174](https://github.com/pulp/pulp_rpm/issues/4174)
+- Fixed problems with the prune operation. Additional remediation may be required: see https://github.com/pulp/pulpcore/issues/7272
+
+#### Misc {: #3.29.9-misc }
+
+- 
+
+---
+
 ## 3.29.8 (2025-10-13) {: #3.29.8 }
 
 #### Bugfixes {: #3.29.8-bugfix }
@@ -412,6 +465,29 @@ No significant changes.
 
 ---
 
+## 3.27.11 (2026-02-24) {: #3.27.11 }
+
+#### Bugfixes {: #3.27.11-bugfix }
+
+- Significantly improved worst-case sync memory consumption and moderately improved worst-case publish memory consumption for most repos.
+  [#4086](https://github.com/pulp/pulp_rpm/issues/4086)
+
+---
+
+## 3.27.10 (2026-02-24) {: #3.27.10 }
+
+#### Bugfixes {: #3.27.10-bugfix }
+
+- Improved postgres memory performance on mirror complete sync
+  [#4174](https://github.com/pulp/pulp_rpm/issues/4174)
+- Fixed problems with the prune operation. Additional remediation may be required: see https://github.com/pulp/pulpcore/issues/7272
+
+#### Misc {: #3.27.10-misc }
+
+- 
+
+---
+
 ## 3.27.9 (2025-10-13) {: #3.27.9 }
 
 #### Bugfixes {: #3.27.9-bugfix }
@@ -515,6 +591,15 @@ No significant changes.
   [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
 - Made sync more tolerant of poorly configured webservers.
   [#3599](https://github.com/pulp/pulp_rpm/issues/3599)
+
+---
+
+## 3.26.7 (2026-02-24) {: #3.26.7 }
+
+#### Bugfixes {: #3.26.7-bugfix }
+
+- Improved postgres memory performance on mirror complete sync
+  [#4174](https://github.com/pulp/pulp_rpm/issues/4174)
 
 ---
 
