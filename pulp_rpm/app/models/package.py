@@ -4,6 +4,7 @@ import createrepo_c as cr
 
 from django.conf import settings
 from django.db import models
+from django.contrib.postgres.fields import ArrayField
 
 from pulpcore.plugin.models import Content
 from pulpcore.plugin.util import get_domain_pk
@@ -126,6 +127,11 @@ class Package(Content):
         time_file (BigInteger):
             The mtime of the package file in seconds since the epoch; this is the 'file' time
             attribute in the primary XML.
+
+        pulp_signing_keys (ArrayField):
+            List of signing key fingerprints that Pulp has used to sign the package. Defaults to
+            None, which means that the package was either signed by Pulp before we added the field
+            or that Pulp hasn't signed the package.
     """
 
     PROTECTED_FROM_RECLAIM = False
@@ -205,6 +211,7 @@ class Package(Content):
 
     # not part of createrepo_c metadata
     is_modular = models.BooleanField(default=False)
+    pulp_signing_keys = ArrayField(models.TextField(), default=None, null=True)
 
     # createrepo_c treats 'nosrc' arch (opensuse specific use) as 'src' so it can seem that two
     # packages are the same when they are not. By adding 'location_href' here we can recognize this.

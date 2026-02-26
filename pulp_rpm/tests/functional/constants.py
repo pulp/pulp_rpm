@@ -307,6 +307,7 @@ RPM_COMPLEX_PACKAGE_DATA = {
     "time_file": 1627056000,
     "url": "http://bobloblaw.com",
     "version": "2.3.4",
+    "pulp_signing_keys": [],
 }
 
 
