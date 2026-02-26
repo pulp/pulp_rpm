@@ -1,0 +1,1 @@
+Added a new field `pulp_signing_keys` on packages that tracks the fingerprints of keys Pulp has used to sign the package.

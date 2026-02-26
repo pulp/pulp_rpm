@@ -1409,6 +1409,8 @@ class RpmFirstStage(Stage):
                         pkg, string_cache=string_cache, tuple_cache=tuple_cache
                     )
                 )
+                # TODO: set pulp_signing_keys when we support package signing during sync
+                package.pulp_signing_keys = []
                 base_url = pkg.location_base or self.remote_url
                 url = urlpath_sanitize(base_url, package.location_href)
                 last_seen_package_name = pkg.name

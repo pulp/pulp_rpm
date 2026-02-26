@@ -396,3 +396,65 @@ def test_signed_repo_rejects_on_demand_content(
         )
 
     assert "Cannot add on-demand packages" in exc.value.body
+
+
+def test_pulp_signing_keys_on_upload(
+    tmp_path,
+    monitor_task,
+    signing_gpg_metadata,
+    rpm_package_signing_service,
+    rpm_package_api,
+    rpm_repository_factory,
+):
+    """Test that pulp_signing_keys is set on the package when uploaded with signing."""
+    _, fingerprint, _ = signing_gpg_metadata
+
+    file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
+    file_to_upload.write_bytes(requests.get(RPM_UNSIGNED_URL).content)
+
+    repository = rpm_repository_factory(
+        package_signing_service=rpm_package_signing_service.pulp_href,
+        package_signing_fingerprint=fingerprint,
+    )
+    upload_response = rpm_package_api.create(
+        file=str(file_to_upload.absolute()),
+        repository=repository.pulp_href,
+    )
+    package_href = monitor_task(upload_response.task).created_resources[2]
+    package = rpm_package_api.read(package_href)
+
+    assert [fingerprint] == package.pulp_signing_keys
+
+
+def test_pulp_signing_keys_on_modify(
+    monitor_task,
+    pulpcore_bindings,
+    signing_gpg_metadata,
+    rpm_package_signing_service,
+    rpm_package_api,
+    rpm_package_factory,
+    rpm_repository_api,
+    rpm_repository_factory,
+):
+    """Test that pulp_signing_keys is set on the package when added via modify."""
+    monitor_task(pulpcore_bindings.OrphansCleanupApi.cleanup({"orphan_protection_time": 0}).task)
+
+    _, fingerprint, _ = signing_gpg_metadata
+
+    repository = rpm_repository_factory(
+        package_signing_service=rpm_package_signing_service.pulp_href,
+        package_signing_fingerprint=fingerprint,
+    )
+
+    created_package = rpm_package_factory(url=RPM_UNSIGNED_URL)
+    modify_response = rpm_repository_api.modify(
+        repository.pulp_href, {"add_content_units": [created_package.pulp_href]}
+    )
+    monitor_task(modify_response.task)
+
+    repository = rpm_repository_api.read(repository.pulp_href)
+    signed_package = rpm_package_api.list(
+        repository_version=repository.latest_version_href
+    ).results[0]
+
+    assert [fingerprint] == signed_package.pulp_signing_keys
