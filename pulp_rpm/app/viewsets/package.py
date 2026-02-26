@@ -29,6 +29,11 @@ class PackageFilter(ContentFilter):
 
     sha256 = CharFilter(field_name="_artifacts__sha256")
     filename = CharFilter(field_name="content_artifact__relative_path")
+    signing_key = CharFilter(method="filter_signing_key")
+
+    def filter_signing_key(self, queryset, name, value):
+        """Filter packages that have been signed with a given key fingerprint."""
+        return queryset.filter(signing_keys__contains=[value])
 
     class Meta:
         model = Package
