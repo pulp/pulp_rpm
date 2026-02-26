@@ -7,6 +7,7 @@ from django.db.models import F, Value
 from django.db.models.functions import Concat
 from pulp_rpm.app.models import Package  # noqa
 from pulp_rpm.app.models.advisory import UpdateCollection, UpdateRecord  # noqa
+from pulp_rpm.app.models.repository import RpmRepository  # noqa
 from pulpcore.plugin.models import ContentArtifact
 
 
@@ -35,6 +36,8 @@ class Command(BaseCommand):
             self.repair_2460(dry_run)
         elif issue == "3127":
             self.repair_3127(dry_run)
+        elif issue == "4007":
+            self.repair_4007(dry_run)
         elif issue == "4073":
             self.repair_4073(dry_run)
         else:
@@ -79,6 +82,16 @@ class Command(BaseCommand):
                 collection.save()
             else:
                 self.stdout.write(f"UpdateCollection ({collection.pk}) has missing name")
+
+    def repair_4007(self, dry_run):
+        """Perform data repair for issue #4007."""
+        affected = RpmRepository.objects.filter(package_signing_fingerprint="")
+        count = affected.count()
+        if not dry_run:
+            affected.update(package_signing_fingerprint=None)
+            self.stdout.write(f"Fixed {count} repositories with empty package_signing_fingerprint.")
+        else:
+            self.stdout.write(f"{count} repositories have an empty package_signing_fingerprint.")
 
     def repair_4073(self, dry_run):
         """Perform data repair for issue #4073.
