@@ -5,6 +5,7 @@ from django.core.management import BaseCommand, CommandError
 
 from pulp_rpm.app.models import Package  # noqa
 from pulp_rpm.app.models.advisory import UpdateCollection, UpdateRecord  # noqa
+from pulp_rpm.app.models.repository import RpmRepository  # noqa
 
 
 class Command(BaseCommand):
@@ -17,15 +18,23 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         """Set up arguments."""
         parser.add_argument("issue", help=_("The github issue # of the issue to be fixed."))
+        parser.add_argument(
+            "--dry-run",
+            action="store_true",
+            help=_("Don't make any changes, just print diagnostics."),
+        )
 
     def handle(self, *args, **options):
         """Implement the command."""
         issue = options["issue"]
+        dry_run = options["dry_run"]
 
         if issue == "2460":
             self.repair_2460()
         if issue == "3127":
             self.repair_3127()
+        if issue == "4007":
+            self.repair_4007(dry_run)
         else:
             raise CommandError(_("Unknown issue: '{}'").format(issue))
 
@@ -56,3 +65,13 @@ class Command(BaseCommand):
         for collection in update_collections:
             collection.name = "collection-autofill-" + uuid.uuid4().hex[:12]
             collection.save()
+
+    def repair_4007(self, dry_run):
+        """Perform data repair for issue #4007."""
+        affected = RpmRepository.objects.filter(package_signing_fingerprint="")
+        count = affected.count()
+        if not dry_run:
+            affected.update(package_signing_fingerprint=None)
+            self.stdout.write(f"Fixed {count} repositories with empty package_signing_fingerprint.")
+        else:
+            self.stdout.write(f"{count} repositories have an empty package_signing_fingerprint.")
