@@ -248,6 +248,14 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         read_only=True,
     )
 
+    signing_keys = serializers.ListField(
+        child=serializers.CharField(),
+        help_text=_("List of signing key fingerprints used to sign this package. "),
+        allow_null=True,
+        required=False,
+        read_only=True,
+    )
+
     def __init__(self, *args, **kwargs):
         """Initializer for RpmPackageSerializer."""
 
@@ -286,6 +294,12 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         data["relative_path"] = filename
         new_pkg["location_href"] = filename
         data.update(new_pkg)
+
+        if signing_key := self.context.get("signing_key"):
+            data["signing_keys"] = [signing_key]
+        else:
+            data["signing_keys"] = None
+
         return data
 
     def retrieve(self, validated_data):
@@ -335,6 +349,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
                 "size_package",
                 "time_build",
                 "time_file",
+                "signing_keys",
             )
         )
         model = Package

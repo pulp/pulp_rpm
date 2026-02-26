@@ -41,10 +41,10 @@ def _save_upload(uploadobj, final_package):
     final_package.flush()
 
 
-def _verify_package_fingerprint(package_file, signing_fingerprint):
-    """Verify if the packge_file is signed with signing_fingerprint or not."""
+def _verify_package_fingerprint(path, signing_fingerprint):
+    """Verify if the package at path is signed with signing_fingerprint or not."""
     completed_process = subprocess.run(
-        ("rpm", "-Kv", package_file.name),
+        ("rpm", "-Kv", path),
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -68,26 +68,40 @@ def _verify_package_fingerprint(package_file, signing_fingerprint):
     return False
 
 
-def _create_signed_artifact(signed_package_path, result):
+def _update_signing_keys(package_file, keys):
+    """Return a filtered list of signing keys verified against the package file.
+
+    Verifies each key in keys against the package file and removes any that are not
+    present on the package.
+    """
+    return [key for key in (keys or []) if _verify_package_fingerprint(package_file, key)]
+
+
+def _sign_file(package_file, signing_service, signing_fingerprint):
+    """Sign a package and return the local path of the signed file."""
+    result = signing_service.sign(package_file.name, pubkey_fingerprint=signing_fingerprint)
+    signed_package_path = Path(result["rpm_package"])
     if not signed_package_path.exists():
         raise Exception(f"Signing script did not create the signed package: {result}")
-    artifact = Artifact.init_and_validate(str(signed_package_path))
+    return signed_package_path
+
+
+async def _asign_file(package_file, signing_service, signing_fingerprint):
+    """Sign a package asynchronously and return the local path of the signed file."""
+    result = await signing_service.asign(package_file.name, pubkey_fingerprint=signing_fingerprint)
+    signed_package_path = Path(result["rpm_package"])
+    if not signed_package_path.exists():
+        raise Exception(f"Signing script did not create the signed package: {result}")
+    return signed_package_path
+
+
+def _save_artifact(artifact_path):
+    """Save an artifact."""
+    artifact = Artifact.init_and_validate(str(artifact_path))
     artifact.save()
     resource = CreatedResource(content_object=artifact)
     resource.save()
     return artifact
-
-
-def _sign_file(package_file, signing_service, signing_fingerprint):
-    result = signing_service.sign(package_file.name, pubkey_fingerprint=signing_fingerprint)
-    signed_package_path = Path(result["rpm_package"])
-    return _create_signed_artifact(signed_package_path, result)
-
-
-async def _asign_file(package_file, signing_service, signing_fingerprint):
-    result = await signing_service.asign(package_file.name, pubkey_fingerprint=signing_fingerprint)
-    signed_package_path = Path(result["rpm_package"])
-    return await asyncio.to_thread(_create_signed_artifact, signed_package_path, result)
 
 
 def _sign_package(package, signing_service, signing_fingerprint):
@@ -108,7 +122,7 @@ def _sign_package(package, signing_service, signing_fingerprint):
         _save_file(artifact_file, final_package)
 
         # check if the package is already signed with our fingerprint
-        if _verify_package_fingerprint(final_package, signing_fingerprint):
+        if _verify_package_fingerprint(final_package.name, signing_fingerprint):
             return None
 
         # check if the package has been signed in the past with our fingerprint and replace
@@ -121,12 +135,19 @@ def _sign_package(package, signing_service, signing_fingerprint):
 
         # create a new signed version of the package
         log.info(f"Signing package {package.filename}.")
-        artifact = _sign_file(final_package, signing_service, signing_fingerprint)
+        signed_package_path = _sign_file(final_package, signing_service, signing_fingerprint)
+        # Compute signing keys while the signed file is still on the local filesystem.
+        signing_keys = _update_signing_keys(
+            str(signed_package_path),
+            (package.signing_keys or []) + [signing_fingerprint],
+        )
+        artifact = _save_artifact(signed_package_path)
         signed_package = package
         signed_package.pk = None
         signed_package.pulp_id = None
         signed_package.pkgId = artifact.sha256
         signed_package.checksum_type = CHECKSUM_TYPES.SHA256
+        signed_package.signing_keys = signing_keys
         signed_package.save()
         ContentArtifact.objects.create(
             artifact=artifact,
@@ -167,7 +188,10 @@ def sign_and_create(
             uploaded_package = Upload.objects.get(pk=temporary_file_pk)
             _save_upload(uploaded_package, final_package)
 
-        artifact = _sign_file(final_package, package_signing_service, signing_fingerprint)
+        signed_package_path = _sign_file(
+            final_package, package_signing_service, signing_fingerprint
+        )
+        artifact = _save_artifact(signed_package_path)
     uploaded_package.delete()
 
     # Create Package content
@@ -179,6 +203,12 @@ def sign_and_create(
     # request data like we do for a file.  Instead, we'll delete it here.
     if "upload" in data:
         del data["upload"]
+
+    # set the signing key in the context so that it gets added to the created package's
+    # signing_keys field. if this package is being created then it won't have been previously
+    # signed by Pulp.
+    context["signing_key"] = signing_fingerprint
+
     general_create(app_label, serializer_name, data=data, context=context, *args, **kwargs)
 
 

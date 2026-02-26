@@ -66,6 +66,7 @@ def test_sign_package_on_upload(
     signing_gpg_extra,
     rpm_package_signing_service,
     rpm_package_api,
+    rpm_repository_api,
     rpm_repository_factory,
     rpm_publication_factory,
     rpm_package_factory,
@@ -102,16 +103,28 @@ def test_sign_package_on_upload(
             repository=repository.pulp_href,
         )
         package_href = monitor_task(upload_response.task).created_resources[2]
-        pkg_location_href = rpm_package_api.read(package_href).location_href
+        package = rpm_package_api.read(package_href)
+        assert package.signing_keys == [fingerprint]
 
         # Verify that the final served package is signed
         publication = rpm_publication_factory(repository=repository.pulp_href)
         distribution = rpm_distribution_factory(publication=publication.pulp_href)
         downloaded_package = tmp_path / "package.rpm"
         downloaded_package.write_bytes(
-            download_content_unit(distribution.base_path, get_package_repo_path(pkg_location_href))
+            download_content_unit(
+                distribution.base_path, get_package_repo_path(package.location_href)
+            )
         )
         assert rpm_tool.verify_signature(downloaded_package)
+
+        # Verify signing_key filter
+        repository = rpm_repository_api.read(repository.pulp_href)
+        assert (
+            rpm_package_api.list(
+                repository_version=repository.latest_version_href, signing_key=fingerprint
+            ).count
+            == 1
+        )
 
 
 @pytest.fixture
@@ -226,22 +239,25 @@ def test_sign_chunked_package_on_upload(
             repository=repository.pulp_href,
         )
         package_href = monitor_task(upload_response.task).created_resources[2]
-        pkg_location_href = rpm_package_api.read(package_href).location_href
+        package = rpm_package_api.read(package_href)
+        assert package.signing_keys == [fingerprint]
 
         # Verify that the final served package is signed
         publication = rpm_publication_factory(repository=repository.pulp_href)
         distribution = rpm_distribution_factory(publication=publication.pulp_href)
         downloaded_package = tmp_path / "package.rpm"
         downloaded_package.write_bytes(
-            download_content_unit(distribution.base_path, get_package_repo_path(pkg_location_href))
+            download_content_unit(
+                distribution.base_path, get_package_repo_path(package.location_href)
+            )
         )
         assert rpm_tool.verify_signature(downloaded_package)
 
 
 def test_signed_repo_modify(
     tmp_path,
+    delete_orphans_pre,
     monitor_task,
-    pulpcore_bindings,
     download_content_unit,
     signing_gpg_metadata,
     rpm_package_signing_service,
@@ -253,7 +269,6 @@ def test_signed_repo_modify(
     rpm_distribution_factory,
 ):
     """Ensure packages added via modify are signed before distribution."""
-    monitor_task(pulpcore_bindings.OrphansCleanupApi.cleanup({"orphan_protection_time": 0}).task)
 
     gpg, fingerprint, _ = signing_gpg_metadata
 
@@ -272,6 +287,7 @@ def test_signed_repo_modify(
     )
 
     created_package = rpm_package_factory(url=RPM_UNSIGNED_URL)
+    assert created_package.signing_keys is None
     package_href = created_package.pulp_href
     modify_response = rpm_repository_api.modify(
         repository.pulp_href, {"add_content_units": [package_href]}
@@ -282,6 +298,8 @@ def test_signed_repo_modify(
     signed_package = rpm_package_api.list(
         repository_version=repository.latest_version_href
     ).results[0]
+    assert signed_package.pulp_href != created_package.pulp_href
+    assert signed_package.signing_keys == [fingerprint]
     assert sorted(task_result.created_resources) == sorted(
         [repository.latest_version_href, signed_package.pulp_href, signed_package.artifact]
     )
@@ -311,8 +329,8 @@ def test_signed_repo_modify(
 
 
 def test_already_signed_package(
+    delete_orphans_pre,
     monitor_task,
-    pulpcore_bindings,
     signing_gpg_metadata,
     rpm_package_signing_service,
     rpm_repository_factory,
@@ -321,7 +339,6 @@ def test_already_signed_package(
     rpm_package_api,
 ):
     """Don't sign a package if it's already signed with our key."""
-    monitor_task(pulpcore_bindings.OrphansCleanupApi.cleanup({"orphan_protection_time": 0}).task)
 
     _, fingerprint, _ = signing_gpg_metadata
 
@@ -348,6 +365,7 @@ def test_already_signed_package(
         repository_version=repo_one.latest_version_href
     ).results
     signed_package_href = repo_one_packages[0].pulp_href
+    assert repo_one_packages[0].signing_keys == [fingerprint]
     assert len(repo_one_packages) == 1
     assert sorted(task_result.created_resources) == sorted(
         [signed_package_href, repo_one_packages[0].artifact, repo_one.latest_version_href]
