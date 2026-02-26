@@ -1,0 +1,1 @@
+Fixed `RpmRepository.package_signing_fingerprint` field to accept and default to `null` instead of empty string.
