@@ -86,15 +86,6 @@ def _sign_file(package_file, signing_service, signing_fingerprint):
     return signed_package_path
 
 
-async def _asign_file(package_file, signing_service, signing_fingerprint):
-    """Sign a package asynchronously and return the local path of the signed file."""
-    result = await signing_service.asign(package_file.name, pubkey_fingerprint=signing_fingerprint)
-    signed_package_path = Path(result["rpm_package"])
-    if not signed_package_path.exists():
-        raise Exception(f"Signing script did not create the signed package: {result}")
-    return signed_package_path
-
-
 def _save_artifact(artifact_path):
     """Save an artifact."""
     artifact = Artifact.init_and_validate(str(artifact_path))
