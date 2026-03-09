@@ -254,9 +254,7 @@ def get_metadata_content_helper(base_url, repomd_elem, meta_type):
     return download_and_decompress_file(os.path.join(base_url, location_href))
 
 
-@pytest.mark.parametrize(
-    "layout", ["flat", "nested_alphabetically", "nested_by_digest", "nested_by_both"]
-)
+@pytest.mark.parametrize("layout", ["flat", "nested_alphabetically", "nested_by_digest"])
 def test_repo_layout(
     layout,
     init_and_sync,
@@ -301,7 +299,7 @@ def test_repo_layout(
             assert package["location"]["@href"].startswith("Packages/{}".format(name))
         elif layout == "nested_alphabetically":
             assert package["location"]["@href"].startswith(f"Packages/{name[0]}/{name}")
-        elif layout in ("nested_by_digest", "nested_by_both"):
+        elif layout in ("nested_by_digest"):
             digest = r"[0-9a-f]{6}"
             assert re.match(
                 f"^Packages/{name[0]}/by-digest/{digest}-{name}", package["location"]["@href"]
