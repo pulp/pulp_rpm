@@ -5,7 +5,7 @@
 #
 # For more info visit https://github.com/pulp/plugin_template
 
-black==24.3.0
+black==26.3.1
 bump-my-version
 check-manifest
 flake8
