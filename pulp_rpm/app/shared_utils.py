@@ -7,6 +7,7 @@ from hashlib import sha256
 from pathlib import Path
 
 import createrepo_c as cr
+import rpm_rs
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
 from importlib_resources import files
@@ -83,13 +84,38 @@ def format_nevra_short(name=None, epoch=0, version=None, release=None, arch=None
     return format_nvra(name, version, release, arch)
 
 
+_VERSION_PREFIX = {
+    rpm_rs.SignatureVersion.V4: "v4",
+    rpm_rs.SignatureVersion.V6: "v6",
+}
+
+
+def format_signing_keys(signatures):
+    """Format rpm_rs signature objects into prefixed fingerprint strings.
+
+    Returns prefixed, uppercased fingerprints (e.g. "v4:ABCD1234...") consistent
+    with PgpKeyFingerprintField normalization.
+    """
+    return [
+        f"{_VERSION_PREFIX[sig.version]}:{sig.fingerprint.upper()}"
+        for sig in signatures
+        if sig.fingerprint is not None
+    ]
+
+
+def extract_signing_keys(path):
+    """Extract signing key fingerprints from an RPM file using rpm_rs."""
+    pkg = rpm_rs.Package.open(path)
+    return format_signing_keys(pkg.signatures())
+
+
 def read_crpackage_from_artifact(artifact, working_dir="."):
     """
     Helper function for creating package.
 
     Copy file to a temp directory and parse it.
 
-    Returns: package model as dict
+    Returns: (cr_package, signing_keys) tuple
 
     Args:
         artifact: inited and validated artifact to save
@@ -104,9 +130,10 @@ def read_crpackage_from_artifact(artifact, working_dir="."):
             changelog_limit=settings.KEEP_CHANGELOG_LIMIT,
             header_reading_flags=CR_HEADER_FLAGS,
         )
+        signing_keys = extract_signing_keys(temp_file.name)
 
     artifact_file.close()
-    return cr_pkginfo
+    return cr_pkginfo, signing_keys
 
 
 def urlpath_sanitize(*args):
