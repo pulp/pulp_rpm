@@ -42,6 +42,9 @@ RPM_PACKAGELANGPACKS_CONTENT_NAME = "rpm.packagelangpacks"
 
 RPM_ADVISORY_CONTENT_NAME = "rpm.advisory"
 
+# Key fingerprint used to sign the fixture packages
+SIGNING_KEY_FINGERPRINT = "0c1a894ebb86afae218424caddef3019c2d4a8cf"
+
 RPM_ALT_LAYOUT_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-alt-layout/")
 """The URL to a signed RPM repository. See :data:`RPM_SIGNED_FIXTURE_URL`."""
 
@@ -307,7 +310,7 @@ RPM_COMPLEX_PACKAGE_DATA = {
     "time_file": 1627056000,
     "url": "http://bobloblaw.com",
     "version": "2.3.4",
-    "signing_keys": None,
+    "signing_keys": [],
 }
 
 
