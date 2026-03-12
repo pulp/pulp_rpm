@@ -297,11 +297,6 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         new_pkg["location_href"] = filename
         data.update(new_pkg)
 
-        if signing_key := self.context.get("signing_key"):
-            data["signing_keys"] = [signing_key]
-        else:
-            data["signing_keys"] = None
-
         return data
 
     def retrieve(self, validated_data):
