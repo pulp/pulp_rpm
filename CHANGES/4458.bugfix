@@ -1,0 +1,1 @@
+Populate `signing_keys` directly from package headers upon upload - fixing an issue where the fingerprint does not match the actual one, when the package was signed by a subkey using the Pulp signing service which specified a non-signing mainkey `package_signing_fingerprint`.

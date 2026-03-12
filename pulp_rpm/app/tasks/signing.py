@@ -1,11 +1,10 @@
 import asyncio
 import logging
-import re
-import subprocess
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 import createrepo_c as cr
+import rpm_rs
 from django.conf import settings
 
 from pulpcore.plugin.models import (
@@ -22,6 +21,7 @@ from pulpcore.plugin.util import get_url
 from pulp_rpm.app.models.content import RpmPackageSigningResult, RpmPackageSigningService
 from pulp_rpm.app.models.package import Package
 from pulp_rpm.app.models.repository import RpmRepository
+from pulp_rpm.app.shared_utils import extract_signing_keys
 
 log = logging.getLogger(__name__)
 
@@ -40,46 +40,28 @@ def _save_upload(uploadobj, final_package):
     final_package.flush()
 
 
-def _verify_package_fingerprint(path, signing_fingerprint):
+def _verify_package_fingerprint(path, fingerprint):
     """Verify if the package at path is signed with signing_fingerprint or not."""
-    completed_process = subprocess.run(
-        ("rpm", "-Kv", path),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
-    )
-    if completed_process.stderr:
-        raise Exception(
-            f"Failed to verify package signature: {completed_process.stdout} "
-            f"{completed_process.stderr}."
-        )
+    _, _, raw_fingerprint = fingerprint.upper().partition(":")
+    if not raw_fingerprint:
+        raw_fingerprint = fingerprint.upper()
+    pkg = rpm_rs.PackageMetadata.open(path)
+    key_ids = []
+    fingerprints = []
+    for sig in pkg.signatures():
+        if sig.fingerprint:
+            fingerprints.append(sig.fingerprint.upper())
+        elif sig.key_id:
+            key_ids.append(sig.key_id.upper())
 
-    raw_fingerprint = signing_fingerprint.split(":", 1)[1]
-
-    # check for `key ID` followed by a string of hex digits
-    key_ids = re.findall(r"key ID ([0-9A-Fa-f]+)", completed_process.stdout, re.IGNORECASE)
-    # check for `key fingerprint:` followed by a string of hex digits
-    fingerprints = re.findall(
-        r"key fingerprint:\s*([0-9A-Fa-f]+)", completed_process.stdout, re.IGNORECASE
-    )
-    for candidate in key_ids + fingerprints:
-        if raw_fingerprint.upper().endswith(candidate.upper()):
-            return True
+    if raw_fingerprint in key_ids + fingerprints:
+        return True
 
     log.debug(
         f"Fingerprint mismatch for {path}: expected {raw_fingerprint}, "
         f"found key IDs {key_ids} and fingerprints {fingerprints}."
     )
     return False
-
-
-def _update_signing_keys(package_file, keys):
-    """Return a filtered list of signing keys verified against the package file.
-
-    Verifies each key in keys against the package file and removes any that are not
-    present on the package.
-    """
-    return [key for key in (keys or []) if _verify_package_fingerprint(package_file, key)]
 
 
 def _sign_file(package_file, signing_service, signing_fingerprint):
@@ -140,21 +122,17 @@ def _sign_package(package, signing_service, signing_fingerprint):
         # create a new signed version of the package
         log.info(f"Signing package {package.filename}.")
         signed_package_path = _sign_file(final_package, signing_service, signing_fingerprint)
-        # Compute signing keys while the signed file is still on the local filesystem.
-        signing_keys = _update_signing_keys(
-            str(signed_package_path),
-            (package.signing_keys or []) + [signing_fingerprint],
-        )
+        # Read signing key fingerprints directly from the signed RPM's signature packets.
+        signing_keys = extract_signing_keys(str(signed_package_path))
         # Read all updated metadata from the signed RPM
         cr_pkg = cr.package_from_rpm(str(signed_package_path))
-        new_pkg_dict = Package.createrepo_to_dict(cr_pkg)
+        new_pkg_dict = Package.createrepo_to_dict(cr_pkg, signing_keys=signing_keys)
         artifact = _save_artifact(signed_package_path)
         extra_fields = {}
         if settings.RPM_SIGNING_COPY_LABELS:
             extra_fields["pulp_labels"] = package.pulp_labels
         signed_package = Package(
             **new_pkg_dict,
-            signing_keys=signing_keys,
             is_modular=package.is_modular,
             **extra_fields,
         )

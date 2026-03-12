@@ -22,7 +22,11 @@ from pulpcore.plugin.util import get_domain_pk
 
 from pulp_rpm.app.constants import CR_HEADER_FLAGS
 from pulp_rpm.app.models import Package
-from pulp_rpm.app.shared_utils import format_nvra, read_crpackage_from_artifact
+from pulp_rpm.app.shared_utils import (
+    extract_signing_keys,
+    format_nvra,
+    read_crpackage_from_artifact,
+)
 
 log = logging.getLogger(__name__)
 
@@ -276,7 +280,8 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         data = super().deferred_validate(data)
         # export META from rpm and prepare dict as saveable format
         try:
-            new_pkg = Package.createrepo_to_dict(read_crpackage_from_artifact(data["artifact"]))
+            cr_pkg, signing_keys = read_crpackage_from_artifact(data["artifact"])
+            new_pkg = Package.createrepo_to_dict(cr_pkg, signing_keys=signing_keys)
         except OSError:
             log.info(traceback.format_exc())
             raise NotAcceptable(detail="RPM file cannot be parsed for metadata")
@@ -293,11 +298,6 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         data["relative_path"] = filename
         new_pkg["location_href"] = filename
         data.update(new_pkg)
-
-        if signing_key := self.context.get("signing_key"):
-            data["signing_keys"] = [signing_key]
-        else:
-            data["signing_keys"] = None
 
         return data
 
@@ -433,7 +433,8 @@ class PackageUploadSerializer(PackageSerializer):
                     changelog_limit=settings.KEEP_CHANGELOG_LIMIT,
                     header_reading_flags=CR_HEADER_FLAGS,
                 )
-                new_pkg = Package.createrepo_to_dict(cr_object)
+                signing_keys = extract_signing_keys(uploaded_file.file.name)
+                new_pkg = Package.createrepo_to_dict(cr_object, signing_keys=signing_keys)
             elif upload:
                 # Handle chunked upload
 
@@ -452,16 +453,18 @@ class PackageUploadSerializer(PackageSerializer):
                     changelog_limit=settings.KEEP_CHANGELOG_LIMIT,
                     header_reading_flags=CR_HEADER_FLAGS,
                 )
-                new_pkg = Package.createrepo_to_dict(cr_object)
+                signing_keys = extract_signing_keys(temp_file.name)
+                new_pkg = Package.createrepo_to_dict(cr_object, signing_keys=signing_keys)
 
                 # Convert to PulpTemporaryUploadedFile for later artifact creation
                 data["file"] = PulpTemporaryUploadedFile.from_file(open(temp_file.name, "rb"))
                 data.pop("upload")  # Remove upload from data
             elif artifact:
                 with TemporaryDirectory(dir=settings.WORKING_DIRECTORY) as working_dir_rel_path:
-                    new_pkg = Package.createrepo_to_dict(
-                        read_crpackage_from_artifact(artifact, working_dir=working_dir_rel_path)
+                    cr_pkg, signing_keys = read_crpackage_from_artifact(
+                        artifact, working_dir=working_dir_rel_path
                     )
+                    new_pkg = Package.createrepo_to_dict(cr_pkg, signing_keys=signing_keys)
         except OSError as e:
             log.info(traceback.format_exc())
             raise NotAcceptable(detail="RPM file cannot be parsed for metadata") from e

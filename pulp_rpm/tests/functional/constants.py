@@ -42,6 +42,10 @@ RPM_PACKAGELANGPACKS_CONTENT_NAME = "rpm.packagelangpacks"
 
 RPM_ADVISORY_CONTENT_NAME = "rpm.advisory"
 
+# Fingerprint of the legacy GPG key (GPG-KEY-fixture-signing) used to sign the
+# rpm-signed/ fixture repository.
+SIGNING_KEY_FINGERPRINT = "0c1a894ebb86afae218424caddef3019c2d4a8cf"
+
 RPM_ALT_LAYOUT_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-alt-layout/")
 """The URL to a signed RPM repository. See :data:`RPM_SIGNED_FIXTURE_URL`."""
 
@@ -307,7 +311,7 @@ RPM_COMPLEX_PACKAGE_DATA = {
     "time_file": 1627056000,
     "url": "http://bobloblaw.com",
     "version": "2.3.4",
-    "signing_keys": None,
+    "signing_keys": [],
 }
 
 
@@ -367,6 +371,23 @@ RPM_UNSIGNED_URL = urljoin(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
 
 RPM_UNSIGNED_URL2 = urljoin(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME2)
 """The path to a second single unsigned RPM package."""
+
+RPM_FIXTURES_PACKAGES_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm/packages/")
+"""Base URL for standalone fixture RPM packages."""
+
+RPM_FIXTURE_UNSIGNED = urljoin(RPM_FIXTURES_PACKAGES_URL, "test-package-1.0-1.fc41.noarch.rpm")
+"""An unsigned RPM fixture package."""
+
+RPM_FIXTURE_SIGNED = urljoin(RPM_FIXTURES_PACKAGES_URL, "test-package-signed-1.0-1.fc41.noarch.rpm")
+"""An RPM fixture package signed with KEY_V4_RSA4K."""
+
+RPM_FIXTURE_MULTI_SIGNED = urljoin(
+    RPM_FIXTURES_PACKAGES_URL, "test-package-multi-signed-1.0-1.fc41.noarch.rpm"
+)
+"""An RPM fixture package signed with KEY_V4_RSA4K + KEY_V6_MLDSA87_ED448."""
+
+RPM_FIXTURE_COMPLEX = urljoin(RPM_FIXTURES_PACKAGES_URL, "complex-package-2.3.4-5.el8.x86_64.rpm")
+"""An RPM fixture package with complex metadata."""
 
 RPM_UPDATED_UPDATEINFO_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-updated-updateinfo/")
 """The URL to a repository containing UpdateRecords (Advisory) with the same IDs
@@ -608,8 +629,41 @@ RPM_KICKSTART_DATA = {
 }
 
 PULP_FIXTURES_COMMON_URL = "https://github.com/pulp/pulp-fixtures/raw/master/common/"
+# Legacy fixture signing key (corresponds to SIGNING_KEY_FINGERPRINT).
+# Used to sign the rpm-signed/ fixture repository.
 PUBLIC_GPG_KEY_URL = urljoin(PULP_FIXTURES_COMMON_URL, "GPG-KEY-fixture-signing")
 PRIVATE_GPG_KEY_URL = urljoin(PULP_FIXTURES_COMMON_URL, "GPG-PRIVATE-KEY-fixture-signing")
+
+# Newer per-algorithm test keys used by the standalone fixture packages and signing tests.
+PULP_FIXTURES_SIGNING_KEYS_URL = urljoin(PULP_FIXTURES_COMMON_URL, "signing_keys/")
+
+KEY_V4_RSA2K_PUBLIC = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-rsa2k.asc")
+KEY_V4_RSA2K_PRIVATE = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-rsa2k.secret")
+KEY_V4_RSA4K_PUBLIC = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-rsa4k.asc")
+KEY_V4_RSA4K_PRIVATE = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-rsa4k.secret")
+KEY_V4_ED25519_PUBLIC = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-ed25519.asc")
+KEY_V4_ED25519_PRIVATE = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-ed25519.secret")
+KEY_V4_KEYRING_PUBLIC = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-keyring.asc")
+KEY_V4_KEYRING_PRIVATE = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-keyring.secret")
+
+KEY_V6_RSA4K_PUBLIC = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-rsa4k.asc")
+KEY_V6_RSA4K_PRIVATE = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-rsa4k.secret")
+KEY_V6_ED25519_PUBLIC = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-ed25519.asc")
+KEY_V6_ED25519_PRIVATE = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-ed25519.secret")
+KEY_V6_MLDSA65_ED25519_PUBLIC = urljoin(
+    PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-mldsa65-ed25519.asc"
+)
+KEY_V6_MLDSA65_ED25519_PRIVATE = urljoin(
+    PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-mldsa65-ed25519.secret"
+)
+KEY_V6_MLDSA87_ED448_PUBLIC = urljoin(
+    PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-mldsa87-ed448.asc"
+)
+KEY_V6_MLDSA87_ED448_PRIVATE = urljoin(
+    PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-mldsa87-ed448.secret"
+)
+KEY_V6_KEYRING_PUBLIC = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-keyring.asc")
+KEY_V6_KEYRING_PRIVATE = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-keyring.secret")
 
 RPM_CUSTOM_REPO_METADATA_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-repo-metadata/")
 RPM_CUSTOM_REPO_METADATA_CHANGED_FIXTURE_URL = urljoin(
