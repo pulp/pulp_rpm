@@ -70,7 +70,7 @@ def main():
                     ops = [spec.operator for spec in req.specifier]
                     if "~=" in ops:
                         warnings.warn(f"{filename}:{nr}: Please avoid using ~= on {req.name}!")
-                    elif "<" not in ops and "<=" not in ops and "==" not in ops:
+                    elif "<" not in ops and "<=" not in ops and "==" not in ops and "@" not in line:
                         if check_upperbound:
                             errors.append(f"{filename}:{nr}: Upper bound missing in {line}.")
         except FileNotFoundError:

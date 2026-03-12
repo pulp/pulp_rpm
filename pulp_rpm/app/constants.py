@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+import createrepo_c as cr
 
 # metadata compression types supported
 COMPRESSION_TYPES = SimpleNamespace(
@@ -50,6 +51,8 @@ CHECKSUM_CHOICES = (
     (CHECKSUM_TYPES.SHA384, CHECKSUM_TYPES.SHA384),
     (CHECKSUM_TYPES.SHA512, CHECKSUM_TYPES.SHA512),
 )
+
+CR_HEADER_FLAGS = cr.HDRR_NOFILEDIGESTS | cr.HDRR_LOADSIGNATURES
 
 ALLOWED_CHECKSUM_ERROR_MSG = """Checksum must be one of the allowed checksum types.
 You can adjust these with the 'ALLOWED_CONTENT_CHECKSUMS' setting."""
@@ -108,6 +111,7 @@ CR_PACKAGE_ATTRS = SimpleNamespace(
     TIME_FILE="time_file",
     URL="url",
     VERSION="version",
+    SIGNATURES="signatures",
 )
 
 PACKAGE_REPODATA = ["primary", "filelists", "other"]

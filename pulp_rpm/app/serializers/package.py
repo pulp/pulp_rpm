@@ -21,6 +21,7 @@ from pulpcore.plugin.files import PulpTemporaryUploadedFile
 from tempfile import NamedTemporaryFile
 from pulpcore.plugin.util import get_domain_pk
 
+from pulp_rpm.app.contants import CR_HEADER_FLAGS
 from pulp_rpm.app.models import Package
 from pulp_rpm.app.shared_utils import format_nvra, read_crpackage_from_artifact
 
@@ -295,11 +296,6 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         new_pkg["location_href"] = filename
         data.update(new_pkg)
 
-        if signing_key := self.context.get("signing_key"):
-            data["signing_keys"] = [signing_key]
-        else:
-            data["signing_keys"] = None
-
         return data
 
     def retrieve(self, validated_data):
@@ -429,7 +425,9 @@ class PackageUploadSerializer(PackageSerializer):
         try:
             if uploaded_file:
                 cr_object = cr.package_from_rpm(
-                    uploaded_file.file.name, changelog_limit=settings.KEEP_CHANGELOG_LIMIT
+                    uploaded_file.file.name,
+                    changelog_limit=settings.KEEP_CHANGELOG_LIMIT,
+                    header_reading_flags=CR_HEADER_FLAGS,
                 )
                 new_pkg = Package.createrepo_to_dict(cr_object)
             elif upload:
@@ -446,7 +444,9 @@ class PackageUploadSerializer(PackageSerializer):
 
                 # Now we have a file, read metadata from it
                 cr_object = cr.package_from_rpm(
-                    temp_file.name, changelog_limit=settings.KEEP_CHANGELOG_LIMIT
+                    temp_file.name,
+                    changelog_limit=settings.KEEP_CHANGELOG_LIMIT,
+                    header_reading_flags=CR_HEADER_FLAGS,
                 )
                 new_pkg = Package.createrepo_to_dict(cr_object)
 
