@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.35.2 (2026-03-16) {: #3.35.2 }
+
+#### Bugfixes {: #3.35.2-bugfix }
+
+- Fixed `RpmRepository.package_signing_fingerprint` field to accept and default to `null` instead of empty string.
+  [#4007](https://github.com/pulp/pulp_rpm/issues/4007)
+
+---
+
 ## 3.35.1 (2026-02-24) {: #3.35.1 }
 
 #### Bugfixes {: #3.35.1-bugfix }
