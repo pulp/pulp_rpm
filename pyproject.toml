@@ -35,6 +35,8 @@ dependencies = [
     "solv~=0.7.21",
     "aiohttp_xmlrpc~=1.5.0",
     "importlib-resources~=6.4.0",
+    "createrepo_c @ git+https://github.com/dralley/createrepo_c.git@signatures",
+    "pysequoia @ git+https://github.com/wiktor-k/pysequoia.git@main",
 ]
 
 [project.urls]

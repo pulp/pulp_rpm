@@ -19,10 +19,12 @@ from pulp_rpm.tests.functional.constants import (
     RPM_PACKAGECATEGORY_CONTENT_NAME,
     RPM_PACKAGEGROUP_CONTENT_NAME,
     RPM_PACKAGELANGPACKS_CONTENT_NAME,
+    RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
     RPM_PACKAGE_FILENAME,
     RPM_PACKAGE_FILENAME2,
     RPM_WITH_NON_ASCII_URL,
+    SIGNING_KEY_FINGERPRINT,
     SMALL_COMPS_XML,
     SMALL_CATEGORY,
     SMALL_ENVIRONMENTS,
@@ -209,7 +211,16 @@ def test_upload_comps_xml_into_repo_replace(
     eval_counts(vers_resp.content_summary.added, is_small=False)
 
 
-def test_synchronous_package_upload(delete_orphans_pre, rpm_package_api, gen_user):
+@pytest.mark.parametrize(
+    "fixture_url, expect_signed",
+    [
+        (RPM_UNSIGNED_FIXTURE_URL, False),
+        (RPM_SIGNED_FIXTURE_URL, True),
+    ],
+)
+def test_synchronous_package_upload(
+    delete_orphans_pre, rpm_package_api, gen_user, fixture_url, expect_signed
+):
     """Test synchronously uploading an RPM.
 
     1. Upload a unit
@@ -217,7 +228,7 @@ def test_synchronous_package_upload(delete_orphans_pre, rpm_package_api, gen_use
     3. Assert that labels don't change.
     """
     # Single unit upload
-    file_to_use = os.path.join(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
+    file_to_use = os.path.join(fixture_url, RPM_PACKAGE_FILENAME)
 
     with gen_user(model_roles=["rpm.rpm_package_uploader"]):
         labels = {"key_1": "value_1"}
@@ -228,6 +239,7 @@ def test_synchronous_package_upload(delete_orphans_pre, rpm_package_api, gen_use
 
         assert package.location_href == RPM_PACKAGE_FILENAME
         assert package.pulp_labels == labels
+        assert package.signing_keys == [SIGNING_KEY_FINGERPRINT] if expect_signed else []
 
         # Duplicate unit
         with NamedTemporaryFile() as file_to_upload:
@@ -249,14 +261,23 @@ def test_synchronous_package_upload(delete_orphans_pre, rpm_package_api, gen_use
     assert ctx.value.status == 403
 
 
-def test_synchronous_package_upload_from_artifact(rpm_package_api, gen_user, pulpcore_bindings):
+@pytest.mark.parametrize(
+    "fixture_url, expect_signed",
+    [
+        (RPM_UNSIGNED_FIXTURE_URL, False),
+        (RPM_SIGNED_FIXTURE_URL, True),
+    ],
+)
+def test_synchronous_package_upload_from_artifact(
+    rpm_package_api, gen_user, pulpcore_bindings, fixture_url, expect_signed
+):
     """Test synchronously uploading an RPM.
 
     1. Create an Artifact from an RPM, if it doesn't exist.
     2. Use synchronous RPM upload API with an Artifact.
     3. Assert that the RPM package created has a matching artifact.
     """
-    file_to_use = os.path.join(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME2)
+    file_to_use = os.path.join(fixture_url, RPM_PACKAGE_FILENAME2)
     with NamedTemporaryFile() as file_to_upload:
         file_to_upload.write(requests.get(file_to_use).content)
         try:
@@ -270,6 +291,7 @@ def test_synchronous_package_upload_from_artifact(rpm_package_api, gen_user, pul
         upload_attrs = {"artifact": artifact.pulp_href}
         package_from_artifact = rpm_package_api.upload(**upload_attrs)
     assert package_from_artifact.artifact == artifact.pulp_href
+    assert package_from_artifact.signing_keys == [SIGNING_KEY_FINGERPRINT] if expect_signed else []
 
 
 def test_synchronous_package_upload_from_chunks(

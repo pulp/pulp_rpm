@@ -10,7 +10,10 @@ import createrepo_c as cr
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
 from importlib_resources import files
+
 from pulpcore.plugin.exceptions import InvalidSignatureError
+
+from pulp_rpm.app.constants import CR_HEADER_FLAGS
 from pulp_rpm.app.rpm_version import RpmVersion
 
 
@@ -97,7 +100,9 @@ def read_crpackage_from_artifact(artifact, working_dir="."):
         shutil.copyfileobj(artifact_file, temp_file)
         temp_file.flush()
         cr_pkginfo = cr.package_from_rpm(
-            temp_file.name, changelog_limit=settings.KEEP_CHANGELOG_LIMIT
+            temp_file.name,
+            changelog_limit=settings.KEEP_CHANGELOG_LIMIT,
+            header_reading_flags=CR_HEADER_FLAGS,
         )
 
     artifact_file.close()
