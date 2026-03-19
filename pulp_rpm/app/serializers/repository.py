@@ -41,6 +41,7 @@ from pulp_rpm.app.models import (
     RpmRepository,
     UlnRemote,
 )
+from pulpcore.plugin.serializers import PgpKeyFingerprintField
 from pulp_rpm.app.schema import COPY_CONFIG_SCHEMA
 from urllib.parse import urlparse
 from textwrap import dedent
@@ -87,12 +88,12 @@ class RpmRepositorySerializer(RepositorySerializer):
         required=False,
         allow_null=True,
     )
-    package_signing_fingerprint = serializers.CharField(
+    package_signing_fingerprint = PgpKeyFingerprintField(
         help_text=_(
-            "The pubkey V4 fingerprint (160 bits) to be passed to the package signing service."
-            "The signing service will use that on signing operations related to this repository."
+            "The pubkey fingerprint to be passed to the package signing service. "
+            "Format: 'v<N>:<hex-fingerprint>' or 'keyid:<16-hex-char>'. "
+            "Example: 'v4:ABCDEF1234567890ABCDEF1234567890ABCDEF12'."
         ),
-        max_length=40,
         required=False,
         allow_null=True,
         default=None,

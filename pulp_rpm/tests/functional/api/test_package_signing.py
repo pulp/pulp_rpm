@@ -9,7 +9,12 @@ from pulpcore.client.pulp_rpm.exceptions import ApiException
 from pulpcore.exceptions.validation import InvalidSignatureError
 
 from pulp_rpm.app.shared_utils import RpmTool
-from pulp_rpm.tests.functional.constants import RPM_PACKAGE_FILENAME, RPM_UNSIGNED_URL
+from pulp_rpm.tests.functional.constants import (
+    RPM_PACKAGE_FILENAME,
+    RPM_PACKAGE_FILENAME2,
+    RPM_UNSIGNED_URL,
+    RPM_UNSIGNED_URL2,
+)
 from pulp_rpm.tests.functional.utils import get_package_repo_path
 
 
@@ -94,9 +99,10 @@ def test_sign_package_on_upload(
     # Upload Package to Repository
     # The same file is uploaded, but signed with different keys each time
     for fingerprint in fingerprint_set:
+        prefixed_fingerprint = f"v4:{fingerprint}"
         repository = rpm_repository_factory(
             package_signing_service=rpm_package_signing_service.pulp_href,
-            package_signing_fingerprint=fingerprint,
+            package_signing_fingerprint=prefixed_fingerprint,
         )
         upload_response = rpm_package_api.create(
             file=str(file_to_upload.absolute()),
@@ -104,7 +110,7 @@ def test_sign_package_on_upload(
         )
         package_href = monitor_task(upload_response.task).created_resources[2]
         package = rpm_package_api.read(package_href)
-        assert package.signing_keys == [fingerprint]
+        assert package.signing_keys == [prefixed_fingerprint]
 
         # Verify that the final served package is signed
         publication = rpm_publication_factory(repository=repository.pulp_href)
@@ -121,7 +127,7 @@ def test_sign_package_on_upload(
         repository = rpm_repository_api.read(repository.pulp_href)
         assert (
             rpm_package_api.list(
-                repository_version=repository.latest_version_href, signing_key=fingerprint
+                repository_version=repository.latest_version_href, signing_key=prefixed_fingerprint
             ).count
             == 1
         )
@@ -216,17 +222,18 @@ def test_sign_chunked_package_on_upload(
     rpm_tool.import_pubkey_string(gpg_a.pubkey)
     rpm_tool.import_pubkey_string(gpg_b.pubkey)
 
-    file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
-    file_to_upload.write_bytes(requests.get(RPM_UNSIGNED_URL).content)
+    file_to_upload = tmp_path / RPM_PACKAGE_FILENAME2
+    file_to_upload.write_bytes(requests.get(RPM_UNSIGNED_URL2).content)
     with pytest.raises(InvalidSignatureError, match="The package is not signed: .*"):
         rpm_tool.verify_signature(file_to_upload)
 
     # Upload Package to Repository
     # The same file is uploaded, but signed with different keys each time
     for fingerprint in fingerprint_set:
+        prefixed_fingerprint = f"v4:{fingerprint}"
         repository = rpm_repository_factory(
             package_signing_service=rpm_package_signing_service.pulp_href,
-            package_signing_fingerprint=fingerprint,
+            package_signing_fingerprint=prefixed_fingerprint,
         )
         file_chunks_data = pulpcore_chunked_file_factory(file_to_upload)
         size = file_chunks_data["size"]
@@ -240,7 +247,7 @@ def test_sign_chunked_package_on_upload(
         )
         package_href = monitor_task(upload_response.task).created_resources[2]
         package = rpm_package_api.read(package_href)
-        assert package.signing_keys == [fingerprint]
+        assert package.signing_keys == [prefixed_fingerprint]
 
         # Verify that the final served package is signed
         publication = rpm_publication_factory(repository=repository.pulp_href)
@@ -271,6 +278,7 @@ def test_signed_repo_modify(
     """Ensure packages added via modify are signed before distribution."""
 
     gpg, fingerprint, _ = signing_gpg_metadata
+    prefixed_fingerprint = f"v4:{fingerprint}"
 
     rpm_tool = RpmTool(tmp_path)
     rpm_tool.import_pubkey_string(gpg.export_keys(fingerprint))
@@ -283,7 +291,7 @@ def test_signed_repo_modify(
 
     repository = rpm_repository_factory(
         package_signing_service=rpm_package_signing_service.pulp_href,
-        package_signing_fingerprint=fingerprint,
+        package_signing_fingerprint=prefixed_fingerprint,
     )
 
     created_package = rpm_package_factory(url=RPM_UNSIGNED_URL)
@@ -299,7 +307,7 @@ def test_signed_repo_modify(
         repository_version=repository.latest_version_href
     ).results[0]
     assert signed_package.pulp_href != created_package.pulp_href
-    assert signed_package.signing_keys == [fingerprint]
+    assert signed_package.signing_keys == [prefixed_fingerprint]
     assert signed_package.time_file != created_package.time_file
     assert sorted(task_result.created_resources) == sorted(
         [repository.latest_version_href, signed_package.pulp_href, signed_package.artifact]
@@ -342,14 +350,15 @@ def test_already_signed_package(
     """Don't sign a package if it's already signed with our key."""
 
     _, fingerprint, _ = signing_gpg_metadata
+    prefixed_fingerprint = f"v4:{fingerprint}"
 
     repo_one = rpm_repository_factory(
         package_signing_service=rpm_package_signing_service.pulp_href,
-        package_signing_fingerprint=fingerprint,
+        package_signing_fingerprint=prefixed_fingerprint,
     )
     repo_two = rpm_repository_factory(
         package_signing_service=rpm_package_signing_service.pulp_href,
-        package_signing_fingerprint=fingerprint,
+        package_signing_fingerprint=prefixed_fingerprint,
     )
 
     created_package = rpm_package_factory(url=RPM_UNSIGNED_URL)
@@ -366,7 +375,7 @@ def test_already_signed_package(
         repository_version=repo_one.latest_version_href
     ).results
     signed_package_href = repo_one_packages[0].pulp_href
-    assert repo_one_packages[0].signing_keys == [fingerprint]
+    assert repo_one_packages[0].signing_keys == [prefixed_fingerprint]
     assert len(repo_one_packages) == 1
     assert sorted(task_result.created_resources) == sorted(
         [signed_package_href, repo_one_packages[0].artifact, repo_one.latest_version_href]
@@ -402,7 +411,7 @@ def test_signed_repo_rejects_on_demand_content(
     _, fingerprint, _ = signing_gpg_metadata
     destination_repo = rpm_repository_factory(
         package_signing_service=rpm_package_signing_service.pulp_href,
-        package_signing_fingerprint=fingerprint,
+        package_signing_fingerprint=f"v4:{fingerprint}",
     )
 
     packages = rpm_package_api.list(repository_version=source_repo.latest_version_href).results
