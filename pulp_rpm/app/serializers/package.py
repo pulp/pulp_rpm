@@ -22,6 +22,7 @@ from tempfile import NamedTemporaryFile
 from pulpcore.plugin.util import get_domain_pk
 
 from pulp_rpm.app.constants import CR_HEADER_FLAGS
+from pulpcore.plugin.serializers import PgpKeyFingerprintField
 from pulp_rpm.app.models import Package
 from pulp_rpm.app.shared_utils import format_nvra, read_crpackage_from_artifact
 
@@ -250,7 +251,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
     )
 
     signing_keys = serializers.ListField(
-        child=serializers.CharField(),
+        child=PgpKeyFingerprintField(),
         help_text=_("List of signing key fingerprints used to sign this package. "),
         allow_null=True,
         required=False,

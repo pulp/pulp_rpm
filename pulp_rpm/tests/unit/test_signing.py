@@ -18,7 +18,7 @@ def test_verify_package_fingerprint_accepts_rpm_fingerprint(monkeypatch, tmp_pat
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     package = SimpleNamespace(name=str(tmp_path / "example.rpm"))
-    assert _verify_package_fingerprint(package, "c6e7f081cf80e13146676e88829b606631645531")
+    assert _verify_package_fingerprint(package, "v4:C6E7F081CF80E13146676E88829B606631645531")
 
 
 def test_verify_package_fingerprint_accepts_long_key_id(monkeypatch, tmp_path):
@@ -35,4 +35,4 @@ def test_verify_package_fingerprint_accepts_long_key_id(monkeypatch, tmp_path):
 
     monkeypatch.setattr(subprocess, "run", fake_run)
     package = SimpleNamespace(name=str(tmp_path / "example.rpm"))
-    assert _verify_package_fingerprint(package, "999f7cbf38ab71f4")
+    assert _verify_package_fingerprint(package, "keyid:999F7CBF38AB71F4")
