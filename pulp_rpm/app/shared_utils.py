@@ -1,3 +1,4 @@
+import re
 import shutil
 import subprocess
 import tempfile
@@ -12,6 +13,20 @@ from django.utils.dateparse import parse_datetime
 from importlib_resources import files
 from pulpcore.plugin.exceptions import InvalidSignatureError
 from pulp_rpm.app.rpm_version import RpmVersion
+
+# Matches versioned fingerprints (v3/v4/v5/v6) and legacy 16-char key IDs.
+SIGNING_FINGERPRINT_RE = re.compile(r"^(v\d:[0-9A-F]{32,64}|keyid:[0-9A-F]{16})$")
+
+
+def normalize_signing_fingerprint(value):
+    """Uppercase the hex portion of a prefixed signing fingerprint."""
+    prefix, sep, hex_part = value.partition(":")
+    return f"{prefix}:{hex_part.upper()}" if sep else value
+
+
+def parse_signing_fingerprint(value):
+    """Extract the raw hex value from a prefixed signing fingerprint."""
+    return value.split(":", 1)[1]
 
 
 def annotate_with_age(qs):
