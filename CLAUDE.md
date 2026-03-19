@@ -49,7 +49,7 @@ The plugin follows the standard Pulp plugin layout under `pulp_rpm/app/`:
 - **`models/`** — Django ORM models for all content types and repository components
 - **`viewsets/`** — DRF API endpoints (CRUD + custom actions like sync, publish, copy, prune)
 - **`serializers/`** — DRF serializers for request/response validation (mirrors viewsets structure)
-- **`tasks/`** — Async Celery task implementations:
+- **`tasks/`** — Async task implementations:
   - `synchronizing.py` — Sync from remotes using Pulpcore's declarative stages pipeline
   - `publishing.py` — Metadata generation using `createrepo_c`
   - `copy.py` — Content copying between repository versions
