@@ -5,6 +5,7 @@ import subprocess
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
+import createrepo_c as cr
 from django.conf import settings
 
 from pulpcore.plugin.models import (
@@ -18,7 +19,6 @@ from pulpcore.plugin.models import (
 from pulpcore.plugin.tasking import add_and_remove, general_create
 from pulpcore.plugin.util import get_url
 
-from pulp_rpm.app.constants import CHECKSUM_TYPES
 from pulp_rpm.app.models.content import RpmPackageSigningResult, RpmPackageSigningService
 from pulp_rpm.app.models.package import Package
 from pulp_rpm.app.models.repository import RpmRepository
@@ -131,13 +131,20 @@ def _sign_package(package, signing_service, signing_fingerprint):
             str(signed_package_path),
             (package.signing_keys or []) + [signing_fingerprint],
         )
+        # Read all updated metadata from the signed RPM
+        cr_pkg = cr.package_from_rpm(str(signed_package_path))
+        new_pkg_dict = Package.createrepo_to_dict(cr_pkg)
         artifact = _save_artifact(signed_package_path)
-        signed_package = package
-        signed_package.pk = None
-        signed_package.pulp_id = None
-        signed_package.pkgId = artifact.sha256
-        signed_package.checksum_type = CHECKSUM_TYPES.SHA256
-        signed_package.signing_keys = signing_keys
+        extra_fields = {}
+        if settings.RPM_SIGNING_COPY_LABELS:
+            extra_fields["pulp_labels"] = package.pulp_labels
+        signed_package = Package(
+            **new_pkg_dict,
+            signing_keys=signing_keys,
+            is_modular=package.is_modular,
+            **extra_fields,
+        )
+        signed_package.location_href = signed_package.filename
         signed_package.save()
         ContentArtifact.objects.create(
             artifact=artifact,
