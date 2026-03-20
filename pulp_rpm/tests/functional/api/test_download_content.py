@@ -9,16 +9,13 @@ from urllib.parse import urljoin
 
 import pytest
 import requests
+from django.conf import settings
 
 from pulp_rpm.tests.functional.constants import RPM_UNSIGNED_FIXTURE_URL
 from pulp_rpm.tests.functional.utils import (
     get_package_repo_path,
 )
 from pulpcore.client.pulp_rpm import RpmRpmPublication, RpmRpmDistribution
-
-# The grace period (in seconds) during which content from the old publication
-# should still be served after a distribution is updated to a new publication.
-CACHE_GRACE_PERIOD = 5
 
 
 @pytest.mark.parallel
@@ -101,7 +98,6 @@ class TestDistributionStability:
         ctx.update_distribution(dist, publication=ctx.pub_without_pkg)
         with self.within_grace_period():
             assert requests.get(pkg_url).status_code == 200
-
         assert requests.get(pkg_url).status_code == 404
 
     @contextmanager
@@ -110,9 +106,11 @@ class TestDistributionStability:
         yield
         elapsed = time.monotonic() - t_start
         margin = 1
-        remaining = (CACHE_GRACE_PERIOD + margin) - elapsed
+        remaining = (settings.RPM_PUBLICATION_CACHE_DURATION + margin) - elapsed
         if remaining > 0:
             time.sleep(remaining)
+        elapsed = time.monotonic() - t_start
+        assert elapsed > settings.RPM_PUBLICATION_CACHE_DURATION
 
     @pytest.fixture
     def ctx(

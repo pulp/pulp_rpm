@@ -53,6 +53,7 @@ pulp_settings:
   allowed_import_paths:
     - "/tmp"
   orphan_protection_time: 0
+  rpm_publication_cache_duration: 2
 pulp_settings_azure:
   MEDIA_ROOT: ""
   STORAGES:
