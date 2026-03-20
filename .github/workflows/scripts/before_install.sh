@@ -54,7 +54,7 @@ legacy_component_name: "pulp_rpm"
 component_name: "rpm"
 component_version: "${COMPONENT_VERSION}"
 pulp_env: {}
-pulp_settings: {"allowed_content_checksums": ["sha1", "sha224", "sha256", "sha512"], "allowed_export_paths": ["/tmp"], "allowed_import_paths": ["/tmp"], "orphan_protection_time": 0}
+pulp_settings: {"allowed_content_checksums": ["sha1", "sha224", "sha256", "sha512"], "allowed_export_paths": ["/tmp"], "allowed_import_paths": ["/tmp"], "orphan_protection_time": 0, "rpm_publication_cache_duration": 5}
 pulp_scheme: "https"
 api_root: "${PULP_API_ROOT}"
 image:

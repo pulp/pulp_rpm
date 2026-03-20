@@ -1,6 +1,8 @@
 import os
 import re
 import textwrap
+from contextlib import suppress
+from datetime import timedelta
 from gettext import gettext as _
 from logging import getLogger
 
@@ -8,15 +10,19 @@ from aiohttp.web_response import Response
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
+from django.utils import timezone
+from django_lifecycle import hook, AFTER_CREATE, AFTER_UPDATE
 from pulpcore.plugin.download import DownloaderFactory
 from pulpcore.plugin.models import (
     Artifact,
     AsciiArmoredDetachedSigningService,
     AutoAddObjPermsMixin,
+    BaseModel,
     Content,
     ContentArtifact,
     Distribution,
     Publication,
+    PublishedArtifact,
     Remote,
     RemoteArtifact,
     Repository,
@@ -54,6 +60,21 @@ from pulp_rpm.app.models import (
 from pulp_rpm.app.shared_utils import urlpath_sanitize, annotate_with_age
 
 log = getLogger(__name__)
+
+
+def latest_publication(repo_pk):
+    """
+    Find the latest complete publication for a repository.
+
+    This mirrors the logic used by pulpcore's content handler.
+    """
+    versions = RepositoryVersion.objects.filter(repository=repo_pk)
+    with suppress(Publication.DoesNotExist):
+        return (
+            Publication.objects.filter(repository_version__in=versions, complete=True)
+            .latest("repository_version", "pulp_created")
+            .cast()
+        )
 
 
 class RpmRemote(Remote, AutoAddObjPermsMixin):
@@ -508,6 +529,12 @@ class RpmPublication(Publication, AutoAddObjPermsMixin):
     layout = models.TextField(null=True, choices=LAYOUT_CHOICES)
     repo_config = models.JSONField(default=dict)
 
+    @hook(AFTER_UPDATE, when="complete", has_changed=True, is_now=True)
+    def set_distributed_publication(self):
+        for distro in RpmDistribution.objects.filter(repository__pk=self.repository.pk):
+            if self == latest_publication(self.repository.pk):
+                DistributedPublication(distribution=distro, publication=self).save()
+
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
         permissions = [
@@ -527,8 +554,18 @@ class RpmDistribution(Distribution, AutoAddObjPermsMixin):
 
     generate_repo_config = models.BooleanField(default=False)
 
+    @hook(AFTER_CREATE)
+    @hook(AFTER_UPDATE, when="publication", has_changed=True, is_not=None)
+    @hook(AFTER_UPDATE, when="repository", has_changed=True, is_not=None)
+    def set_distributed_publication(self):
+        if self.publication:
+            DistributedPublication(distribution=self, publication=self.publication).save()
+        elif self.repository:
+            if publication := latest_publication(self.repository):
+                DistributedPublication(distribution=self, publication=publication).save()
+
     def content_handler(self, path):
-        """Serve config.repo and repomd.xml.key."""
+        """Serve config.repo; fall back to distributed publication grace-period serving."""
         if self.generate_repo_config and path == self.repository_config_file_name:
             repository, publication = self.get_repository_and_publication()
             if not publication:
@@ -598,6 +635,28 @@ class RpmDistribution(Distribution, AutoAddObjPermsMixin):
 
             return Response(body=val)
 
+        recent_dp = self.distributedpublication_set.filter(
+            models.Q(expires_at__gte=timezone.now()) | models.Q(expires_at__isnull=True)
+        ).order_by("pulp_created")
+
+        if not recent_dp.exists():
+            return None
+
+        pa = (
+            PublishedArtifact.objects.filter(
+                relative_path=path, publication__distributedpublication__pk__in=recent_dp
+            )
+            .order_by("-publication__distributedpublication__pulp_created")
+            .select_related(
+                "content_artifact",
+                "content_artifact__artifact",
+            )
+        ).first()
+
+        if pa:
+            return pa.content_artifact
+        return None
+
     def content_headers_for(self, path):
         """Return per-file http-headers."""
         headers = super().content_headers_for(path)
@@ -640,3 +699,29 @@ class RpmDistribution(Distribution, AutoAddObjPermsMixin):
         permissions = [
             ("manage_roles_rpmdistribution", "Can manage roles on an RPM distribution"),
         ]
+
+
+class DistributedPublication(BaseModel):
+    """
+    Records the history of publications served by each RpmDistribution.
+
+    Keeps superseded publications alive and serveable for a grace period (3 days) so that
+    clients mid-download don't receive 404 errors when a distribution switches publications.
+
+    - ``expires_at=null``       — currently active
+    - ``expires_at=<datetime>`` — superseded; still served until that time
+    """
+
+    distribution = models.ForeignKey(Distribution, on_delete=models.CASCADE)
+    publication = models.ForeignKey(Publication, on_delete=models.CASCADE)
+    expires_at = models.DateTimeField(null=True)
+
+    @hook(AFTER_CREATE)
+    def cleanup(self):
+        """Expire older active DistributedPublications and delete already-expired ones."""
+        DistributedPublication.objects.filter(expires_at__lt=timezone.now()).delete()
+        DistributedPublication.objects.exclude(pk=self.pk).filter(
+            distribution=self.distribution, expires_at__isnull=True
+        ).update(
+            expires_at=(timezone.now() + timedelta(seconds=settings.RPM_PUBLICATION_CACHE_DURATION))
+        )

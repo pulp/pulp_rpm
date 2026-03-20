@@ -3,22 +3,18 @@
 import hashlib
 import time
 from random import choice
-from contextlib import contextmanager
 from dataclasses import dataclass
 from urllib.parse import urljoin
 
 import pytest
 import requests
+from django.conf import settings
 
 from pulp_rpm.tests.functional.constants import RPM_UNSIGNED_FIXTURE_URL
 from pulp_rpm.tests.functional.utils import (
     get_package_repo_path,
 )
 from pulpcore.client.pulp_rpm import RpmRpmPublication, RpmRpmDistribution
-
-# The grace period (in seconds) during which content from the old publication
-# should still be served after a distribution is updated to a new publication.
-CACHE_GRACE_PERIOD = 5
 
 
 @pytest.mark.parallel
@@ -81,11 +77,30 @@ class DistributionStabilityContext:
     pub_with_pkg: RpmRpmPublication
     pub_without_pkg: RpmRpmPublication
 
-    def create_distribution(self, publication: RpmRpmPublication) -> RpmRpmDistribution: ...
+    def create_distribution(self, publication: RpmRpmPublication) -> RpmRpmDistribution:
+        pass
 
-    def update_distribution(self, dist: RpmRpmDistribution, publication: RpmRpmPublication): ...
+    def update_distribution(self, dist: RpmRpmDistribution, publication: RpmRpmPublication):
+        pass
 
-    def get_pkg_url(self, distribution: RpmRpmDistribution) -> str: ...
+    def get_pkg_url(self, distribution: RpmRpmDistribution) -> str:
+        pass
+
+
+class Clock:
+    def __init__(self):
+        self._start = None
+
+    def start(self) -> None:
+        self._start = time.monotonic()
+
+    def elapsed(self) -> float:
+        return time.monotonic() - self._start
+
+    def wait_until(self, t: float) -> None:
+        remaining = t - self.elapsed()
+        if remaining > 0:
+            time.sleep(remaining)
 
 
 class TestDistributionStability:
@@ -94,25 +109,23 @@ class TestDistributionStability:
         self,
         ctx: DistributionStabilityContext,
     ):
+        assert settings.RPM_PUBLICATION_CACHE_DURATION < 10, "Retention time too long for testing."
+        clock = Clock()
         dist = ctx.create_distribution(publication=ctx.pub_with_pkg)
         pkg_url = ctx.get_pkg_url(dist)
         assert requests.get(pkg_url).status_code == 200
 
+        clock.start()
         ctx.update_distribution(dist, publication=ctx.pub_without_pkg)
-        with self.within_grace_period():
-            assert requests.get(pkg_url).status_code == 200
 
+        # Old content must be served within the retention period
+        assert requests.get(pkg_url).status_code == 200
+        assert clock.elapsed() < settings.RPM_PUBLICATION_CACHE_DURATION
+
+        # Old content must be unavailable after the retention period
+        clock.wait_until(settings.RPM_PUBLICATION_CACHE_DURATION * 2)
+        assert clock.elapsed() > settings.RPM_PUBLICATION_CACHE_DURATION
         assert requests.get(pkg_url).status_code == 404
-
-    @contextmanager
-    def within_grace_period(self):
-        t_start = time.monotonic()
-        yield
-        elapsed = time.monotonic() - t_start
-        margin = 1
-        remaining = (CACHE_GRACE_PERIOD + margin) - elapsed
-        if remaining > 0:
-            time.sleep(remaining)
 
     @pytest.fixture
     def ctx(
