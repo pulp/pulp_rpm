@@ -1,0 +1,1 @@
+Updated package signing to refresh all RPM metadata fields from the signed package file, ensuring size, header offsets, and other fields stay consistent after signing.
