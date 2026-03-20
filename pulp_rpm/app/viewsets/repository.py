@@ -719,6 +719,7 @@ class CopyViewSet(viewsets.ViewSet):
         serializer.is_valid(raise_exception=True)
 
         dependency_solving = serializer.validated_data["dependency_solving"]
+        dependency_upgrade = serializer.validated_data["dependency_upgrade"]
         config = serializer.validated_data["config"]
 
         config, shared_repos, exclusive_repos = self._process_config(config)
@@ -727,7 +728,7 @@ class CopyViewSet(viewsets.ViewSet):
             tasks.copy_content,
             shared_resources=shared_repos,
             exclusive_resources=exclusive_repos,
-            args=[config, dependency_solving],
+            args=[config, dependency_solving, dependency_upgrade],
             kwargs={},
         )
         return OperationPostponedResponse(async_result, request)

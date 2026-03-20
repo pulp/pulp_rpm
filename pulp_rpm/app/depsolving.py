@@ -743,7 +743,7 @@ class Solver:
                         warnings.append(str(info))
         return warnings
 
-    def resolve_dependencies(self, unit_repo_map):
+    def resolve_dependencies(self, unit_repo_map, focus_installed=True):
         """Resolve the total set of packages needed for the packages passed in, as DNF would.
 
         Find the set of dependent units and return them in a dictionary where
@@ -819,7 +819,11 @@ class Solver:
         # Take a list of jobs, get a solution, return the set of solvables that needed to
         # be installed.
         solver = self._pool.Solver()
-        solver.set_flag(solv.Solver.SOLVER_FLAG_FOCUS_INSTALLED, 1)
+        solver.set_flag(solv.Solver.SOLVER_FLAG_FOCUS_INSTALLED, int(focus_installed))
+        # When not focusing on installed packages, also prefer the best (latest) version
+        # so that transitive dependencies are resolved to their newest available version.
+        if not focus_installed:
+            solver.set_flag(solv.Solver.SOLVER_FLAG_FOCUS_BEST, 1)
 
         raw_problems = solver.solve(install_jobs)
         # The solver is simply ignoring the problems encountered and proceeds associating

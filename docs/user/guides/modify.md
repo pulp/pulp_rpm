@@ -262,6 +262,16 @@ repositories.
     default is potentially subject to change in the future - until such a time as this API is
     stabilized.
 
+By default, dependency solving prefers package versions already present in the destination
+repository (i.e. it resolves only **missing** dependencies). If you want transitive dependencies
+to be upgraded to their latest available versions in the source repository, set the
+`dependency_upgrade` parameter to `True`. This is useful when refreshing a curated repository
+from an updated upstream source.
+
+For example: if the destination already contains `openssl-libs-3.5.1-3` and the source has
+`openssl-libs-3.5.1-7`, copying a package that depends on `openssl-libs` with
+`dependency_upgrade=True` will pull in `-7` instead of keeping `-3`.
+
 Dependency solving does have some restrictions to be aware of. The set of content contained by
 all repositories used in a copy operation must be "dependency closed", which is to say that no
 content in any repository may have a dependency which cannot be satisfied by any content present
