@@ -20,3 +20,4 @@ PRUNE_WORKERS_MAX = 5
 # workaround for: https://github.com/pulp/pulp_rpm/issues/4125
 SPECTACULAR_SETTINGS__OAS_VERSION = "3.0.1"
 MAX_PACKAGE_SIGNING_WORKERS = 5
+RPM_SIGNING_COPY_LABELS = False

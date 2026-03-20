@@ -69,3 +69,10 @@ appears in the "file" field of the time element for each package in primary.xml.
 ## MAX_PACKAGE_SIGNING_WORKERS
 
 Sets the number of workers that pulp_rpm uses when concurrently signing packages. Defaults to 5.
+
+
+## RPM_SIGNING_COPY_LABELS
+
+When set to `True`, pulp_rpm will copy the `pulp_labels` from the original unsigned package
+to the newly created signed package during the package signing process. This is useful when
+labels should be preserved across signing operations. Defaults to `False`.
