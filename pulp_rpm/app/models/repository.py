@@ -208,7 +208,8 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
         package_signing_service (RpmPackageSigningService):
             Signing service to be used on package signing operations related to this repository.
         package_signing_fingerprint (String):
-            The V4 fingerprint (160 bits) to be used by @package_signing_service.
+            The fingerprint to be used by @package_signing_service.
+            Format: 'v<N>:<hex-fingerprint>' or 'keyid:<16-hex>'.
         repo_config (JSON): repo configuration that will be served by distribution
         compression_type(pulp_rpm.app.constants.COMPRESSION_TYPES):
             Compression type to use for metadata files.
@@ -238,7 +239,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
     package_signing_service = models.ForeignKey(
         RpmPackageSigningService, on_delete=models.SET_NULL, null=True
     )
-    package_signing_fingerprint = models.TextField(null=True, max_length=40)
+    package_signing_fingerprint = models.TextField(null=True)
     last_sync_details = models.JSONField(default=dict)
     retain_package_versions = models.PositiveIntegerField(default=0)
 

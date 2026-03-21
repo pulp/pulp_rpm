@@ -365,6 +365,9 @@ RPM_SIGNED_URL2 = urljoin(RPM_SIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME2)
 RPM_UNSIGNED_URL = urljoin(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
 """The path to a single unsigned RPM package."""
 
+RPM_UNSIGNED_URL2 = urljoin(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME2)
+"""The path to a second single unsigned RPM package."""
+
 RPM_UPDATED_UPDATEINFO_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-updated-updateinfo/")
 """The URL to a repository containing UpdateRecords (Advisory) with the same IDs
 as the ones in the standard repositories, but with different metadata.

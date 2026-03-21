@@ -5,15 +5,26 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('rpm', '0069_DATA_fix_signing_fingerprint'),
+        ("rpm", "0069_DATA_fix_signing_fingerprint"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='package',
-            name='signing_keys',
-            field=django.contrib.postgres.fields.ArrayField(base_field=models.TextField(), default=None, null=True, size=None),
+            model_name="package",
+            name="signing_keys",
+            field=django.contrib.postgres.fields.ArrayField(
+                base_field=models.TextField(), default=None, null=True, size=None
+            ),
+        ),
+        migrations.AlterField(
+            model_name="rpmpackagesigningresult",
+            name="package_signing_fingerprint",
+            field=models.TextField(),
+        ),
+        migrations.AlterField(
+            model_name="rpmrepository",
+            name="package_signing_fingerprint",
+            field=models.TextField(null=True),
         ),
     ]

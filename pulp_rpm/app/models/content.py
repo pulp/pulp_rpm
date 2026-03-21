@@ -37,7 +37,7 @@ class RpmPackageSigningService(SigningService):
         Args:
             filename: The absolute path to the package to be signed.
             env_vars: (optional) Dict of env_vars to be passed to the signing script.
-            pubkey_fingerprint: The V4 fingerprint that correlates with the private key to use.
+            pubkey_fingerprint: The raw fingerprint that correlates with the private key to use.
         """
         if not pubkey_fingerprint:
             raise ValueError("A pubkey_fingerprint must be provided.")
@@ -87,8 +87,8 @@ class RpmPackageSigningResult(BaseModel):
         original_package_sha256 (String):
             The sha256 digest of the original package artifact.
         package_signing_fingerprint (String):
-            The fingerprint used to sign the package. This value is copied from the repo's
-            package_signing_fingerprint field.
+            The prefixed fingerprint used to sign the package (e.g. 'v4:<hex>').
+            This value is copied from the repo's package_signing_fingerprint field.
 
     Relations:
         result_package (ForeignKey):
@@ -96,7 +96,7 @@ class RpmPackageSigningResult(BaseModel):
     """
 
     original_package_sha256 = models.TextField(max_length=64)
-    package_signing_fingerprint = models.TextField(max_length=40)
+    package_signing_fingerprint = models.TextField()
     result_package = models.ForeignKey(Content, on_delete=models.CASCADE)
 
     class Meta:

@@ -22,6 +22,7 @@ from pulp_rpm.app.constants import CHECKSUM_TYPES
 from pulp_rpm.app.models.content import RpmPackageSigningResult, RpmPackageSigningService
 from pulp_rpm.app.models.package import Package
 from pulp_rpm.app.models.repository import RpmRepository
+from pulp_rpm.app.shared_utils import parse_signing_fingerprint
 
 log = logging.getLogger(__name__)
 
@@ -54,6 +55,8 @@ def _verify_package_fingerprint(path, signing_fingerprint):
             f"{completed_process.stderr}."
         )
 
+    raw_fingerprint = parse_signing_fingerprint(signing_fingerprint)
+
     # check for `key ID` followed by a string of hex digits
     key_ids = re.findall(r"key ID ([0-9A-Fa-f]+)", completed_process.stdout, re.IGNORECASE)
     # check for `key fingerprint:` followed by a string of hex digits
@@ -61,7 +64,7 @@ def _verify_package_fingerprint(path, signing_fingerprint):
         r"key fingerprint:\s*([0-9A-Fa-f]+)", completed_process.stdout, re.IGNORECASE
     )
     for candidate in key_ids + fingerprints:
-        if signing_fingerprint.lower().endswith(candidate.lower()):
+        if raw_fingerprint.lower().endswith(candidate.lower()):
             return True
 
     return False
@@ -78,7 +81,8 @@ def _update_signing_keys(package_file, keys):
 
 def _sign_file(package_file, signing_service, signing_fingerprint):
     """Sign a package and return the local path of the signed file."""
-    result = signing_service.sign(package_file.name, pubkey_fingerprint=signing_fingerprint)
+    raw_fingerprint = parse_signing_fingerprint(signing_fingerprint)
+    result = signing_service.sign(package_file.name, pubkey_fingerprint=raw_fingerprint)
     signed_package_path = Path(result["rpm_package"])
     if not signed_package_path.exists():
         raise Exception(f"Signing script did not create the signed package: {result}")

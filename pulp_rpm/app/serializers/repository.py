@@ -42,6 +42,7 @@ from pulp_rpm.app.models import (
     UlnRemote,
 )
 from pulp_rpm.app.schema import COPY_CONFIG_SCHEMA
+from pulp_rpm.app.shared_utils import SIGNING_FINGERPRINT_RE, normalize_signing_fingerprint
 from urllib.parse import urlparse
 from textwrap import dedent
 
@@ -89,10 +90,11 @@ class RpmRepositorySerializer(RepositorySerializer):
     )
     package_signing_fingerprint = serializers.CharField(
         help_text=_(
-            "The pubkey V4 fingerprint (160 bits) to be passed to the package signing service."
-            "The signing service will use that on signing operations related to this repository."
+            "The pubkey fingerprint to be passed to the package signing service. "
+            "Format: 'v<N>:<hex-fingerprint>' or 'keyid:<16-hex-char>'. "
+            "Example: 'v4:ABCDEF1234567890ABCDEF1234567890ABCDEF12'."
         ),
-        max_length=40,
+        max_length=68,
         required=False,
         allow_null=True,
         default=None,
@@ -193,6 +195,16 @@ class RpmRepositorySerializer(RepositorySerializer):
             if field_data == "":
                 data[field] = None
         return data
+
+    def validate_package_signing_fingerprint(self, value):
+        if value is None:
+            return value
+        value = normalize_signing_fingerprint(value)
+        if not SIGNING_FINGERPRINT_RE.match(value):
+            raise serializers.ValidationError(
+                _("Invalid format. Expected 'v<N>:<hex-fingerprint>' or 'keyid:<16-hex>'.")
+            )
+        return value
 
     def validate(self, data):
         """Validate data."""
