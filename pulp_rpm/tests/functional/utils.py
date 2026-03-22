@@ -25,7 +25,6 @@ from pulp_rpm.tests.functional.constants import (
 from pulpcore.client.pulpcore import ApiClient as CoreApiClient, TasksApi
 from pulpcore.client.pulp_rpm import ApiClient as RpmApiClient
 
-
 cfg = config.get_config()
 configuration = cfg.get_bindings_config()
 

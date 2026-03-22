@@ -573,7 +573,7 @@ def generate_repo_metadata(
         pkg = package.to_createrepo_c()
 
         # rewrite the checksum and checksum type with the desired ones
-        (checksum, pkgId) = pkg_to_hash[package.pk]
+        checksum, pkgId = pkg_to_hash[package.pk]
         pkg.checksum_type = checksum
         pkg.pkgId = pkgId
 

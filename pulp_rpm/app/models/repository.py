@@ -542,13 +542,11 @@ class RpmDistribution(Distribution, AutoAddObjPermsMixin):
             repo_config = publication.repo_config
             repo_config.pop("name", None)
             repo_config.pop("baseurl", None)
-            val = textwrap.dedent(
-                f"""\
+            val = textwrap.dedent(f"""\
                 [{re.sub(self.INVALID_REPO_ID_CHARS, "", self.name)}]
                 name={self.name}
                 baseurl={base_url}
-                """
-            )
+                """)
             for k, v in repo_config.items():
                 val += f"{k}={v}\n"
 

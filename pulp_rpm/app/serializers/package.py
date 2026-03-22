@@ -16,7 +16,6 @@ from pulp_rpm.app.fields import CustomJSONField
 from pulp_rpm.app.models import Package
 from pulp_rpm.app.shared_utils import read_crpackage_from_artifact, format_nvra
 
-
 log = logging.getLogger(__name__)
 
 

@@ -473,7 +473,7 @@ def test_distribution_tree_metadata_publish(
 
     # skip any differences that are "correct" i.e. rewritten "repository" and "packages" paths
     for d in diff:
-        (diff_type, diff_name, _, new_value) = (d[0], d[1], d[2][0], d[2][1])
+        diff_type, diff_name, _, new_value = (d[0], d[1], d[2][0], d[2][1])
         # ('change', 'variant-Land.packages', ('Packages', 'Land/Packages'))
         if diff_type == "change":
             if diff_name.endswith(".packages") or diff_name.endswith(".repository"):

@@ -13,7 +13,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_WITH_NON_UTF_8_URL,
 )
 
-
 """Test upload of RPMs with different character encoding.
 
 This test targets the following issues:
