@@ -6,7 +6,6 @@ from pulp_rpm.app import models
 
 from django.conf import settings
 
-
 logger = logging.getLogger(__name__)
 
 # The name for the repo inside libsolv which represents the combined set of target/destination
@@ -577,7 +576,7 @@ class UnitSolvableMapping:
         """Map a list of solvables into their Pulp units, keyed by the repo they came from."""
         repo_unit_map = collections.defaultdict(set)
         for solvable in solvables:
-            (unit_id, repo_id) = self.get_unit_id(solvable)
+            unit_id, repo_id = self.get_unit_id(solvable)
             repo_unit_map[repo_id].add(unit_id)
 
         return repo_unit_map
@@ -1026,7 +1025,7 @@ def write_solver_debug_data(solver, problems, mapping, full=False):
         print(file=summary)
 
         for solvable in transaction.newsolvables():
-            (reason, rule) = solver.describe_decision(solvable)
+            reason, rule = solver.describe_decision(solvable)
 
             print(
                 "{name}-{evr}.{arch}".format(
@@ -1035,15 +1034,15 @@ def write_solver_debug_data(solver, problems, mapping, full=False):
                 file=summary,
             )
 
-            (reason_name, reason_description) = reason_desc_map[reason]
-            (unit_id, from_repo) = mapping.get_unit_id(solvable)
+            reason_name, reason_description = reason_desc_map[reason]
+            unit_id, from_repo = mapping.get_unit_id(solvable)
             print(
                 "    Pulp Content unit '{}' from repo '{}'".format(unit_id, from_repo), file=summary
             )
             print("    Reason: {} - {}".format(reason_name, reason_description), file=summary)
             print("    Rules:", file=summary)
             for info in rule.allinfos():
-                (rule_name, rule_description) = rule_desc_map[info.type]
+                rule_name, rule_description = rule_desc_map[info.type]
                 print("        {} - {}".format(rule_name, rule_description), file=summary)
                 if info.solvable:
                     pkg = str(info.solvable)
