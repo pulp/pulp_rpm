@@ -20,7 +20,6 @@ from pulp_rpm.app.models.content import RpmPackageSigningResult, RpmPackageSigni
 from pulp_rpm.app.models.package import Package
 from pulp_rpm.app.models.repository import RpmRepository
 
-
 log = logging.getLogger(__name__)
 
 
