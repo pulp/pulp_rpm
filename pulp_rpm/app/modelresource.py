@@ -499,7 +499,7 @@ class UpdateCollectionPackageResource(QueryModelResource):
         """
         super().before_import_row(row, **kwargs)
 
-        (uc_name, uc_updrec_digest) = row["update_collection"].split("|")
+        uc_name, uc_updrec_digest = row["update_collection"].split("|")
         uc_updrecord = UpdateRecord.objects.filter(
             digest=uc_updrec_digest, pulp_domain=get_domain()
         ).first()

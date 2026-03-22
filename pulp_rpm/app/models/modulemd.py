@@ -7,7 +7,6 @@ from pulpcore.plugin.util import get_domain_pk
 
 from pulp_rpm.app.models.package import Package
 
-
 log = getLogger(__name__)
 
 
