@@ -315,10 +315,10 @@ class Package(Content):
             # see https://github.com/pulp/pulp_rpm/issues/4328
             no_file_digest = len(file_entry) == 3
             if no_file_digest:
-                (typ, parent_dir, name) = file_entry
+                typ, parent_dir, name = file_entry
             else:
                 # currently this should ONLY happen during upload
-                (typ, parent_dir, name, digest) = file_entry
+                typ, parent_dir, name, digest = file_entry
             # check if the "parent_dir" string exists in our cache. If it does, we replace it
             # with the cached copy, to take advantage of Python's refcounting behavior. We do
             # this separately from the tuple itself, because the parent_dir path is frequently

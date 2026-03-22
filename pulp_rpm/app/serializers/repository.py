@@ -584,9 +584,7 @@ class CopySerializer(ValidateFieldsMixin, serializers.Serializer):
     """
 
     config = serializers.JSONField(
-        help_text=_(
-            dedent(
-                """\
+        help_text=_(dedent("""\
         Content to be copied into the given destinations from the given sources.
 
         Its a list of dictionaries with the following available fields:
@@ -607,9 +605,7 @@ class CopySerializer(ValidateFieldsMixin, serializers.Serializer):
 
         For usage examples, refer to the advanced copy guide:
         <https://pulpproject.org/pulp_rpm/docs/user/guides/modify/#advanced-copy-workflow>
-        """
-            )
-        ),
+        """)),
     )
 
     dependency_solving = serializers.BooleanField(
