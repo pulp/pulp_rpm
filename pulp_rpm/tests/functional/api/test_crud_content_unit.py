@@ -228,8 +228,7 @@ def test_create_modulemd_defaults(monitor_task, gen_object_with_cleanup, rpm_mod
         "module": "squid",
         "stream": "4",
         "profiles": {"4": ["common"]},
-        "snippet": dedent(
-            """\
+        "snippet": dedent("""\
         ---
         document: modulemd-defaults
         version: 1
@@ -238,8 +237,7 @@ def test_create_modulemd_defaults(monitor_task, gen_object_with_cleanup, rpm_mod
           stream: "4"
           profiles:
             4: [common]
-        ..."""
-        ),
+        ..."""),
     }
 
     # Can create

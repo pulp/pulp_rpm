@@ -10,7 +10,6 @@ from pulpcore.plugin.download import FileDownloader, HttpDownloader
 from pulp_rpm.app.exceptions import UlnCredentialsError
 from pulp_rpm.app.shared_utils import urlpath_sanitize
 
-
 log = getLogger(__name__)
 
 
@@ -80,7 +79,7 @@ class RpmDownloader(HttpDownloader):
             # So, we have a pretty ugly workaround.
             parsed = urlparse(self.url)
             # two pieces of the URL: pre- and post-path
-            (before_path, after_path) = self.url.split(parsed.path)
+            before_path, after_path = self.url.split(parsed.path)
             new_path = quote(unquote(parsed.path), safe=":/")  # fix the path
             new_url = "{}{}{}".format(before_path, new_path, after_path)  # rebuild
         if self.sles_auth_token:
