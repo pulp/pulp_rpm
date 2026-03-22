@@ -51,7 +51,7 @@ def find_children_of_content(content, src_repo_version):
         package_nevras = advisory.get_pkglist()
         advisory_package_q = Q(pk__in=[])
         for nevra in package_nevras:
-            (name, epoch, version, release, arch) = nevra
+            name, epoch, version, release, arch = nevra
             advisory_package_q |= Q(
                 name=name,
                 epoch=epoch,
@@ -65,7 +65,7 @@ def find_children_of_content(content, src_repo_version):
         module_nsvcas = advisory.get_module_list()
         advisory_module_q = Q(pk__in=[])
         for nsvca in module_nsvcas:
-            (name, stream, version, context, arch) = nsvca
+            name, stream, version, context, arch = nsvca
             advisory_module_q |= Q(
                 name=name,
                 stream=stream,

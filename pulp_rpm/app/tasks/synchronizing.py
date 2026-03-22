@@ -928,7 +928,7 @@ class RpmFirstStage(Stage):
             # can't be flagged as 'modular' thus broken repository!
             if modulemd_result.url.endswith("zck"):
                 raise TypeError(_("Modular data compressed with ZCK is not supported."))
-            (modulemd_dcs, modulemd_list) = await self.parse_modules_metadata(modulemd_result)
+            modulemd_dcs, modulemd_list = await self.parse_modules_metadata(modulemd_result)
 
         # **Now** we can successfully parse package-metadata
         await self.parse_packages(
@@ -1280,7 +1280,7 @@ class RpmFirstStage(Stage):
             for name, versions in packages.items():
                 versions.sort(key=lambda p: p[0], reverse=True)
                 for pkg in versions[self.repository.retain_package_versions :]:
-                    (evr, nevra) = pkg
+                    evr, nevra = pkg
                     package_skip_nevras.add(nevra)
                     skipped_packages += 1
 
