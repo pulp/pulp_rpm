@@ -31,7 +31,7 @@ def _name_from_url(url):
         rstr = rstr[7:]
 
     # convert ./- into underscore
-    rstr = re.sub("[.\-/]", "_", rstr)  # noqa
+    rstr = re.sub(r"[.\-/]", "_", rstr)
     return rstr
 
 
