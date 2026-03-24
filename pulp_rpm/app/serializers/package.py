@@ -401,6 +401,7 @@ class MinimalPackageSerializer(PackageSerializer):
             "arch",
             "pkgId",
             "checksum_type",
+            "signing_keys",
         )
         model = Package
 
