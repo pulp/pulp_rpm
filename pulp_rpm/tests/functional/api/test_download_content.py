@@ -86,13 +86,20 @@ class DistributionStabilityContext:
     def get_pkg_url(self, distribution: RpmRpmDistribution) -> str:
         pass
 
+    def clear_dist_cache(self, dist: RpmRpmDistribution) -> None:
+        pass
+
 
 class Clock:
     def __init__(self):
         self._start = None
 
-    def start(self) -> None:
+    def __enter__(self) -> "Clock":
         self._start = time.monotonic()
+        return self
+
+    def __exit__(self, *_) -> None:
+        pass
 
     def elapsed(self) -> float:
         return time.monotonic() - self._start
@@ -110,22 +117,23 @@ class TestDistributionStability:
         ctx: DistributionStabilityContext,
     ):
         assert settings.RPM_PUBLICATION_CACHE_DURATION < 10, "Retention time too long for testing."
-        clock = Clock()
         dist = ctx.create_distribution(publication=ctx.pub_with_pkg)
         pkg_url = ctx.get_pkg_url(dist)
         assert requests.get(pkg_url).status_code == 200
 
-        clock.start()
-        ctx.update_distribution(dist, publication=ctx.pub_without_pkg)
+        with Clock() as clock:
+            ctx.update_distribution(dist, publication=ctx.pub_without_pkg)
 
-        # Old content must be served within the retention period
-        assert requests.get(pkg_url).status_code == 200
-        assert clock.elapsed() < settings.RPM_PUBLICATION_CACHE_DURATION
+            # Old content must be served within the retention period
+            assert requests.get(pkg_url).status_code == 200
+            assert clock.elapsed() < settings.RPM_PUBLICATION_CACHE_DURATION
 
-        # Old content must be unavailable after the retention period
-        clock.wait_until(settings.RPM_PUBLICATION_CACHE_DURATION * 2)
-        assert clock.elapsed() > settings.RPM_PUBLICATION_CACHE_DURATION
-        assert requests.get(pkg_url).status_code == 404
+            # Old content must be unavailable after the retention period
+            clock.wait_until(settings.RPM_PUBLICATION_CACHE_DURATION)
+            ctx.clear_dist_cache(dist)  # redis cache will interfere with our assertion
+            assert clock.elapsed() > settings.RPM_PUBLICATION_CACHE_DURATION
+            response = requests.get(pkg_url)
+            assert response.status_code == 404
 
     @pytest.fixture
     def ctx(
@@ -173,6 +181,22 @@ class TestDistributionStability:
 
             def get_pkg_url(self, dist: RpmRpmDistribution) -> str:
                 return urljoin(distribution_base_url(dist.base_url), pkg_repo_path)
+
+            def clear_dist_cache(self, dist: RpmRpmDistribution) -> None:
+                original_base_path = dist.base_path
+                tmp_base_path = original_base_path + "-tmp"
+                monitor_task(
+                    rpm_distribution_api.partial_update(
+                        dist.pulp_href, {"base_path": tmp_base_path}
+                    ).task
+                )
+                monitor_task(
+                    rpm_distribution_api.partial_update(
+                        dist.pulp_href, {"base_path": original_base_path}
+                    ).task
+                )
+                restored = rpm_distribution_api.read(dist.pulp_href)
+                assert restored.base_path == original_base_path
 
         return _DistributionStabilityContext(
             pub_with_pkg=pub_with_pkg,

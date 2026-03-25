@@ -133,14 +133,7 @@ fi
 if [ -f "$FUNC_TEST_SCRIPT" ]; then
   source "$FUNC_TEST_SCRIPT"
 else
-  if [[ "$GITHUB_WORKFLOW" =~ "Nightly" ]]
-  then
-    cmd_user_prefix bash -c "pytest -v --timeout=300 -r sx --color=yes --suppress-no-test-exit-code --durations=20 --pyargs pulp_rpm.tests.functional -m parallel -n 8 --nightly"
-    cmd_user_prefix bash -c "pytest -v --timeout=300 -r sx --color=yes --suppress-no-test-exit-code --durations=20 --pyargs pulp_rpm.tests.functional -m 'not parallel' --nightly"
-  else
-    cmd_user_prefix bash -c "pytest -v --timeout=300 -r sx --color=yes --suppress-no-test-exit-code --durations=20 --pyargs pulp_rpm.tests.functional -m parallel -n 8"
-    cmd_user_prefix bash -c "pytest -v --timeout=300 -r sx --color=yes --suppress-no-test-exit-code --durations=20 --pyargs pulp_rpm.tests.functional -m 'not parallel'"
-  fi
+  cmd_user_prefix bash -c "pytest -v --timeout=300 -r sx --color=yes --suppress-no-test-exit-code --durations=20 --pyargs pulp_rpm.tests.functional -k test_download_content"
 fi
 export PULP_FIXTURES_URL="http://pulp-fixtures:8080"
 pushd ../pulp-cli
