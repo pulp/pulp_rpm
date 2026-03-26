@@ -4,6 +4,58 @@ import django.contrib.postgres.fields
 from django.db import migrations, models
 
 
+def add_fingerprint_prefix(apps, schema_editor):
+    """Add 'v4:' prefix to package_signing_fingerprint values that lack a prefix."""
+    RpmRepository = apps.get_model("rpm", "RpmRepository")
+    RpmRepository.objects.filter(
+        package_signing_fingerprint__isnull=False,
+    ).exclude(
+        package_signing_fingerprint__contains=":",
+    ).update(
+        package_signing_fingerprint=models.functions.Concat(
+            models.Value("v4:"), "package_signing_fingerprint"
+        ),
+    )
+
+    RpmPackageSigningResult = apps.get_model("rpm", "RpmPackageSigningResult")
+    RpmPackageSigningResult.objects.exclude(
+        package_signing_fingerprint__contains=":",
+    ).update(
+        package_signing_fingerprint=models.functions.Concat(
+            models.Value("v4:"), "package_signing_fingerprint"
+        ),
+    )
+
+
+def remove_fingerprint_prefix(apps, schema_editor):
+    """Remove type prefix (e.g. 'v4:', 'keyid:') from package_signing_fingerprint values."""
+    RpmRepository = apps.get_model("rpm", "RpmRepository")
+    RpmRepository.objects.filter(
+        package_signing_fingerprint__contains=":",
+    ).update(
+        package_signing_fingerprint=models.Func(
+            "package_signing_fingerprint",
+            models.Value("^[^:]+:"),
+            models.Value(""),
+            function="REGEXP_REPLACE",
+            output_field=models.TextField(),
+        ),
+    )
+
+    RpmPackageSigningResult = apps.get_model("rpm", "RpmPackageSigningResult")
+    RpmPackageSigningResult.objects.filter(
+        package_signing_fingerprint__contains=":",
+    ).update(
+        package_signing_fingerprint=models.Func(
+            "package_signing_fingerprint",
+            models.Value("^[^:]+:"),
+            models.Value(""),
+            function="REGEXP_REPLACE",
+            output_field=models.TextField(),
+        ),
+    )
+
+
 class Migration(migrations.Migration):
     dependencies = [
         ("rpm", "0069_DATA_fix_signing_fingerprint"),
@@ -27,4 +79,5 @@ class Migration(migrations.Migration):
             name="package_signing_fingerprint",
             field=models.TextField(null=True),
         ),
+        migrations.RunPython(add_fingerprint_prefix, remove_fingerprint_prefix),
     ]

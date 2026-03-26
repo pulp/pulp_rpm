@@ -80,8 +80,12 @@ def _update_signing_keys(package_file, keys):
 
 def _sign_file(package_file, signing_service, signing_fingerprint):
     """Sign a package and return the local path of the signed file."""
-    raw_fingerprint = signing_fingerprint.split(":", 1)[1]
-    result = signing_service.sign(package_file.name, pubkey_fingerprint=raw_fingerprint)
+    prefix, raw_fingerprint = signing_fingerprint.split(":", 1)
+    result = signing_service.sign(
+        package_file.name,
+        env_vars={"PULP_SIGNING_FINGERPRINT_TYPE": prefix},
+        pubkey_fingerprint=raw_fingerprint,
+    )
     signed_package_path = Path(result["rpm_package"])
     if not signed_package_path.exists():
         raise Exception(f"Signing script did not create the signed package: {result}")
