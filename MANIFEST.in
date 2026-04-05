@@ -14,3 +14,4 @@ include unittest_requirements.txt
 exclude releasing.md
 exclude AGENTS.md
 exclude CLAUDE.md
+exclude .gitleaks.toml
