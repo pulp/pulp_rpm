@@ -32,6 +32,7 @@ from pulpcore.plugin.models import (
 from pulpcore.plugin.stages import (
     ACSArtifactHandler,
     ArtifactDownloader,
+    ArtifactResourceBudget,
     ArtifactSaver,
     ContentSaver,
     DeclarativeArtifact,
@@ -359,7 +360,7 @@ def should_optimize_sync(sync_details, last_sync_details):
     return True
 
 
-def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url=None):
+def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url=None, **kwargs):
     """
     Sync content from the remote repository.
 
@@ -649,6 +650,8 @@ class RpmDeclarativeVersion(DeclarativeVersion):
             list: List of :class:`~pulpcore.plugin.stages.Stage` instances
 
         """
+        resource_budget = ArtifactResourceBudget.from_settings()
+
         pipeline = [
             self.first_stage,
             QueryExistingArtifacts(),
@@ -657,8 +660,8 @@ class RpmDeclarativeVersion(DeclarativeVersion):
             pipeline.append(ACSArtifactHandler())
         pipeline.extend(
             [
-                ArtifactDownloader(),
-                ArtifactSaver(),
+                ArtifactDownloader(resource_budget=resource_budget),
+                ArtifactSaver(resource_budget=resource_budget),
                 QueryExistingContents(),
                 RpmContentSaver(),
                 RpmInterrelateContent(),
