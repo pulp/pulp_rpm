@@ -230,9 +230,7 @@ def test_publish_references_update(assert_created_publication):
     assert_created_publication(RPM_REFERENCES_UPDATEINFO_URL)
 
 
-@pytest.mark.parametrize(
-    "layout", ["flat", "nested_alphabetically", "nested_by_digest"]
-)
+@pytest.mark.parametrize("layout", ["flat", "nested_alphabetically", "nested_by_digest"])
 def test_repo_layout(
     layout,
     init_and_sync,
