@@ -1193,6 +1193,7 @@ def test_config_repo_mirror_sync(
         assert bytes("repo_gpgcheck=0", "utf-8") in content
 
 
+@pytest.mark.parallel
 def test_repo_with_different_nevra_same_location_href(
     repository_builder: RepositoryBuilder,
     package_listing: PackageListFetcher,
@@ -1239,3 +1240,49 @@ def test_repo_with_different_nevra_same_location_href(
     metadata_packages = package_listing.from_repository_metadata(url=distribution.base_url)
     assert normalized_location(pkg_1) in metadata_packages
     assert normalized_location(pkg_2) in metadata_packages
+
+
+@pytest.mark.parallel
+@pytest.mark.parametrize("invert", [False, True])
+def test_repo_with_duplicate_nevra_same_build_id(
+    repository_builder: RepositoryBuilder,
+    package_listing: PackageListFetcher,
+    invert: bool,
+    init_and_sync,
+    rpm_publication_factory,
+    rpm_distribution_factory,
+):
+    # given a remote repository with bad data
+    common_nevra = MetaPackage.generate_nevra(1)
+    common_build_time = 1
+    package_1 = MetaPackage(
+        nevra=common_nevra,
+        time_build=common_build_time,
+        digest=MetaPackage.generate_digest(1),
+        location="{nvra}.rpm".format(nvra=common_nevra.to_nvra()),
+    )
+    package_2 = MetaPackage(
+        nevra=common_nevra,
+        time_build=common_build_time,
+        digest=MetaPackage.generate_digest(2),
+        location="{nvra}-dup.rpm".format(nvra=common_nevra.to_nvra()),
+    )
+
+    original_packages = [package_2, package_1] if invert else [package_1, package_2]
+    remote_repo = repository_builder.build(packages=original_packages)
+
+    # when we do a sync, publish and distribute
+    repository, _ = init_and_sync(url=remote_repo.url, policy="on_demand")
+    publication = rpm_publication_factory(repository=repository.pulp_href)
+    distribution = rpm_distribution_factory(publication=publication.pulp_href)
+
+    # then the first package wins in the repository version
+    first_package = original_packages[0]
+    repover_packages = package_listing.from_pulp_repoversion(repository.latest_version_href)
+    assert len(repover_packages) == 1
+    assert repover_packages[0].digest == first_package.digest
+
+    # and in the published metadata
+    metadata_packages = package_listing.from_repository_metadata(url=distribution.base_url)
+    assert len(metadata_packages) == 1
+    assert metadata_packages[0].digest == first_package.digest
