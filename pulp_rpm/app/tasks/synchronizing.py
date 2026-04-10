@@ -121,6 +121,9 @@ DUPLICATE_WARN_MSG = (
 # lift dynaconf lookups outside of loops
 ALLOWED_CONTENT_CHECKSUMS = settings.ALLOWED_CONTENT_CHECKSUMS
 
+# sentinel
+ALREADY_SEEN = object()
+
 
 def store_metadata_for_mirroring(repo, md_path, relative_path):
     """Used to store data about the downloaded metadata for mirror-publishing after the sync.
@@ -1380,9 +1383,12 @@ class RpmFirstStage(Stage):
                 if package_skip_nevras and pkg_nevra in package_skip_nevras:
                     continue
                 # Same heuristic as DNF / Yum / Zypper - in the event we encounter multiple package
-                # entries with the same NEVRA, pick the one with the larger build time
+                # entries with the same NEVRA, pick the one with the larger build time. Ties are
+                # broken by first-seen: after the first package passes, the entry is replaced with
+                # a sentinel so that any subsequent package with the same NEVRA is filtered out.
                 elif pkg.time_build != latest_build_time_by_nevra[pkg_nevra]:
                     continue
+                latest_build_time_by_nevra[pkg_nevra] = ALREADY_SEEN
                 # Typically (not always, but 90% of the time) like (same name, different arch
                 # or version) packages are grouped together metadata - this means that re-using
                 # the cache for runs of consecutive like packages is highly effective at saving
