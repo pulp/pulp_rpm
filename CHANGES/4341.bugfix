@@ -1,0 +1,1 @@
+Fixed a bug where two packages with the same NEVRA and identical build times but different checksums could both pass the sync tie-breaker and be added to the repository version. The first-seen package now wins deterministically.
