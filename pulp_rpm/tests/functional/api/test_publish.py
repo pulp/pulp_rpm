@@ -29,7 +29,10 @@ from pulp_rpm.tests.functional.constants import (
     RPM_UNSIGNED_FIXTURE_URL,
     SRPM_UNSIGNED_FIXTURE_URL,
 )
-from pulp_rpm.tests.functional.utils import gen_rpm_remote, download_and_decompress_file
+from pulp_rpm.tests.functional.utils import (
+    download_and_decompress_file,
+    gen_rpm_remote,
+)
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 from pulpcore.client.pulp_rpm import RpmRepositorySyncURL, RpmRpmPublication
