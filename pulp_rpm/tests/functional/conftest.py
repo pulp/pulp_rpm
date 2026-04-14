@@ -32,7 +32,11 @@ from pulp_rpm.tests.functional.constants import (
     RPM_SIGNED_FIXTURE_URL,
     RPM_SIGNED_URL,
 )
-from pulp_rpm.tests.functional.utils import init_signed_repo_configuration
+from pulp_rpm.tests.functional.utils import (
+    init_signed_repo_configuration,
+    PackageListFetcher,
+    RepositoryBuilder,
+)
 
 
 @pytest.fixture(scope="session")
@@ -51,6 +55,17 @@ def rpm_acs_api(rpm_client):
 def rpm_package_api(rpm_client):
     """Fixture for RPM distribution API."""
     return ContentPackagesApi(rpm_client)
+
+
+@pytest.fixture
+def package_listing(rpm_package_api):
+    """Fixture returning a PackageListFetcher with access to the packages API."""
+    return PackageListFetcher(rpm_package_api=rpm_package_api)
+
+
+@pytest.fixture
+def repository_builder(tmp_path):
+    return RepositoryBuilder(tmp_path=tmp_path)
 
 
 @pytest.fixture(scope="session")

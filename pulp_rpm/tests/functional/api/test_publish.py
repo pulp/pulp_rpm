@@ -28,7 +28,10 @@ from pulp_rpm.tests.functional.constants import (
     RPM_UNSIGNED_FIXTURE_URL,
     SRPM_UNSIGNED_FIXTURE_URL,
 )
-from pulp_rpm.tests.functional.utils import download_and_decompress_file
+from pulp_rpm.tests.functional.utils import (
+    download_and_decompress_file,
+    get_metadata_content_helper,
+)
 
 from pulpcore.client.pulp_rpm import RpmRepositorySyncURL, RpmRpmPublication
 from pulpcore.client.pulp_rpm.exceptions import ApiException
@@ -225,33 +228,6 @@ def test_publish_references_update(assert_created_publication):
     """Sync/publish a repo where ``updateinfo.xml`` contains references."""
     # TODO: check the updateinfo metadata to confirm the references are there.
     assert_created_publication(RPM_REFERENCES_UPDATEINFO_URL)
-
-
-def get_metadata_content_helper(base_url, repomd_elem, meta_type):
-    """Return the text contents of metadata file.
-
-    Provided a url, a repomd root element, and a metadata type, locate the metadata
-    file's location href, download it from the provided url, un-gzip it, parse it, and
-    return the root element node.
-
-    Don't use this with large repos because it will blow up.
-    """
-    # <ns0:repomd xmlns:ns0="http://linux.duke.edu/metadata/repo">
-    #     <ns0:data type="primary">
-    #         <ns0:checksum type="sha256">[…]</ns0:checksum>
-    #         <ns0:location href="repodata/[…]-primary.xml.gz" />
-    #         …
-    #     </ns0:data>
-    #     …
-    xpath = "{{{}}}data".format(RPM_NAMESPACES["metadata/repo"])
-    data_elems = [elem for elem in repomd_elem.findall(xpath) if elem.get("type") == meta_type]
-    if not data_elems:
-        return None
-
-    xpath = "{{{}}}location".format(RPM_NAMESPACES["metadata/repo"])
-    location_href = data_elems[0].find(xpath).get("href")
-
-    return download_and_decompress_file(os.path.join(base_url, location_href))
 
 
 @pytest.mark.parametrize(
