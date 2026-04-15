@@ -18,6 +18,7 @@ from pulpcore.plugin.models import (
 from pulpcore.plugin.tasking import add_and_remove, general_create
 from pulpcore.plugin.util import get_url
 
+from pulp_rpm.app.exceptions import PackageSigningError
 from pulp_rpm.app.models.content import RpmPackageSigningResult, RpmPackageSigningService
 from pulp_rpm.app.models.package import Package
 from pulp_rpm.app.models.repository import RpmRepository
@@ -75,7 +76,7 @@ def _sign_file(package_file, signing_service, signing_fingerprint):
     )
     signed_package_path = Path(result["rpm_package"])
     if not signed_package_path.exists():
-        raise Exception(f"Signing script did not create the signed package: {result}")
+        raise PackageSigningError(result)
     return signed_package_path
 
 
