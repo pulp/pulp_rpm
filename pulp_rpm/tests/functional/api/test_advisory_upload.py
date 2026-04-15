@@ -73,6 +73,7 @@ def test_merging(
     with pytest.raises(PulpTaskError) as ctx:
         _, _, _ = upload_advisory_factory(advisory=CAMEL_BIRD_JSON, repository=repo, use_id=an_id)
     error_msg = ctx.value.task.error["description"]
+    assert "[RPM0001]" in error_msg
     assert "neither package list is a proper subset of the other" in error_msg
     assert "ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION" in error_msg
 
