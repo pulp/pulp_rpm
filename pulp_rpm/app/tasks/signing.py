@@ -18,6 +18,7 @@ from pulpcore.plugin.models import (
 from pulpcore.plugin.tasking import add_and_remove, general_create
 from pulpcore.plugin.util import get_url
 
+from pulp_rpm.app.exceptions import PackageSignatureVerificationError, SigningScriptError
 from pulp_rpm.app.models.content import RpmPackageSigningResult, RpmPackageSigningService
 from pulp_rpm.app.models.package import Package
 from pulp_rpm.app.models.repository import RpmRepository
@@ -48,10 +49,7 @@ def _verify_package_fingerprint(path, signing_fingerprint):
         text=True,
     )
     if completed_process.stderr:
-        raise Exception(
-            f"Failed to verify package signature: {completed_process.stdout} "
-            f"{completed_process.stderr}."
-        )
+        raise PackageSignatureVerificationError(completed_process.stdout, completed_process.stderr)
 
     raw_fingerprint = signing_fingerprint.split(":", 1)[1]
 
@@ -87,7 +85,7 @@ def _sign_file(package_file, signing_service, signing_fingerprint):
     )
     signed_package_path = Path(result["rpm_package"])
     if not signed_package_path.exists():
-        raise Exception(f"Signing script did not create the signed package: {result}")
+        raise SigningScriptError(result)
     return signed_package_path
 
 

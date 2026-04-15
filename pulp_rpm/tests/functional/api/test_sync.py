@@ -126,7 +126,8 @@ def test_sync_from_invalid_mirror_list_feed(init_and_sync):
     with pytest.raises(PulpTaskError) as exc:
         init_and_sync(url=RPM_MIRROR_LIST_BAD_FIXTURE_URL)
 
-    assert "An invalid remote URL was provided" in exc.value.task.error["description"]
+    assert "[RPM0004]" in exc.value.task.error["description"]
+    assert "404" in exc.value.task.error["description"]
 
 
 @pytest.mark.parallel
@@ -565,6 +566,7 @@ def test_sync_advisory_diff_repo(init_and_sync):
         "ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION = True (q.v.) "
         "in your configuration. Advisory id: {}".format(RPM_ADVISORY_TEST_ID)
     )
+    assert "[RPM0001]" in exc.value.task.error["description"]
     assert error_msg in exc.value.task.error["description"]
 
 
@@ -603,6 +605,7 @@ def test_sync_advisory_incomplete_pgk_list(init_and_sync):
         "At least one of the advisories is wrong. "
         "Advisory id: {}".format(RPM_ADVISORY_TEST_ID)
     )
+    assert "[RPM0001]" in exc.value.task.error["description"]
     assert error_msg in exc.value.task.error["description"]
 
 
@@ -800,6 +803,7 @@ def test_sync_metadata_with_unsupported_checksum_type(init_and_sync):
     with pytest.raises(PulpTaskError) as exc:
         init_and_sync(url=RPM_MD5_REPO_FIXTURE_URL)
 
+    assert "[PLP0020]" in exc.value.task.error["description"]
     assert (
         "does not contain at least one trusted hasher which "
         "is specified in the 'ALLOWED_CONTENT_CHECKSUMS'"
@@ -828,7 +832,7 @@ def test_sync_packages_with_unsupported_checksum_type(init_and_sync):
         init_and_sync(url="https://fixtures.com/packages_with_unsupported_checksum")
 
     error_description = exc.value.task.error["description"]
-    assert "rpm-with-md5/bear-4.1.noarch.rpm contains forbidden checksum type" in error_description
+    assert "[PLP0020]" in error_description
 
 
 @pytest.mark.parallel
@@ -838,6 +842,7 @@ def test_complete_mirror_with_xml_base_fails(init_and_sync):
         init_and_sync(url=REPO_WITH_XML_BASE_URL, sync_policy="mirror_complete")
 
     error_description = exc.value.task.error["description"]
+    assert "[RPM0006]" in error_description
     assert "features which are incompatible with 'mirror' sync" in error_description
 
 
@@ -857,6 +862,7 @@ def test_complete_mirror_with_external_location_href_fails(init_and_sync):
         )
 
     error_description = exc.value.task.error["description"]
+    assert "[RPM0006]" in error_description
     assert "features which are incompatible with 'mirror' sync" in error_description
 
 
@@ -875,6 +881,7 @@ def test_complete_mirror_with_delta_metadata_fails(init_and_sync):
         # init_and_sync(url=DRPM_UNSIGNED_FIXTURE_URL, sync_policy="mirror_complete")
 
     error_description = exc.value.task.error["description"]
+    assert "[RPM0006]" in error_description
     assert "features which are incompatible with 'mirror' sync" in error_description
 
 

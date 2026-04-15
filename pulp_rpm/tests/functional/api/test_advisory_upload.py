@@ -23,6 +23,7 @@ def test_upload_wrong_type(upload_wrong_file_type, monitor_task):
     bad_file_to_use = os.path.join(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
     with pytest.raises(PulpTaskError) as e:
         monitor_task(upload_wrong_file_type(bad_file_to_use).task)
+    assert "[RPM0014]" in e.value.task.error["description"]
     assert "JSON" in e.value.task.error["description"]
 
 
@@ -72,6 +73,7 @@ def test_merging(
     with pytest.raises(PulpTaskError) as ctx:
         _, _, _ = upload_advisory_factory(advisory=CAMEL_BIRD_JSON, repository=repo, use_id=an_id)
     error_msg = ctx.value.task.error["description"]
+    assert "[RPM0001]" in error_msg
     assert "neither package list is a proper subset of the other" in error_msg
     assert "ALLOW_AUTOMATIC_UNSAFE_ADVISORY_CONFLICT_RESOLUTION" in error_msg
 

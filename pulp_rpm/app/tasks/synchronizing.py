@@ -20,6 +20,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.files import File
 from django.db import transaction
 from django.db.models import Q
+from pulpcore.plugin.exceptions import SyncError
 from pulpcore.plugin.models import (
     Artifact,
     ContentArtifact,
@@ -45,6 +46,10 @@ from pulpcore.plugin.util import get_domain
 
 from pulp_rpm.app.advisory import hash_update_record
 from pulp_rpm.app.comps import dict_digest, strdict_to_dict
+from pulp_rpm.app.exceptions import (
+    MirrorIncompatibleRepositoryError,
+    RemoteFetchError,
+)
 from pulp_rpm.app.constants import (
     CHECKSUM_TYPES,
     COMPS_REPODATA,
@@ -287,12 +292,7 @@ def fetch_remote_url(remote, custom_url=None):
         # If 'custom_url' is passed it is a call from ACS refresh
         # which doesn't support mirror lists.
         if custom_url:
-            raise ValueError(
-                _(
-                    "ACS remote for url '{}' raised an error '{}: {}'. "
-                    "Please check your ACS remote configuration."
-                ).format(custom_url, exc.status, exc.message)
-            )
+            raise RemoteFetchError(custom_url, exc.status, exc.message)
         log.info(
             _("Attempting to resolve a true url from potential mirrolist url '{}'").format(url)
         )
@@ -305,10 +305,7 @@ def fetch_remote_url(remote, custom_url=None):
             )
             return normalize_url(remote_url)
 
-        if exc.status == 404:
-            raise ValueError(_("An invalid remote URL was provided: {}").format(url))
-
-        raise exc
+        raise RemoteFetchError(url, exc.status, exc.message)
 
 
 def should_optimize_sync(sync_details, last_sync_details):
@@ -396,7 +393,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
     repository = RpmRepository.objects.get(pk=repository_pk)
 
     if not remote.url and not url:
-        raise ValueError(_("A remote must have a url specified to synchronize."))
+        raise SyncError("A remote must have a url specified to synchronize.")
 
     log.info(_("Synchronizing: repository={r} remote={p}").format(r=repository.name, p=remote.name))
 
@@ -804,7 +801,7 @@ class RpmFirstStage(Stage):
                             or illegal_relative_path
                             or record.type in RepoMetadataFile.UNSUPPORTED_METADATA
                         ):
-                            raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
+                            raise MirrorIncompatibleRepositoryError()
 
                     if not self.mirror_metadata and record.type not in types_to_download:
                         continue
@@ -1267,7 +1264,7 @@ class RpmFirstStage(Stage):
                 illegal_relative_path = self.is_illegal_relative_path(pkg.location_href)
 
                 if uses_base_url or illegal_relative_path:
-                    raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
+                    raise MirrorIncompatibleRepositoryError()
 
             # Add any srpms to the skip set if specified
             if skip_srpms and pkg.arch == "src":
