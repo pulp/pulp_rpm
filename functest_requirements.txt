@@ -2,6 +2,7 @@ dictdiffer
 django  # TODO: test_sync.py has a dependency on date parsing functions
 lxml
 productmd>=1.25
+python-gnupg
 pydantic
 pyyaml
 pytest<8
