@@ -94,10 +94,8 @@ class _CollisionManager:
     """Helper to collect the "winning" packages when there are collisions on NEVRA or URL path."""
 
     def __init__(self) -> None:
-        self.cid_to_second_path: dict[UUID, str] = {}
         self._nevra_to_pkg: dict[str, PkgBuild] = {}
         self._path_to_pkg: dict[str, PkgBuild] = {}
-        self._second_path_to_pkg: dict[str, PkgBuild] = {}
         self._banned_cids: set[UUID] = set()
 
     def _pkg_to_ignore(
@@ -117,7 +115,7 @@ class _CollisionManager:
             return new
         return old
 
-    def add(self, pkg: PkgBuild, nevra: str, path: str, second_path: str | None) -> None:
+    def add(self, pkg: PkgBuild, nevra: str, path: str) -> None:
         """
         Add a package build to the collision manager. Ignore it if it is "worse" than an existing
         package that collides on nevra or path. If it's "better" and collides, mark the older one as
@@ -127,11 +125,6 @@ class _CollisionManager:
             pkg (PkgBuild): Information about the package build we're adding.
             nevra (str): NEVRA of the package. Checked for collisions in repo metadata.
             path (str): URL path of the package. Checked for collisions in published artifact URLs.
-            second_path (str | None):
-                An optional secondary URL path of the package. Only will exist in the nested_by_both
-                case. Checked for collisions like `path`, except collisions here only prevent the
-                "worse" package from being published at this secondary path, not from being
-                published at in general.
         """
         # If there is a collision on nevra or path, ignore the older package
         to_ignore_nevra = self._pkg_to_ignore(pkg, self._nevra_to_pkg, nevra)
@@ -147,22 +140,8 @@ class _CollisionManager:
         # We have record cids that were once added but later ignored; we don't know all its keys.
         if to_ignore_nevra:
             self._banned_cids.add(to_ignore_nevra.cid)
-            self.cid_to_second_path.pop(to_ignore_nevra.cid, None)
         if to_ignore_path:
             self._banned_cids.add(to_ignore_path.cid)
-            self.cid_to_second_path.pop(to_ignore_path.cid, None)
-
-        # In the nested_by_both case we may have a package that should be published in general, but
-        # collides on the alphabetical path and should be ignored for that path only.
-        if second_path:
-            to_ignore = self._pkg_to_ignore(pkg, self._second_path_to_pkg, second_path)
-            if to_ignore == pkg:
-                return
-            elif to_ignore:
-                self.cid_to_second_path.pop(to_ignore.cid, None)
-
-            self._second_path_to_pkg[second_path] = pkg
-            self.cid_to_second_path[pkg.cid] = second_path
 
     def retained_cids(self) -> list[UUID]:
         """
@@ -250,7 +229,6 @@ class PublicationData:
            1. "flat": "Packages/xxx.rpm"
            2. "nested_alphabetically": "Packages/f/filename.rpm"   - The "canonical" repo format.
            3. "nested_by_digest": "Packages/f/by-digest/xxxxxx-filename.rpm"
-           4. "nested_by_both": Both 2 and 3. Each rpm will result in 2 PublishedArtifacts.
 
         2. Handle "duplicate" packages.
 
@@ -396,23 +374,19 @@ class PublicationData:
 
             # Third, compute the path based on layout
             pkg_filename = os.path.basename(row["relative_path"])
-            second_path = None
             if layout == LAYOUT_TYPES.NESTED_ALPHABETICALLY:
                 path = nested_alphabetically_path(pkg_filename)
             elif layout == LAYOUT_TYPES.FLAT:
                 path = flat_path(pkg_filename)
             elif layout == LAYOUT_TYPES.NESTED_BY_DIGEST:
                 path = nested_by_digest_path(pkg_filename, checksum)
-            elif layout == LAYOUT_TYPES.NESTED_BY_BOTH:
-                path = nested_by_digest_path(pkg_filename, checksum)
-                second_path = nested_alphabetically_path(pkg_filename)
             else:
                 raise ValueError(f"Layout value {layout} is unsupported by this version")
 
             pkg_info = PackageInfo(
                 caid=caid, path=path, checksum_type=checksum_type, checksum=checksum
             )
-            collision_manager.add(pkg_build, nevra, path, second_path)
+            collision_manager.add(pkg_build, nevra, path)
             cid_to_pkginfo[cid] = pkg_info
 
         # Filter cid_to_pkginfo to only the retained packages
@@ -428,15 +402,6 @@ class PublicationData:
                     content_artifact_id=pkg_info.caid,
                 )
             )
-            if second_path := collision_manager.cid_to_second_path.get(cid, None):
-                # also add the nested_alphabetically path
-                published_artifacts.append(
-                    PublishedArtifact(
-                        relative_path=os.path.join(prefix, second_path),
-                        publication=self.publication,
-                        content_artifact_id=pkg_info.caid,
-                    )
-                )
 
         # Handle the non-packages
         is_treeinfo = Q(relative_path__in=["treeinfo", ".treeinfo"])

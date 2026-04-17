@@ -19,7 +19,6 @@ LAYOUT_TYPES = SimpleNamespace(
     NESTED_ALPHABETICALLY="nested_alphabetically",
     FLAT="flat",
     NESTED_BY_DIGEST="nested_by_digest",
-    NESTED_BY_BOTH="nested_by_both",  # DEPRECATED
 )
 
 LAYOUT_CHOICES = (
