@@ -1,1 +1,0 @@
-Remove handling of the `nested-by-both` publication layout option - it is complex and a bit flawed.
