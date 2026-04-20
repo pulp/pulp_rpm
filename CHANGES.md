@@ -8,6 +8,42 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.36.0 (2026-04-20) {: #3.36.0 }
+
+#### Features {: #3.36.0-feature }
+
+- Added code and a setting (MAX_PACKAGE_SIGNING_WORKERS) to sign packages concurrently when adding
+  them to a repo. Signing packages concurrently will speed up the time it takes to sign and add
+  packages to a repo.
+  [#4357](https://github.com/pulp/pulp_rpm/issues/4357)
+- Added `signing_keys` to the minimal package serializer.
+  [#4393](https://github.com/pulp/pulp_rpm/issues/4393)
+- Added a new field `signing_keys` on packages that tracks the fingerprints of keys Pulp has used to sign the package.
+- Signing fingerprints now use a versioned prefix format (e.g. `v4:<hex>`, `keyid:<hex>`) for
+  `package_signing_fingerprint` on repositories and `signing_keys` on packages. The fingerprint prefix
+  is passed to the signing script as the `PULP_SIGNING_FINGERPRINT_TYPE` environment variable.
+
+#### Bugfixes {: #3.36.0-bugfix }
+
+- Fixed `RpmRepository.package_signing_fingerprint` field to accept and default to `null` instead of empty string.
+  [#4007](https://github.com/pulp/pulp_rpm/issues/4007)
+- Significantly improved worst-case sync memory consumption and moderately improved worst-case publish memory consumption for most repos.
+  [#4086](https://github.com/pulp/pulp_rpm/issues/4086)
+- Fixed a bug where two packages with the same NEVRA and identical build times but different checksums could both pass the sync tie-breaker and be added to the repository version. The first-seen package now wins deterministically.
+  [#4341](https://github.com/pulp/pulp_rpm/issues/4341)
+- Updated package signing to refresh all RPM metadata fields from the signed package file, ensuring size, header offsets, and other fields stay consistent after signing.
+  [#4383](https://github.com/pulp/pulp_rpm/issues/4383)
+
+#### Deprecations and Removals {: #3.36.0-removal }
+
+- Remove handling of the `nested-by-both` publication layout option - it is complex and a bit flawed.
+
+#### Misc {: #3.36.0-misc }
+
+- 
+
+---
+
 ## 3.35.2 (2026-03-16) {: #3.35.2 }
 
 #### Bugfixes {: #3.35.2-bugfix }
