@@ -1,108 +1,60 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+The role of this file is to describe common mistakes and confusion points that agents might encounter as they work in this project.
+If you ever encounter something in the project that surprises you, please alert the developer working with you and indicate that this is the case in the CLAUDE.md file to help prevent future agents from having the same issue.
 
-## Project Overview
+## Interacting with the developer environment
 
-`pulp_rpm` is a Pulp 3 plugin that provides RPM repository management. It is a Django application that integrates with `pulpcore` via the Pulp plugin architecture.
+Use the `pulp-cli` to interact with the Pulp API. Fallback on `httpie/curl` when the CLI doesn't support the endpoint/options needed.
 
-## Common Commands
-
-### Linting
 ```bash
-pip install -r lint_requirements.txt
-black --check --diff .
-flake8
-sh .ci/scripts/check_pulpcore_imports.sh
-sh .ci/scripts/check_gettext.sh
+pulp --help
+pulp --refresh-api status
+pulp rpm content -t package list --limit 5
+pulp rpm repository create --name foo
+pulp -v rpm repository sync --name foo --remote foo
+pulp task show --wait --href prn:core.task:019c8cae-cc5f-7148-a3de-456d0a9f39a1
+pulp show --href /pulp/api/v3/tasks/019c8cae-cc5f-7148-a3de-456d0a9f39a1/
 ```
 
-### Unit Tests
+Use the `oci-env` cli to interact with the developer's Pulp instance. It has commands for managing state, running tests, and executing commands against a running Pulp.
+
 ```bash
-pip install -r unittest_requirements.txt
-# Run all unit tests
-pytest -v -r sx --suppress-no-test-exit-code -p no:pulpcore pulp_rpm/tests/unit
-# Run a single test
-pytest -v pulp_rpm/tests/unit/test_rpm_version.py::TestRpmVersionComparison::test_evr_tostr
+oci-env --help
+oci-env compose ps  # check status of the Pulp dev container
+oci-env compose up/down/restart  # start/stop/restart the Pulp dev container
+oci-env poll --attempts 10 --wait 10  # wait till Pulp container finishes booting up
+oci-env pstart/pstop/prestart  # start/stop/restart the services inside the Pulp container
+oci-env generate-client --help  # create the client bindings needed for the functional tests!
+oci-env test --help # run the functional/unit tests
+oci-env pulpcore-manager  # run any pulpcore or Django commands
 ```
 
-### Functional Tests (requires a running Pulp server)
+## Running/Writing tests
+
+Prefer writing functional tests for new changes/bugfixes and only fallback on unit tests when the change is not easily testable through the API.
+
+pulp-rpm functional tests require pulp-rpm, pulpcore & pulp-rpm client bindings to be installed. The bindings must be regenerated for any changes to the API spec.
+
+**Always** use the `oci-env` to run the functional and unit tests.
+
+## Modifying template_config.yml
+
+Use the `plugin-template` tool after any changes made to `template_config.yml`.
+
 ```bash
-pip install -r functest_requirements.txt
-# Parallel tests
-pytest -v --timeout=300 -r sx --suppress-no-test-exit-code pulp_rpm/tests/functional -m parallel -n 8
-# Non-parallel tests
-pytest -v --timeout=300 -r sx --suppress-no-test-exit-code pulp_rpm/tests/functional -m 'not parallel'
+# typically located in the parent directory of pulpcore/plugin
+../plugin_template/plugin-template --github
 ```
 
-### Code Formatting
-```bash
-# black line-length is 100 (see pyproject.toml)
-black .
-```
+## Fixing failed backports
 
-## Architecture
+When patchback fails to cherry-pick a PR into an older branch, you need to manually apply the equivalent change. Key things to know:
 
-### Plugin Structure
-The plugin follows the standard Pulp plugin layout under `pulp_rpm/app/`:
+- Older branches (e.g. 3.26, 3.27) may use `requirements.txt` for dependencies, while newer branches use `pyproject.toml`. Always check which file the target branch uses before applying changes.
+- When creating a PR include `[<version>]` in the PR title (e.g. `[3.27] Update libcomps version in requirements.txt`).
+- Use `git cherry-pick -x`.
 
-- **`models/`** — Django ORM models for all content types and repository components
-- **`viewsets/`** — DRF API endpoints (CRUD + custom actions like sync, publish, copy, prune)
-- **`serializers/`** — DRF serializers for request/response validation (mirrors viewsets structure)
-- **`tasks/`** — Async task implementations:
-  - `synchronizing.py` — Sync from remotes using Pulpcore's declarative stages pipeline
-  - `publishing.py` — Metadata generation using `createrepo_c`
-  - `copy.py` — Content copying between repository versions
-  - `prune.py` — Removal of old/superseded packages
-  - `signing.py` — Package and metadata signing
+## Contributing
 
-### Content Types
-The plugin manages these content types (each is a Django model inheriting from Pulpcore's `Content`):
-- `Package` — Individual RPM packages
-- `UpdateRecord` — Advisories/errata (security, bugfix, enhancement)
-- `Modulemd` / `ModulemdDefaults` — Modular RPM metadata
-- `PackageGroup`, `PackageCategory`, `PackageEnvironment`, `PackageLangpacks` — COMPS metadata
-- `DistributionTree` — Installer/distribution tree metadata
-- `RepoMetadataFile` — Custom repository metadata files
-
-### Repository Components
-- `RpmRepository` — Repository with prune settings and retain-package-versions
-- `RpmRemote` — Remote source (HTTP/HTTPS, with ULN variant `UlnRemote`)
-- `RpmPublication` — Published repository (generates repomd.xml and all repodata)
-- `RpmDistribution` — Serves a publication over HTTP
-- `RpmAlternateContentSource` — ACS for distributed content sources
-
-### Sync Pipeline (Declarative Stages)
-Sync uses Pulpcore's declarative content framework:
-1. Parse remote repodata (primary.xml, filelists.xml, other.xml, modules.yaml, updateinfo.xml, comps.xml)
-2. Build `DeclarativeContent` / `DeclarativeArtifact` objects
-3. Pass through stages: `QueryExistingContents` → `ArtifactDownloader` → `ArtifactSaver` → `ContentSaver` → `ResolveContentFutures` → `RemoteArtifactSaver`
-4. Create new `RepositoryVersion` with the resolved content set
-
-### Key Utilities
-- `rpm_version.py` — RPM EVR (Epoch:Version-Release) parsing and comparison (labelCompare algorithm)
-- `advisory.py` — Advisory merging and conflict detection logic
-- `modulemd.py` — Module metadata YAML parsing
-- `comps.py` — COMPS XML parsing via `libcomps`
-- `constants.py` — Repodata type constants, sync policy enums, checksum types
-- `shared_utils.py` — Package formatting utilities
-
-### Key Dependencies
-- `pulpcore>=3.103.0,<3.115` — Core framework (models, stages, downloaders, tasks)
-- `createrepo_c~=1.2.1` — RPM repository metadata generation
-- `libcomps>=0.1.23` — COMPS group/category parsing
-- `productmd~=1.33.0` — Distribution tree metadata
-- `solv~=0.7.21` — Dependency solving
-
-### Pulpcore Integration Points
-- Models inherit from `pulpcore.plugin.models` base classes
-- Viewsets extend Pulpcore's viewset mixins
-- Tasks use `pulpcore.plugin.stages` for the declarative sync pipeline
-- Downloaders extend `pulpcore.plugin.download.DownloaderFactory`
-- Plugin registered via `pulpcore.plugin` entry point in `pyproject.toml`
-
-### Testing Patterns
-- Unit tests in `pulp_rpm/tests/unit/` — pure Python, no server required, use `-p no:pulpcore` flag
-- Functional tests in `pulp_rpm/tests/functional/` — require a live Pulp server, use API clients
-- `pytest_plugin.py` provides shared pytest fixtures (API clients, object factories)
-- `gen_object_with_cleanup` pattern used in functional tests for lifecycle management
+When preparing to commit and create a PR you **must** follow our [PR checklist](https://pulpproject.org/pulpcore/docs/dev/guides/pull-request-walkthrough/) Important to note is the AI attribution requirement in our commit messages. Also, note that our changelog entries are markdown.
