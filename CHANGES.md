@@ -8,6 +8,23 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.26.8 (2026-04-22) {: #3.26.8 }
+
+#### Bugfixes {: #3.26.8-bugfix }
+
+- Fixed a bug where syncing from a remote repository with duplicate filenames and different paths
+  would result in one of these packages being missing from a Pulp distribution.
+  This is known to happen in some JFrog repositories.
+
+  On systems that have synced from such repositories before, it is required to clean up the related
+  packages with orphan cleanup or use the provided "pulpcore-manager rpm-datarepair 4073",
+  which forces internal objects to use non-ambiguous filenames.
+  [#4073](https://github.com/pulp/pulp_rpm/issues/4073)
+- Fixed a bug where two packages with the same NEVRA and identical build times but different checksums could both pass the sync tie-breaker and be added to the repository version. The first-seen package now wins deterministically.
+  [#4341](https://github.com/pulp/pulp_rpm/issues/4341)
+
+---
+
 ## 3.26.7 (2026-02-24) {: #3.26.7 }
 
 #### Bugfixes {: #3.26.7-bugfix }
