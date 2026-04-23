@@ -1,13 +1,13 @@
-from drf_spectacular.utils import extend_schema
 from django.conf import settings
-from rest_framework.viewsets import ViewSet
-
-from pulpcore.plugin.viewsets import TaskGroupOperationResponse
+from drf_spectacular.utils import extend_schema
 from pulpcore.plugin.models import TaskGroup
 from pulpcore.plugin.serializers import TaskGroupOperationResponseSerializer
+from pulpcore.plugin.tasking import dispatch
+from pulpcore.plugin.viewsets import TaskGroupOperationResponse
+from rest_framework.viewsets import ViewSet
+
 from pulp_rpm.app.serializers import PrunePackagesSerializer
 from pulp_rpm.app.tasks import prune_packages
-from pulpcore.plugin.tasking import dispatch
 
 
 class PrunePackagesViewSet(ViewSet):
