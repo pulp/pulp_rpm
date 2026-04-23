@@ -25,8 +25,8 @@ from pulp_rpm.app.constants import (
     ALLOWED_CHECKSUM_ERROR_MSG,
     CHECKSUM_TYPES,
     COMPRESSION_TYPES,
-    PACKAGES_DIRECTORY,
     LAYOUT_TYPES,
+    PACKAGES_DIRECTORY,
 )
 from pulp_rpm.app.kickstart.treeinfo import PulpTreeInfo, TreeinfoData
 from pulp_rpm.app.models import (

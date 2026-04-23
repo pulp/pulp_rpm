@@ -1,5 +1,7 @@
 import pytest
-
+from pulpcore.client.pulp_rpm import (
+    RpmRepositorySyncURL,
+)
 from pulpcore.tests.functional.utils import PulpTaskError
 
 from pulp_rpm.tests.functional.constants import (
@@ -8,10 +10,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_KICKSTART_FIXTURE_SUMMARY,
     RPM_KICKSTART_ONLY_META_FIXTURE_URL,
     RPM_ONLY_METADATA_REPO_URL,
-)
-
-from pulpcore.client.pulp_rpm import (
-    RpmRepositorySyncURL,
 )
 
 

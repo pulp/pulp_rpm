@@ -35,7 +35,7 @@ class DistributionTreeConflict(FileNotFoundError):
         Set the exception identifier and msg.
         """
         super().__init__("RPM0002")
-        self.msg = _("More than one distribution tree cannot be added to a " "repository version.")
+        self.msg = _("More than one distribution tree cannot be added to a repository version.")
 
     def __str__(self):
         """

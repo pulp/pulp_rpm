@@ -44,7 +44,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
     )
     arch = serializers.CharField(
         help_text=_(
-            "The target architecture for a package." "For example, 'x86_64', 'i686', or 'noarch'"
+            "The target architecture for a package.For example, 'x86_64', 'i686', or 'noarch'"
         ),
         read_only=True,
     )
@@ -219,8 +219,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
     )
     time_file = serializers.IntegerField(
         help_text=_(
-            "The 'file' time attribute in the primary XML - "
-            "file mtime in seconds since the epoch."
+            "The 'file' time attribute in the primary XML - file mtime in seconds since the epoch."
         ),
         read_only=True,
     )

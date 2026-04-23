@@ -1,7 +1,7 @@
 """Verify whether package manager, yum/dnf, can consume content from Pulp."""
 
-import subprocess
 import itertools
+import subprocess
 
 import pytest
 import requests

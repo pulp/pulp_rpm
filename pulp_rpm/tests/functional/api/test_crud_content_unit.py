@@ -3,14 +3,15 @@
 from textwrap import dedent
 
 import pytest
+from pulpcore.client.pulp_rpm import RpmModulemd, RpmModulemdDefaults, SetLabel, UnsetLabel
 from pulpcore.client.pulp_rpm.exceptions import ForbiddenException
-from pulpcore.client.pulp_rpm import RpmModulemdDefaults, RpmModulemd, SetLabel, UnsetLabel
+from pulpcore.tests.functional.utils import PulpTaskError
 
 from pulp_rpm.tests.functional.constants import (
     RPM_ADVISORY_CONTENT_NAME,
     RPM_KICKSTART_FIXTURE_URL,
-    RPM_MODULAR_FIXTURE_URL,
     RPM_MODULAR_DEFAULTS_CONTENT_NAME,
+    RPM_MODULAR_FIXTURE_URL,
     RPM_MODULAR_MODULES_CONTENT_NAME,
     RPM_MODULES_OBSOLETE_CONTENT_NAME,
     RPM_PACKAGE_CONTENT_NAME,
@@ -19,7 +20,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_REPO_METADATA_FIXTURE_URL,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_content_attrs
-from pulpcore.tests.functional.utils import PulpTaskError
 
 
 def test_crud_content_unit(
