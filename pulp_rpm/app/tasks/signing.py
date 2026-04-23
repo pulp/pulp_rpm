@@ -9,8 +9,8 @@ from pulpcore.plugin.models import (
     ContentArtifact,
     CreatedResource,
     PulpTemporaryFile,
-    UploadChunk,
     Upload,
+    UploadChunk,
 )
 from pulpcore.plugin.tasking import add_and_remove, general_create
 from pulpcore.plugin.util import get_url

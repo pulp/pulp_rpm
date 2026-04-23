@@ -1,6 +1,8 @@
-from pulp_rpm.app.modulemd import parse_modular, disable_pyyaml_magic_casting
-import yaml
 import os
+
+import yaml
+
+from pulp_rpm.app.modulemd import disable_pyyaml_magic_casting, parse_modular
 
 sample_file_data = """
 ---

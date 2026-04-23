@@ -1,12 +1,12 @@
-import os
 import asyncio
-
-from aiohttp_xmlrpc.client import ServerProxy, _Method
+import os
 from logging import getLogger
-from lxml import etree
 from urllib.parse import quote, unquote, urlparse
 
+from aiohttp_xmlrpc.client import ServerProxy, _Method
+from lxml import etree
 from pulpcore.plugin.download import FileDownloader, HttpDownloader
+
 from pulp_rpm.app.exceptions import UlnCredentialsError
 from pulp_rpm.app.shared_utils import urlpath_sanitize
 

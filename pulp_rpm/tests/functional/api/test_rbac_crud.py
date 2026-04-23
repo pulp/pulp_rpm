@@ -1,13 +1,13 @@
-import pytest
 import uuid
 
+import pytest
 from pulpcore.client.pulp_rpm import RpmRepositorySyncURL
 from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 from pulp_rpm.tests.functional.constants import (
+    RPM_FIXTURE_SUMMARY,
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
-    RPM_FIXTURE_SUMMARY,
 )
 
 

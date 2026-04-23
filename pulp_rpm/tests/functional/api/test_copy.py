@@ -1,6 +1,10 @@
 """Tests that sync rpm plugin repositories."""
 
+import subprocess
+
 import pytest
+from pulpcore.client.pulp_rpm import Copy
+from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 from pulp_rpm.tests.functional.constants import (
     PULP_TYPE_PACKAGE,
@@ -10,10 +14,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_MODULAR_STATIC_FIXTURE_SUMMARY,
     RPM_MODULES_STATIC_CONTEXT_FIXTURE_URL,
 )
-
-from pulpcore.client.pulp_rpm import Copy
-from pulpcore.client.pulp_rpm.exceptions import ApiException
-import subprocess
 
 
 def noop(uri):

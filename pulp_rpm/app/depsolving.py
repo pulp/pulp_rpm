@@ -1,10 +1,10 @@
 import collections
 import logging
+
 import solv
+from django.conf import settings
 
 from pulp_rpm.app import models
-
-from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
@@ -828,8 +828,9 @@ class Solver:
         dependency_warnings = self._build_warnings(raw_problems)
         if dependency_warnings:
             logger.warning(
-                "Encountered problems solving dependencies, "
-                "copy may be incomplete: {}".format(", ".join(dependency_warnings))
+                "Encountered problems solving dependencies, copy may be incomplete: {}".format(
+                    ", ".join(dependency_warnings)
+                )
             )
 
         transaction = solver.transaction()
@@ -848,8 +849,9 @@ class Solver:
 # https://github.com/openSUSE/libsolv/blob/master/doc/libsolv-bindings.txt
 def write_solver_debug_data(solver, problems, mapping, full=False):
     """Dump the state of the solver including actions decided upon and problems encountered."""
-    from pulpcore.plugin.models import Task
     from pathlib import Path
+
+    from pulpcore.plugin.models import Task
 
     debugdata_dir = Path("/var/tmp/pulp") / str(Task.current().pulp_id)
     debugdata_dir.mkdir(parents=True, exist_ok=True)
