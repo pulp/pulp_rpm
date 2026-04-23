@@ -6,13 +6,12 @@ will fail if this is not the case.
 """
 
 import uuid
-import pytest
-
 from collections import namedtuple
 
-from pulp_rpm.tests.functional.constants import RPM_KICKSTART_FIXTURE_URL, RPM_UNSIGNED_FIXTURE_URL
-
+import pytest
 from pulpcore.client.pulp_rpm import RpmRepositorySyncURL
+
+from pulp_rpm.tests.functional.constants import RPM_KICKSTART_FIXTURE_URL, RPM_UNSIGNED_FIXTURE_URL
 
 NUM_REPOS = 2
 

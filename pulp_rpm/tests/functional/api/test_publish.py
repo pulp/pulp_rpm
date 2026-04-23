@@ -1,28 +1,29 @@
 """Tests that publish rpm plugin repositories."""
 
-import os
-import pytest
-import re
-
 import collections
-from lxml import etree
-from django.conf import settings
+import os
+import re
 from xml.etree import ElementTree
-import requests
 
-import xmltodict
 import dictdiffer
+import pytest
+import requests
+import xmltodict
+from django.conf import settings
+from lxml import etree
+from pulpcore.client.pulp_rpm import RpmRepositorySyncURL, RpmRpmPublication
+from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 from pulp_rpm.tests.functional.constants import (
     RPM_ALT_LAYOUT_FIXTURE_URL,
     RPM_COMPLEX_FIXTURE_URL,
     RPM_KICKSTART_FIXTURE_URL,
     RPM_KICKSTART_REPOSITORY_ROOT_CONTENT,
-    RPM_REPO_METADATA_FIXTURE_URL,
     RPM_LONG_UPDATEINFO_FIXTURE_URL,
     RPM_MODULAR_FIXTURE_URL,
     RPM_NAMESPACES,
     RPM_REFERENCES_UPDATEINFO_URL,
+    RPM_REPO_METADATA_FIXTURE_URL,
     RPM_RICH_WEAK_FIXTURE_URL,
     RPM_SHA512_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
@@ -32,9 +33,6 @@ from pulp_rpm.tests.functional.utils import (
     download_and_decompress_file,
     get_metadata_content_helper,
 )
-
-from pulpcore.client.pulp_rpm import RpmRepositorySyncURL, RpmRpmPublication
-from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 
 class TestPublishWithUnsignedRepoSyncedImmediate:

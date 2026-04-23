@@ -1,11 +1,10 @@
 from gettext import gettext as _
 
+from pulpcore.plugin.serializers import ValidateFieldsMixin
+from pulpcore.plugin.util import get_domain
 from rest_framework import fields, serializers
 
 from pulp_rpm.app.models import RpmRepository
-
-from pulpcore.plugin.serializers import ValidateFieldsMixin
-from pulpcore.plugin.util import get_domain
 
 
 class PrunePackagesSerializer(serializers.Serializer, ValidateFieldsMixin):

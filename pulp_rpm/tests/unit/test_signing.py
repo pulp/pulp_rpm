@@ -1,6 +1,5 @@
-from types import SimpleNamespace
-
 import subprocess
+from types import SimpleNamespace
 
 from pulp_rpm.app.tasks.signing import _verify_package_fingerprint
 

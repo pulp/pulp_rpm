@@ -1,9 +1,7 @@
 from logging import getLogger
 
 import createrepo_c as cr
-
 from django.db import models
-
 from pulpcore.plugin.models import (
     BaseModel,
     Content,
@@ -11,19 +9,18 @@ from pulpcore.plugin.models import (
 from pulpcore.plugin.util import get_domain_pk
 
 from pulp_rpm.app.constants import (
+    ADVISORY_SUM_TYPE_TO_NAME,
     CR_UPDATE_COLLECTION_ATTRS,
+    CR_UPDATE_COLLECTION_ATTRS_MODULE,
     CR_UPDATE_COLLECTION_PACKAGE_ATTRS,
     CR_UPDATE_RECORD_ATTRS,
-    CR_UPDATE_COLLECTION_ATTRS_MODULE,
     CR_UPDATE_REFERENCE_ATTRS,
     PULP_UPDATE_COLLECTION_ATTRS,
     PULP_UPDATE_COLLECTION_ATTRS_MODULE,
     PULP_UPDATE_COLLECTION_PACKAGE_ATTRS,
     PULP_UPDATE_RECORD_ATTRS,
     PULP_UPDATE_REFERENCE_ATTRS,
-    ADVISORY_SUM_TYPE_TO_NAME,
 )
-
 from pulp_rpm.app.shared_utils import parse_time
 
 log = getLogger(__name__)

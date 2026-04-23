@@ -1,25 +1,24 @@
 """Utilities for tests for the rpm plugin."""
 
+import dataclasses
 import gzip
 import hashlib
 import os
 import subprocess
 import tempfile
-import xml.etree.ElementTree as ET
 import uuid
-import dataclasses
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
-from typing import NamedTuple
-from typing import Optional
+from typing import NamedTuple, Optional
 
 import createrepo_c as cr
 import pyzstd
 import requests
 
 from pulp_rpm.tests.functional.constants import (
-    PRIVATE_GPG_KEY_URL,
     PACKAGES_DIRECTORY,
+    PRIVATE_GPG_KEY_URL,
     RPM_NAMESPACES,
 )
 

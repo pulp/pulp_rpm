@@ -1,4 +1,5 @@
 from rest_framework import serializers
+
 from pulp_rpm.app.constants import ADVISORY_SUM_TYPE_TO_NAME
 from pulp_rpm.app.models import UpdateReference
 
