@@ -1,15 +1,14 @@
 from drf_spectacular.utils import extend_schema
-from rest_framework import viewsets
-
 from pulpcore.plugin.models import PulpTemporaryFile
-from pulpcore.plugin.tasking import dispatch
 from pulpcore.plugin.serializers import (
     AsyncOperationResponseSerializer,
 )
+from pulpcore.plugin.tasking import dispatch
 from pulpcore.plugin.viewsets import (
     OperationPostponedResponse,
     ReadOnlyContentViewSet,
 )
+from rest_framework import viewsets
 
 from pulp_rpm.app import tasks
 from pulp_rpm.app.models import (

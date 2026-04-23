@@ -2,15 +2,14 @@ import shutil
 import subprocess
 import tempfile
 import typing as t
+from collections import defaultdict
 from hashlib import sha256
 from pathlib import Path
-from collections import defaultdict
 
 import createrepo_c as cr
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
 from importlib_resources import files
-
 from pulpcore.plugin.exceptions import InvalidSignatureError
 
 from pulp_rpm.app.constants import CR_HEADER_FLAGS
@@ -52,7 +51,7 @@ def annotate_with_age(qs):
 
     # Create a queryset with age annotation
     # We'll use a CASE statement to map PKs to ages
-    from django.db.models import Case, When, IntegerField
+    from django.db.models import Case, IntegerField, When
 
     when_clauses = [When(pk=pk, then=age) for pk, age in age_mapping.items()]
 
