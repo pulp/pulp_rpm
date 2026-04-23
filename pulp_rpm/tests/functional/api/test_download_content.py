@@ -6,12 +6,12 @@ from urllib.parse import urljoin
 
 import pytest
 import requests
+from pulpcore.client.pulp_rpm import RpmRpmPublication
 
 from pulp_rpm.tests.functional.constants import RPM_UNSIGNED_FIXTURE_URL
 from pulp_rpm.tests.functional.utils import (
     get_package_repo_path,
 )
-from pulpcore.client.pulp_rpm import RpmRpmPublication
 
 
 @pytest.mark.parallel

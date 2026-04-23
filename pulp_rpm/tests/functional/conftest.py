@@ -33,9 +33,9 @@ from pulp_rpm.tests.functional.constants import (
     RPM_SIGNED_URL,
 )
 from pulp_rpm.tests.functional.utils import (
-    init_signed_repo_configuration,
     PackageListFetcher,
     RepositoryBuilder,
+    init_signed_repo_configuration,
 )
 
 

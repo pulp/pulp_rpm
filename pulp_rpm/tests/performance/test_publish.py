@@ -1,18 +1,18 @@
 """Tests that publish rpm plugin repositories."""
 
 from datetime import datetime
+from html.parser import HTMLParser
 from tempfile import NamedTemporaryFile
 from urllib.parse import urljoin
 
 import pytest
 import requests
-from html.parser import HTMLParser
 from productmd.treeinfo import TreeInfo
 
 from pulp_rpm.tests.functional.constants import (
-    RPM_PACKAGE_CONTENT_NAME,
     CENTOS8_STREAM_APPSTREAM_URL,
     CENTOS8_STREAM_BASEOS_URL,
+    RPM_PACKAGE_CONTENT_NAME,
 )
 
 

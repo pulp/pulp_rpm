@@ -1,21 +1,22 @@
 """Tests that sync rpm plugin repositories."""
 
-import pytest
 import os
 from datetime import datetime
 
+import pytest
+
 from pulp_rpm.tests.functional.constants import (
-    PULP_TYPE_REPOMETADATA,
-    RHEL8_APPSTREAM_CDN_URL,
-    RHEL8_BASEOS_CDN_URL,
-    RPM_KICKSTART_CONTENT_NAME,
-    RPM_KICKSTART_COUNT,
     CENTOS8_STREAM_APPSTREAM_URL,
     CENTOS8_STREAM_BASEOS_URL,
     CENTOS10_STREAM_APPSTREAM_URL,
     CENTOS10_STREAM_BASEOS_URL,
     EPEL8_MIRRORLIST_URL,
+    PULP_TYPE_REPOMETADATA,
     RAWHIDE_KICKSTART_URL,
+    RHEL8_APPSTREAM_CDN_URL,
+    RHEL8_BASEOS_CDN_URL,
+    RPM_KICKSTART_CONTENT_NAME,
+    RPM_KICKSTART_COUNT,
 )
 
 
