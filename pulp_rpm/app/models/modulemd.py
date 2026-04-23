@@ -1,7 +1,6 @@
 from logging import getLogger
 
 from django.db import models
-
 from pulpcore.plugin.models import Content
 from pulpcore.plugin.util import get_domain_pk
 

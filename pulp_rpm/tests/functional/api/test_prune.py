@@ -1,5 +1,4 @@
 import pytest
-
 from pulpcore.client.pulp_rpm import PrunePackages
 from pulpcore.client.pulp_rpm.exceptions import ApiException
 

@@ -1,11 +1,12 @@
 import uuid
+from urllib.parse import urljoin
 
 import pytest
-from urllib.parse import urljoin
 import requests
-
 from pulpcore.client.pulp_rpm import (
     ApiClient as RpmApiClient,
+)
+from pulpcore.client.pulp_rpm import (
     ContentRepoMetadataFilesApi,
     DistributionsRpmApi,
     PublicationsRpmApi,
@@ -16,7 +17,7 @@ from pulpcore.client.pulp_rpm import (
     RpmRepositorySyncURL,
 )
 
-from pulp_rpm.tests.functional.constants import RPM_UNSIGNED_FIXTURE_URL, RPM_CONTENT_NAMES
+from pulp_rpm.tests.functional.constants import RPM_CONTENT_NAMES, RPM_UNSIGNED_FIXTURE_URL
 
 
 @pytest.fixture(scope="session")
