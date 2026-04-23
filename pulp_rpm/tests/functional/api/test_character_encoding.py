@@ -4,8 +4,8 @@ import uuid
 
 import pytest
 import requests
-
 from pulpcore.tests.functional.utils import PulpTaskError
+
 from pulp_rpm.tests.functional.constants import (
     RPM_WITH_NON_ASCII_NAME,
     RPM_WITH_NON_ASCII_URL,

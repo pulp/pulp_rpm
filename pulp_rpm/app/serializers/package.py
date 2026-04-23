@@ -1,25 +1,22 @@
-import createrepo_c as cr
 import logging
 import traceback
 from gettext import gettext as _
-from tempfile import TemporaryDirectory
+from tempfile import NamedTemporaryFile, TemporaryDirectory
 
+import createrepo_c as cr
 from django.conf import settings
 from django.db import DatabaseError
 from drf_spectacular.utils import extend_schema_serializer
-from rest_framework import serializers
-from rest_framework.exceptions import NotAcceptable
-
-from pulpcore.plugin.models import Artifact
+from pulpcore.plugin.files import PulpTemporaryUploadedFile
+from pulpcore.plugin.models import Artifact, UploadChunk
 from pulpcore.plugin.serializers import (
     ArtifactSerializer,
     ContentChecksumSerializer,
     SingleArtifactContentUploadSerializer,
 )
-from pulpcore.plugin.models import UploadChunk
-from pulpcore.plugin.files import PulpTemporaryUploadedFile
-from tempfile import NamedTemporaryFile
 from pulpcore.plugin.util import get_domain_pk
+from rest_framework import serializers
+from rest_framework.exceptions import NotAcceptable
 
 from pulp_rpm.app.models import Package
 from pulp_rpm.app.shared_utils import format_nvra, read_crpackage_from_artifact
@@ -61,7 +58,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
     )
     arch = serializers.CharField(
         help_text=_(
-            "The target architecture for a package." "For example, 'x86_64', 'i686', or 'noarch'"
+            "The target architecture for a package.For example, 'x86_64', 'i686', or 'noarch'"
         ),
         read_only=True,
     )
@@ -242,8 +239,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
     )
     time_file = serializers.IntegerField(
         help_text=_(
-            "The 'file' time attribute in the primary XML - "
-            "file mtime in seconds since the epoch."
+            "The 'file' time attribute in the primary XML - file mtime in seconds since the epoch."
         ),
         read_only=True,
     )

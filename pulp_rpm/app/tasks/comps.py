@@ -1,17 +1,14 @@
-import createrepo_c as cr
-import libcomps
 import logging
 import os
 import tempfile
 
+import createrepo_c as cr
+import libcomps
 from django.db import transaction
-
-from pulpcore.plugin.models import PulpTemporaryFile, CreatedResource
-from pulpcore.plugin.models import Content
+from pulpcore.plugin.models import Content, CreatedResource, PulpTemporaryFile
 from pulpcore.plugin.util import get_domain
 
-from pulp_rpm.app.comps import strdict_to_dict, dict_digest
-
+from pulp_rpm.app.comps import dict_digest, strdict_to_dict
 from pulp_rpm.app.models import (
     PackageCategory,
     PackageEnvironment,

@@ -1,11 +1,11 @@
 from gettext import gettext as _
-from rest_framework import serializers
 
 from pulpcore.plugin.serializers import (
     ContentChecksumSerializer,
     SingleArtifactContentUploadSerializer,
 )
 from pulpcore.plugin.util import get_domain_pk
+from rest_framework import serializers
 
 from pulp_rpm.app.models import RepoMetadataFile
 
