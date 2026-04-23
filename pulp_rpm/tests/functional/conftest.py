@@ -5,35 +5,34 @@ from tempfile import NamedTemporaryFile
 
 import pytest
 import requests
-
 from pulpcore.client.pulp_rpm import (
     AcsRpmApi,
     ContentAdvisoriesApi,
     ContentDistributionTreesApi,
+    ContentModulemdDefaultsApi,
+    ContentModulemdObsoletesApi,
+    ContentModulemdsApi,
     ContentPackagecategoriesApi,
     ContentPackagegroupsApi,
     ContentPackagelangpacksApi,
     ContentPackagesApi,
-    ContentModulemdsApi,
-    ContentModulemdDefaultsApi,
-    ContentModulemdObsoletesApi,
     RemotesUlnApi,
-    RpmCopyApi,
     RpmCompsApi,
+    RpmCopyApi,
     RpmRepositorySyncURL,
 )
 
 from pulp_rpm.tests.functional.constants import (
     BASE_TEST_JSON,
     RPM_KICKSTART_FIXTURE_URL,
-    RPM_SIGNED_URL,
     RPM_MODULAR_FIXTURE_URL,
     RPM_SIGNED_FIXTURE_URL,
+    RPM_SIGNED_URL,
 )
 from pulp_rpm.tests.functional.utils import (
-    init_signed_repo_configuration,
     PackageListFetcher,
     RepositoryBuilder,
+    init_signed_repo_configuration,
 )
 
 

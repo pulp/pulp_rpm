@@ -1,5 +1,5 @@
-from gettext import gettext as _
 import sys
+from gettext import gettext as _
 
 from django.conf import settings
 from django.core.management import BaseCommand, CommandError

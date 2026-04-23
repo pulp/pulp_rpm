@@ -2,8 +2,9 @@
 Unit tests for Package.objects.with_age() functionality.
 """
 
-from django.test import TestCase
 from unittest import skip
+
+from django.test import TestCase
 
 from pulp_rpm.app.models import Package
 

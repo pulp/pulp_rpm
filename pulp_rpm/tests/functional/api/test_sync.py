@@ -1,29 +1,24 @@
 """Tests that sync rpm plugin repositories."""
 
-import pytest
 from random import choice
 
 import dictdiffer
+import pytest
 import requests
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
-from pulpcore.tests.functional.utils import PulpTaskError
 from pulp_smash.pulp3.utils import (
     gen_repo,
-    get_added_content_summary,
     get_added_content,
+    get_added_content_summary,
     get_content,
     get_content_summary,
     get_removed_content,
     wget_download_on_host,
 )
-
-from pulp_rpm.tests.functional.utils import (
-    MetaPackage,
-    PackageListFetcher,
-    RepositoryBuilder,
-    normalized_location,
-)
+from pulpcore.client.pulp_rpm import RpmRepositorySyncURL
+from pulpcore.client.pulp_rpm.exceptions import ApiException
+from pulpcore.tests.functional.utils import PulpTaskError
 
 from pulp_rpm.tests.functional.constants import (
     AMAZON_MIRROR,
@@ -43,11 +38,11 @@ from pulp_rpm.tests.functional.constants import (
     RPM_ADVISORY_TEST_ID_NEW,
     RPM_ADVISORY_TEST_REMOVE_COUNT,
     RPM_ADVISORY_UPDATED_VERSION_URL,
+    RPM_COMPLEX_FIXTURE_URL,
+    RPM_COMPLEX_PACKAGE_DATA,
     RPM_CUSTOM_REPO_METADATA_CHANGED_FIXTURE_URL,
     RPM_CUSTOM_REPO_METADATA_FIXTURE_URL,
     RPM_EPEL_MIRROR_URL,
-    RPM_COMPLEX_FIXTURE_URL,
-    RPM_COMPLEX_PACKAGE_DATA,
     RPM_FIXTURE_SUMMARY,
     RPM_INVALID_FIXTURE_URL,
     RPM_KICKSTART_DATA,
@@ -56,32 +51,35 @@ from pulp_rpm.tests.functional.constants import (
     RPM_MD5_REPO_FIXTURE_URL,
     RPM_MIRROR_LIST_BAD_FIXTURE_URL,
     RPM_MIRROR_LIST_GOOD_FIXTURE_URL,
-    RPM_MODULES_STATIC_CONTEXT_FIXTURE_URL,
     RPM_MODULAR_FIXTURE_SUMMARY,
     RPM_MODULAR_FIXTURE_URL,
     RPM_MODULAR_STATIC_FIXTURE_SUMMARY,
+    RPM_MODULEMD_DEFAULTS_DATA,
+    RPM_MODULEMD_OBSOLETES_DATA,
+    RPM_MODULEMDS_DATA,
+    RPM_MODULES_STATIC_CONTEXT_FIXTURE_URL,
     RPM_PACKAGE_CONTENT_NAME,
     RPM_PACKAGE_COUNT,
     RPM_REFERENCES_UPDATEINFO_URL,
     RPM_RICH_WEAK_FIXTURE_URL,
-    RPM_SHA_FIXTURE_URL,
     RPM_SHA512_FIXTURE_URL,
+    RPM_SHA_FIXTURE_URL,
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
     RPM_UPDATED_UPDATEINFO_FIXTURE_URL,
+    RPM_ZSTD_METADATA_FIXTURE_URL,
     SRPM_UNSIGNED_FIXTURE_ADVISORY_COUNT,
     SRPM_UNSIGNED_FIXTURE_PACKAGE_COUNT,
     SRPM_UNSIGNED_FIXTURE_URL,
-    RPM_MODULEMD_DEFAULTS_DATA,
-    RPM_MODULEMD_OBSOLETES_DATA,
-    RPM_MODULEMDS_DATA,
-    RPM_ZSTD_METADATA_FIXTURE_URL,
 )
-from pulp_rpm.tests.functional.utils import gen_rpm_remote
+from pulp_rpm.tests.functional.utils import (
+    MetaPackage,
+    PackageListFetcher,
+    RepositoryBuilder,
+    gen_rpm_remote,
+    normalized_location,
+)
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-
-from pulpcore.client.pulp_rpm import RpmRepositorySyncURL
-from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 
 @pytest.mark.parallel

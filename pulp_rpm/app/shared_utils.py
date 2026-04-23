@@ -1,8 +1,8 @@
-import createrepo_c as cr
-import tempfile
 import shutil
+import tempfile
 from hashlib import sha256
 
+import createrepo_c as cr
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
 

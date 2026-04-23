@@ -1,30 +1,27 @@
 import copy
-from gettext import gettext as _
 import json
+from gettext import gettext as _
 
 import createrepo_c
 from django.db import IntegrityError, transaction
-from rest_framework import serializers
-from pulp_rpm.app.fields import CustomJSONField
-
 from pulpcore.plugin.serializers import (
     ModelSerializer,
     NoArtifactContentUploadSerializer,
 )
+from rest_framework import serializers
 
 from pulp_rpm.app.advisory import hash_update_record
-from pulp_rpm.app.fields import (
-    UpdateCollectionPackagesField,
-    UpdateReferenceField,
-)
-
 from pulp_rpm.app.constants import (
     CR_UPDATE_REFERENCE_ATTRS,
     PULP_UPDATE_COLLECTION_ATTRS,
     PULP_UPDATE_RECORD_ATTRS,
     PULP_UPDATE_REFERENCE_ATTRS,
 )
-
+from pulp_rpm.app.fields import (
+    CustomJSONField,
+    UpdateCollectionPackagesField,
+    UpdateReferenceField,
+)
 from pulp_rpm.app.models import (
     UpdateCollection,
     UpdateCollectionPackage,

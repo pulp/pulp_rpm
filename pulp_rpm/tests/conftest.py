@@ -1,9 +1,10 @@
 import uuid
 
 import pytest
-
 from pulpcore.client.pulp_rpm import (
     ApiClient as RpmApiClient,
+)
+from pulpcore.client.pulp_rpm import (
     ContentRepoMetadataFilesApi,
     DistributionsRpmApi,
     PublicationsRpmApi,

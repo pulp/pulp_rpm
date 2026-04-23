@@ -1,22 +1,22 @@
-import createrepo_c as cr
+import collections
 import hashlib
 import logging
 import os
 import tempfile
-import yaml
-import collections
-
-from jsonschema import Draft7Validator
 from gettext import gettext as _  # noqa:F401
 
-from pulp_rpm.app.models import Modulemd, Package
+import createrepo_c as cr
+import yaml
+from jsonschema import Draft7Validator
+
 from pulp_rpm.app.constants import (
+    PULP_MODULE_ATTR,
     PULP_MODULEDEFAULTS_ATTR,
     PULP_MODULEOBSOLETES_ATTR,
-    PULP_MODULE_ATTR,
-    YAML_MODULEMD_OBSOLETES_REQUIRED_ATTR,
     YAML_MODULEMD_DEFAULTS_REQUIRED_ATTR,
+    YAML_MODULEMD_OBSOLETES_REQUIRED_ATTR,
 )
+from pulp_rpm.app.models import Modulemd, Package
 from pulp_rpm.app.schema import MODULEMD_SCHEMA
 
 log = logging.getLogger(__name__)

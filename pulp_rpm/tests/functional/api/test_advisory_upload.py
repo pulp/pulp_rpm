@@ -1,16 +1,17 @@
 """Tests that perform actions over advisory content unit upload."""
 
-import pytest
 import os
 
+import pytest
 from pulpcore.tests.functional.utils import PulpTaskError
+
 from pulp_rpm.tests.functional.constants import (
     BEAR_JSON,
     CAMEL_BEAR_DOG_JSON,
     CAMEL_BIRD_JSON,
     CAMEL_JSON,
-    CESA_2020_5002,
     CESA_2020_4910,
+    CESA_2020_5002,
     RPM_PACKAGE_FILENAME,
     RPM_UNSIGNED_FIXTURE_URL,
 )
