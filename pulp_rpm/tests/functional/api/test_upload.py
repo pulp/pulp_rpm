@@ -5,26 +5,26 @@ from tempfile import NamedTemporaryFile
 
 import pytest
 import requests
-
-from pulpcore.client.pulpcore.exceptions import BadRequestException
 from pulpcore.client.pulp_rpm import ApiException
+from pulpcore.client.pulpcore.exceptions import BadRequestException
 from pulpcore.tests.functional.utils import PulpTaskError
+
 from pulp_rpm.tests.functional.constants import (
-    BIG_COMPS_XML,
     BIG_CATEGORY,
-    BIG_GROUPS,
+    BIG_COMPS_XML,
     BIG_ENVIRONMENTS,
+    BIG_GROUPS,
     BIG_LANGPACK,
-    RPM_PACKAGEENVIRONMENT_CONTENT_NAME,
+    RPM_PACKAGE_FILENAME,
+    RPM_PACKAGE_FILENAME2,
     RPM_PACKAGECATEGORY_CONTENT_NAME,
+    RPM_PACKAGEENVIRONMENT_CONTENT_NAME,
     RPM_PACKAGEGROUP_CONTENT_NAME,
     RPM_PACKAGELANGPACKS_CONTENT_NAME,
     RPM_UNSIGNED_FIXTURE_URL,
-    RPM_PACKAGE_FILENAME,
-    RPM_PACKAGE_FILENAME2,
     RPM_WITH_NON_ASCII_URL,
-    SMALL_COMPS_XML,
     SMALL_CATEGORY,
+    SMALL_COMPS_XML,
     SMALL_ENVIRONMENTS,
     SMALL_GROUPS,
     SMALL_LANGPACK,

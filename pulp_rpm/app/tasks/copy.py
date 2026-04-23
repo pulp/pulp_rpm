@@ -1,18 +1,17 @@
 from django.db import transaction
 from django.db.models import Q
-
 from pulpcore.plugin.models import Content, RepositoryVersion
 from pulpcore.plugin.util import get_domain_pk
 
 from pulp_rpm.app.depsolving import Solver
 from pulp_rpm.app.models import (
-    UpdateRecord,
+    Modulemd,
     Package,
     PackageCategory,
     PackageEnvironment,
     PackageGroup,
     RpmRepository,
-    Modulemd,
+    UpdateRecord,
 )
 from pulp_rpm.app.shared_utils import annotate_with_age
 
