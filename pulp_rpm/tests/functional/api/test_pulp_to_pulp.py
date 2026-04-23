@@ -1,9 +1,9 @@
 """Tests that verify download of content served by Pulp."""
 
 import pytest
+from pulpcore.client.pulp_rpm import RpmRpmPublication
 
 from pulp_rpm.tests.functional.constants import DOWNLOAD_POLICIES
-from pulpcore.client.pulp_rpm import RpmRpmPublication
 
 
 @pytest.mark.parallel

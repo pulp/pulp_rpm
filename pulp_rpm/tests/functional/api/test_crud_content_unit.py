@@ -5,7 +5,8 @@ from urllib.parse import urljoin
 
 import pytest
 import requests
-from pulpcore.client.pulp_rpm import RpmModulemdDefaults, RpmModulemd
+from pulpcore.client.pulp_rpm import RpmModulemd, RpmModulemdDefaults
+from pulpcore.tests.functional.utils import PulpTaskError
 
 from pulp_rpm.tests.functional.constants import (
     RPM_KICKSTART_FIXTURE_URL,
@@ -15,7 +16,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_REPO_METADATA_FIXTURE_URL,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_content_attrs
-from pulpcore.tests.functional.utils import PulpTaskError
 
 
 def test_crud_content_unit(

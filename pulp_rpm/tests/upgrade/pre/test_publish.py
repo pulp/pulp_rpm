@@ -2,30 +2,28 @@
 
 from random import choice
 
-
 from pulp_smash import config
 from pulp_smash.pulp3.bindings import PulpTestCase, monitor_task
 from pulp_smash.pulp3.utils import (
+    gen_distribution,
     gen_repo,
     get_content,
-    gen_distribution,
     get_versions,
     modify_repo,
 )
+from pulpcore.client.pulp_rpm import (
+    DistributionsRpmApi,
+    PublicationsRpmApi,
+    RemotesRpmApi,
+    RepositoriesRpmApi,
+    RpmRepositorySyncURL,
+    RpmRpmPublication,
+)
+from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 from pulp_rpm.tests.functional.constants import RPM_PACKAGE_CONTENT_NAME
 from pulp_rpm.tests.functional.utils import gen_rpm_client, gen_rpm_remote
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-
-from pulpcore.client.pulp_rpm import (
-    DistributionsRpmApi,
-    PublicationsRpmApi,
-    RepositoriesRpmApi,
-    RpmRepositorySyncURL,
-    RemotesRpmApi,
-    RpmRpmPublication,
-)
-from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 
 class PublishAnyRepoVersionTestCase(PulpTestCase):

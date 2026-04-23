@@ -1,11 +1,9 @@
-from pulpcore.plugin.replica import Replicator
-
 from pulp_glue.rpm.context import (
     PulpRpmDistributionContext,
     PulpRpmPublicationContext,
     PulpRpmRepositoryContext,
 )
-
+from pulpcore.plugin.replica import Replicator
 
 from pulp_rpm.app.models import RpmDistribution, RpmRemote, RpmRepository
 from pulp_rpm.app.tasks import synchronize as rpm_synchronize

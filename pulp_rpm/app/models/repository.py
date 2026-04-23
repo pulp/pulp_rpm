@@ -17,12 +17,12 @@ from pulpcore.plugin.models import (
     ContentArtifact,
     Distribution,
     Publication,
+    PublishedMetadata,
     Remote,
     RemoteArtifact,
     Repository,
     RepositoryContent,
     RepositoryVersion,
-    PublishedMetadata,
 )
 from pulpcore.plugin.repo_version_utils import (
     remove_duplicates,
@@ -47,7 +47,7 @@ from pulp_rpm.app.models import (
     RpmPackageSigningService,
     UpdateRecord,
 )
-from pulp_rpm.app.shared_utils import urlpath_sanitize, annotate_with_age
+from pulp_rpm.app.shared_utils import annotate_with_age, urlpath_sanitize
 
 log = getLogger(__name__)
 
@@ -437,9 +437,9 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
         Args:
             new_version (models.RepositoryVersion): Repository version to filter
         """
-        assert (
-            not new_version.complete
-        ), "Cannot apply retention policy to completed repository versions"
+        assert not new_version.complete, (
+            "Cannot apply retention policy to completed repository versions"
+        )
 
         if self.retain_package_versions > 0:
             # It would be more ideal if, instead of annotating with an age and filtering manually,
@@ -486,7 +486,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
         incoming_disttrees = new_version.content.filter(pulp_type=disttree_pulp_type)
         if len(incoming_disttrees) != 1:
             raise DistributionTreeConflict(
-                _("More than one distribution tree cannot be added to a " "repository version.")
+                _("More than one distribution tree cannot be added to a repository version.")
             )
 
 

@@ -1,12 +1,12 @@
 """Tests for Pulp`s download policies."""
 
 import pytest
+from pulpcore.client.pulp_rpm import RpmRpmPublication
 
 from pulp_rpm.tests.functional.constants import (
-    RPM_FIXTURE_SUMMARY,
     DOWNLOAD_POLICIES,
+    RPM_FIXTURE_SUMMARY,
 )
-from pulpcore.client.pulp_rpm import RpmRpmPublication
 
 
 @pytest.mark.parametrize("download_policy", DOWNLOAD_POLICIES)
