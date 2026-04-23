@@ -1,29 +1,29 @@
 """Tests that publish rpm plugin repositories."""
 
-import os
-import pytest
-
 import collections
-from lxml import etree
-from django.conf import settings
+import os
 from xml.etree import ElementTree
-import requests
 
-import xmltodict
 import dictdiffer
-
-from pulp_smash.pulp3.utils import gen_repo, gen_distribution
+import pytest
+import requests
+import xmltodict
+from django.conf import settings
+from lxml import etree
+from pulp_smash.pulp3.utils import gen_distribution, gen_repo
+from pulpcore.client.pulp_rpm import RpmRepositorySyncURL, RpmRpmPublication
+from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 from pulp_rpm.tests.functional.constants import (
     RPM_ALT_LAYOUT_FIXTURE_URL,
     RPM_COMPLEX_FIXTURE_URL,
     RPM_KICKSTART_FIXTURE_URL,
     RPM_KICKSTART_REPOSITORY_ROOT_CONTENT,
-    RPM_REPO_METADATA_FIXTURE_URL,
     RPM_LONG_UPDATEINFO_FIXTURE_URL,
     RPM_MODULAR_FIXTURE_URL,
     RPM_NAMESPACES,
     RPM_REFERENCES_UPDATEINFO_URL,
+    RPM_REPO_METADATA_FIXTURE_URL,
     RPM_RICH_WEAK_FIXTURE_URL,
     RPM_SHA512_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
@@ -34,9 +34,6 @@ from pulp_rpm.tests.functional.utils import (
     gen_rpm_remote,
 )
 from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-
-from pulpcore.client.pulp_rpm import RpmRepositorySyncURL, RpmRpmPublication
-from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 
 class TestPublishWithUnsignedRepoSyncedImmediate:

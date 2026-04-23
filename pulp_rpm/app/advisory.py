@@ -1,19 +1,16 @@
-from gettext import gettext as _
+import hashlib
 from collections import defaultdict
+from datetime import datetime
+from gettext import gettext as _
 from itertools import chain
 
-import hashlib
-
 import createrepo_c as cr
-from datetime import datetime
-
 from django.conf import settings
 from django.db import (
     IntegrityError,
     transaction,
 )
 from django.utils.dateparse import parse_datetime
-
 from pulpcore.plugin.models import Content
 
 from pulp_rpm.app.exceptions import AdvisoryConflict

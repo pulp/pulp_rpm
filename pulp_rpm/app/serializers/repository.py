@@ -1,5 +1,6 @@
 import logging
 from gettext import gettext as _
+from urllib.parse import urlparse
 
 from django.conf import settings
 from jsonschema import Draft7Validator
@@ -16,7 +17,6 @@ from pulpcore.plugin.serializers import (
 )
 from pulpcore.plugin.util import get_domain
 from rest_framework import serializers
-from pulp_rpm.app.fields import CustomJSONField
 
 from pulp_rpm.app.constants import (
     ALLOWED_CHECKSUM_ERROR_MSG,
@@ -27,9 +27,9 @@ from pulp_rpm.app.constants import (
     SKIP_TYPES,
     SYNC_POLICY_CHOICES,
 )
+from pulp_rpm.app.fields import CustomJSONField
 from pulp_rpm.app.models import RpmDistribution, RpmPublication, RpmRemote, RpmRepository, UlnRemote
 from pulp_rpm.app.schema import COPY_CONFIG_SCHEMA
-from urllib.parse import urlparse
 
 # avoid calling into dynaconf many times
 ALLOWED_CONTENT_CHECKSUMS = settings.ALLOWED_CONTENT_CHECKSUMS

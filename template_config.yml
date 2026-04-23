@@ -6,7 +6,6 @@
 # After editing this file please always reapply the plugin template before committing any changes.
 
 ---
-black: true
 check_commit_message: true
 check_gettext: true
 check_manifest: true
@@ -23,10 +22,9 @@ deploy_to_pypi: true
 disabled_redis_runners: []
 docker_fixtures: true
 extra_files: []
-flake8: true
-flake8_ignore: []
 github_org: "pulp"
 latest_release_branch: null
+lint_ignore: []
 lint_requirements: true
 os_required_packages: []
 parallel_test_workers: 8
@@ -88,7 +86,6 @@ pulp_settings_s3:
       BACKEND: "django.contrib.staticfiles.storage.StaticFilesStorage"
   api_root: "/rerouted/djnd/"
   domain_enabled: true
-pydocstyle: true
 release_email: "pulp-infra@redhat.com"
 release_user: "pulpbot"
 stalebot: true

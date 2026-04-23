@@ -2,11 +2,11 @@ from itertools import chain
 
 from import_export import fields
 from import_export.widgets import ForeignKeyWidget, ManyToManyWidget
-from pulpcore.plugin.util import get_domain
-
 from pulpcore.plugin.importexport import BaseContentResource, QueryModelResource
 from pulpcore.plugin.modelresources import RepositoryResource
 from pulpcore.plugin.models import Content
+from pulpcore.plugin.util import get_domain
+
 from pulp_rpm.app.models import (
     Addon,
     Checksum,
@@ -16,8 +16,8 @@ from pulp_rpm.app.models import (
     ModulemdDefaults,
     Package,
     PackageCategory,
-    PackageGroup,
     PackageEnvironment,
+    PackageGroup,
     PackageLangpacks,
     RepoMetadataFile,
     RpmRepository,

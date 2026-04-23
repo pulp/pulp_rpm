@@ -1,5 +1,4 @@
 from django_filters import CharFilter
-
 from pulpcore.plugin.viewsets import (
     ContentFilter,
     SingleArtifactContentUploadViewSet,

@@ -3,8 +3,8 @@ from gettext import gettext as _
 
 from pulpcore.plugin.serializers import DetailRelatedField, NoArtifactContentSerializer
 from rest_framework import serializers
-from pulp_rpm.app.fields import CustomJSONField
 
+from pulp_rpm.app.fields import CustomJSONField
 from pulp_rpm.app.models import Modulemd, ModulemdDefaults, ModulemdObsolete, Package
 
 

@@ -1,20 +1,18 @@
 import logging
 import traceback
-
 from gettext import gettext as _
-
-from rest_framework import serializers
-from rest_framework.exceptions import NotAcceptable
 
 from pulpcore.plugin.serializers import (
     ContentChecksumSerializer,
     SingleArtifactContentUploadSerializer,
 )
 from pulpcore.plugin.util import get_domain_pk
-from pulp_rpm.app.fields import CustomJSONField
+from rest_framework import serializers
+from rest_framework.exceptions import NotAcceptable
 
+from pulp_rpm.app.fields import CustomJSONField
 from pulp_rpm.app.models import Package
-from pulp_rpm.app.shared_utils import read_crpackage_from_artifact, format_nvra
+from pulp_rpm.app.shared_utils import format_nvra, read_crpackage_from_artifact
 
 log = logging.getLogger(__name__)
 
@@ -47,7 +45,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
     )
     arch = serializers.CharField(
         help_text=_(
-            "The target architecture for a package." "For example, 'x86_64', 'i686', or 'noarch'"
+            "The target architecture for a package.For example, 'x86_64', 'i686', or 'noarch'"
         ),
         read_only=True,
     )
@@ -222,8 +220,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
     )
     time_file = serializers.IntegerField(
         help_text=_(
-            "The 'file' time attribute in the primary XML - "
-            "file mtime in seconds since the epoch."
+            "The 'file' time attribute in the primary XML - file mtime in seconds since the epoch."
         ),
         read_only=True,
     )

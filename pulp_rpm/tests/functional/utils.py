@@ -1,40 +1,38 @@
 """Utilities for tests for the rpm plugin."""
 
+import dataclasses
 import gzip
 import hashlib
 import os
 import subprocess
-from io import StringIO
-from functools import partial
-from unittest import SkipTest
 import tempfile
-import xml.etree.ElementTree as ET
 import uuid
-import dataclasses
+import xml.etree.ElementTree as ET
 from dataclasses import dataclass
+from functools import partial
+from io import StringIO
 from pathlib import Path
-from typing import NamedTuple
-from typing import Optional
+from typing import NamedTuple, Optional
+from unittest import SkipTest
 
 import createrepo_c as cr
 import pyzstd
 import requests
-
 from pulp_smash import api, cli, config, selectors
 from pulp_smash.pulp3.utils import gen_remote, get_content, require_pulp_3, require_pulp_plugins
+from pulpcore.client.pulp_rpm import ApiClient as RpmApiClient
+from pulpcore.client.pulpcore import ApiClient as CoreApiClient
+from pulpcore.client.pulpcore import TasksApi
 
 from pulp_rpm.tests.functional.constants import (
+    PACKAGES_DIRECTORY,
     PRIVATE_GPG_KEY_URL,
     RPM_COPY_PATH,
-    RPM_PACKAGE_CONTENT_NAME,
-    RPM_UNSIGNED_FIXTURE_URL,
-    RPM_PUBLICATION_PATH,
-    PACKAGES_DIRECTORY,
     RPM_NAMESPACES,
+    RPM_PACKAGE_CONTENT_NAME,
+    RPM_PUBLICATION_PATH,
+    RPM_UNSIGNED_FIXTURE_URL,
 )
-
-from pulpcore.client.pulpcore import ApiClient as CoreApiClient, TasksApi
-from pulpcore.client.pulp_rpm import ApiClient as RpmApiClient
 
 cfg = config.get_config()
 configuration = cfg.get_bindings_config()

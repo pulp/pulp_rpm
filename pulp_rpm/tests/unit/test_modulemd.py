@@ -1,5 +1,6 @@
-from pulp_rpm.app.modulemd import parse_modular
 import os
+
+from pulp_rpm.app.modulemd import parse_modular
 
 sample_file_data = """
 ---

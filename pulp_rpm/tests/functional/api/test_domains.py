@@ -1,19 +1,17 @@
 import json
-
-import pytest
 import uuid
 
+import pytest
 from django.conf import settings
-
 from pulpcore.client.pulp_rpm import ApiException, Copy, RpmRepositorySyncURL
 from pulpcore.client.pulpcore.exceptions import ApiException as CoreApiException
 
+from pulp_rpm.tests.functional.constants import (
+    RPM_SIGNED_FIXTURE_URL,
+)
 from pulp_rpm.tests.functional.utils import (
     gen_rpm_remote,
     get_package_repo_path,
-)
-from pulp_rpm.tests.functional.constants import (
-    RPM_SIGNED_FIXTURE_URL,
 )
 
 if not settings.DOMAIN_ENABLED:

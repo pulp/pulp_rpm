@@ -1,5 +1,4 @@
 from django_filters import CharFilter
-
 from pulpcore.plugin.viewsets import (
     ContentFilter,
     SingleArtifactContentUploadViewSet,
@@ -12,8 +11,8 @@ from pulp_rpm.app.models import (
 )
 from pulp_rpm.app.serializers import (
     ModulemdDefaultsSerializer,
-    ModulemdSerializer,
     ModulemdObsoleteSerializer,
+    ModulemdSerializer,
 )
 
 
