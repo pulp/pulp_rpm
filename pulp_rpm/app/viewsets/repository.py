@@ -1,17 +1,13 @@
-from gettext import gettext as _
 import logging
+from gettext import gettext as _
 
 from drf_spectacular.utils import extend_schema
-from rest_framework import viewsets
-from rest_framework.decorators import action
-from rest_framework.serializers import ValidationError as DRFValidationError
-
 from pulpcore.plugin.actions import ModifyRepositoryActionMixin
 from pulpcore.plugin.models import RepositoryVersion
-from pulpcore.plugin.tasking import dispatch
 from pulpcore.plugin.serializers import (
     AsyncOperationResponseSerializer,
 )
+from pulpcore.plugin.tasking import dispatch
 from pulpcore.plugin.util import extract_pk
 from pulpcore.plugin.viewsets import (
     DistributionViewSet,
@@ -23,6 +19,9 @@ from pulpcore.plugin.viewsets import (
     RepositoryViewSet,
     RolesMixin,
 )
+from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.serializers import ValidationError as DRFValidationError
 
 from pulp_rpm.app import tasks
 from pulp_rpm.app.constants import SYNC_POLICIES
@@ -754,9 +753,9 @@ class CopyViewSet(viewsets.ViewSet):
                         number=entry["dest_base_version"]
                     ).pk
                 except RepositoryVersion.DoesNotExist:
-                    message = _(
-                        "Version {version} does not exist for repository " "'{repo}'."
-                    ).format(version=entry["dest_base_version"], repo=dest_repo.name)
+                    message = _("Version {version} does not exist for repository '{repo}'.").format(
+                        version=entry["dest_base_version"], repo=dest_repo.name
+                    )
                     raise DRFValidationError(detail=message)
 
             if entry.get("content") is not None:

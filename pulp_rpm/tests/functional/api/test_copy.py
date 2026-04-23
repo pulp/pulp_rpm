@@ -1,11 +1,12 @@
 """Tests that sync rpm plugin repositories."""
 
 import pytest
-
 from pulp_smash.pulp3.utils import (
     get_added_content_summary,
     get_content_summary,
 )
+from pulpcore.client.pulp_rpm import Copy
+from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 from pulp_rpm.tests.functional.constants import (
     PULP_TYPE_PACKAGE,
@@ -15,9 +16,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_MODULAR_STATIC_FIXTURE_SUMMARY,
     RPM_MODULES_STATIC_CONTEXT_FIXTURE_URL,
 )
-
-from pulpcore.client.pulp_rpm import Copy
-from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 
 @pytest.mark.parallel

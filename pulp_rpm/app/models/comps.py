@@ -1,12 +1,11 @@
 from logging import getLogger
 
 import libcomps
-
 from django.db import models
-
 from pulpcore.plugin.models import Content
 from pulpcore.plugin.util import get_domain_pk
 
+from pulp_rpm.app.comps import dict_to_strdict, list_to_idlist, strdict_to_dict
 from pulp_rpm.app.constants import (
     LIBCOMPS_CATEGORY_ATTRS,
     LIBCOMPS_ENVIRONMENT_ATTRS,
@@ -16,8 +15,6 @@ from pulp_rpm.app.constants import (
     PULP_GROUP_ATTRS,
     PULP_LANGPACKS_ATTRS,
 )
-
-from pulp_rpm.app.comps import dict_to_strdict, list_to_idlist, strdict_to_dict
 
 log = getLogger(__name__)
 

@@ -1,9 +1,8 @@
 import pytest
-
-from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
-
 from pulpcore.client.pulp_rpm import PrunePackages
 from pulpcore.client.pulp_rpm.exceptions import ApiException
+
+from pulp_rpm.tests.functional.utils import set_up_module as setUpModule  # noqa:F401
 
 
 def test_01_prune_params(init_and_sync, rpm_prune_api, monitor_task_group):

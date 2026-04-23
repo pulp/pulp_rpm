@@ -2,10 +2,10 @@ import json
 import subprocess
 
 from pulp_rpm.tests.functional.constants import (
-    RPM_UNSIGNED_FIXTURE_URL,
-    RPM_UNSIGNED_FIXTURE_SIZE,
-    RPM_KICKSTART_FIXTURE_URL,
     RPM_KICKSTART_FIXTURE_SIZE,
+    RPM_KICKSTART_FIXTURE_URL,
+    RPM_UNSIGNED_FIXTURE_SIZE,
+    RPM_UNSIGNED_FIXTURE_URL,
 )
 
 

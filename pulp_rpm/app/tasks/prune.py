@@ -1,17 +1,18 @@
 from datetime import datetime, timedelta, timezone
-from logging import getLogger, DEBUG
+from logging import DEBUG, getLogger
 
 from django.conf import settings
 from django.db.models import F, Subquery
-
-from pulpcore.plugin.models import Content, ProgressReport
 from pulpcore.plugin.constants import TASK_STATES
 from pulpcore.plugin.models import (
+    Content,
     GroupProgressReport,
+    ProgressReport,
     RepositoryContent,
     TaskGroup,
 )
 from pulpcore.plugin.tasking import dispatch
+
 from pulp_rpm.app.models.package import Package
 from pulp_rpm.app.models.repository import RpmRepository
 from pulp_rpm.app.shared_utils import annotate_with_age
@@ -89,7 +90,7 @@ def prune_repo_packages(repo_pk, keep_days, dry_run):
                 .order_by("name", "epoch", "version", "release", "arch")
                 .values("name", "epoch", "version", "release", "arch")
             ):
-                log.debug(f'{p["name"]}-{p["epoch"]}:{p["version"]}-{p["release"]}.{p["arch"]}')
+                log.debug(f"{p['name']}-{p['epoch']}:{p['version']}-{p['release']}.{p['arch']}")
     else:
         with repo.new_version(base_version=None) as new_version:
             new_version.remove_content(Content.objects.filter(pk__in=target_ids_q))

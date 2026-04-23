@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.urls import path
 
-from .viewsets import CopyViewSet, CompsXmlViewSet, PrunePackagesViewSet
+from .viewsets import CompsXmlViewSet, CopyViewSet, PrunePackagesViewSet
 
 if settings.DOMAIN_ENABLED:
     V3_API_ROOT = settings.V3_DOMAIN_API_ROOT_NO_FRONT_SLASH

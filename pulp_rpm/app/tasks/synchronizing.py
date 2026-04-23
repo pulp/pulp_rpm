@@ -7,32 +7,26 @@ import os
 import re
 import tempfile
 import uuid
-
 from collections import defaultdict
 from gettext import gettext as _  # noqa:F401
 
+import createrepo_c as cr
+import libcomps
+from aiohttp.client_exceptions import ClientResponseError
+from aiohttp.web_exceptions import HTTPNotFound
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.files import File
 from django.db import transaction
 from django.db.models import Q
-
-
-from aiohttp.client_exceptions import ClientResponseError
-from aiohttp.web_exceptions import HTTPNotFound
-
-import createrepo_c as cr
-import libcomps
-
-from pulpcore.plugin.util import get_domain
 from pulpcore.plugin.models import (
     Artifact,
     ContentArtifact,
     ProgressReport,
-    Remote,
     PublishedArtifact,
     PublishedMetadata,
+    Remote,
 )
 from pulpcore.plugin.stages import (
     ACSArtifactHandler,
@@ -42,12 +36,15 @@ from pulpcore.plugin.stages import (
     DeclarativeArtifact,
     DeclarativeContent,
     DeclarativeVersion,
-    RemoteArtifactSaver,
-    Stage,
     QueryExistingArtifacts,
     QueryExistingContents,
+    RemoteArtifactSaver,
+    Stage,
 )
+from pulpcore.plugin.util import get_domain
+
 from pulp_rpm.app.advisory import hash_update_record
+from pulp_rpm.app.comps import dict_digest, strdict_to_dict
 from pulp_rpm.app.constants import (
     CHECKSUM_TYPES,
     COMPS_REPODATA,
@@ -59,21 +56,22 @@ from pulp_rpm.app.constants import (
     SYNC_POLICIES,
     UPDATE_REPODATA,
 )
+from pulp_rpm.app.kickstart.treeinfo import PulpTreeInfo, TreeinfoData
+from pulp_rpm.app.metadata_parsing import MetadataParser
 from pulp_rpm.app.models import (
     Addon,
     Checksum,
     DistributionTree,
     Image,
-    Variant,
     Modulemd,
     ModulemdDefaults,
     ModulemdObsolete,
     Package,
-    RepoMetadataFile,
-    PackageGroup,
     PackageCategory,
     PackageEnvironment,
+    PackageGroup,
     PackageLangpacks,
+    RepoMetadataFile,
     RpmPublication,
     RpmRemote,
     RpmRepository,
@@ -82,18 +80,15 @@ from pulp_rpm.app.models import (
     UpdateCollectionPackage,
     UpdateRecord,
     UpdateReference,
+    Variant,
 )
 from pulp_rpm.app.modulemd import parse_modular
-
-from pulp_rpm.app.comps import strdict_to_dict, dict_digest
-from pulp_rpm.app.kickstart.treeinfo import PulpTreeInfo, TreeinfoData
-from pulp_rpm.app.metadata_parsing import MetadataParser
+from pulp_rpm.app.rpm_version import RpmVersion
 from pulp_rpm.app.shared_utils import (
-    is_previous_version,
     get_sha256,
+    is_previous_version,
     urlpath_sanitize,
 )
-from pulp_rpm.app.rpm_version import RpmVersion
 
 log = logging.getLogger(__name__)
 
@@ -908,7 +903,7 @@ class RpmFirstStage(Stage):
                 )
                 d_artifacts.append(da)
 
-            tree_digest = f'{self.treeinfo["hash"]}-{self.repository.pulp_id}'
+            tree_digest = f"{self.treeinfo['hash']}-{self.repository.pulp_id}"
             self.treeinfo["distribution_tree"]["digest"] = tree_digest
             distribution_tree = DistributionTree(**self.treeinfo["distribution_tree"])
             dc = DeclarativeContent(content=distribution_tree, d_artifacts=d_artifacts)
