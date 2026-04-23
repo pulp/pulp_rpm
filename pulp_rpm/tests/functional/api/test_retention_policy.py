@@ -1,18 +1,18 @@
 """Tests for the retention policy feature of repositories."""
 
-import pytest
-
 from collections import defaultdict
+
+import pytest
+from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 from pulp_rpm.tests.functional.constants import (
     PULP_TYPE_PACKAGE,
     RPM_FIXTURE_SUMMARY,
-    RPM_PACKAGE_COUNT,
     RPM_MODULAR_PACKAGE_COUNT,
-    RPM_MODULES_STATIC_CONTEXT_FIXTURE_URL,
     RPM_MODULAR_STATIC_FIXTURE_SUMMARY,
+    RPM_MODULES_STATIC_CONTEXT_FIXTURE_URL,
+    RPM_PACKAGE_COUNT,
 )
-from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 
 def test_sync_with_retention(

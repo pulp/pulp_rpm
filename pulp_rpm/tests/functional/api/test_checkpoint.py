@@ -1,13 +1,15 @@
 """Tests for checkpoint distribution and publications."""
 
-from datetime import datetime, timedelta
 import re
+from datetime import datetime, timedelta
+from tempfile import NamedTemporaryFile
 from time import sleep
 from urllib.parse import urlparse
-from aiohttp import ClientResponseError
-from tempfile import NamedTemporaryFile
+
 import pytest
 import requests
+from aiohttp import ClientResponseError
+
 from pulp_rpm.tests.functional.constants import RPM_SIGNED_URL
 
 

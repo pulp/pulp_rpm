@@ -3,8 +3,8 @@
 import pytest
 
 from pulp_rpm.tests.functional.constants import (
-    CENTOS8_STREAM_BASEOS_URL,
     CENTOS8_STREAM_APPSTREAM_URL,
+    CENTOS8_STREAM_BASEOS_URL,
 )
 
 

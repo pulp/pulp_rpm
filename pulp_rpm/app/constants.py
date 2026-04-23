@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+
 import createrepo_c as cr
 
 # metadata compression types supported

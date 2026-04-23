@@ -1,11 +1,11 @@
 import tempfile
 from pathlib import Path
+from typing import Optional
 
 from django.conf import settings
 from django.db import models
 from pulpcore.plugin.exceptions import ExternalServiceError
 from pulpcore.plugin.models import BaseModel, Content, SigningService
-from typing import Optional
 
 from pulp_rpm.app.shared_utils import RpmTool
 

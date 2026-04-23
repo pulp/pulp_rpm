@@ -1,10 +1,9 @@
 import json
 from collections import defaultdict
-from gettext import gettext as _
 from configparser import MissingSectionHeaderError
+from gettext import gettext as _
 
 from django.utils.timezone import now
-
 from productmd.common import SortedConfigParser
 from productmd.treeinfo import TreeInfo
 
