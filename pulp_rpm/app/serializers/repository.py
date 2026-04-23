@@ -545,6 +545,13 @@ class CopySerializer(ValidateFieldsMixin, serializers.Serializer):
     dependency_solving = serializers.BooleanField(
         help_text=_("Also copy dependencies of the content being copied."), default=True
     )
+    dependency_upgrade = serializers.BooleanField(
+        help_text=_(
+            "Resolve dependencies to their latest compatible versions instead of "
+            "preferring versions already in the destination."
+        ),
+        default=False,
+    )
 
     def validate(self, data):
         """

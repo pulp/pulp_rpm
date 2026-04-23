@@ -125,13 +125,15 @@ def find_children_of_content(content, src_repo_version):
 
 
 @transaction.atomic
-def copy_content(config, dependency_solving):
+def copy_content(config, dependency_solving, dependency_upgrade=False):
     """
     Copy content from one repo to another.
 
     Args:
         config: Details of how the copy should be performed.
         dependency_solving: Use dependency solving to find additional content units to copy.
+        dependency_upgrade: Resolve dependencies to latest compatible versions instead of
+            preferring versions already in the destination.
 
     Config format details:
         source_repo_version_pk: repository version primary key to copy units from
@@ -226,7 +228,9 @@ def copy_content(config, dependency_solving):
 
         solver.finalize()
 
-        content_to_copy = solver.resolve_dependencies(content_to_copy)
+        content_to_copy = solver.resolve_dependencies(
+            content_to_copy, focus_installed=not dependency_upgrade
+        )
 
         for from_repo, units in content_to_copy.items():
             src_repo_version = libsolv_repo_names[from_repo]
