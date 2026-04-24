@@ -60,7 +60,8 @@ def test_acs_simple(
         sync_response = rpm_repository_api.sync(repo.pulp_href, repository_sync_data)
         monitor_task(sync_response.task)
 
-    assert "404, message='Not Found'" in ctx.value.task.error["description"]
+    assert "404" in ctx.value.task.error["description"]
+    assert "Not Found" in ctx.value.task.error["description"]
 
     # ACS refresh
     acs_refresh = rpm_acs_api.refresh(acs.pulp_href)

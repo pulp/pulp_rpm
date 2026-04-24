@@ -11,6 +11,7 @@ from pulpcore.plugin.serializers import (
 from rest_framework import serializers
 
 from pulp_rpm.app.advisory import hash_update_record
+from pulp_rpm.app.exceptions import InvalidAdvisoryFileError
 from pulp_rpm.app.constants import (
     CR_UPDATE_REFERENCE_ATTRS,
     PULP_UPDATE_COLLECTION_ATTRS,
@@ -197,7 +198,7 @@ class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
         try:
             update_record_data.update(json.loads(data["file"].read()))
         except UnicodeDecodeError:
-            raise serializers.ValidationError("JSON file is expected")
+            raise InvalidAdvisoryFileError()
         update_record_data.update(data)
 
         update_record_data[PULP_UPDATE_RECORD_ATTRS.FROMSTR] = update_record_data.pop(

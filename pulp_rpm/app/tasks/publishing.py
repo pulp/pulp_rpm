@@ -22,6 +22,13 @@ from pulpcore.plugin.models import (
 )
 
 from pulp_rpm.app.comps import dict_to_strdict
+from pulp_rpm.app.exceptions import (
+    ChecksumTooShortError,
+    DisallowedChecksumTypeError,
+    ForbiddenChecksumTypeError,
+    SignatureFileEmptyError,
+    UnsupportedLayoutError,
+)
 from pulp_rpm.app.constants import (
     ALLOWED_CHECKSUM_ERROR_MSG,
     CHECKSUM_TYPES,
@@ -285,10 +292,7 @@ class PublicationData:
             # Regardless of checksum type, let's use the first 6 characters of the checksum
             # to create a nested directory structure.
             if len(checksum) < 6:
-                raise ValueError(
-                    f"Checksum {checksum} is unknown or too short to use for "
-                    f"{self.publication.layout} publishing."
-                )
+                raise ChecksumTooShortError(checksum, self.publication.layout)
             return os.path.join(
                 PACKAGES_DIRECTORY,
                 pkg_filename[0].lower(),
@@ -362,14 +366,8 @@ class PublicationData:
                 checksum = row["content__rpm_package__pkgId"]
                 checksum_type = row["content__rpm_package__checksum_type"]
                 if checksum_type not in ALLOWED_CONTENT_CHECKSUMS:
-                    raise ValueError(
-                        "Package with pkgId {} as content unit {} contains forbidden checksum type "
-                        "'{}', thus can't be published. {}".format(
-                            checksum,
-                            cid,
-                            checksum_type,
-                            ALLOWED_CHECKSUM_ERROR_MSG,
-                        )
+                    raise ForbiddenChecksumTypeError(
+                        checksum, cid, checksum_type, ALLOWED_CHECKSUM_ERROR_MSG
                     )
 
             # Third, compute the path based on layout
@@ -381,7 +379,7 @@ class PublicationData:
             elif layout == LAYOUT_TYPES.NESTED_BY_DIGEST:
                 path = nested_by_digest_path(pkg_filename, checksum)
             else:
-                raise ValueError(f"Layout value {layout} is unsupported by this version")
+                raise UnsupportedLayoutError(layout)
 
             pkg_info = PackageInfo(
                 caid=caid, path=path, checksum_type=checksum_type, checksum=checksum
@@ -687,11 +685,7 @@ def generate_repo_metadata(
     requested_checksum_type = get_checksum_type(checksum_types)
 
     if requested_checksum_type not in ALLOWED_CONTENT_CHECKSUMS:
-        raise ValueError(
-            "Disallowed checksum type '{}' was requested to be used for publication: {}".format(
-                requested_checksum_type, ALLOWED_CHECKSUM_ERROR_MSG
-            )
-        )
+        raise DisallowedChecksumTypeError(requested_checksum_type, ALLOWED_CHECKSUM_ERROR_MSG)
 
     if sub_folder:
         cwd = os.path.join(cwd, sub_folder)
@@ -841,7 +835,7 @@ def generate_repo_metadata(
         signature_file_path = sign_results["signature"]
         if os.stat(signature_file_path).st_size == 0:
             log.error(f"{signature_file_path} is 0 bytes! sign_results: {sign_results}")
-            raise Exception("Signature file is 0 bytes")
+            raise SignatureFileEmptyError()
 
         # publish a signed file
         with open(sign_results["file"], "rb") as signed_file_fd:
