@@ -558,7 +558,7 @@ class CopySerializer(ValidateFieldsMixin, serializers.Serializer):
         def raise_validation(field, domain, id=""):
             id = f"\n{id}" if id else ""
             raise serializers.ValidationError(
-                _("The field {} contains object(s) not in {} domain.{}".format(field, domain, id))
+                _("The field {} contains object(s) not in {} domain.{}").format(field, domain, id)
             )
 
         def parse_reference(ref) -> tuple[str, str, bool]:
@@ -583,7 +583,7 @@ class CopySerializer(ValidateFieldsMixin, serializers.Serializer):
             uuid = url[-3] if is_repover_href else url[-1]
             if len(uuid) < 32:
                 raise serializers.ValidationError(
-                    _("The href path should end with a uuid pk: {}".format(ref))
+                    _("The href path should end with a uuid pk: {}").format(ref)
                 )
             return (uuid, ref_class, False)
 
@@ -604,10 +604,8 @@ class CopySerializer(ValidateFieldsMixin, serializers.Serializer):
                     )["pulp_domain"]
                 else:
                     raise serializers.ValidationError(
-                        _(
-                            "Expected RpmRepository or RepositoryVersion ref_class. "
-                            "Got {} from {}.".format(ref_class, href_or_prn)
-                        )
+                        _("Expected RpmRepository or RepositoryVersion ref_class. Got %s from %s.")
+                        % (ref_class, href_or_prn)
                     )
             except RepositoryVersion.DoesNotExit as e:
                 raise serializers.ValidationError from e
@@ -651,7 +649,7 @@ class CopySerializer(ValidateFieldsMixin, serializers.Serializer):
                 err.append(error.message)
             if err:
                 raise serializers.ValidationError(
-                    _("Provided copy criteria is invalid:'{}'".format(err))
+                    _("Provided copy criteria is invalid:'{}'").format(err)
                 )
 
             if settings.DOMAIN_ENABLED:
