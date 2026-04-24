@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 import requests
+
 from pulpcore.exceptions.validation import InvalidSignatureError
 
 from pulp_rpm.app.shared_utils import RpmTool

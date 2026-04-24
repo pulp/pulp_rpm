@@ -11,6 +11,7 @@ import xmltodict
 from django.conf import settings
 from lxml import etree
 from pulp_smash.pulp3.utils import gen_distribution, gen_repo
+
 from pulpcore.client.pulp_rpm import RpmRepositorySyncURL, RpmRpmPublication
 from pulpcore.client.pulp_rpm.exceptions import ApiException
 

@@ -5,6 +5,7 @@ from urllib.parse import urljoin
 
 import pytest
 import requests
+
 from pulpcore.client.pulp_rpm import RpmModulemd, RpmModulemdDefaults
 from pulpcore.tests.functional.utils import PulpTaskError
 

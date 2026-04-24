@@ -11,6 +11,7 @@ from pulp_smash.pulp3.utils import (
     get_versions,
     modify_repo,
 )
+
 from pulpcore.client.pulp_rpm import (
     DistributionsRpmApi,
     PublicationsRpmApi,

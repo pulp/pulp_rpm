@@ -2,6 +2,7 @@ from logging import getLogger
 
 import createrepo_c as cr
 from django.db import models
+
 from pulpcore.plugin.models import (
     BaseModel,
     Content,

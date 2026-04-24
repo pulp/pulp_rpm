@@ -4,6 +4,7 @@ from gettext import gettext as _
 from django.core.management import BaseCommand, CommandError
 from django.db.models import F, Value
 from django.db.models.functions import Concat
+
 from pulpcore.plugin.models import ContentArtifact
 
 from pulp_rpm.app.models import Package  # noqa
