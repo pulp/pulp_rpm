@@ -1,8 +1,9 @@
 from gettext import gettext as _
 
+from rest_framework import serializers
+
 from pulpcore.plugin.models import Repository
 from pulpcore.plugin.serializers import DetailRelatedField, NoArtifactContentSerializer
-from rest_framework import serializers
 
 from pulp_rpm.app.models import (
     PackageCategory,
