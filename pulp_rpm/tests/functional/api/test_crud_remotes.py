@@ -4,8 +4,9 @@ from random import choice
 from uuid import uuid4
 
 import pytest
-from pulpcore.client.pulp_rpm.exceptions import ApiException
 from pydantic import ValidationError
+
+from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 from pulp_rpm.tests.functional.constants import DOWNLOAD_POLICIES, RPM_UNSIGNED_FIXTURE_URL
 

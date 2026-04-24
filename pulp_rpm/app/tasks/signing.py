@@ -7,6 +7,7 @@ from tempfile import NamedTemporaryFile
 
 import createrepo_c as cr
 from django.conf import settings
+
 from pulpcore.plugin.models import (
     Artifact,
     ContentArtifact,

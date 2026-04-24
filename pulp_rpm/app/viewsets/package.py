@@ -1,6 +1,10 @@
 from django.db import transaction
 from django_filters import CharFilter
 from drf_spectacular.utils import extend_schema
+from rest_framework import status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
 from pulpcore.plugin.models import PulpTemporaryFile
 from pulpcore.plugin.serializers import AsyncOperationResponseSerializer
 from pulpcore.plugin.tasking import dispatch
@@ -9,9 +13,6 @@ from pulpcore.plugin.viewsets import (
     OperationPostponedResponse,
     SingleArtifactContentUploadViewSet,
 )
-from rest_framework import status
-from rest_framework.decorators import action
-from rest_framework.response import Response
 
 from pulp_rpm.app import tasks as rpm_tasks
 from pulp_rpm.app.models import Package

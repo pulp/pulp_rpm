@@ -1,5 +1,6 @@
 from django.db import transaction
 from django.db.models import Q
+
 from pulpcore.plugin.models import Content, RepositoryVersion
 from pulpcore.plugin.util import get_domain_pk
 
