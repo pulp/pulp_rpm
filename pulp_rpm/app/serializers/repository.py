@@ -613,7 +613,7 @@ class CopySerializer(ValidateFieldsMixin, serializers.Serializer):
                 err.append(error.message)
             if err:
                 raise serializers.ValidationError(
-                    _("Provided copy criteria is invalid:'{}'".format(err))
+                    _("Provided copy criteria is invalid:'{}'").format(err)
                 )
 
             if settings.DOMAIN_ENABLED:
