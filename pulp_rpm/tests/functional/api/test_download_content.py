@@ -6,6 +6,7 @@ from urllib.parse import urljoin
 
 import pytest
 import requests
+
 from pulpcore.client.pulp_rpm import RpmRpmPublication
 
 from pulp_rpm.tests.functional.constants import RPM_UNSIGNED_FIXTURE_URL

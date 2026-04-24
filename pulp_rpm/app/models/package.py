@@ -4,6 +4,7 @@ import createrepo_c as cr
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
 from django.db import models
+
 from pulpcore.plugin.models import Content
 from pulpcore.plugin.util import get_domain_pk
 
