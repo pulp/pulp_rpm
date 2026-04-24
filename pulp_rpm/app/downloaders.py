@@ -5,6 +5,7 @@ from urllib.parse import quote, unquote, urlparse
 
 from aiohttp_xmlrpc.client import ServerProxy, _Method
 from lxml import etree
+
 from pulpcore.plugin.download import FileDownloader, HttpDownloader
 
 from pulp_rpm.app.exceptions import UlnCredentialsError
