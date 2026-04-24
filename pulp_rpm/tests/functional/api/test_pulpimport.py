@@ -9,6 +9,7 @@ import uuid
 from collections import namedtuple
 
 import pytest
+
 from pulpcore.app import settings
 from pulpcore.client.pulp_rpm import RpmRepositorySyncURL
 
