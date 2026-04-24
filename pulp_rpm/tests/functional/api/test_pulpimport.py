@@ -10,7 +10,7 @@ from collections import namedtuple
 
 import pytest
 
-from pulpcore.app import settings
+from pulpcore.app import settings  # noqa: TID251
 from pulpcore.client.pulp_rpm import RpmRepositorySyncURL
 
 from pulp_rpm.tests.functional.constants import RPM_KICKSTART_FIXTURE_URL, RPM_UNSIGNED_FIXTURE_URL
