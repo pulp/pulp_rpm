@@ -91,7 +91,7 @@ def check_mandatory_module_fields(module, required_fields):
     for field in required_fields:
         if field not in data.keys():
             raise ValueError(
-                _("Mandatory field {} is missing in {}.".format(field, module["document"]))
+                _("Mandatory field {} is missing in {}.").format(field, module["document"])
             )
 
 
@@ -207,7 +207,7 @@ def parse_modular(file: str):
             for error in sorted(validator.iter_errors(parsed_data["data"]), key=str):
                 err.append(error.message)
             if err:
-                raise ValueError(_("Provided modular data is invalid:'{}'".format(err)))
+                raise ValueError(_("Provided modular data is invalid:'{}'").format(err))
             modulemd_all.append(create_modulemd(parsed_data, module))
         elif parsed_data["document"] == "modulemd-defaults":
             check_mandatory_module_fields(parsed_data, YAML_MODULEMD_DEFAULTS_REQUIRED_ATTR)
