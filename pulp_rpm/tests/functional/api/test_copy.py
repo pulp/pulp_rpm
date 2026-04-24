@@ -5,6 +5,7 @@ from pulp_smash.pulp3.utils import (
     get_added_content_summary,
     get_content_summary,
 )
+
 from pulpcore.client.pulp_rpm import Copy
 from pulpcore.client.pulp_rpm.exceptions import ApiException
 

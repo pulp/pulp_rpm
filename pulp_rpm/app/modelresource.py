@@ -2,6 +2,7 @@ from itertools import chain
 
 from import_export import fields
 from import_export.widgets import ForeignKeyWidget, ManyToManyWidget
+
 from pulpcore.plugin.importexport import BaseContentResource, QueryModelResource
 from pulpcore.plugin.modelresources import RepositoryResource
 from pulpcore.plugin.models import Content

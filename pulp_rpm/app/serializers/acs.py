@@ -1,7 +1,8 @@
 from gettext import gettext as _
 
-from pulpcore.plugin.serializers import AlternateContentSourceSerializer
 from rest_framework import serializers
+
+from pulpcore.plugin.serializers import AlternateContentSourceSerializer
 
 from pulp_rpm.app.models import RpmAlternateContentSource
 

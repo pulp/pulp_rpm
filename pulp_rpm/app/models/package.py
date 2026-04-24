@@ -5,6 +5,7 @@ from django.conf import settings
 from django.db import models
 from django.db.models import F, Window
 from django.db.models.functions import RowNumber
+
 from pulpcore.plugin.models import Content, ContentManager
 from pulpcore.plugin.util import get_domain_pk
 
