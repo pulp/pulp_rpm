@@ -8,6 +8,7 @@ from tempfile import NamedTemporaryFile
 import gnupg
 import pytest
 import requests
+
 from pulpcore.client.pulp_rpm import (
     AcsRpmApi,
     ContentAdvisoriesApi,

@@ -3,6 +3,7 @@
 from textwrap import dedent
 
 import pytest
+
 from pulpcore.client.pulp_rpm import RpmModulemd, RpmModulemdDefaults, SetLabel, UnsetLabel
 from pulpcore.client.pulp_rpm.exceptions import ForbiddenException
 from pulpcore.tests.functional.utils import PulpTaskError
