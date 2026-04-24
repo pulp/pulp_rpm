@@ -4,6 +4,8 @@ from urllib.parse import urlparse
 
 from django.conf import settings
 from jsonschema import Draft7Validator
+from rest_framework import serializers
+
 from pulpcore.plugin.models import AsciiArmoredDetachedSigningService, Publication, Remote
 from pulpcore.plugin.serializers import (
     DetailRelatedField,
@@ -16,7 +18,6 @@ from pulpcore.plugin.serializers import (
     ValidateFieldsMixin,
 )
 from pulpcore.plugin.util import get_domain
-from rest_framework import serializers
 
 from pulp_rpm.app.constants import (
     ALLOWED_CHECKSUM_ERROR_MSG,

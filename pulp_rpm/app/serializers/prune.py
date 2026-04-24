@@ -1,8 +1,9 @@
 from gettext import gettext as _
 
+from rest_framework import fields, serializers
+
 from pulpcore.plugin.serializers import ValidateFieldsMixin
 from pulpcore.plugin.util import get_domain
-from rest_framework import fields, serializers
 
 from pulp_rpm.app.models import RpmRepository
 

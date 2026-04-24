@@ -16,6 +16,7 @@ from pulp_smash.pulp3.utils import (
     get_removed_content,
     wget_download_on_host,
 )
+
 from pulpcore.client.pulp_rpm import RpmRepositorySyncURL
 from pulpcore.client.pulp_rpm.exceptions import ApiException
 from pulpcore.tests.functional.utils import PulpTaskError
