@@ -1,6 +1,7 @@
 """Tests for Pulp`s download policies."""
 
 import pytest
+
 from pulpcore.client.pulp_rpm import RpmRpmPublication
 
 from pulp_rpm.tests.functional.constants import (

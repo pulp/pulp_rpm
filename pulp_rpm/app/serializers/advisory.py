@@ -4,11 +4,12 @@ from gettext import gettext as _
 
 import createrepo_c
 from django.db import IntegrityError, transaction
+from rest_framework import serializers
+
 from pulpcore.plugin.serializers import (
     ModelSerializer,
     NoArtifactContentUploadSerializer,
 )
-from rest_framework import serializers
 
 from pulp_rpm.app.advisory import hash_update_record
 from pulp_rpm.app.constants import (
