@@ -827,7 +827,7 @@ class RpmFirstStage(Stage):
                         repomd_files[name] = result
                         await metadata_pb.aincrement()
                 except ClientResponseError as exc:
-                    raise HTTPNotFound(reason=_("File not found: {}".format(exc.request_info.url)))
+                    raise HTTPNotFound(reason=_("File not found: {}").format(exc.request_info.url))
                 except FileNotFoundError:
                     raise
 
@@ -880,7 +880,7 @@ class RpmFirstStage(Stage):
                                     await metadata_pb.aincrement()
                         except ClientResponseError as exc:
                             raise HTTPNotFound(
-                                reason=_("File not found: {}".format(exc.request_info.url))
+                                reason=_("File not found: {}").format(exc.request_info.url)
                             )
                         except FileNotFoundError:
                             raise
