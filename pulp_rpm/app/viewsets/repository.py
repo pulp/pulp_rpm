@@ -2,6 +2,10 @@ import logging
 from gettext import gettext as _
 
 from drf_spectacular.utils import extend_schema
+from rest_framework import viewsets
+from rest_framework.decorators import action
+from rest_framework.serializers import ValidationError as DRFValidationError
+
 from pulpcore.plugin.actions import ModifyRepositoryActionMixin
 from pulpcore.plugin.models import RepositoryVersion
 from pulpcore.plugin.serializers import (
@@ -19,9 +23,6 @@ from pulpcore.plugin.viewsets import (
     RepositoryViewSet,
     RolesMixin,
 )
-from rest_framework import viewsets
-from rest_framework.decorators import action
-from rest_framework.serializers import ValidationError as DRFValidationError
 
 from pulp_rpm.app import tasks
 from pulp_rpm.app.constants import SYNC_POLICIES

@@ -2,6 +2,7 @@
 """Tests that sync rpm plugin repositories."""
 
 import pytest
+
 from pulpcore.client.pulp_rpm import (
     RpmRepositorySyncURL,
 )
