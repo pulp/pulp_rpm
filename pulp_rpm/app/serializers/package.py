@@ -2,13 +2,14 @@ import logging
 import traceback
 from gettext import gettext as _
 
+from rest_framework import serializers
+from rest_framework.exceptions import NotAcceptable
+
 from pulpcore.plugin.serializers import (
     ContentChecksumSerializer,
     SingleArtifactContentUploadSerializer,
 )
 from pulpcore.plugin.util import get_domain_pk
-from rest_framework import serializers
-from rest_framework.exceptions import NotAcceptable
 
 from pulp_rpm.app.models import Package
 from pulp_rpm.app.shared_utils import format_nvra, read_crpackage_from_artifact
