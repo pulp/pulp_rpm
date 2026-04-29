@@ -417,6 +417,119 @@ class TestCopyWithUnsignedRepoSyncedImmediate:
         content_summary = repository_version.to_dict()["content_summary"]
         assert content_summary["added"][PULP_TYPE_PACKAGE]["count"] == 2
 
+    def test_dependency_upgrade_keeps_installed_dependency_version(
+        self,
+        monitor_task,
+        rpm_copy_api,
+        rpm_package_api,
+        rpm_repository_api,
+        rpm_repository_factory,
+        rpm_unsigned_repo_immediate,
+    ):
+        """Without dependency_upgrade, copy keeps the already-installed dependency version.
+
+        - Create empty dest repo and seed it with kangaroo-0.2 (old version)
+        - Copy elephant (requires kangaroo, any version) with dependency_upgrade=False
+        - Assert kangaroo-0.3 was NOT copied (kangaroo-0.2 already satisfies the requirement)
+        """
+        src = rpm_unsigned_repo_immediate
+        dest = rpm_repository_factory()
+
+        # Seed dest with kangaroo-0.2 (old version)
+        kangaroos = rpm_package_api.list(
+            repository_version=src.latest_version_href, name="kangaroo"
+        ).results
+        kangaroo_02 = next(p for p in kangaroos if p.version == "0.2")
+        monitor_task(
+            rpm_repository_api.modify(
+                dest.pulp_href, {"add_content_units": [kangaroo_02.pulp_href]}
+            ).task
+        )
+        dest = rpm_repository_api.read(dest.pulp_href)
+
+        elephant = rpm_package_api.list(
+            repository_version=src.latest_version_href, name="elephant"
+        ).results[0]
+        data = Copy(
+            config=[
+                {
+                    "source_repo_version": src.latest_version_href,
+                    "dest_repo": dest.pulp_href,
+                    "content": [elephant.pulp_href],
+                }
+            ],
+            dependency_solving=True,
+            dependency_upgrade=False,
+        )
+        monitor_task(rpm_copy_api.copy_content(data).task)
+
+        dest = rpm_repository_api.read(dest.pulp_href)
+        kangaroo_versions = [
+            p.version
+            for p in rpm_package_api.list(
+                repository_version=dest.latest_version_href, name="kangaroo"
+            ).results
+        ]
+        # kangaroo-0.2 already satisfied the requirement; kangaroo-0.3 should not be pulled in
+        assert "0.2" in kangaroo_versions
+        assert "0.3" not in kangaroo_versions
+
+    def test_dependency_upgrade_pulls_latest_dependency_version(
+        self,
+        monitor_task,
+        rpm_copy_api,
+        rpm_package_api,
+        rpm_repository_api,
+        rpm_repository_factory,
+        rpm_unsigned_repo_immediate,
+    ):
+        """With dependency_upgrade, copy resolves dependencies to the latest available version.
+
+        - Create empty dest repo and seed it with kangaroo-0.2 (old version)
+        - Copy elephant (requires kangaroo, any version) with dependency_upgrade=True
+        - Assert kangaroo-0.3 was copied (solver preferred the latest version)
+        """
+        src = rpm_unsigned_repo_immediate
+        dest = rpm_repository_factory()
+
+        # Seed dest with kangaroo-0.2 (old version)
+        kangaroos = rpm_package_api.list(
+            repository_version=src.latest_version_href, name="kangaroo"
+        ).results
+        kangaroo_02 = next(p for p in kangaroos if p.version == "0.2")
+        monitor_task(
+            rpm_repository_api.modify(
+                dest.pulp_href, {"add_content_units": [kangaroo_02.pulp_href]}
+            ).task
+        )
+        dest = rpm_repository_api.read(dest.pulp_href)
+
+        elephant = rpm_package_api.list(
+            repository_version=src.latest_version_href, name="elephant"
+        ).results[0]
+        data = Copy(
+            config=[
+                {
+                    "source_repo_version": src.latest_version_href,
+                    "dest_repo": dest.pulp_href,
+                    "content": [elephant.pulp_href],
+                }
+            ],
+            dependency_solving=True,
+            dependency_upgrade=True,
+        )
+        monitor_task(rpm_copy_api.copy_content(data).task)
+
+        dest = rpm_repository_api.read(dest.pulp_href)
+        kangaroo_versions = [
+            p.version
+            for p in rpm_package_api.list(
+                repository_version=dest.latest_version_href, name="kangaroo"
+            ).results
+        ]
+        # dependency_upgrade should have pulled in kangaroo-0.3 (latest available)
+        assert "0.3" in kangaroo_versions
+
 
 class TestCopyWithKickstartRepoSyncedImmediate:
     def test_kickstart_content(
