@@ -18,6 +18,11 @@ from pulp_rpm.app.constants import (
     PULP_UPDATE_RECORD_ATTRS,
     PULP_UPDATE_REFERENCE_ATTRS,
 )
+from pulp_rpm.app.exceptions import (
+    DuplicateAdvisoryError,
+    InvalidAdvisoryFileError,
+    UnsupportedChecksumTypeError,
+)
 from pulp_rpm.app.fields import (
     UpdateCollectionPackagesField,
     UpdateReferenceField,
@@ -130,7 +135,7 @@ class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
             except IntegrityError:
                 # At this point, the advisory has an empty digest. If we hit this,
                 # it means a previous advisory-create failed to clean up after itself.
-                raise serializers.ValidationError("Advisory already exists in Pulp.")
+                raise DuplicateAdvisoryError()
 
             for collection in pkglist:
                 new_coll = copy.deepcopy(collection)
@@ -144,7 +149,7 @@ class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
                     try:
                         pkg.sum_type = createrepo_c.checksum_type(pkg.sum_type)
                     except TypeError:
-                        raise TypeError(f'"{pkg.sum_type}" is not supported.')
+                        raise UnsupportedChecksumTypeError(sum_type=pkg.sum_type)
                     pkg.update_collection = coll
                     update_collection_packages_to_save.append(pkg)
             for reference in references:
@@ -198,7 +203,7 @@ class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
         try:
             update_record_data.update(json.loads(data["file"].read()))
         except UnicodeDecodeError:
-            raise serializers.ValidationError("JSON file is expected")
+            raise InvalidAdvisoryFileError()
         update_record_data.update(data)
 
         update_record_data[PULP_UPDATE_RECORD_ATTRS.FROMSTR] = update_record_data.pop(

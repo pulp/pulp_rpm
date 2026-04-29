@@ -21,6 +21,7 @@ from pulpcore.plugin.serializers import (
 from pulpcore.plugin.util import get_domain_pk
 
 from pulp_rpm.app.constants import CR_HEADER_FLAGS
+from pulp_rpm.app.exceptions import RpmParseError
 from pulp_rpm.app.models import Package
 from pulp_rpm.app.shared_utils import format_nvra, read_crpackage_from_artifact
 
@@ -279,7 +280,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
             new_pkg = Package.createrepo_to_dict(read_crpackage_from_artifact(data["artifact"]))
         except OSError:
             log.info(traceback.format_exc())
-            raise NotAcceptable(detail="RPM file cannot be parsed for metadata")
+            raise RpmParseError()
 
         filename = (
             format_nvra(
