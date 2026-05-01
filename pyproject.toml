@@ -26,7 +26,7 @@ classifiers = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "createrepo_c~=1.2.3",
+    "createrepo_c @ git+https://github.com/dralley/createrepo_c.git@signatures",
     "django_readonly_field~=1.1.1",
     "jsonschema>=4.6,<5.0",
     "libcomps>=0.1.23.post1,<0.2",
@@ -35,6 +35,7 @@ dependencies = [
     "solv~=0.7.21",
     "aiohttp_xmlrpc~=1.5.0",
     "importlib-resources~=6.4.0",
+    "pysequoia>=0.1.33,<0.2",
 ]
 
 [project.urls]

@@ -1,11 +1,11 @@
 import asyncio
+import base64
 import logging
-import re
-import subprocess
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 import createrepo_c as cr
+import pysequoia as sq
 from django.conf import settings
 
 from pulpcore.plugin.models import (
@@ -19,6 +19,7 @@ from pulpcore.plugin.models import (
 from pulpcore.plugin.tasking import add_and_remove, general_create
 from pulpcore.plugin.util import get_url
 
+from pulp_rpm.app.constants import CR_HEADER_FLAGS
 from pulp_rpm.app.models.content import RpmPackageSigningResult, RpmPackageSigningService
 from pulp_rpm.app.models.package import Package
 from pulp_rpm.app.models.repository import RpmRepository
@@ -40,30 +41,16 @@ def _save_upload(uploadobj, final_package):
     final_package.flush()
 
 
-def _verify_package_fingerprint(path, signing_fingerprint):
+def _verify_package_fingerprint(path, fingerprint):
     """Verify if the package at path is signed with signing_fingerprint or not."""
-    completed_process = subprocess.run(
-        ("rpm", "-Kv", path),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        text=True,
+    pkg = cr.package_from_rpm(
+        path, changelog_limit=settings.KEEP_CHANGELOG_LIMIT, header_reading_flags=CR_HEADER_FLAGS
     )
-    if completed_process.stderr:
-        raise Exception(
-            f"Failed to verify package signature: {completed_process.stdout} "
-            f"{completed_process.stderr}."
-        )
 
-    raw_fingerprint = signing_fingerprint.split(":", 1)[1]
-
-    # check for `key ID` followed by a string of hex digits
-    key_ids = re.findall(r"key ID ([0-9A-Fa-f]+)", completed_process.stdout, re.IGNORECASE)
-    # check for `key fingerprint:` followed by a string of hex digits
-    fingerprints = re.findall(
-        r"key fingerprint:\s*([0-9A-Fa-f]+)", completed_process.stdout, re.IGNORECASE
-    )
-    for candidate in key_ids + fingerprints:
-        if raw_fingerprint.upper().endswith(candidate.upper()):
+    for candidate in pkg.signatures:
+        sig = sq.Sig.from_bytes(base64.b64decode(candidate))
+        signing_key_fpr = sig.issuer_fingerprint
+        if fingerprint.lower() == signing_key_fpr.lower():
             return True
 
     return False
