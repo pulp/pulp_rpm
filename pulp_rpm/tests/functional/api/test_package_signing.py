@@ -407,6 +407,74 @@ def test_already_signed_package(
     assert task_result.created_resources == [repo_two.latest_version_href]
 
 
+def test_signing_with_primary_key_fingerprint(
+    delete_orphans_pre,
+    monitor_task,
+    download_content_unit,
+    signing_gpg_metadata,
+    rpm_package_signing_service,
+    rpm_repository_factory,
+    rpm_repository_api,
+    rpm_package_factory,
+    rpm_package_api,
+    rpm_publication_factory,
+    rpm_distribution_factory,
+    tmp_path,
+):
+    """Test that signing_keys is correct when package_signing_fingerprint is a primary key.
+
+    When the signing key has a dedicated signing subkey, GnuPG signs with the subkey.
+    signing_keys should reflect the actual signature fingerprints from the artifact.
+    """
+    gpg, signing_subkey_fpr, _ = signing_gpg_metadata
+    primary_fpr = gpg.list_keys()[0]["fingerprint"]
+    assert primary_fpr != signing_subkey_fpr, "Test requires a key with a separate signing subkey"
+
+    prefixed_primary = f"v4:{primary_fpr}"
+    prefixed_subkey = f"v4:{signing_subkey_fpr}"
+
+    repository = rpm_repository_factory(
+        package_signing_service=rpm_package_signing_service.pulp_href,
+        package_signing_fingerprint=prefixed_primary,
+    )
+
+    created_package = rpm_package_factory(url=RPM_UNSIGNED_URL)
+    modify_response = rpm_repository_api.modify(
+        repository.pulp_href, {"add_content_units": [created_package.pulp_href]}
+    )
+    monitor_task(modify_response.task)
+
+    repository = rpm_repository_api.read(repository.pulp_href)
+    signed_package = rpm_package_api.list(
+        repository_version=repository.latest_version_href
+    ).results[0]
+
+    assert signed_package.pulp_href != created_package.pulp_href
+    # GnuPG signs with the subkey even when the primary fingerprint is specified
+    assert signed_package.signing_keys == [prefixed_subkey]
+
+    # Verify the served package has a valid signature
+    verifier = rpm_rs.Verifier()
+    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA4K.public_url).content)
+
+    publication = rpm_publication_factory(repository=repository.pulp_href)
+    distribution = rpm_distribution_factory(publication=publication.pulp_href)
+    downloaded_package = tmp_path / "signed.rpm"
+    downloaded_package.write_bytes(
+        download_content_unit(
+            distribution.base_path, get_package_repo_path(signed_package.location_href)
+        )
+    )
+    pkg = rpm_rs.Package.open(str(downloaded_package))
+    pkg.verify_signature(verifier)
+    sig_fingerprints = [
+        f"v4:{s.fingerprint.upper()}"
+        for s in rpm_rs.PackageMetadata.open(str(downloaded_package)).signatures()
+        if s.fingerprint
+    ]
+    assert signed_package.signing_keys == sig_fingerprints
+
+
 def test_signed_repo_rejects_on_demand_content(
     init_and_sync,
     rpm_package_signing_service,
