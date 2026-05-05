@@ -16,6 +16,7 @@ from pulp_rpm.tests.functional.constants import (
     BIG_ENVIRONMENTS,
     BIG_GROUPS,
     BIG_LANGPACK,
+    LEGACY_SIGNING_KEY,
     RPM_PACKAGE_FILENAME,
     RPM_PACKAGE_FILENAME2,
     RPM_PACKAGECATEGORY_CONTENT_NAME,
@@ -25,7 +26,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_SIGNED_FIXTURE_URL,
     RPM_UNSIGNED_FIXTURE_URL,
     RPM_WITH_NON_ASCII_URL,
-    SIGNING_KEY_FINGERPRINT,
     SMALL_CATEGORY,
     SMALL_COMPS_XML,
     SMALL_ENVIRONMENTS,
@@ -240,7 +240,11 @@ def test_synchronous_package_upload(
 
         assert package.location_href == RPM_PACKAGE_FILENAME
         assert package.pulp_labels == labels
-        assert package.signing_keys == [SIGNING_KEY_FINGERPRINT] if expect_signed else []
+        assert (
+            package.signing_keys == [LEGACY_SIGNING_KEY.signing_fingerprint]
+            if expect_signed
+            else []
+        )
 
         # Duplicate unit
         with NamedTemporaryFile() as file_to_upload:
@@ -292,7 +296,11 @@ def test_synchronous_package_upload_from_artifact(
         upload_attrs = {"artifact": artifact.pulp_href}
         package_from_artifact = rpm_package_api.upload(**upload_attrs)
     assert package_from_artifact.artifact == artifact.pulp_href
-    assert package_from_artifact.signing_keys == [SIGNING_KEY_FINGERPRINT] if expect_signed else []
+    assert (
+        package_from_artifact.signing_keys == [LEGACY_SIGNING_KEY.signing_fingerprint]
+        if expect_signed
+        else []
+    )
 
 
 def test_synchronous_package_upload_from_chunks(

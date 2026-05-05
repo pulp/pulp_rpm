@@ -7,7 +7,7 @@ import requests
 from pulpcore.plugin.exceptions import InvalidSignatureError
 
 from pulp_rpm.app.shared_utils import RpmTool
-from pulp_rpm.tests.functional.constants import PUBLIC_GPG_KEY_URL, RPM_SIGNED_URL, RPM_UNSIGNED_URL
+from pulp_rpm.tests.functional.constants import LEGACY_SIGNING_KEY, RPM_SIGNED_URL, RPM_UNSIGNED_URL
 
 
 def connection_guard(*args, **kwargs):
@@ -39,7 +39,7 @@ def test_can_get_empty_rpm(tmp_path, monkeypatch):
 def test_verify_signature_is_valid(tmp_path):
     """Can verify that a package is unsigned"""
     pkg_file = get_fixture(tmp_path, RPM_SIGNED_URL)
-    pubkey = get_fixture(tmp_path, PUBLIC_GPG_KEY_URL)
+    pubkey = get_fixture(tmp_path, LEGACY_SIGNING_KEY.public_url)
 
     rpm_tool = RpmTool(tmp_path)
     rpm_tool.import_pubkey_file(pubkey)
@@ -69,7 +69,7 @@ def test_verify_signature_is_invalid(tmp_path):
 def test_alternative_root_works(tmp_path):
     """Can use alternative "rpm --root" option for isolated operations."""
     pkg_file = get_fixture(tmp_path, RPM_SIGNED_URL)
-    pubkey = get_fixture(tmp_path, PUBLIC_GPG_KEY_URL)
+    pubkey = get_fixture(tmp_path, LEGACY_SIGNING_KEY.public_url)
 
     # 1. First instance imports pubkey using a custom root
     root_1 = tmp_path / "root_1"

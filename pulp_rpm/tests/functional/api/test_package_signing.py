@@ -1,7 +1,6 @@
 import hashlib
 import shutil
 import uuid
-from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -13,9 +12,9 @@ from pulpcore.exceptions.validation import InvalidSignatureError
 
 from pulp_rpm.app.shared_utils import RpmTool
 from pulp_rpm.tests.functional.constants import (
-    KEY_V4_RSA2K_PRIVATE,
-    KEY_V4_RSA4K_PRIVATE,
-    KEY_V6_MLDSA65_ED25519_PRIVATE,
+    KEY_V4_RSA2K,
+    KEY_V4_RSA4K,
+    KEY_V6_MLDSA65_ED25519,
     RPM_PACKAGE_FILENAME,
     RPM_PACKAGE_FILENAME2,
     RPM_SIGNED_URL,
@@ -51,43 +50,30 @@ def test_register_rpm_package_signing_service(rpm_package_signing_service):
     assert "/api/v3/signing-services/" in service.pulp_href
 
 
-@dataclass
-class GPGMetadata:
-    pubkey: str
-    fingerprint: str
-    keyid: str
-
-
 @pytest.fixture
 def multi_signed_rpm(tmp_path):
     """Create an RPM signed with two different GPG keys using rpm_rs."""
     rpm_path = tmp_path / "multi-signed.rpm"
     rpm_path.write_bytes(requests.get(RPM_UNSIGNED_URL).content)
 
-    _sign_package(rpm_path, KEY_V4_RSA2K_PRIVATE)
-    _sign_package(rpm_path, KEY_V4_RSA4K_PRIVATE)
+    _sign_package(rpm_path, KEY_V4_RSA2K.private_url)
+    _sign_package(rpm_path, KEY_V4_RSA4K.private_url)
 
     return rpm_path
 
 
 @pytest.fixture
 def signing_gpg_extra(signing_gpg_metadata):
-    """GPG instance with two new keypairs registered (v4 rsa2k and v4 rsa4k)."""
+    """Import the v4 rsa2k and rsa4k keys into the GPG keyring used by the signing service."""
     gpg, _, _ = signing_gpg_metadata
 
-    fingerprints = []
-    for url in (KEY_V4_RSA2K_PRIVATE, KEY_V4_RSA4K_PRIVATE):
+    for url in (KEY_V4_RSA2K.private_url, KEY_V4_RSA4K.private_url):
         response = requests.get(url)
         response.raise_for_status()
         import_result = gpg.import_keys(response.content)
-        fp = import_result.fingerprints[0]
-        gpg.trust_keys(fp, "TRUST_ULTIMATE")
-        fingerprints.append(fp)
+        gpg.trust_keys(import_result.fingerprints[0], "TRUST_ULTIMATE")
 
-    return (
-        GPGMetadata(gpg.export_keys(fingerprints[0]), fingerprints[0], fingerprints[0][-8:]),
-        GPGMetadata(gpg.export_keys(fingerprints[1]), fingerprints[1], fingerprints[1][-8:]),
-    )
+    return KEY_V4_RSA2K, KEY_V4_RSA4K
 
 
 @pytest.mark.parallel
@@ -109,14 +95,13 @@ def test_sign_package_on_upload(
     """
     Sign an Rpm Package with the Package Upload endpoint.
     """
-    # Setup RPM tool and package to upload
-    gpg_a, gpg_b = signing_gpg_extra
-    fingerprint_set = set([gpg_a.fingerprint, gpg_b.fingerprint])
+    key_a, key_b = signing_gpg_extra
+    fingerprint_set = set([key_a.signing_fingerprint, key_b.signing_fingerprint])
     assert len(fingerprint_set) == 2
 
     rpm_tool = RpmTool(tmp_path)
-    rpm_tool.import_pubkey_string(gpg_a.pubkey)
-    rpm_tool.import_pubkey_string(gpg_b.pubkey)
+    rpm_tool.import_pubkey_file(get_fixture(tmp_path / "key_a.asc", KEY_V4_RSA2K.public_url))
+    rpm_tool.import_pubkey_file(get_fixture(tmp_path / "key_b.asc", KEY_V4_RSA4K.public_url))
 
     file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
     file_to_upload.write_bytes(requests.get(RPM_UNSIGNED_URL).content)
@@ -236,18 +221,15 @@ def test_sign_chunked_package_on_upload(
     pulpcore_chunked_file_factory,
 ):
     """
-    Sign an Rpm Package with the Package Upload endpoint.
-
-    This ensures different
+    Sign an Rpm Package with the Package Upload endpoint using chunked uploads.
     """
-    # Setup RPM tool and package to upload
-    gpg_a, gpg_b = signing_gpg_extra
-    fingerprint_set = set([gpg_a.fingerprint, gpg_b.fingerprint])
+    key_a, key_b = signing_gpg_extra
+    fingerprint_set = set([key_a.signing_fingerprint, key_b.signing_fingerprint])
     assert len(fingerprint_set) == 2
 
     rpm_tool = RpmTool(tmp_path)
-    rpm_tool.import_pubkey_string(gpg_a.pubkey)
-    rpm_tool.import_pubkey_string(gpg_b.pubkey)
+    rpm_tool.import_pubkey_file(get_fixture(tmp_path / "key_a.asc", KEY_V4_RSA2K.public_url))
+    rpm_tool.import_pubkey_file(get_fixture(tmp_path / "key_b.asc", KEY_V4_RSA4K.public_url))
 
     file_to_upload = tmp_path / RPM_PACKAGE_FILENAME2
     file_to_upload.write_bytes(requests.get(RPM_UNSIGNED_URL2).content)
@@ -304,11 +286,11 @@ def test_signed_repo_modify(
 ):
     """Ensure packages added via modify are signed before distribution."""
 
-    gpg, fingerprint, _ = signing_gpg_metadata
+    _, fingerprint, _ = signing_gpg_metadata
     prefixed_fingerprint = f"v4:{fingerprint}"
 
     rpm_tool = RpmTool(tmp_path)
-    rpm_tool.import_pubkey_string(gpg.export_keys(fingerprint))
+    rpm_tool.import_pubkey_file(get_fixture(tmp_path / "key.asc", KEY_V4_RSA4K.public_url))
 
     # Confirm the fixture RPM is initially unsigned.
     unsigned_package = tmp_path / RPM_PACKAGE_FILENAME
@@ -457,18 +439,19 @@ def test_signed_repo_rejects_on_demand_content(
 def test_upload_signed_package(
     tmp_path,
     monitor_task,
-    signing_gpg_metadata,
     rpm_package_api,
     rpm_repository_factory,
 ):
     """Upload a pre-signed package without signing enabled; signing_keys should be populated."""
-    _, fingerprint, _ = signing_gpg_metadata
-    prefixed_fingerprint = f"v4:{fingerprint.upper()}"
-
     repository = rpm_repository_factory()
 
     file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
     file_to_upload.write_bytes(requests.get(RPM_SIGNED_URL).content)
+
+    # Extract the expected fingerprint from the pre-signed RPM
+    pkg = rpm_rs.PackageMetadata.open(str(file_to_upload))
+    expected_sigs = [f"v4:{s.fingerprint.upper()}" for s in pkg.signatures() if s.fingerprint]
+    assert len(expected_sigs) > 0
 
     upload_response = rpm_package_api.create(
         file=str(file_to_upload.absolute()),
@@ -478,7 +461,7 @@ def test_upload_signed_package(
     package = rpm_package_api.read(package_href)
 
     assert package.signing_keys is not None
-    assert prefixed_fingerprint in package.signing_keys
+    assert package.signing_keys == expected_sigs
 
 
 @pytest.mark.parallel
@@ -491,9 +474,9 @@ def test_upload_multi_signed_package(
     rpm_repository_factory,
 ):
     """Upload a package signed with multiple keys; signing_keys should contain all fingerprints."""
-    gpg_a, gpg_b = signing_gpg_extra
-    prefixed_a = f"v4:{gpg_a.fingerprint.upper()}"
-    prefixed_b = f"v4:{gpg_b.fingerprint.upper()}"
+    key_a, key_b = signing_gpg_extra
+    prefixed_a = f"v4:{key_a.signing_fingerprint.upper()}"
+    prefixed_b = f"v4:{key_b.signing_fingerprint.upper()}"
 
     repository = rpm_repository_factory()
 
@@ -529,19 +512,23 @@ def test_sign_already_signed_package_on_upload(
 
     The resulting package should have signatures from both the original key and the new key.
     """
-    gpg_a, gpg_b = signing_gpg_extra
-    prefixed_a = f"v4:{gpg_a.fingerprint.upper()}"
-    prefixed_b = f"v4:{gpg_b.fingerprint.upper()}"
+    _, key_b = signing_gpg_extra
+    prefixed_b = f"v4:{key_b.signing_fingerprint.upper()}"
 
     rpm_tool = RpmTool(tmp_path)
-    rpm_tool.import_pubkey_string(gpg_a.pubkey)
-    rpm_tool.import_pubkey_string(gpg_b.pubkey)
+    rpm_tool.import_pubkey_file(get_fixture(tmp_path / "key_a.asc", KEY_V4_RSA2K.public_url))
+    rpm_tool.import_pubkey_file(get_fixture(tmp_path / "key_b.asc", KEY_V4_RSA4K.public_url))
 
-    # The fixture RPM is signed with gpg_a's key.
+    # The fixture RPM is already signed with the old fixture key.
     file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
     file_to_upload.write_bytes(requests.get(RPM_SIGNED_URL).content)
 
-    # Upload to a repo that signs with gpg_b's key.
+    # Extract the existing signature fingerprint from the pre-signed RPM.
+    pkg = rpm_rs.PackageMetadata.open(str(file_to_upload))
+    existing_sigs = [f"v4:{s.fingerprint.upper()}" for s in pkg.signatures() if s.fingerprint]
+    assert len(existing_sigs) > 0
+
+    # Upload to a repo that signs with key_b.
     repository = rpm_repository_factory(
         package_signing_service=rpm_package_signing_service.pulp_href,
         package_signing_fingerprint=prefixed_b,
@@ -555,7 +542,7 @@ def test_sign_already_signed_package_on_upload(
 
     assert package.signing_keys is not None
     assert len(package.signing_keys) == 2
-    assert prefixed_a in package.signing_keys
+    assert existing_sigs[0] in package.signing_keys
     assert prefixed_b in package.signing_keys
 
     # Verify the served package has valid signatures
@@ -586,18 +573,18 @@ def test_sign_multi_signed_package_on_upload(
     The package already has both signatures, so signing should be a no-op (the package is already
     signed with the requested key). The signing_keys should still contain both fingerprints.
     """
-    gpg_a, gpg_b = signing_gpg_extra
-    prefixed_a = f"v4:{gpg_a.fingerprint.upper()}"
-    prefixed_b = f"v4:{gpg_b.fingerprint.upper()}"
+    key_a, key_b = signing_gpg_extra
+    prefixed_a = f"v4:{key_a.signing_fingerprint.upper()}"
+    prefixed_b = f"v4:{key_b.signing_fingerprint.upper()}"
 
     rpm_tool = RpmTool(tmp_path)
-    rpm_tool.import_pubkey_string(gpg_a.pubkey)
-    rpm_tool.import_pubkey_string(gpg_b.pubkey)
+    rpm_tool.import_pubkey_file(get_fixture(tmp_path / "key_a.asc", KEY_V4_RSA2K.public_url))
+    rpm_tool.import_pubkey_file(get_fixture(tmp_path / "key_b.asc", KEY_V4_RSA4K.public_url))
 
     file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
     shutil.copy2(multi_signed_rpm, file_to_upload)
 
-    # Sign with gpg_a's key — which the package already has.
+    # Sign with key_a — which the package already has.
     repository = rpm_repository_factory(
         package_signing_service=rpm_package_signing_service.pulp_href,
         package_signing_fingerprint=prefixed_a,
@@ -632,7 +619,7 @@ def test_upload_mldsa_signed_package(
     rpm_path = tmp_path / RPM_PACKAGE_FILENAME
     rpm_path.write_bytes(requests.get(RPM_UNSIGNED_URL).content)
 
-    _sign_package(rpm_path, KEY_V6_MLDSA65_ED25519_PRIVATE)
+    _sign_package(rpm_path, KEY_V6_MLDSA65_ED25519.private_url)
 
     pkg = rpm_rs.PackageMetadata.open(str(rpm_path))
     sigs = [s for s in pkg.signatures() if s.fingerprint is not None]

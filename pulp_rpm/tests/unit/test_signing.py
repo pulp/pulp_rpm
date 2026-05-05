@@ -30,7 +30,9 @@ def signed_rpm(tmp_path):
 
 
 def test_verify_unsigned_package(unsigned_rpm):
-    assert not _verify_package_fingerprint(unsigned_rpm, "v4:0000000000000000000000000000000000000000")
+    assert not _verify_package_fingerprint(
+        unsigned_rpm, "v4:0000000000000000000000000000000000000000"
+    )
 
 
 def test_verify_signed_package_matches(signed_rpm):
@@ -45,7 +47,9 @@ def test_verify_signed_package_case_insensitive(signed_rpm):
 
 
 def test_verify_signed_package_wrong_fingerprint(signed_rpm):
-    assert not _verify_package_fingerprint(signed_rpm, "v4:0000000000000000000000000000000000000000")
+    assert not _verify_package_fingerprint(
+        signed_rpm, "v4:0000000000000000000000000000000000000000"
+    )
 
 
 def test_verify_fingerprint_without_prefix(signed_rpm):

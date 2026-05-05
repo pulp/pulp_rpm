@@ -2,6 +2,7 @@
 
 # flake8: noqa
 
+from dataclasses import dataclass
 from urllib.parse import urljoin
 import django
 
@@ -42,9 +43,6 @@ RPM_PACKAGELANGPACKS_CONTENT_NAME = "rpm.packagelangpacks"
 
 RPM_ADVISORY_CONTENT_NAME = "rpm.advisory"
 
-# Fingerprint of the legacy GPG key (GPG-KEY-fixture-signing) used to sign the
-# rpm-signed/ fixture repository.
-SIGNING_KEY_FINGERPRINT = "0c1a894ebb86afae218424caddef3019c2d4a8cf"
 
 RPM_ALT_LAYOUT_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-alt-layout/")
 """The URL to a signed RPM repository. See :data:`RPM_SIGNED_FIXTURE_URL`."""
@@ -311,7 +309,7 @@ RPM_COMPLEX_PACKAGE_DATA = {
     "time_file": 1627056000,
     "url": "http://bobloblaw.com",
     "version": "2.3.4",
-    "signing_keys": [],
+    "signing_keys": None,
 }
 
 
@@ -629,38 +627,70 @@ RPM_KICKSTART_DATA = {
 }
 
 PULP_FIXTURES_COMMON_URL = "https://github.com/pulp/pulp-fixtures/raw/master/common/"
-# Legacy fixture signing key (corresponds to SIGNING_KEY_FINGERPRINT).
-# Used to sign the rpm-signed/ fixture repository.
-PUBLIC_GPG_KEY_URL = urljoin(PULP_FIXTURES_COMMON_URL, "GPG-KEY-fixture-signing")
-PRIVATE_GPG_KEY_URL = urljoin(PULP_FIXTURES_COMMON_URL, "GPG-PRIVATE-KEY-fixture-signing")
+
+
+@dataclass(frozen=True)
+class FixtureKey:
+    primary_fingerprint: str
+    signing_fingerprint: str
+    public_url: str
+    private_url: str
+
+
+LEGACY_SIGNING_KEY = FixtureKey(
+    primary_fingerprint="0C1A894EBB86AFAE218424CADDEF3019C2D4A8CF",
+    signing_fingerprint="0C1A894EBB86AFAE218424CADDEF3019C2D4A8CF",
+    public_url=urljoin(PULP_FIXTURES_COMMON_URL, "GPG-KEY-fixture-signing"),
+    private_url=urljoin(PULP_FIXTURES_COMMON_URL, "GPG-PRIVATE-KEY-fixture-signing"),
+)
 
 # Newer per-algorithm test keys used by the standalone fixture packages and signing tests.
 PULP_FIXTURES_SIGNING_KEYS_URL = urljoin(PULP_FIXTURES_COMMON_URL, "signing_keys/")
 
-KEY_V4_RSA2K_PUBLIC = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-rsa2k.asc")
-KEY_V4_RSA2K_PRIVATE = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-rsa2k.secret")
-KEY_V4_RSA4K_PUBLIC = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-rsa4k.asc")
-KEY_V4_RSA4K_PRIVATE = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-rsa4k.secret")
-KEY_V4_ED25519_PUBLIC = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-ed25519.asc")
-KEY_V4_ED25519_PRIVATE = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-ed25519.secret")
+KEY_V4_RSA2K = FixtureKey(
+    primary_fingerprint="E8FEA306D1542E72E067C595B50A2D9EA2FBDF6F",
+    signing_fingerprint="DAAAC440329CCE27A5E5A94830014D43815AA2E1",
+    public_url=urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-rsa2k.asc"),
+    private_url=urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-rsa2k.secret"),
+)
+KEY_V4_RSA4K = FixtureKey(
+    primary_fingerprint="77FC8007FB8BF465CF2DC5B0A41853323A276A32",
+    signing_fingerprint="4F0E406D006AFA08ABAD1CB16219E5C036FC5144",
+    public_url=urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-rsa4k.asc"),
+    private_url=urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-rsa4k.secret"),
+)
+KEY_V4_ED25519 = FixtureKey(
+    primary_fingerprint="3F0D37F0EEF75D633BB566A6F22CA2D53A5BDA46",
+    signing_fingerprint="83D8DAB3D9356F8A5FFB11051F1B9FDCEC6CEEB9",
+    public_url=urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-ed25519.asc"),
+    private_url=urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-ed25519.secret"),
+)
 KEY_V4_KEYRING_PUBLIC = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-keyring.asc")
 KEY_V4_KEYRING_PRIVATE = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v4-keyring.secret")
 
-KEY_V6_RSA4K_PUBLIC = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-rsa4k.asc")
-KEY_V6_RSA4K_PRIVATE = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-rsa4k.secret")
-KEY_V6_ED25519_PUBLIC = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-ed25519.asc")
-KEY_V6_ED25519_PRIVATE = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-ed25519.secret")
-KEY_V6_MLDSA65_ED25519_PUBLIC = urljoin(
-    PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-mldsa65-ed25519.asc"
+KEY_V6_RSA4K = FixtureKey(
+    primary_fingerprint="C7981EFE69C1EB84022A48C566E0216E13CD09B05B9994EAA729E44480270585",
+    signing_fingerprint="790904467A3925F5A56ACEB522462E679254269ECDA951713F48C3A6B449C083",
+    public_url=urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-rsa4k.asc"),
+    private_url=urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-rsa4k.secret"),
 )
-KEY_V6_MLDSA65_ED25519_PRIVATE = urljoin(
-    PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-mldsa65-ed25519.secret"
+KEY_V6_ED25519 = FixtureKey(
+    primary_fingerprint="B063E3B34BFC713B2F109A49DE0292B4F4BEA4E5CC06BC14FF23CE22E47ADE2D",
+    signing_fingerprint="49991EC9EF0162AF85164F756A73FEA18C43CF891076D4DFBD07869CCCA77451",
+    public_url=urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-ed25519.asc"),
+    private_url=urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-ed25519.secret"),
 )
-KEY_V6_MLDSA87_ED448_PUBLIC = urljoin(
-    PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-mldsa87-ed448.asc"
+KEY_V6_MLDSA65_ED25519 = FixtureKey(
+    primary_fingerprint="D7BCAC89C88DE175ED113AA8971700D63F73AC26F733B052B69D1297AEE559E4",
+    signing_fingerprint="B4E2490D5E0436F2EEC456F6F6054FD1CD9EF5F2083DB8762C9B7841E3F3777D",
+    public_url=urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-mldsa65-ed25519.asc"),
+    private_url=urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-mldsa65-ed25519.secret"),
 )
-KEY_V6_MLDSA87_ED448_PRIVATE = urljoin(
-    PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-mldsa87-ed448.secret"
+KEY_V6_MLDSA87_ED448 = FixtureKey(
+    primary_fingerprint="2237A5055860FF5BA4216EC8F7E51C8FA5175ACB33C80B7A3416971F4B2698F0",
+    signing_fingerprint="284CD5E37035A4C21604109645F01A1D441CF1AE3C3E2A7DE760A4E4EE3FF804",
+    public_url=urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-mldsa87-ed448.asc"),
+    private_url=urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-mldsa87-ed448.secret"),
 )
 KEY_V6_KEYRING_PUBLIC = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-keyring.asc")
 KEY_V6_KEYRING_PRIVATE = urljoin(PULP_FIXTURES_SIGNING_KEYS_URL, "pulp-testkey-v6-keyring.secret")
