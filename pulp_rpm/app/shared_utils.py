@@ -10,7 +10,6 @@ import createrepo_c as cr
 import rpm_rs
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
-from importlib_resources import files
 
 from pulpcore.plugin.exceptions import InvalidSignatureError
 
@@ -242,9 +241,10 @@ def parse_time(value):
 
 
 def _get_datapkg_sample_rpm_copy(basedir: str):
-    sample_rpm = files("pulp_rpm").joinpath("tests/sample-rpm-0-0.x86_64.rpm")
-    copy_rpm = shutil.copy(sample_rpm, basedir)
-    return Path(copy_rpm)
+    path = Path(basedir) / "sample-rpm-0-0.x86_64.rpm"
+    pkg = rpm_rs.PackageBuilder("sample-rpm", "0", "Public Domain", "x86_64").build()
+    pkg.write_file(str(path))
+    return path
 
 
 class RpmTool:
