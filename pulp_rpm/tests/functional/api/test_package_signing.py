@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 import requests
+import rpm_rs
 
 from pulpcore.client.pulp_rpm.exceptions import ApiException
 from pulpcore.exceptions.validation import InvalidSignatureError
@@ -397,6 +398,58 @@ def test_already_signed_package(
     # The same signed package should be reused between repositories
     assert repo_two_packages[0].pulp_href == signed_package_href
     assert task_result.created_resources == [repo_two.latest_version_href]
+
+
+def test_signing_with_primary_key_fingerprint(
+    tmp_path,
+    delete_orphans_pre,
+    monitor_task,
+    signing_gpg_metadata,
+    rpm_package_signing_service,
+    rpm_repository_factory,
+    rpm_repository_api,
+    rpm_package_factory,
+    rpm_package_api,
+    pulpcore_bindings,
+):
+    """Test that signing_keys is correct when package_signing_fingerprint is a primary key.
+
+    When the signing key has a dedicated signing subkey, GnuPG signs with the subkey.
+    signing_keys should reflect the actual signature fingerprints from the artifact.
+    """
+    gpg, signing_subkey_fpr, _ = signing_gpg_metadata
+    primary_fpr = gpg.list_keys()[0]["fingerprint"]
+    assert primary_fpr != signing_subkey_fpr, "Test requires a key with a separate signing subkey"
+
+    prefixed_primary = f"v4:{primary_fpr}"
+
+    repository = rpm_repository_factory(
+        package_signing_service=rpm_package_signing_service.pulp_href,
+        package_signing_fingerprint=prefixed_primary,
+    )
+
+    created_package = rpm_package_factory(url=RPM_UNSIGNED_URL)
+    modify_response = rpm_repository_api.modify(
+        repository.pulp_href, {"add_content_units": [created_package.pulp_href]}
+    )
+    monitor_task(modify_response.task)
+
+    repository = rpm_repository_api.read(repository.pulp_href)
+    signed_package = rpm_package_api.list(
+        repository_version=repository.latest_version_href
+    ).results[0]
+
+    assert signed_package.pulp_href != created_package.pulp_href
+
+    # Check the actual signatures on the artifact
+    artifact_response = pulpcore_bindings.ArtifactsApi.read(signed_package.artifact)
+    artifact_path = tmp_path / "signed.rpm"
+    artifact_path.write_bytes(requests.get(artifact_response.file).content)
+    pkg = rpm_rs.PackageMetadata.open(str(artifact_path))
+    sig_fingerprints = [f"v4:{s.fingerprint.upper()}" for s in pkg.signatures() if s.fingerprint]
+
+    # signing_keys must match the actual signature fingerprints on the artifact
+    assert signed_package.signing_keys == sig_fingerprints
 
 
 def test_signed_repo_rejects_on_demand_content(
