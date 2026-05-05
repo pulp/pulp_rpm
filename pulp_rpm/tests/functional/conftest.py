@@ -28,6 +28,7 @@ from pulpcore.client.pulp_rpm import (
 
 from pulp_rpm.tests.functional.constants import (
     BASE_TEST_JSON,
+    KEY_V4_RSA4K,
     RPM_KICKSTART_FIXTURE_URL,
     RPM_MODULAR_FIXTURE_URL,
     RPM_SIGNED_FIXTURE_URL,
@@ -489,21 +490,17 @@ def signing_gpg_metadata2(signing_gpg_homedir_path) -> tuple[gnupg.GPG, list[GPG
 
 @pytest.fixture(scope="session")
 def signing_gpg_metadata(signing_gpg_homedir_path):
-    """
-    A fixture that returns a GPG instance and related metadata (i.e., fingerprint, keyid).
-    """
-    PRIVATE_KEY_URL = "https://raw.githubusercontent.com/pulp/pulp-fixtures/master/common/GPG-PRIVATE-KEY-fixture-signing"  # noqa: E501
-
-    response_private = requests.get(PRIVATE_KEY_URL)
+    """A fixture that returns a GPG instance and related metadata (i.e., fingerprint, keyid)."""
+    response_private = requests.get(KEY_V4_RSA4K.private_url)
     response_private.raise_for_status()
 
     gpg = gnupg.GPG(gnupghome=signing_gpg_homedir_path)
-    gpg.import_keys(response_private.content)
+    import_result = gpg.import_keys(response_private.content)
 
-    fingerprint = gpg.list_keys()[0]["fingerprint"]
-    keyid = gpg.list_keys()[0]["keyid"]
+    fingerprint = KEY_V4_RSA4K.signing_fingerprint
+    keyid = fingerprint[-8:]
 
-    gpg.trust_keys(fingerprint, "TRUST_ULTIMATE")
+    gpg.trust_keys(import_result.fingerprints[0], "TRUST_ULTIMATE")
 
     return gpg, fingerprint, keyid
 

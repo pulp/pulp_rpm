@@ -391,7 +391,7 @@ class Package(Content):
             PULP_PACKAGE_ATTRS.TIME_FILE: getattr(package, CR_PACKAGE_ATTRS.TIME_FILE),
             PULP_PACKAGE_ATTRS.URL: getattr(package, CR_PACKAGE_ATTRS.URL) or "",
             PULP_PACKAGE_ATTRS.VERSION: getattr(package, CR_PACKAGE_ATTRS.VERSION),
-            PULP_PACKAGE_ATTRS.SIGNING_KEYS: signing_keys,
+            PULP_PACKAGE_ATTRS.SIGNING_KEYS: signing_keys or [],
         }
 
     def to_createrepo_c(self):

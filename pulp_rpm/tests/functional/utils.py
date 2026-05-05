@@ -17,8 +17,8 @@ import pyzstd
 import requests
 
 from pulp_rpm.tests.functional.constants import (
+    LEGACY_SIGNING_KEY,
     PACKAGES_DIRECTORY,
-    PRIVATE_GPG_KEY_URL,
     RPM_NAMESPACES,
 )
 
@@ -40,7 +40,7 @@ def init_signed_repo_configuration():
     """
     # download the private key
     priv_key = subprocess.run(
-        ("wget", "-q", "-O", "-", PRIVATE_GPG_KEY_URL), stdout=subprocess.PIPE
+        ("wget", "-q", "-O", "-", LEGACY_SIGNING_KEY.private_url), stdout=subprocess.PIPE
     ).stdout
     # import the downloaded private key
     subprocess.run(("gpg", "--import"), input=priv_key)
