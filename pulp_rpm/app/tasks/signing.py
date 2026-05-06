@@ -66,6 +66,10 @@ def _verify_package_fingerprint(path, signing_fingerprint):
         if raw_fingerprint.upper().endswith(candidate.upper()):
             return True
 
+    log.debug(
+        f"Fingerprint mismatch for {path}: expected {raw_fingerprint}, "
+        f"found key IDs {key_ids} and fingerprints {fingerprints}."
+    )
     return False
 
 
@@ -81,6 +85,7 @@ def _update_signing_keys(package_file, keys):
 def _sign_file(package_file, signing_service, signing_fingerprint):
     """Sign a package and return the local path of the signed file."""
     prefix, raw_fingerprint = signing_fingerprint.split(":", 1)
+    log.info(f"Signing package {package_file.name} with fingerprint {signing_fingerprint}.")
     result = signing_service.sign(
         package_file.name,
         env_vars={"PULP_SIGNING_FINGERPRINT_TYPE": prefix},
@@ -120,6 +125,7 @@ def _sign_package(package, signing_service, signing_fingerprint):
 
         # check if the package is already signed with our fingerprint
         if _verify_package_fingerprint(final_package.name, signing_fingerprint):
+            log.info(f"Package {package.filename} is already signed with {signing_fingerprint}.")
             return None
 
         # check if the package has been signed in the past with our fingerprint and replace
@@ -128,6 +134,7 @@ def _sign_package(package, signing_service, signing_fingerprint):
             original_package_sha256=content_artifact.artifact.sha256,
             package_signing_fingerprint=signing_fingerprint,
         ).first():
+            log.info(f"Reusing previously signed package for {package.filename}.")
             return (package_id, str(existing_result.result_package.pk))
 
         # create a new signed version of the package
@@ -222,6 +229,9 @@ def signed_add_and_remove(
     repo = RpmRepository.objects.get(pk=repository_pk)
 
     if repo.package_signing_service:
+        log.info(
+            f"Signing packages for repository {repo.name} with {repo.package_signing_service}."
+        )
         add_content_units = set(add_content_units)
         packages = list(Package.objects.filter(pk__in=add_content_units).all())
 
