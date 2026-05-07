@@ -1,6 +1,7 @@
 import uuid
 from gettext import gettext as _
 
+import rpm_rs
 from django.core.management import BaseCommand, CommandError
 from django.db.models import F, Value
 from django.db.models.functions import Concat
@@ -10,6 +11,7 @@ from pulpcore.plugin.models import ContentArtifact
 from pulp_rpm.app.models import Package  # noqa
 from pulp_rpm.app.models.advisory import UpdateCollection, UpdateRecord  # noqa
 from pulp_rpm.app.models.repository import RpmRepository  # noqa
+from pulp_rpm.app.shared_utils import format_signing_keys
 
 
 class Command(BaseCommand):
@@ -41,6 +43,8 @@ class Command(BaseCommand):
             self.repair_4007(dry_run)
         elif issue == "4073":
             self.repair_4073(dry_run)
+        elif issue == "4458":
+            self.repair_4458(dry_run)
         else:
             raise CommandError(_("Unknown issue: '{}'").format(issue))
 
@@ -150,3 +154,50 @@ class Command(BaseCommand):
         if batch:  # handle remaining
             process_batch()
         self.stdout.write(f"Updated {update_count} records")
+
+    def repair_4458(self, dry_run):
+        """Perform data repair for issue #4458.
+
+        Backfill signing_keys for packages that were synced before signature
+        extraction was implemented. Reads only the RPM metadata headers (not the
+        payload) to extract signature fingerprints.
+        """
+        packages = Package.objects.filter(signing_keys=None)
+        total = packages.count()
+        self.stdout.write(f"Found {total} packages with signing_keys=NULL")
+
+        if dry_run or total == 0:
+            return
+
+        batch = []
+        update_count = 0
+
+        def process_batch():
+            nonlocal update_count, batch
+            Package.objects.bulk_update(batch, fields=["signing_keys"])
+            update_count += len(batch)
+            self.stdout.write(f"  updated {update_count}/{total}")
+            batch.clear()
+
+        for package in packages.iterator():
+            ca = package.contentartifact_set.select_related("artifact").first()
+            if ca is None or ca.artifact is None:
+                continue
+
+            artifact = ca.artifact
+            storage = artifact.pulp_domain.get_storage()
+            artifact_file = storage.open(storage.get_artifact_path(artifact.sha256))
+            try:
+                header_bytes = artifact_file.read(package.rpm_header_end)
+            finally:
+                artifact_file.close()
+            metadata = rpm_rs.PackageMetadata.from_bytes(header_bytes)
+
+            package.signing_keys = format_signing_keys(metadata.signatures())
+            batch.append(package)
+            if len(batch) >= 500:
+                process_batch()
+
+        if batch:
+            process_batch()
+        self.stdout.write(f"Updated {update_count} packages")
