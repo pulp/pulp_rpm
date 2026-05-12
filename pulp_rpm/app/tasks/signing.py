@@ -202,7 +202,7 @@ def sign_and_create(
 
 
 def signed_add_and_remove(
-    repository_pk, add_content_units, remove_content_units, base_version_pk=None
+    repository_pk, add_content_units, remove_content_units, base_version_pk=None, overwrite=True
 ):
     repo = RpmRepository.objects.get(pk=repository_pk)
 
@@ -236,4 +236,10 @@ def signed_add_and_remove(
 
         add_content_units = list(add_content_units)
 
-    return add_and_remove(repository_pk, add_content_units, remove_content_units, base_version_pk)
+    return add_and_remove(
+        repository_pk,
+        add_content_units,
+        remove_content_units,
+        base_version_pk,
+        overwrite=overwrite,
+    )
