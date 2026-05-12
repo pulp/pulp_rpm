@@ -399,6 +399,63 @@ def test_already_signed_package(
     assert task_result.created_resources == [repo_two.latest_version_href]
 
 
+def test_signed_repo_modify_overwrite_false_noop(
+    delete_orphans_pre,
+    monitor_task,
+    signing_gpg_metadata,
+    rpm_package_signing_service,
+    rpm_repository_factory,
+    rpm_repository_api,
+    rpm_package_factory,
+    rpm_package_api,
+):
+    """
+    Re-adding an unsigned package with overwrite=False should NOOP, not raise.
+
+    The first add transparently signs the package and caches the result. A second
+    add of the same unsigned package would normally produce the same signed
+    package (already in the version) and trigger the pulpcore overwrite check.
+    The RPM-specific override should exempt this signing-NOOP case.
+    """
+    _, fingerprint, _ = signing_gpg_metadata
+    prefixed_fingerprint = f"v4:{fingerprint}"
+
+    repository = rpm_repository_factory(
+        package_signing_service=rpm_package_signing_service.pulp_href,
+        package_signing_fingerprint=prefixed_fingerprint,
+    )
+
+    created_package = rpm_package_factory(url=RPM_UNSIGNED_URL)
+    package_href = created_package.pulp_href
+
+    # First add: package gets signed and the result gets stored.
+    monitor_task(
+        rpm_repository_api.modify(
+            repository.pulp_href,
+            {"add_content_units": [package_href], "overwrite": False},
+        ).task
+    )
+    repository = rpm_repository_api.read(repository.pulp_href)
+    signed_package = rpm_package_api.list(
+        repository_version=repository.latest_version_href
+    ).results[0]
+    first_version_href = repository.latest_version_href
+
+    # Second add of the same unsigned package: should NOOP rather than raise
+    # ContentOverwriteError, because the already signed package is already present.
+    task_result = monitor_task(
+        rpm_repository_api.modify(
+            repository.pulp_href,
+            {"add_content_units": [package_href], "overwrite": False},
+        ).task
+    )
+    repository = rpm_repository_api.read(repository.pulp_href)
+    assert repository.latest_version_href == first_version_href
+    assert task_result.created_resources == []
+    results = rpm_package_api.list(repository_version=repository.latest_version_href).results
+    assert [signed_package.pulp_href] == [pkg.pulp_href for pkg in results]
+
+
 def test_signed_repo_rejects_on_demand_content(
     init_and_sync,
     rpm_package_signing_service,

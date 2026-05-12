@@ -52,6 +52,7 @@ from pulp_rpm.app.models import (
     RpmPackageSigningService,
     UpdateRecord,
 )
+from pulp_rpm.app.models.content import RpmPackageSigningResult
 from pulp_rpm.app.shared_utils import annotate_with_age, urlpath_sanitize
 
 log = getLogger(__name__)
@@ -277,6 +278,25 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
                 compression_type=self.compression_type,
                 layout=self.layout,
             )
+
+    def check_content_overwrite(self, version, add_content_pks, remove_content_pks=None):
+        """
+        Exempt signing-NOOP packages from the overwrite check.
+
+        A previously-signed package returned from the signing-result cache may already
+        be in the version, making the add a NOOP. Skip those so genuine overwrites are
+        still rejected.
+        """
+        existing_pks = set(version.content.values_list("pk", flat=True))
+        signing_noop_pks = set(
+            RpmPackageSigningResult.objects.filter(
+                result_package__in=[pk for pk in add_content_pks if pk in existing_pks],
+            ).values_list("result_package", flat=True)
+        )
+        filtered_add_pks = [pk for pk in add_content_pks if pk not in signing_noop_pks]
+        super().check_content_overwrite(
+            version, filtered_add_pks, remove_content_pks=remove_content_pks
+        )
 
     @property
     def published_metadata_size(self):
