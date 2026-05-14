@@ -13,7 +13,6 @@ from gettext import gettext as _  # noqa:F401
 import createrepo_c as cr
 import libcomps
 from aiohttp.client_exceptions import ClientResponseError
-from aiohttp.web_exceptions import HTTPNotFound
 from asgiref.sync import sync_to_async
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
@@ -21,6 +20,7 @@ from django.core.files import File
 from django.db import transaction
 from django.db.models import Q
 
+from pulpcore.plugin.exceptions import SyncError
 from pulpcore.plugin.models import (
     Artifact,
     ContentArtifact,
@@ -56,6 +56,12 @@ from pulp_rpm.app.constants import (
     PULP_MODULE_ATTR,
     SYNC_POLICIES,
     UPDATE_REPODATA,
+)
+from pulp_rpm.app.exceptions import (
+    MirrorIncompatibleRepositoryError,
+    MissingPrimaryMetadataError,
+    RemoteFetchError,
+    UnsupportedZckCompressionError,
 )
 from pulp_rpm.app.kickstart.treeinfo import PulpTreeInfo, TreeinfoData
 from pulp_rpm.app.models import (
@@ -288,12 +294,7 @@ def fetch_remote_url(remote, custom_url=None):
         # If 'custom_url' is passed it is a call from ACS refresh
         # which doesn't support mirror lists.
         if custom_url:
-            raise ValueError(
-                _(
-                    "ACS remote for url '{}' raised an error '{}: {}'. "
-                    "Please check your ACS remote configuration."
-                ).format(custom_url, exc.status, exc.message)
-            )
+            raise RemoteFetchError(custom_url, exc.status, exc.message)
         log.info(
             _("Attempting to resolve a true url from potential mirrolist url '{}'").format(url)
         )
@@ -306,10 +307,7 @@ def fetch_remote_url(remote, custom_url=None):
             )
             return normalize_url(remote_url)
 
-        if exc.status == 404:
-            raise ValueError(_("An invalid remote URL was provided: {}").format(url))
-
-        raise exc
+        raise RemoteFetchError(url, exc.status, exc.message)
 
 
 def should_optimize_sync(sync_details, last_sync_details):
@@ -397,7 +395,7 @@ def synchronize(remote_pk, repository_pk, sync_policy, skip_types, optimize, url
     repository = RpmRepository.objects.get(pk=repository_pk)
 
     if not remote.url and not url:
-        raise ValueError(_("A remote must have a url specified to synchronize."))
+        raise SyncError("A remote must have a url specified to synchronize.")
 
     log.info(_("Synchronizing: repository={r} remote={p}").format(r=repository.name, p=remote.name))
 
@@ -805,7 +803,7 @@ class RpmFirstStage(Stage):
                             or illegal_relative_path
                             or record.type in RepoMetadataFile.UNSUPPORTED_METADATA
                         ):
-                            raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
+                            raise MirrorIncompatibleRepositoryError()
 
                     if not self.mirror_metadata and record.type not in types_to_download:
                         continue
@@ -827,7 +825,11 @@ class RpmFirstStage(Stage):
                         repomd_files[name] = result
                         await metadata_pb.aincrement()
                 except ClientResponseError as exc:
-                    raise HTTPNotFound(reason=_("File not found: {}").format(exc.request_info.url))
+                    raise RemoteFetchError(
+                        url=str(exc.request_info.url),
+                        status=exc.status,
+                        message=exc.message,
+                    )
                 except FileNotFoundError:
                     raise
 
@@ -879,8 +881,10 @@ class RpmFirstStage(Stage):
                                     )
                                     await metadata_pb.aincrement()
                         except ClientResponseError as exc:
-                            raise HTTPNotFound(
-                                reason=_("File not found: {}").format(exc.request_info.url)
+                            raise RemoteFetchError(
+                                url=str(exc.request_info.url),
+                                status=exc.status,
+                                message=exc.message,
                             )
                         except FileNotFoundError:
                             raise
@@ -920,9 +924,7 @@ class RpmFirstStage(Stage):
     async def parse_repository_metadata(self, repomd, metadata_results):
         """Parse repository metadata."""
         if "primary" not in metadata_results.keys():
-            raise FileNotFoundError(
-                "Repository doesn't contain required metadata file 'primary.xml'"
-            )
+            raise MissingPrimaryMetadataError()
 
         if "filelists" not in metadata_results.keys():
             log.warn("Repository doesn't contain metadata file 'filelists.xml'")
@@ -944,7 +946,7 @@ class RpmFirstStage(Stage):
             # bellow only skip them if unsupported. If we cannot parse modulemd, package
             # can't be flagged as 'modular' thus broken repository!
             if modulemd_result.url.endswith("zck"):
-                raise TypeError(_("Modular data compressed with ZCK is not supported."))
+                raise UnsupportedZckCompressionError()
             modulemd_dcs, modulemd_list = await self.parse_modules_metadata(modulemd_result)
 
         # **Now** we can successfully parse package-metadata
@@ -1268,7 +1270,7 @@ class RpmFirstStage(Stage):
                 illegal_relative_path = self.is_illegal_relative_path(pkg.location_href)
 
                 if uses_base_url or illegal_relative_path:
-                    raise ValueError(MIRROR_INCOMPATIBLE_REPO_ERR_MSG)
+                    raise MirrorIncompatibleRepositoryError()
 
             # Add any srpms to the skip set if specified
             if skip_srpms and pkg.arch == "src":

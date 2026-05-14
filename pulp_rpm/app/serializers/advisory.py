@@ -18,6 +18,7 @@ from pulp_rpm.app.constants import (
     PULP_UPDATE_RECORD_ATTRS,
     PULP_UPDATE_REFERENCE_ATTRS,
 )
+from pulp_rpm.app.exceptions import UnsupportedChecksumTypeError
 from pulp_rpm.app.fields import (
     UpdateCollectionPackagesField,
     UpdateReferenceField,
@@ -144,7 +145,7 @@ class UpdateRecordSerializer(NoArtifactContentUploadSerializer):
                     try:
                         pkg.sum_type = createrepo_c.checksum_type(pkg.sum_type)
                     except TypeError:
-                        raise TypeError(f'"{pkg.sum_type}" is not supported.')
+                        raise UnsupportedChecksumTypeError(sum_type=pkg.sum_type)
                     pkg.update_collection = coll
                     update_collection_packages_to_save.append(pkg)
             for reference in references:
