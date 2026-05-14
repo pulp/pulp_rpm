@@ -10,7 +10,6 @@ import rpm_rs
 from pulpcore.client.pulp_rpm.exceptions import ApiException
 from pulpcore.exceptions.validation import InvalidSignatureError
 
-from pulp_rpm.app.shared_utils import RpmTool
 from pulp_rpm.tests.functional.constants import (
     KEY_V4_RSA2K,
     KEY_V4_RSA4K,
@@ -21,7 +20,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_UNSIGNED_URL,
     RPM_UNSIGNED_URL2,
 )
-from pulp_rpm.tests.functional.utils import get_package_repo_path
+from pulp_rpm.tests.functional.utils import RpmTool, get_package_repo_path
 
 
 def get_fixture(path: Path, url: str) -> Path:
