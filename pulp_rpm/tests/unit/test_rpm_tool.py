@@ -1,4 +1,3 @@
-import socket
 from pathlib import Path
 
 import pytest
@@ -6,8 +5,8 @@ import requests
 
 from pulpcore.plugin.exceptions import InvalidSignatureError
 
-from pulp_rpm.app.shared_utils import RpmTool
 from pulp_rpm.tests.functional.constants import LEGACY_SIGNING_KEY, RPM_SIGNED_URL, RPM_UNSIGNED_URL
+from pulp_rpm.tests.functional.utils import RpmTool
 
 
 def connection_guard(*args, **kwargs):

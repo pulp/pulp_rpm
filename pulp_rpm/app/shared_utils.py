@@ -1,17 +1,12 @@
 import shutil
-import subprocess
 import tempfile
-import typing as t
 from collections import defaultdict
 from hashlib import sha256
-from pathlib import Path
 
 import createrepo_c as cr
 import rpm_rs
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
-
-from pulpcore.plugin.exceptions import InvalidSignatureError
 
 from pulp_rpm.app.constants import CR_HEADER_FLAGS
 from pulp_rpm.app.rpm_version import RpmVersion
@@ -238,79 +233,3 @@ def parse_time(value):
         int | datetime | None: formatted time value
     """
     return int(value) if value.isdigit() else parse_datetime(value)
-
-
-class RpmTool:
-    """
-    A wrapper utility for rpm cli tool.
-
-    Args:
-        root: Alternative root directory passed to `rpm --root`
-    """
-
-    INVALID_SIGNATURE_ERROR_MSG = "Signature is invalid or pubkey is unreachable"
-    UNKNOWN_ERROR_MSG = "Some unknown error occurred"
-    UNSIGNED_ERROR_MSG = "The package is not signed"
-
-    def __init__(self, root: t.Optional[Path] = None):
-        completed_process = subprocess.run(
-            ["which", "rpmsign"], stdout=subprocess.PIPE, stderr=subprocess.PIPE
-        )
-        if completed_process.returncode != 0:
-            raise RuntimeError("Rpm cli tool is not installed on your system.")
-
-        self.opts = ["--root", str(root.absolute())] if root else []
-
-    def import_pubkey_file(self, pubkey_file: str):
-        """
-        Import public_key file (ascii-armored) into the rpm-tool.
-
-        Args:
-            import_pubkey: The public key file in ascii-armored format.
-        """
-        cmd = ("rpm", *self.opts, "--import", pubkey_file)
-        completed_process = subprocess.run(cmd, capture_output=True)
-        if completed_process.returncode != 0:
-            raise RuntimeError(
-                f"Could not import public key into rpm-tool:\n{completed_process.stderr.decode()}"
-            )
-
-    def verify_signature(self, rpm_package_file: Path, raises=True):
-        """
-        Verify that an Rpm Package is signed by some of the imported pubkey.
-
-        Parameters:
-            rpm_package_file: Path object to rpm package
-
-        Returns:
-            True (if has valid)
-
-        Raises:
-            InvalidSignature (for invalid/unsigned package)
-
-        Notes:
-            This is based on the command: `rpm --checksig camel-0.1-1.noarch.rpm`
-            Which have the following scenarios/outputs:
-
-            - unsigned:
-                * returncode: 0
-                * output: "camel-0.1-1.noarch.rpm: digests OK"
-            - signed, but rpm doesnt have pubkey imported:
-                * returncode: 1
-                * output: "camel-0.1-1.noarch.rpm: digests SIGNATURES NOT OK"
-            - signed and rpm can validate:
-                * returncode: 0
-                * output: "camel-0.1-1.noarch.rpm: digests signatures OK"
-        """
-        cmd = ("rpm", *self.opts, "--checksig", str(rpm_package_file.resolve()))
-        completed_process = subprocess.run(cmd, capture_output=True)
-        stdout = completed_process.stdout.decode()
-        stderr = completed_process.stderr.decode()
-        output = f"\nstdout: {stdout}\nstderr: {stderr}"
-        if completed_process.returncode != 0:
-            if "SIGNATURES NOT OK" in stdout:
-                raise InvalidSignatureError(f"{RpmTool.INVALID_SIGNATURE_ERROR_MSG}: {output}")
-            raise TypeError(f"{RpmTool.UNKNOWN_ERROR_MSG}: {output}")
-        elif "signatures" not in output:
-            raise InvalidSignatureError(f"{RpmTool.UNSIGNED_ERROR_MSG}: {output}")
-        return True
