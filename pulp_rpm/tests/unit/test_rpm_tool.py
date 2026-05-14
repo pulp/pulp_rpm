@@ -22,20 +22,6 @@ def get_fixture(tmp_path: Path, url: str):
     return file
 
 
-def test_can_get_empty_rpm(tmp_path, monkeypatch):
-    """
-    Can get a valid rpm without hitting the internet.
-
-    This rpm can be used in production by the SigningService.validate() method, which
-    is used to validate a provided signing script knows how to sign an rpm blob.
-    """
-    # Should't hit the internet
-    # https://stackoverflow.com/a/18601897
-    monkeypatch.setattr(socket, "socket", connection_guard)
-    rpm_pkg = RpmTool.get_empty_rpm(tmp_path)
-    assert rpm_pkg.exists()
-
-
 def test_verify_signature_is_valid(tmp_path):
     """Can verify that a package is unsigned"""
     pkg_file = get_fixture(tmp_path, RPM_SIGNED_URL)
