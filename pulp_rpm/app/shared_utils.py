@@ -240,13 +240,6 @@ def parse_time(value):
     return int(value) if value.isdigit() else parse_datetime(value)
 
 
-def _get_datapkg_sample_rpm_copy(basedir: str):
-    path = Path(basedir) / "sample-rpm-0-0.x86_64.rpm"
-    pkg = rpm_rs.PackageBuilder("sample-rpm", "0", "Public Domain", "x86_64").build()
-    pkg.write_file(str(path))
-    return path
-
-
 class RpmTool:
     """
     A wrapper utility for rpm cli tool.
@@ -268,16 +261,6 @@ class RpmTool:
 
         self.opts = ["--root", str(root.absolute())] if root else []
 
-    @staticmethod
-    def get_empty_rpm(basedir: str) -> Path:
-        """
-        Get an empty rpm package.
-
-        Args:
-            basedir: The dir where the rpm will be placed.
-        """
-        return _get_datapkg_sample_rpm_copy(basedir)
-
     def import_pubkey_file(self, pubkey_file: str):
         """
         Import public_key file (ascii-armored) into the rpm-tool.
@@ -291,18 +274,6 @@ class RpmTool:
             raise RuntimeError(
                 f"Could not import public key into rpm-tool:\n{completed_process.stderr.decode()}"
             )
-
-    def import_pubkey_string(self, pubkey_content: str):
-        """
-        Import public_key string (ascii-armored) into the rpm-tool.
-
-        Parameters:
-            import_pubkey: The public key string in ascii-armored format.
-        """
-        with tempfile.NamedTemporaryFile() as pubkey_file:
-            pubkey_file.write(pubkey_content.encode())
-            pubkey_file.flush()
-            self.import_pubkey_file(pubkey_file.name)
 
     def verify_signature(self, rpm_package_file: Path, raises=True):
         """
