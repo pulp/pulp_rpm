@@ -2,6 +2,7 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
+import rpm_rs
 from django.conf import settings
 from django.db import models
 
@@ -60,7 +61,6 @@ class RpmPackageSigningService(SigningService):
         See [RpmTool.verify_signature][] for the signature verificaton method used.
         """
         with tempfile.TemporaryDirectory(dir=settings.WORKING_DIRECTORY) as temp_directory_name:
-            # get and sign sample rpm
             temp_file = RpmTool.get_empty_rpm(temp_directory_name)
             return_value = self.sign(temp_file, pubkey_fingerprint=self.pubkey_fingerprint)
             try:
@@ -71,10 +71,9 @@ class RpmPackageSigningService(SigningService):
             if not result.exists():
                 raise ExternalServiceError(f"Signed package not found: {result}")
 
-            # verify with rpm tool
-            rpm_tool = RpmTool(root=Path(temp_directory_name))
-            rpm_tool.import_pubkey_string(self.public_key)
-            rpm_tool.verify_signature(result)
+            verifier = rpm_rs.Verifier(self.public_key.encode())
+            pkg = rpm_rs.PackageMetadata.open(str(result))
+            pkg.verify_signature(verifier)
 
 
 class RpmPackageSigningResult(BaseModel):
