@@ -28,6 +28,7 @@ from pulpcore.client.pulp_rpm import (
 
 from pulp_rpm.tests.functional.constants import (
     BASE_TEST_JSON,
+    KEY_V4_RSA4K,
     RPM_KICKSTART_FIXTURE_URL,
     RPM_MODULAR_FIXTURE_URL,
     RPM_SIGNED_FIXTURE_URL,
@@ -399,6 +400,26 @@ else
 fi
 """
 
+SIGNING_SCRIPT_RPMV6_STRING = r"""#!/usr/bin/env bash
+FILE_PATH=$1
+GPG_HOME=HOMEDIRHERE
+GPG_BIN=/usr/bin/gpg
+GPG_NAME="${PULP_SIGNING_KEY_FINGERPRINT}"
+
+rpmsign \
+    --define "_gpg_path ${GPG_HOME}" \
+    --define "_gpg_name ${GPG_NAME}" \
+    --define "_gpgbin ${GPG_BIN}" \
+    --addsign --rpmv6 "${FILE_PATH}" 1> /dev/null
+
+STATUS=$?
+if [[ ${STATUS} -eq 0 ]]; then
+   echo {\"rpm_package\": \"${FILE_PATH}\"}
+else
+   exit ${STATUS}
+fi
+"""
+
 
 @pytest.fixture(scope="session")
 def signing_script_path(signing_script_temp_dir, signing_gpg_homedir_path):
@@ -489,21 +510,17 @@ def signing_gpg_metadata2(signing_gpg_homedir_path) -> tuple[gnupg.GPG, list[GPG
 
 @pytest.fixture(scope="session")
 def signing_gpg_metadata(signing_gpg_homedir_path):
-    """
-    A fixture that returns a GPG instance and related metadata (i.e., fingerprint, keyid).
-    """
-    PRIVATE_KEY_URL = "https://raw.githubusercontent.com/pulp/pulp-fixtures/master/common/GPG-PRIVATE-KEY-fixture-signing"  # noqa: E501
-
-    response_private = requests.get(PRIVATE_KEY_URL)
+    """A fixture that returns a GPG instance and related metadata (i.e., fingerprint, keyid)."""
+    response_private = requests.get(KEY_V4_RSA4K.private_url)
     response_private.raise_for_status()
 
     gpg = gnupg.GPG(gnupghome=signing_gpg_homedir_path)
-    gpg.import_keys(response_private.content)
+    import_result = gpg.import_keys(response_private.content)
 
-    fingerprint = gpg.list_keys()[0]["fingerprint"]
-    keyid = gpg.list_keys()[0]["keyid"]
+    fingerprint = KEY_V4_RSA4K.signing_fingerprint
+    keyid = fingerprint[-8:]
 
-    gpg.trust_keys(fingerprint, "TRUST_ULTIMATE")
+    gpg.trust_keys(import_result.fingerprints[0], "TRUST_ULTIMATE")
 
     return gpg, fingerprint, keyid
 
@@ -571,4 +588,81 @@ def _rpm_package_signing_service_name(
 def rpm_package_signing_service(_rpm_package_signing_service_name, pulpcore_bindings):
     return pulpcore_bindings.SigningServicesApi.list(
         name=_rpm_package_signing_service_name
+    ).results[0]
+
+
+@pytest.fixture(scope="session")
+def has_rpmv6_support():
+    result = subprocess.run(
+        ("rpmsign", "--help"),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    return "--rpmv6" in result.stdout.decode()
+
+
+@pytest.fixture(scope="session")
+def rpmv6_signing_script_path(signing_script_temp_dir, signing_gpg_homedir_path):
+    script = signing_script_temp_dir / "sign-rpm-package-v6.sh"
+    script.write_text(
+        SIGNING_SCRIPT_RPMV6_STRING.replace("HOMEDIRHERE", str(signing_gpg_homedir_path))
+    )
+    script.chmod(0o755)
+    return script
+
+
+@pytest.fixture(scope="session")
+def _rpm_package_signing_service_rpmv6_name(
+    bindings_cfg,
+    rpmv6_signing_script_path,
+    signing_gpg_metadata,
+    signing_gpg_homedir_path,
+    has_rpmv6_support,
+    pytestconfig,
+):
+    if not has_rpmv6_support:
+        pytest.skip("rpmsign --rpmv6 not available")
+
+    service_name = str(uuid.uuid4())
+    gpg, fingerprint, keyid = signing_gpg_metadata
+
+    cmd = (
+        "pulpcore-manager",
+        "add-signing-service",
+        service_name,
+        str(rpmv6_signing_script_path),
+        fingerprint,
+        "--class",
+        "rpm:RpmPackageSigningService",
+        "--gnupghome",
+        str(signing_gpg_homedir_path),
+    )
+    completed_process = subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert completed_process.returncode == 0
+
+    yield service_name
+
+    cmd = (
+        "pulpcore-manager",
+        "remove-signing-service",
+        service_name,
+        "--class",
+        "rpm:RpmPackageSigningService",
+    )
+    subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+
+@pytest.fixture
+def rpm_package_signing_service_rpmv6(_rpm_package_signing_service_rpmv6_name, pulpcore_bindings):
+    return pulpcore_bindings.SigningServicesApi.list(
+        name=_rpm_package_signing_service_rpmv6_name
     ).results[0]

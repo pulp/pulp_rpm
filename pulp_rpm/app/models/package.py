@@ -282,7 +282,7 @@ class Package(Content):
         readonly = ["evr"]
 
     @classmethod
-    def createrepo_to_dict(cls, package, tuple_cache=None, string_cache=None):
+    def createrepo_to_dict(cls, package, tuple_cache=None, string_cache=None, signing_keys=None):
         """
         Convert createrepo_c package object to dict for instantiating Package object.
 
@@ -345,7 +345,7 @@ class Package(Content):
                 deduplicated_files.append(file_entry)
 
         if has_duplicates:
-            log.warn(f"Package {package.nevra()} lists some files more than once")
+            log.warning(f"Package {package.nevra()} lists some files more than once")
 
         return {
             PULP_PACKAGE_ATTRS.ARCH: getattr(package, CR_PACKAGE_ATTRS.ARCH),
@@ -391,6 +391,7 @@ class Package(Content):
             PULP_PACKAGE_ATTRS.TIME_FILE: getattr(package, CR_PACKAGE_ATTRS.TIME_FILE),
             PULP_PACKAGE_ATTRS.URL: getattr(package, CR_PACKAGE_ATTRS.URL) or "",
             PULP_PACKAGE_ATTRS.VERSION: getattr(package, CR_PACKAGE_ATTRS.VERSION),
+            PULP_PACKAGE_ATTRS.SIGNING_KEYS: signing_keys or [],
         }
 
     def to_createrepo_c(self):

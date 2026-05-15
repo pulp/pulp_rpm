@@ -2,13 +2,12 @@ import tempfile
 from pathlib import Path
 from typing import Optional
 
+import rpm_rs
 from django.conf import settings
 from django.db import models
 
 from pulpcore.plugin.exceptions import ExternalServiceError
 from pulpcore.plugin.models import BaseModel, Content, SigningService
-
-from pulp_rpm.app.shared_utils import RpmTool
 
 
 class RpmPackageSigningService(SigningService):
@@ -57,11 +56,12 @@ class RpmPackageSigningService(SigningService):
         {"rpm_package": "<path/to/package.rpm>"}
         ```
 
-        See [RpmTool.verify_signature][] for the signature verificaton method used.
         """
         with tempfile.TemporaryDirectory(dir=settings.WORKING_DIRECTORY) as temp_directory_name:
-            # get and sign sample rpm
-            temp_file = RpmTool.get_empty_rpm(temp_directory_name)
+            temp_file = Path(temp_directory_name) / "sample-rpm-0-0.x86_64.rpm"
+            pkg = rpm_rs.PackageBuilder("sample-rpm", "0", "Public Domain", "x86_64").build()
+            pkg.write_file(temp_file)
+
             return_value = self.sign(temp_file, pubkey_fingerprint=self.pubkey_fingerprint)
             try:
                 result = Path(return_value["rpm_package"])
@@ -71,10 +71,9 @@ class RpmPackageSigningService(SigningService):
             if not result.exists():
                 raise ExternalServiceError(f"Signed package not found: {result}")
 
-            # verify with rpm tool
-            rpm_tool = RpmTool(root=Path(temp_directory_name))
-            rpm_tool.import_pubkey_string(self.public_key)
-            rpm_tool.verify_signature(result)
+            verifier = rpm_rs.Verifier(self.public_key.encode())
+            pkg = rpm_rs.PackageMetadata.open(result)
+            pkg.verify_signature(verifier)
 
 
 class RpmPackageSigningResult(BaseModel):

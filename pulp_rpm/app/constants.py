@@ -110,6 +110,8 @@ CR_PACKAGE_ATTRS = SimpleNamespace(
     TIME_FILE="time_file",
     URL="url",
     VERSION="version",
+    SIGNATURES="signatures",
+    SIGNING_KEYS="signing_keys",
 )
 
 PACKAGE_REPODATA = ["primary", "filelists", "other"]
