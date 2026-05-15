@@ -240,11 +240,10 @@ def test_synchronous_package_upload(
 
         assert package.location_href == RPM_PACKAGE_FILENAME
         assert package.pulp_labels == labels
-        assert (
-            package.signing_keys == [LEGACY_SIGNING_KEY.signing_fingerprint]
-            if expect_signed
-            else []
-        )
+        if expect_signed:
+            assert package.signing_keys == [f"v4:{LEGACY_SIGNING_KEY.signing_fingerprint}"]
+        else:
+            assert package.signing_keys == []
 
         # Duplicate unit
         with NamedTemporaryFile() as file_to_upload:
@@ -296,11 +295,12 @@ def test_synchronous_package_upload_from_artifact(
         upload_attrs = {"artifact": artifact.pulp_href}
         package_from_artifact = rpm_package_api.upload(**upload_attrs)
     assert package_from_artifact.artifact == artifact.pulp_href
-    assert (
-        package_from_artifact.signing_keys == [LEGACY_SIGNING_KEY.signing_fingerprint]
-        if expect_signed
-        else []
-    )
+    if expect_signed:
+        assert package_from_artifact.signing_keys == [
+            f"v4:{LEGACY_SIGNING_KEY.signing_fingerprint}"
+        ]
+    else:
+        assert package_from_artifact.signing_keys == []
 
 
 def test_synchronous_package_upload_from_chunks(
