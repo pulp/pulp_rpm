@@ -1,14 +1,12 @@
 import hashlib
 import shutil
 import uuid
-from pathlib import Path
 
 import pytest
 import requests
 import rpm_rs
 
 from pulpcore.client.pulp_rpm.exceptions import ApiException
-from pulpcore.exceptions.validation import InvalidSignatureError
 
 from pulp_rpm.tests.functional.constants import (
     KEY_V4_RSA2K,
@@ -20,12 +18,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_UNSIGNED_URL,
     RPM_UNSIGNED_URL2,
 )
-from pulp_rpm.tests.functional.utils import RpmTool, get_package_repo_path
-
-
-def get_fixture(path: Path, url: str) -> Path:
-    path.write_bytes(requests.get(url).content)
-    return path
+from pulp_rpm.tests.functional.utils import get_package_repo_path
 
 
 def _sign_package(rpm_path, private_key_url, output=None, key_fpr=None):
@@ -98,14 +91,13 @@ def test_sign_package_on_upload(
     fingerprint_set = set([key_a.signing_fingerprint, key_b.signing_fingerprint])
     assert len(fingerprint_set) == 2
 
-    rpm_tool = RpmTool(tmp_path)
-    rpm_tool.import_pubkey_file(get_fixture(tmp_path / "key_a.asc", KEY_V4_RSA2K.public_url))
-    rpm_tool.import_pubkey_file(get_fixture(tmp_path / "key_b.asc", KEY_V4_RSA4K.public_url))
+    verifier = rpm_rs.Verifier()
+    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA2K.public_url).content)
+    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA4K.public_url).content)
 
     file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
     file_to_upload.write_bytes(requests.get(RPM_UNSIGNED_URL).content)
-    with pytest.raises(InvalidSignatureError, match="The package is not signed: .*"):
-        rpm_tool.verify_signature(file_to_upload)
+    assert len(rpm_rs.PackageMetadata.open(str(file_to_upload)).signatures()) == 0
 
     # Upload Package to Repository
     # The same file is uploaded, but signed with different keys each time
@@ -132,7 +124,7 @@ def test_sign_package_on_upload(
                 distribution.base_path, get_package_repo_path(package.location_href)
             )
         )
-        assert rpm_tool.verify_signature(downloaded_package)
+        rpm_rs.Package.open(str(downloaded_package)).verify_signature(verifier)
 
         # Verify signing_key filter
         repository = rpm_repository_api.read(repository.pulp_href)
@@ -226,14 +218,13 @@ def test_sign_chunked_package_on_upload(
     fingerprint_set = set([key_a.signing_fingerprint, key_b.signing_fingerprint])
     assert len(fingerprint_set) == 2
 
-    rpm_tool = RpmTool(tmp_path)
-    rpm_tool.import_pubkey_file(get_fixture(tmp_path / "key_a.asc", KEY_V4_RSA2K.public_url))
-    rpm_tool.import_pubkey_file(get_fixture(tmp_path / "key_b.asc", KEY_V4_RSA4K.public_url))
+    verifier = rpm_rs.Verifier()
+    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA2K.public_url).content)
+    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA4K.public_url).content)
 
     file_to_upload = tmp_path / RPM_PACKAGE_FILENAME2
     file_to_upload.write_bytes(requests.get(RPM_UNSIGNED_URL2).content)
-    with pytest.raises(InvalidSignatureError, match="The package is not signed: .*"):
-        rpm_tool.verify_signature(file_to_upload)
+    assert len(rpm_rs.PackageMetadata.open(str(file_to_upload)).signatures()) == 0
 
     # Upload Package to Repository
     # The same file is uploaded, but signed with different keys each time
@@ -266,7 +257,7 @@ def test_sign_chunked_package_on_upload(
                 distribution.base_path, get_package_repo_path(package.location_href)
             )
         )
-        assert rpm_tool.verify_signature(downloaded_package)
+        rpm_rs.Package.open(str(downloaded_package)).verify_signature(verifier)
 
 
 def test_signed_repo_modify(
@@ -288,14 +279,13 @@ def test_signed_repo_modify(
     _, fingerprint, _ = signing_gpg_metadata
     prefixed_fingerprint = f"v4:{fingerprint}"
 
-    rpm_tool = RpmTool(tmp_path)
-    rpm_tool.import_pubkey_file(get_fixture(tmp_path / "key.asc", KEY_V4_RSA4K.public_url))
+    verifier = rpm_rs.Verifier()
+    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA4K.public_url).content)
 
     # Confirm the fixture RPM is initially unsigned.
     unsigned_package = tmp_path / RPM_PACKAGE_FILENAME
     unsigned_package.write_bytes(requests.get(RPM_UNSIGNED_URL).content)
-    with pytest.raises(InvalidSignatureError, match="The package is not signed: .*"):
-        rpm_tool.verify_signature(unsigned_package)
+    assert len(rpm_rs.PackageMetadata.open(str(unsigned_package)).signatures()) == 0
 
     repository = rpm_repository_factory(
         package_signing_service=rpm_package_signing_service.pulp_href,
@@ -330,7 +320,7 @@ def test_signed_repo_modify(
         download_content_unit(distribution.base_path, get_package_repo_path(pkg_location_href))
     )
 
-    assert rpm_tool.verify_signature(downloaded_package)
+    rpm_rs.Package.open(str(downloaded_package)).verify_signature(verifier)
 
     # attempt to add the package to the repository a second time (should produce same package href)
     modify_response = rpm_repository_api.modify(
@@ -582,9 +572,9 @@ def test_sign_already_signed_package_on_upload(
     _, key_b = signing_gpg_extra
     prefixed_b = f"v4:{key_b.signing_fingerprint.upper()}"
 
-    rpm_tool = RpmTool(tmp_path)
-    rpm_tool.import_pubkey_file(get_fixture(tmp_path / "key_a.asc", KEY_V4_RSA2K.public_url))
-    rpm_tool.import_pubkey_file(get_fixture(tmp_path / "key_b.asc", KEY_V4_RSA4K.public_url))
+    verifier = rpm_rs.Verifier()
+    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA2K.public_url).content)
+    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA4K.public_url).content)
 
     # The fixture RPM is already signed with the old fixture key.
     file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
@@ -619,7 +609,7 @@ def test_sign_already_signed_package_on_upload(
     downloaded_package.write_bytes(
         download_content_unit(distribution.base_path, get_package_repo_path(package.location_href))
     )
-    assert rpm_tool.verify_signature(downloaded_package)
+    rpm_rs.Package.open(str(downloaded_package)).verify_signature(verifier)
 
 
 @pytest.mark.parallel
@@ -643,10 +633,6 @@ def test_sign_multi_signed_package_on_upload(
     key_a, key_b = signing_gpg_extra
     prefixed_a = f"v4:{key_a.signing_fingerprint.upper()}"
     prefixed_b = f"v4:{key_b.signing_fingerprint.upper()}"
-
-    rpm_tool = RpmTool(tmp_path)
-    rpm_tool.import_pubkey_file(get_fixture(tmp_path / "key_a.asc", KEY_V4_RSA2K.public_url))
-    rpm_tool.import_pubkey_file(get_fixture(tmp_path / "key_b.asc", KEY_V4_RSA4K.public_url))
 
     file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
     shutil.copy2(multi_signed_rpm, file_to_upload)
