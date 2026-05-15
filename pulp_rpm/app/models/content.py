@@ -56,7 +56,6 @@ class RpmPackageSigningService(SigningService):
         {"rpm_package": "<path/to/package.rpm>"}
         ```
 
-        See [RpmTool.verify_signature][] for the signature verificaton method used.
         """
         with tempfile.TemporaryDirectory(dir=settings.WORKING_DIRECTORY) as temp_directory_name:
             temp_file = Path(temp_directory_name) / "sample-rpm-0-0.x86_64.rpm"
