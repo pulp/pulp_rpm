@@ -293,7 +293,7 @@ def test_signed_repo_modify(
     )
 
     created_package = rpm_package_factory(url=RPM_UNSIGNED_URL)
-    assert created_package.signing_keys is None
+    assert created_package.signing_keys == []
     package_href = created_package.pulp_href
     modify_response = rpm_repository_api.modify(
         repository.pulp_href, {"add_content_units": [package_href]}
@@ -567,13 +567,13 @@ def test_sign_already_signed_package_on_upload(
 ):
     """Upload a pre-signed package to a signing-enabled repo with a different key.
 
-    The resulting package should have signatures from both the original key and the new key.
+    The signing service (rpm --addsign) replaces the existing signature with the new one,
+    so the resulting package should only have the new key's signature.
     """
     _, key_b = signing_gpg_extra
     prefixed_b = f"v4:{key_b.signing_fingerprint.upper()}"
 
     verifier = rpm_rs.Verifier()
-    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA2K.public_url).content)
     verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA4K.public_url).content)
 
     # The fixture RPM is already signed with the old fixture key.
@@ -598,11 +598,69 @@ def test_sign_already_signed_package_on_upload(
     package = rpm_package_api.read(package_href)
 
     assert package.signing_keys is not None
+    assert prefixed_b in package.signing_keys
+
+    # Verify the served package has a valid signature from the new key
+    publication = rpm_publication_factory(repository=repository.pulp_href)
+    distribution = rpm_distribution_factory(publication=publication.pulp_href)
+    downloaded_package = tmp_path / "package.rpm"
+    downloaded_package.write_bytes(
+        download_content_unit(distribution.base_path, get_package_repo_path(package.location_href))
+    )
+    rpm_rs.Package.open(str(downloaded_package)).verify_signature(verifier)
+
+
+@pytest.mark.parallel
+def test_sign_already_signed_package_on_upload_rpmv6(
+    tmp_path,
+    monitor_task,
+    download_content_unit,
+    signing_gpg_extra,
+    rpm_package_signing_service_rpmv6,
+    rpm_package_api,
+    rpm_repository_factory,
+    rpm_publication_factory,
+    rpm_distribution_factory,
+):
+    """Upload a pre-signed package to a repo with an rpmv6-capable signing service.
+
+    With rpmsign --addsign --rpmv6, the existing v4 signature is preserved and a new v6
+    signature is added alongside it. The resulting package should have both signatures.
+    """
+    _, key_b = signing_gpg_extra
+    prefixed_b = f"v4:{key_b.signing_fingerprint.upper()}"
+
+    verifier = rpm_rs.Verifier()
+    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA2K.public_url).content)
+    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA4K.public_url).content)
+
+    # The fixture RPM is already signed with the old fixture key.
+    file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
+    file_to_upload.write_bytes(requests.get(RPM_SIGNED_URL).content)
+
+    # Extract the existing signature fingerprint from the pre-signed RPM.
+    pkg = rpm_rs.PackageMetadata.open(str(file_to_upload))
+    existing_sigs = [f"v4:{s.fingerprint.upper()}" for s in pkg.signatures() if s.fingerprint]
+    assert len(existing_sigs) > 0
+
+    # Upload to a repo that signs with key_b via rpmv6.
+    repository = rpm_repository_factory(
+        package_signing_service=rpm_package_signing_service_rpmv6.pulp_href,
+        package_signing_fingerprint=prefixed_b,
+    )
+    upload_response = rpm_package_api.create(
+        file=str(file_to_upload.absolute()),
+        repository=repository.pulp_href,
+    )
+    package_href = monitor_task(upload_response.task).created_resources[2]
+    package = rpm_package_api.read(package_href)
+
+    assert package.signing_keys is not None
     assert len(package.signing_keys) == 2
     assert existing_sigs[0] in package.signing_keys
     assert prefixed_b in package.signing_keys
 
-    # Verify the served package has valid signatures
+    # Verify the served package has valid signatures from both keys
     publication = rpm_publication_factory(repository=repository.pulp_href)
     distribution = rpm_distribution_factory(publication=publication.pulp_href)
     downloaded_package = tmp_path / "package.rpm"
