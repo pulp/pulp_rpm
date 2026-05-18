@@ -25,11 +25,10 @@ log = getLogger(__name__)
 
 # Hard to move this due to circular import problems
 class RpmVersionField(models.Field):
-    """Model Field for pulp_evr_t, a custom type for representing RPM EVR."""
+    """Model Field for the EVR sort key (single BYTEA encoding epoch+version+release)."""
 
     def db_type(self, connection):
-        """Returns the database column type."""
-        return "pulp_evr_t"
+        return "bytea"
 
 
 class Package(Content):
@@ -143,7 +142,7 @@ class Package(Content):
     arch = models.CharField(max_length=20)
 
     # Currently filled by a database trigger - consider eventually switching to generated column
-    evr = RpmVersionField()
+    evr = RpmVersionField(db_column="evr_v2")
 
     pkgId = models.TextField(db_index=True)  # formerly "checksum" in Pulp 2
     checksum_type = models.TextField(choices=CHECKSUM_CHOICES)
@@ -274,6 +273,9 @@ class Package(Content):
             "checksum_type",
             "pkgId",
         )
+        indexes = [
+            models.Index(fields=["name", "arch", "evr"]),
+        ]
         permissions = [
             ("upload_rpm_packages", "Can upload RPM packages using synchronous API."),
         ]

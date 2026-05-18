@@ -510,10 +510,19 @@ class Migration(migrations.Migration):
         migrations.RunSQL(
             sql='\n-- create pulp_evr_t on insert, so it matches the provided E/V/R cols\nCREATE TRIGGER pulp_evr_insert_trigger\n  BEFORE INSERT\n  ON rpm_package\n  FOR EACH ROW\n  EXECUTE PROCEDURE pulp_evr_trigger();\n\n-- create pulp_evr_t on update, so it continues to match the provided E/V/R cols, but only if Something Changed\nCREATE TRIGGER pulp_evr_update_trigger\n  BEFORE UPDATE OF epoch, version, release\n  ON rpm_package\n  FOR EACH ROW\n  WHEN (\n    OLD.epoch IS DISTINCT FROM NEW.epoch OR\n    OLD.version IS DISTINCT FROM NEW.version OR\n    OLD.release IS DISTINCT FROM NEW.release\n  )\n  EXECUTE PROCEDURE pulp_evr_trigger();\n',
         ),
-        migrations.AddField(
-            model_name='package',
-            name='evr',
-            field=pulp_rpm.app.models.package.RpmVersionField(),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                migrations.RunSQL(
+                    sql="ALTER TABLE rpm_package ADD COLUMN evr pulp_evr_t;",
+                ),
+            ],
+            state_operations=[
+                migrations.AddField(
+                    model_name='package',
+                    name='evr',
+                    field=pulp_rpm.app.models.package.RpmVersionField(),
+                ),
+            ],
         ),
         migrations.RunSQL(
             sql='\nupdate rpm_package set evr = (\n  select ROW(coalesce(epoch::numeric,0),\n             pulp_rpmver_array(version)::pulp_evr_array_item[],\n             pulp_rpmver_array(release)::pulp_evr_array_item[])::pulp_evr_t\n  );\n',
