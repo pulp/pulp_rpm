@@ -1,0 +1,1 @@
+Package EVR sorting is now once again based on a special database type / field / function. evr_t_v2 correctly handles tilde and caret operator sorting and is faster than the original.

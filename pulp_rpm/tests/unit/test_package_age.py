@@ -240,62 +240,56 @@ class TestPackageAge(TestCase):
 
     def test_age_with_tilde_and_caret_versions(self):
         """Test age calculation with tilde and caret version characters."""
-        # Create packages with tilde and caret versions
-        Package.objects.create(
-            name="tildepkg",
-            epoch="0",
-            version="1.0~rc1",
-            release="1.el8",
-            arch="x86_64",
-            pkgId="tilde1",
-            checksum_type="sha256",
-        )
-
-        Package.objects.create(
-            name="tildepkg",
-            epoch="0",
-            version="1.0",
-            release="1.el8",
-            arch="x86_64",
-            pkgId="tilde2",
-            checksum_type="sha256",
-        )
-
-        Package.objects.create(
-            name="tildepkg",
-            epoch="0",
-            version="1.0~rc2",
-            release="1.el8",
-            arch="x86_64",
-            pkgId="tilde3",
-            checksum_type="sha256",
-        )
-
-        Package.objects.create(
-            name="tildepkg",
-            epoch="0",
-            version="1.0^git123",
-            release="1.el8",
-            arch="x86_64",
-            pkgId="tilde4",
-            checksum_type="sha256",
-        )
+        versions = [
+            ("1.0~rc1~git1", "tilde1"),
+            ("1.0~rc1", "tilde2"),
+            ("1.0~rc2", "tilde3"),
+            ("1.0", "tilde4"),
+            ("1.0^git123", "tilde5"),
+            ("1.0^git456", "tilde6"),
+            ("1.0.1", "tilde7"),
+            ("1.0~rc1^git1", "tilde8"),
+        ]
+        for version, pkgId in versions:
+            Package.objects.create(
+                name="tildepkg",
+                epoch="0",
+                version=version,
+                release="1.el8",
+                arch="x86_64",
+                pkgId=pkgId,
+                checksum_type="sha256",
+            )
 
         packages = annotate_with_age(Package.objects.filter(name="tildepkg")).order_by("age")
 
-        # Expected order: 1.0^git123 (age=1), 1.0 (age=2), 1.0~rc2 (age=3), 1.0~rc1 (age=4)
-        # Caret sorts higher than regular, regular sorts higher than tilde
-        self.assertEqual(packages[0].version, "1.0^git123")
-        self.assertEqual(packages[0].age, 1)
-
-        self.assertEqual(packages[1].version, "1.0")
-        self.assertEqual(packages[1].age, 2)
-
-        self.assertEqual(packages[2].version, "1.0~rc2")
-        self.assertEqual(packages[2].age, 3)
-
-        self.assertEqual(packages[3].version, "1.0~rc1")
-        self.assertEqual(packages[3].age, 4)
+        # Expected order (newest to oldest):
+        #   1.0.1         — regular continuation, sorts highest
+        #   1.0^git456    — caret sorts after base but before regular continuation
+        #   1.0^git123    — caret, alphabetically before git456
+        #   1.0           — base version
+        #   1.0~rc2       — tilde sorts before base
+        #   1.0~rc1^git1  — tilde rc1 with caret: still under ~rc1 umbrella, but above plain ~rc1
+        #   1.0~rc1       — tilde rc1
+        #   1.0~rc1~git1  — nested tilde sorts before ~rc1
+        expected_order = [
+            "1.0.1",
+            "1.0^git456",
+            "1.0^git123",
+            "1.0",
+            "1.0~rc2",
+            "1.0~rc1^git1",
+            "1.0~rc1",
+            "1.0~rc1~git1",
+        ]
+        self.assertEqual(len(packages), len(expected_order))
+        for i, expected_version in enumerate(expected_order):
+            self.assertEqual(
+                packages[i].version,
+                expected_version,
+                f"age={i + 1}: expected {expected_version}, got {packages[i].version}",
+            )
+            self.assertEqual(packages[i].age, i + 1)
 
     def test_age_with_numeric_handling_versions(self):
         """Test age calculation with numeric version handling edge cases."""
