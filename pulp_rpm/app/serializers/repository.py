@@ -1,9 +1,12 @@
+import json
+import re
+import urllib.parse
 from gettext import gettext as _
 from textwrap import dedent
 from urllib.parse import urlparse
 
 from django.conf import settings
-from drf_spectacular.utils import extend_schema_serializer
+from drf_spectacular.utils import extend_schema_field, extend_schema_serializer
 from jsonschema import Draft7Validator
 from rest_framework import serializers
 
@@ -33,9 +36,13 @@ from pulp_rpm.app.constants import (
     ALLOWED_PUBLISH_CHECKSUMS,
     CHECKSUM_CHOICES,
     COMPRESSION_CHOICES,
+    LABEL_OSV_CONFIG,
     LAYOUT_CHOICES,
+    NUMERIC_RELEASE_ECOSYSTEMS,
     SKIP_TYPES,
+    SUPPORTED_ECOSYSTEMS,
     SYNC_POLICY_CHOICES,
+    YYMM_RELEASE_ECOSYSTEMS,
 )
 from pulp_rpm.app.models import (
     RpmDistribution,
@@ -49,6 +56,113 @@ from pulp_rpm.app.schema import COPY_CONFIG_SCHEMA
 
 # avoid calling into dynaconf many times
 ALLOWED_CONTENT_CHECKSUMS = settings.ALLOWED_CONTENT_CHECKSUMS
+
+
+class EcosystemConfigSerializer(serializers.Serializer):
+    name = serializers.ChoiceField(choices=sorted(SUPPORTED_ECOSYSTEMS))
+    releases = serializers.ListField(
+        child=serializers.CharField(),
+        allow_empty=False,
+    )
+
+    _RELEASE_VALIDATORS = {
+        "redhat_cpe": (
+            re.compile(r"^cpe:/[aoh]:redhat"),
+            _("'%s' is not a valid CPE URI (expected cpe:/<part>:redhat:...)."),
+        ),
+        "numeric": (
+            re.compile(r"^\d+(\.\d+)*$"),
+            _("'%s' is not a valid version number (expected e.g. '9' or '3.0')."),
+        ),
+        "yymm": (
+            re.compile(r"^\d{2}\.\d{2}$"),
+            _("'%s' is not a valid YY.MM release (expected e.g. '22.03')."),
+        ),
+    }
+
+    def validate(self, data: dict) -> dict:
+        name = data.get("name")
+        releases = data.get("releases", [])
+        if name == "Red Hat":
+            validator_key = "redhat_cpe"
+        elif name in NUMERIC_RELEASE_ECOSYSTEMS:
+            validator_key = "numeric"
+        elif name in YYMM_RELEASE_ECOSYSTEMS:
+            validator_key = "yymm"
+        else:
+            return data
+        pattern, error_msg = self._RELEASE_VALIDATORS[validator_key]
+        for release in releases:
+            if not pattern.match(release):
+                raise serializers.ValidationError({"releases": error_msg % release})
+        return data
+
+
+class OsvConfigSerializer(serializers.Serializer):
+    """Deserializes and validates the osv.rpm.config label value."""
+
+    config = EcosystemConfigSerializer(many=True, allow_empty=False)
+
+    @classmethod
+    def from_labels(cls, labels: dict[str, str]) -> "OsvConfigSerializer":
+        """Alternative constructor: parse and validate the osv.rpm.config label.
+
+        Raises ValidationError if the label is absent, not valid JSON, or fails validation.
+        """
+        raw = labels.get(LABEL_OSV_CONFIG)
+        if raw is None:
+            raise serializers.ValidationError(
+                {LABEL_OSV_CONFIG: _("Required label '%s' is missing.") % LABEL_OSV_CONFIG}
+            )
+        parsed = cls.decode_label(raw)
+        if parsed is None:
+            raise serializers.ValidationError({LABEL_OSV_CONFIG: _("Must be a valid JSON list.")})
+        s = cls(data={"config": parsed})
+        if not s.is_valid():
+            raise serializers.ValidationError({LABEL_OSV_CONFIG: s.errors})
+        return s
+
+    @staticmethod
+    def encode_label(config: object) -> str:
+        """Encode a config value as a URL-safe label string."""
+        return urllib.parse.quote(json.dumps(config))
+
+    @staticmethod
+    def decode_label(raw: str) -> object | None:
+        """URL-decode and JSON-parse a raw label value. Returns None if not valid JSON."""
+        try:
+            return json.loads(urllib.parse.unquote(raw))
+        except (json.JSONDecodeError, ValueError):
+            return None
+
+
+@extend_schema_field(
+    {
+        "type": "array",
+        "nullable": True,
+        "items": {
+            "type": "object",
+            "required": ["name", "releases"],
+            "properties": {
+                "name": {"type": "string", "enum": sorted(SUPPORTED_ECOSYSTEMS)},
+                "releases": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "minItems": 1,
+                    "description": "Releases to scope the OSV query. For Red Hat, use CPEs.",
+                },
+            },
+        },
+    }
+)
+class OsvConfigField(serializers.JSONField):
+    """JSONField backed by the osv.rpm.config label; reads from labels on the instance."""
+
+    def get_attribute(self, instance):
+        raw = dict(instance.pulp_labels).get(LABEL_OSV_CONFIG)
+        if raw is None:
+            return None
+        return OsvConfigSerializer.decode_label(raw)
 
 
 @extend_schema_serializer(
@@ -178,6 +292,16 @@ class RpmRepositorySerializer(RepositorySerializer):
             "A JSON document describing the config.repo file Pulp should generate for this repo"
         ),
     )
+    osv_config = OsvConfigField(
+        required=False,
+        allow_null=True,
+        help_text=_(
+            "OSV vulnerability scanning configuration. A JSON list of ecosystem entries, each "
+            "with a 'name' and required 'releases' field. See "
+            "[vulnerability-report](https://pulpproject.org/pulp_rpm/docs/user/guides/vulnerability-report) "
+            "for supported ecosystems and release formats."
+        ),
+    )
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -207,6 +331,25 @@ class RpmRepositorySerializer(RepositorySerializer):
                     {"checksum_type": _(ALLOWED_PUBLISH_CHECKSUM_ERROR_MSG)}
                 )
 
+        if LABEL_OSV_CONFIG in data.get("pulp_labels", {}):
+            raise serializers.ValidationError(
+                {"pulp_labels": _("Use the 'osv_config' field to set '%s'.") % LABEL_OSV_CONFIG}
+            )
+
+        if "osv_config" in data:
+            osv_config = data.pop("osv_config")
+            current_labels = dict(self.instance.pulp_labels) if self.instance else {}
+            labels = {**current_labels, **data.get("pulp_labels", {})}
+            if osv_config is None:
+                labels.pop(LABEL_OSV_CONFIG, None)
+            else:
+                s = OsvConfigSerializer(data={"config": osv_config})
+                s.is_valid(raise_exception=True)
+                labels[LABEL_OSV_CONFIG] = OsvConfigSerializer.encode_label(
+                    s.validated_data["config"]
+                )
+            data["pulp_labels"] = labels
+
         validated_data = super().validate(data)
         return validated_data
 
@@ -226,6 +369,7 @@ class RpmRepositorySerializer(RepositorySerializer):
             "repo_config",
             "compression_type",
             "layout",
+            "osv_config",
         )
         model = RpmRepository
 

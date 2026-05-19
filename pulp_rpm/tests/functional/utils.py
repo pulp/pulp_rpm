@@ -15,6 +15,7 @@ from typing import NamedTuple, Optional
 import createrepo_c as cr
 import pyzstd
 import requests
+import rpm_rs
 
 from pulp_rpm.tests.functional.constants import (
     LEGACY_SIGNING_KEY,
@@ -113,7 +114,7 @@ def get_metadata_content_helper(base_url, repomd_elem, meta_type):
 
 class Nevra(NamedTuple):
     name: str
-    epoch: str
+    epoch: int
     version: str
     release: str
     arch: str
@@ -138,7 +139,7 @@ class MetaPackage:
     def generate_nevra(cls, n: int) -> Nevra:
         return Nevra(
             name=f"pkg{n}-{SALT[:8]}",
-            epoch="0",
+            epoch=0,
             version=f"{n}.0",
             release=f"{n}",
             arch="noarch",
@@ -147,6 +148,13 @@ class MetaPackage:
     @classmethod
     def generate_digest(cls, n: int) -> str:
         return hashlib.sha256(f"digest-{SALT}-{n}".encode()).hexdigest()
+
+
+def build_rpm(nevra: Nevra, path: Path) -> None:
+    """Build a minimal RPM file at path using rpm_rs."""
+    builder = rpm_rs.PackageBuilder(nevra.name, nevra.version, "GPLv2", nevra.arch)
+    builder.release(nevra.release)
+    builder.build().write_file(path)
 
 
 def normalized_location(pkg: MetaPackage, prefix: bool = True) -> MetaPackage:
@@ -190,7 +198,7 @@ class PackageListFetcher:
             MetaPackage(
                 nevra=Nevra(
                     name=pkg.name,
-                    epoch=pkg.epoch,
+                    epoch=int(pkg.epoch),
                     version=pkg.version,
                     release=pkg.release,
                     arch=pkg.arch,
@@ -211,7 +219,7 @@ class PackageListFetcher:
             MetaPackage(
                 nevra=Nevra(
                     name=p.name,
-                    epoch=p.epoch,
+                    epoch=int(p.epoch),
                     version=p.version,
                     release=p.release,
                     arch=p.arch,
@@ -240,7 +248,7 @@ class PackageListFetcher:
 
 
 class RepositoryBuilder:
-    """Builds local RPM repositories from MetaPackage entries using createrepo_c."""
+    """Builds a RPM repository that can be consumed by Pulp."""
 
     def __init__(self, tmp_path: Path):
         self._tmp_path = tmp_path
@@ -257,7 +265,7 @@ class RepositoryBuilder:
             cr_pkg = cr.Package()
             cr_pkg.name = pkg.nevra.name
             cr_pkg.arch = pkg.nevra.arch
-            cr_pkg.epoch = pkg.nevra.epoch
+            cr_pkg.epoch = str(pkg.nevra.epoch)
             cr_pkg.version = pkg.nevra.version
             cr_pkg.release = pkg.nevra.release
             cr_pkg.pkgId = pkg.digest
