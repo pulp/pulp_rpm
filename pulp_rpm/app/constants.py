@@ -1,3 +1,4 @@
+import re
 from types import SimpleNamespace
 
 import createrepo_c as cr
@@ -287,6 +288,25 @@ PULP_ENVIRONMENT_ATTRS = SimpleNamespace(
 
 PACKAGES_DIRECTORY = "Packages"
 DIST_TREE_MAIN_REPO_PATH = "."
+
+LABEL_OSV_CONFIG = "osv.rpm.config"
+REDHAT_CPE_RE = re.compile(r"^cpe:/[aoh]:redhat")
+SUPPORTED_ECOSYSTEMS = {
+    "AlmaLinux",
+    "Azure Linux",
+    "Mageia",
+    "openEuler",
+    "openSUSE",
+    "Photon OS",
+    "Red Hat",
+    "Rocky Linux",
+    "SUSE",
+}
+
+# Ecosystems grouped by their expected release string format.
+# openSUSE and SUSE use a free-form PRETTY_NAME string and are not validated.
+NUMERIC_RELEASE_ECOSYSTEMS = {"AlmaLinux", "Azure Linux", "Mageia", "Photon OS", "Rocky Linux"}
+YYMM_RELEASE_ECOSYSTEMS = {"openEuler"}
 
 # Mappings of the possible integer values of "sum_type" on Advisory packages to their user-facing
 # string representation. Should mirror the createrepo_c source code:

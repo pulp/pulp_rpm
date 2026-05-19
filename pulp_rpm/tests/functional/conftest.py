@@ -3,6 +3,7 @@ import json
 import subprocess
 import uuid
 from dataclasses import dataclass
+from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 import gnupg
@@ -21,6 +22,7 @@ from pulpcore.client.pulp_rpm import (
     ContentPackagelangpacksApi,
     ContentPackagesApi,
     RemotesUlnApi,
+    RepositoriesRpmVersionsApi,
     RpmCompsApi,
     RpmCopyApi,
     RpmRepositorySyncURL,
@@ -35,8 +37,10 @@ from pulp_rpm.tests.functional.constants import (
     RPM_SIGNED_URL,
 )
 from pulp_rpm.tests.functional.utils import (
+    Nevra,
     PackageListFetcher,
     RepositoryBuilder,
+    build_rpm,
     init_signed_repo_configuration,
 )
 
@@ -128,6 +132,11 @@ def rpm_copy_api(rpm_client):
     return RpmCopyApi(rpm_client)
 
 
+@pytest.fixture(scope="session")
+def rpm_repository_versions_api(rpm_client):
+    return RepositoriesRpmVersionsApi(rpm_client)
+
+
 @pytest.fixture
 def signed_artifact(pulpcore_bindings, tmp_path):
     data = requests.get(RPM_SIGNED_URL).content
@@ -159,6 +168,18 @@ def rpm_artifact_factory(pulpcore_bindings, gen_object_with_cleanup, pulp_domain
         return gen_object_with_cleanup(pulpcore_bindings.ArtifactsApi, str(temp_file), **kwargs)
 
     return _rpm_artifact_factory
+
+
+@pytest.fixture
+def rpm_create_package(tmp_path):
+    """Return a factory that builds a minimal RPM file and returns its path."""
+
+    def _factory(nevra: Nevra) -> Path:
+        path = tmp_path / f"{nevra.to_nvra()}.rpm"
+        build_rpm(nevra, path)
+        return path
+
+    return _factory
 
 
 @pytest.fixture

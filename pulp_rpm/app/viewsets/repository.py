@@ -11,7 +11,7 @@ from pulpcore.plugin.serializers import (
     AsyncOperationResponseSerializer,
     RepositoryAddRemoveContentSerializer,
 )
-from pulpcore.plugin.tasking import dispatch
+from pulpcore.plugin.tasking import check_content, dispatch
 from pulpcore.plugin.util import extract_pk
 from pulpcore.plugin.viewsets import (
     DistributionViewSet,
@@ -42,7 +42,9 @@ from pulp_rpm.app.serializers import (
     RpmRepositorySyncURLSerializer,
     UlnRemoteSerializer,
 )
+from pulp_rpm.app.serializers.repository import OsvConfigSerializer
 from pulp_rpm.app.tasks.signing import signed_add_and_remove
+from pulp_rpm.app.vuln_report import generate_vuln_report_payloads
 
 
 class RpmModifyRepositoryActionMixin(ModifyRepositoryActionMixin):
@@ -318,8 +320,42 @@ class RpmRepositoryVersionViewSet(RepositoryVersionViewSet):
                     "has_repository_model_or_domain_or_obj_perms:rpm.view_rpmrepository",
                 ],
             },
+            {
+                "action": ["vulnerability_report"],
+                "principal": "authenticated",
+                "effect": "allow",
+                "condition": "has_repository_model_or_domain_or_obj_perms:rpm.view_rpmrepository",
+            },
         ],
     }
+
+    @extend_schema(
+        summary="Scan for vulnerabilities",
+        description=(
+            "Dispatch a task to scan all RPM packages in this repository version for known CVEs "
+            "via osv.dev.\n\nThe repository must have `osv_config` set to specify which ecosystem(s) "
+            "to query. See the [vulnerability report guide]"
+            "(https://pulpproject.org/pulp_rpm/docs/user/guides/vulnerability-report) "
+            "for usage details."
+        ),
+        responses={202: AsyncOperationResponseSerializer},
+    )
+    @action(detail=True, methods=["post"], serializer_class=None)
+    def vulnerability_report(self, request, repository_pk, **kwargs):
+        repository_version = self.get_object()
+        repo = repository_version.repository
+
+        OsvConfigSerializer.from_labels(dict(repo.pulp_labels))
+
+        async_result = dispatch(
+            check_content,
+            shared_resources=[repo],
+            kwargs={
+                "func": f"{generate_vuln_report_payloads.__module__}.{generate_vuln_report_payloads.__name__}",
+                "args": [str(repository_version.pk)],
+            },
+        )
+        return OperationPostponedResponse(async_result, request)
 
 
 class RpmRemoteViewSet(RemoteViewSet, RolesMixin):

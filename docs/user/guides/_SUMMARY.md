@@ -8,4 +8,5 @@
 * [Sign Repository Metadata](metadata_signing.md)
 * [Sign Packages](sign-packages.md)
 * [Prune Packages](prune.md)
+* [Scan for Vulnerabilities](vulnerability-report.md)
 

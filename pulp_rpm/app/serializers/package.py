@@ -420,7 +420,6 @@ class PackageUploadSerializer(PackageSerializer):
         ref_name = "RPMPackageUploadSerializer"
 
     def validate(self, data):
-
         uploaded_file = data.get("file")
         artifact = data.get("artifact")
         upload = data.get("upload")

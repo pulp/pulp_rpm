@@ -69,16 +69,21 @@ def rpm_repository_api(rpm_client):
 
 
 @pytest.fixture(scope="class")
-def rpm_repository_factory(rpm_repository_api, gen_object_with_cleanup):
+def rpm_repository_factory(rpm_repository_api, rpm_package_api, gen_object_with_cleanup):
     """A factory to generate an RPM Repository with auto-deletion after the test run."""
 
-    def _rpm_repository_factory(pulp_domain=None, **body):
+    def _rpm_repository_factory(pulp_domain=None, upload_packages=None, monitor_task=None, **body):
         data = {"name": str(uuid.uuid4())}
         data.update(body)
         kwargs = {}
         if pulp_domain:
             kwargs["pulp_domain"] = pulp_domain
-        return gen_object_with_cleanup(rpm_repository_api, data, **kwargs)
+        repo = gen_object_with_cleanup(rpm_repository_api, data, **kwargs)
+        if upload_packages:
+            for path in upload_packages:
+                monitor_task(rpm_package_api.create(file=str(path), repository=repo.pulp_href).task)
+            repo = rpm_repository_api.read(repo.pulp_href)
+        return repo
 
     return _rpm_repository_factory
 
