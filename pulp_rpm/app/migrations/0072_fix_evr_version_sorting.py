@@ -92,6 +92,7 @@ DECLARE
     pos INTEGER := 1;
     len INTEGER;
     ch TEXT;
+    cc INTEGER;
     result BYTEA := ''::bytea;
     segment TEXT;
     seg_len INTEGER;
@@ -105,12 +106,14 @@ BEGIN
 
     WHILE pos <= len LOOP
         -- Skip non-alphanumeric, non-tilde, non-caret characters
+        -- Uses ascii() for collation-independent ASCII range checks (matches C isalpha/isdigit)
         LOOP
             IF pos > len THEN EXIT; END IF;
             ch := substr(ver, pos, 1);
-            EXIT WHEN ch BETWEEN 'a' AND 'z'
-                     OR ch BETWEEN 'A' AND 'Z'
-                     OR ch BETWEEN '0' AND '9'
+            cc := ascii(ch);
+            EXIT WHEN (cc BETWEEN 97 AND 122)   -- a-z
+                     OR (cc BETWEEN 65 AND 90)   -- A-Z
+                     OR (cc BETWEEN 48 AND 57)   -- 0-9
                      OR ch = '~'
                      OR ch = '^';
             pos := pos + 1;
@@ -119,6 +122,7 @@ BEGIN
         IF pos > len THEN EXIT; END IF;
 
         ch := substr(ver, pos, 1);
+        cc := ascii(ch);
 
         -- Tilde sorts before everything, including end-of-version
         IF ch = '~' THEN
@@ -134,10 +138,10 @@ BEGIN
             CONTINUE;
         END IF;
 
-        IF ch BETWEEN '0' AND '9' THEN
+        IF cc BETWEEN 48 AND 57 THEN  -- 0-9
             -- Numeric segment
             segment := '';
-            WHILE pos <= len AND substr(ver, pos, 1) BETWEEN '0' AND '9' LOOP
+            WHILE pos <= len AND ascii(substr(ver, pos, 1)) BETWEEN 48 AND 57 LOOP  -- 0-9
                 segment := segment || substr(ver, pos, 1);
                 pos := pos + 1;
             END LOOP;
@@ -153,8 +157,8 @@ BEGIN
             -- Alpha segment
             segment := '';
             WHILE pos <= len AND (
-                substr(ver, pos, 1) BETWEEN 'a' AND 'z' OR
-                substr(ver, pos, 1) BETWEEN 'A' AND 'Z'
+                ascii(substr(ver, pos, 1)) BETWEEN 97 AND 122 OR   -- a-z
+                ascii(substr(ver, pos, 1)) BETWEEN 65 AND 90      -- A-Z
             ) LOOP
                 segment := segment || substr(ver, pos, 1);
                 pos := pos + 1;
