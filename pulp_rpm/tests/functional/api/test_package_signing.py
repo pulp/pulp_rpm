@@ -306,7 +306,7 @@ def test_signed_repo_modify(
     ).results[0]
     assert signed_package.pulp_href != created_package.pulp_href
     assert signed_package.signing_keys == [prefixed_fingerprint]
-    assert signed_package.time_file != created_package.time_file
+    assert signed_package.pkg_id != created_package.pkg_id
     assert sorted(task_result.created_resources) == sorted(
         [repository.latest_version_href, signed_package.pulp_href, signed_package.artifact]
     )
