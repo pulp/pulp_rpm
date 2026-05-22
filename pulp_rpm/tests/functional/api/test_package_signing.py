@@ -634,26 +634,28 @@ def test_sign_already_signed_package_on_upload_rpmv6(
     rpm_publication_factory,
     rpm_distribution_factory,
 ):
-    """Upload a pre-signed package to a repo with an rpmv6-capable signing service.
+    """Upload a pre-signed v6 RPM to a repo with an rpmv6-capable signing service.
 
-    With rpmsign --addsign --rpmv6, the existing v4 signature is preserved and a new v6
-    signature is added alongside it. The resulting package should have both signatures.
+    The package has a single OPENPGP signature from key_a. The signing service adds
+    a second signature from key_b. The resulting package should have both signatures.
     """
-    _, key_b = signing_gpg_extra
+    key_a, key_b = signing_gpg_extra
+    prefixed_a = f"v4:{key_a.signing_fingerprint.upper()}"
     prefixed_b = f"v4:{key_b.signing_fingerprint.upper()}"
 
     verifier = rpm_rs.Verifier()
     verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA2K.public_url).content)
     verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA4K.public_url).content)
 
-    # The fixture RPM is already signed with the old fixture key.
+    # Build a v6-format RPM pre-signed with key_a (no legacy v4 signature).
+    config = rpm_rs.BuildConfig(format=rpm_rs.RpmFormat.V6)
+    builder = rpm_rs.PackageBuilder("kangaroo", "0.3", "Public Domain", "noarch")
+    builder.using_config(config)
+    builder.release("1")
     file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
-    file_to_upload.write_bytes(requests.get(RPM_SIGNED_URL).content)
-
-    # Extract the existing signature fingerprint from the pre-signed RPM.
-    pkg = rpm_rs.PackageMetadata.open(str(file_to_upload))
-    existing_sigs = [f"v4:{s.fingerprint.upper()}" for s in pkg.signatures() if s.fingerprint]
-    assert len(existing_sigs) > 0
+    pkg = builder.build()
+    pkg.write_file(str(file_to_upload))
+    _sign_package(file_to_upload, key_a.private_url)
 
     # Upload to a repo that signs with key_b via rpmv6.
     repository = rpm_repository_factory(
@@ -669,7 +671,7 @@ def test_sign_already_signed_package_on_upload_rpmv6(
 
     assert package.signing_keys is not None
     assert len(package.signing_keys) == 2
-    assert existing_sigs[0] in package.signing_keys
+    assert prefixed_a in package.signing_keys
     assert prefixed_b in package.signing_keys
 
     # Verify the served package has valid signatures from both keys
