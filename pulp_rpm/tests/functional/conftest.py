@@ -369,38 +369,7 @@ def cleanup_domains(pulpcore_bindings, monitor_task, rpm_repository_api):
 
 # package signing
 
-SIGNING_SCRIPT_STRING = r"""#!/usr/bin/env bash
-# Rpm configuration:
-#     GPG_HOME: gpg home directory
-#     GPG_NAME: gpg user identity
-#     GPG_BIN: gpg binary path
-
-FILE_PATH=$1
-GPG_HOME=HOMEDIRHERE
-GPG_BIN=/usr/bin/gpg
-
-# user id can be specified by a fingerprint:
-# see https://www.gnupg.org/documentation/manuals/gnupg/Specify-a-User-ID.html
-GPG_NAME="${PULP_SIGNING_KEY_FINGERPRINT}"
-
-# Sign the package
-rpm \
-    --define "_signature gpg" \
-    --define "_gpg_path ${GPG_HOME}" \
-    --define "_gpg_name ${GPG_NAME}" \
-    --define "_gpgbin ${GPG_BIN}" \
-    --addsign "${FILE_PATH}" 1> /dev/null
-
-# Check the exit status
-STATUS=$?
-if [[ ${STATUS} -eq 0 ]]; then
-   echo {\"rpm_package\": \"${FILE_PATH}\"}
-else
-   exit ${STATUS}
-fi
-"""
-
-SIGNING_SCRIPT_RPMV6_STRING = r"""#!/usr/bin/env bash
+SIGNING_SCRIPT_TEMPLATE = r"""#!/usr/bin/env bash
 FILE_PATH=$1
 GPG_HOME=HOMEDIRHERE
 GPG_BIN=/usr/bin/gpg
@@ -410,7 +379,7 @@ rpmsign \
     --define "_gpg_path ${GPG_HOME}" \
     --define "_gpg_name ${GPG_NAME}" \
     --define "_gpgbin ${GPG_BIN}" \
-    --addsign --rpmv6 "${FILE_PATH}" 1> /dev/null
+    SIGN_ARGS_HERE "${FILE_PATH}" 1> /dev/null
 
 STATUS=$?
 if [[ ${STATUS} -eq 0 ]]; then
@@ -421,16 +390,24 @@ fi
 """
 
 
+def _make_signing_script(signing_script_temp_dir, signing_gpg_homedir_path, name, sign_args):
+    script = signing_script_temp_dir / name
+    content = SIGNING_SCRIPT_TEMPLATE.replace("HOMEDIRHERE", str(signing_gpg_homedir_path)).replace(
+        "SIGN_ARGS_HERE", sign_args
+    )
+    script.write_text(content)
+    script.chmod(0o755)
+    return script
+
+
 @pytest.fixture(scope="session")
 def signing_script_path(signing_script_temp_dir, signing_gpg_homedir_path):
-    signing_script_file = signing_script_temp_dir / "sign-rpm-package.sh"
-    signing_script_file.write_text(
-        SIGNING_SCRIPT_STRING.replace("HOMEDIRHERE", str(signing_gpg_homedir_path))
+    return _make_signing_script(
+        signing_script_temp_dir,
+        signing_gpg_homedir_path,
+        "sign-rpm-package.sh",
+        "--addsign",
     )
-
-    signing_script_file.chmod(0o755)
-
-    return signing_script_file
 
 
 @pytest.fixture(scope="session")
@@ -603,12 +580,12 @@ def has_rpmv6_support():
 
 @pytest.fixture(scope="session")
 def rpmv6_signing_script_path(signing_script_temp_dir, signing_gpg_homedir_path):
-    script = signing_script_temp_dir / "sign-rpm-package-v6.sh"
-    script.write_text(
-        SIGNING_SCRIPT_RPMV6_STRING.replace("HOMEDIRHERE", str(signing_gpg_homedir_path))
+    return _make_signing_script(
+        signing_script_temp_dir,
+        signing_gpg_homedir_path,
+        "sign-rpm-package-v6.sh",
+        "--addsign --rpmv6",
     )
-    script.chmod(0o755)
-    return script
 
 
 @pytest.fixture(scope="session")
@@ -665,4 +642,67 @@ def _rpm_package_signing_service_rpmv6_name(
 def rpm_package_signing_service_rpmv6(_rpm_package_signing_service_rpmv6_name, pulpcore_bindings):
     return pulpcore_bindings.SigningServicesApi.list(
         name=_rpm_package_signing_service_rpmv6_name
+    ).results[0]
+
+
+@pytest.fixture(scope="session")
+def resign_signing_script_path(signing_script_temp_dir, signing_gpg_homedir_path):
+    return _make_signing_script(
+        signing_script_temp_dir,
+        signing_gpg_homedir_path,
+        "sign-rpm-package-resign.sh",
+        "--resign",
+    )
+
+
+@pytest.fixture(scope="session")
+def _rpm_package_signing_service_resign_name(
+    bindings_cfg,
+    resign_signing_script_path,
+    signing_gpg_metadata,
+    signing_gpg_homedir_path,
+    pytestconfig,
+):
+    service_name = str(uuid.uuid4())
+    gpg, fingerprint, keyid = signing_gpg_metadata
+
+    cmd = (
+        "pulpcore-manager",
+        "add-signing-service",
+        service_name,
+        str(resign_signing_script_path),
+        fingerprint,
+        "--class",
+        "rpm:RpmPackageSigningService",
+        "--gnupghome",
+        str(signing_gpg_homedir_path),
+    )
+    completed_process = subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+    assert completed_process.returncode == 0
+
+    yield service_name
+
+    cmd = (
+        "pulpcore-manager",
+        "remove-signing-service",
+        service_name,
+        "--class",
+        "rpm:RpmPackageSigningService",
+    )
+    subprocess.run(
+        cmd,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+    )
+
+
+@pytest.fixture
+def rpm_package_signing_service_resign(_rpm_package_signing_service_resign_name, pulpcore_bindings):
+    return pulpcore_bindings.SigningServicesApi.list(
+        name=_rpm_package_signing_service_resign_name
     ).results[0]
