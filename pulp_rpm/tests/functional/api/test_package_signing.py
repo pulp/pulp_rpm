@@ -571,7 +571,7 @@ def test_sign_already_signed_package_on_upload(
     monitor_task,
     download_content_unit,
     signing_gpg_extra,
-    rpm_package_signing_service,
+    rpm_package_signing_service_resign,
     rpm_package_api,
     rpm_repository_factory,
     rpm_publication_factory,
@@ -579,8 +579,8 @@ def test_sign_already_signed_package_on_upload(
 ):
     """Upload a pre-signed package to a signing-enabled repo with a different key.
 
-    The signing service (rpm --addsign) replaces the existing signature with the new one,
-    so the resulting package should only have the new key's signature.
+    The signing service (rpmsign --resign) replaces the existing signature with the
+    new one, so the resulting package should only have the new key's signature.
     """
     _, key_b = signing_gpg_extra
     prefixed_b = f"v4:{key_b.signing_fingerprint.upper()}"
@@ -599,7 +599,7 @@ def test_sign_already_signed_package_on_upload(
 
     # Upload to a repo that signs with key_b.
     repository = rpm_repository_factory(
-        package_signing_service=rpm_package_signing_service.pulp_href,
+        package_signing_service=rpm_package_signing_service_resign.pulp_href,
         package_signing_fingerprint=prefixed_b,
     )
     upload_response = rpm_package_api.create(
