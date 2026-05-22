@@ -44,9 +44,21 @@ def test_register_rpm_package_signing_service(rpm_package_signing_service):
 
 @pytest.fixture
 def multi_signed_rpm(tmp_path):
-    """Create an RPM signed with two different GPG keys using rpm_rs."""
+    """Create a v6-format RPM signed with two different GPG keys using rpm_rs.
+
+    Uses RpmFormat.V6 so that signatures live only in SIGTAG_OPENPGP (no legacy
+    v4 signature tag). This avoids the "already contains a legacy signature"
+    error from `rpm --addsign` on RPM >= 4.19.
+    """
+    config = rpm_rs.BuildConfig(format=rpm_rs.RpmFormat.V6)
+    builder = rpm_rs.PackageBuilder("kangaroo", "0.3", "Public Domain", "noarch")
+    builder.using_config(config)
+    builder.release("1")
+    builder.description("A modular RPM fixture for testing Pulp.")
+
     rpm_path = tmp_path / "multi-signed.rpm"
-    rpm_path.write_bytes(requests.get(RPM_UNSIGNED_URL).content)
+    pkg = builder.build()
+    pkg.write_file(str(rpm_path))
 
     _sign_package(rpm_path, KEY_V4_RSA2K.private_url)
     _sign_package(rpm_path, KEY_V4_RSA4K.private_url)
@@ -676,6 +688,7 @@ def test_sign_multi_signed_package_on_upload(
     monitor_task,
     download_content_unit,
     signing_gpg_extra,
+    has_rpmv6_support,
     multi_signed_rpm,
     rpm_package_signing_service,
     rpm_package_api,
@@ -688,6 +701,9 @@ def test_sign_multi_signed_package_on_upload(
     The package already has both signatures, so signing should be a no-op (the package is already
     signed with the requested key). The signing_keys should still contain both fingerprints.
     """
+    if not has_rpmv6_support:
+        pytest.skip("v6 RPM format requires rpmsign --rpmv6 support")
+
     key_a, key_b = signing_gpg_extra
     prefixed_a = f"v4:{key_a.signing_fingerprint.upper()}"
     prefixed_b = f"v4:{key_b.signing_fingerprint.upper()}"
