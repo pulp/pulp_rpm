@@ -531,6 +531,162 @@ class TestCopyWithUnsignedRepoSyncedImmediate:
         assert "0.3" in kangaroo_versions
 
 
+def _repo_version_number(version_href):
+    """Parse the integer version number out of a RepositoryVersion href.
+
+    Expected shape: ``.../versions/<N>/``. Raises ``ValueError`` if the
+    trailing segment is not a non-negative integer, so test assertion
+    failures point at the parsing site rather than at downstream comparisons.
+    """
+    if not version_href:
+        raise ValueError(f"empty version_href: {version_href!r}")
+    last = version_href.rstrip("/").rsplit("/", 1)[-1]
+    return int(last)
+
+
+@pytest.mark.parallel
+def test_copy_multiple_sources_to_same_destination_with_depsolving(
+    init_and_sync,
+    monitor_task,
+    rpm_copy_api,
+    rpm_package_api,
+    rpm_repository_api,
+    rpm_repository_factory,
+):
+    """Regression test for #4286.
+
+    When ``copy_content`` is invoked with ``dependency_solving=True`` and
+    multiple source repository versions in the config map to the same
+    destination repository, the task must succeed and produce exactly one new
+    repository version on the destination. Previously, the task failed with an
+    ``IntegrityError`` because ``new_version()`` was called once per source
+    entry on the same destination inside one ``@transaction.atomic`` block,
+    violating the unique ``(repository, number)`` constraint.
+    """
+    src_a, _ = init_and_sync()
+    src_b, _ = init_and_sync(url=RPM_MODULAR_FIXTURE_URL)
+    dest = rpm_repository_factory()
+    initial_version = _repo_version_number(dest.latest_version_href)
+
+    # Specific seed by name in src_a; specific identity matters for the
+    # landing assertion below.
+    src_a_seed = rpm_package_api.list(
+        repository_version=src_a.latest_version_href, name="whale"
+    ).results[0]
+    # Any package from src_b — the bug is structural and triggers regardless
+    # of which packages are involved; we only need a non-empty content list
+    # so the depsolver loads this source. We pick the first result here
+    # deliberately (not by name) to keep the test independent of any
+    # specific modular-fixture package name.
+    src_b_packages = rpm_package_api.list(repository_version=src_b.latest_version_href).results
+    assert src_b_packages, "modular fixture must contain at least one package"
+    src_b_any = src_b_packages[0]
+
+    data = Copy(
+        config=[
+            {
+                "source_repo_version": src_a.latest_version_href,
+                "dest_repo": dest.pulp_href,
+                "content": [src_a_seed.pulp_href],
+            },
+            {
+                "source_repo_version": src_b.latest_version_href,
+                "dest_repo": dest.pulp_href,
+                "content": [src_b_any.pulp_href],
+            },
+        ],
+        dependency_solving=True,
+    )
+    monitor_task(rpm_copy_api.copy_content(data).task)
+
+    dest = rpm_repository_api.read(dest.pulp_href)
+    # Exactly one new repository version was created on the shared destination.
+    assert _repo_version_number(dest.latest_version_href) == initial_version + 1
+
+    dest_pkg_hrefs = {
+        p.pulp_href
+        for p in rpm_package_api.list(repository_version=dest.latest_version_href).results
+    }
+    # Both sources' requested packages must have landed in the merged version.
+    assert src_a_seed.pulp_href in dest_pkg_hrefs
+    assert src_b_any.pulp_href in dest_pkg_hrefs
+
+
+@pytest.mark.parallel
+def test_copy_multiple_sources_to_distinct_destinations_with_depsolving(
+    init_and_sync,
+    monitor_task,
+    rpm_copy_api,
+    rpm_package_api,
+    rpm_repository_api,
+    rpm_repository_factory,
+):
+    """Companion to the #4286 regression test.
+
+    When sources in a single ``copy_content`` call map to DIFFERENT
+    destinations, the batching fix must produce exactly one new repository
+    version per distinct destination, and content from one source must not
+    leak into the other source's destination. This guards against a
+    regression that would accidentally collapse distinct destinations.
+    """
+    src_a, _ = init_and_sync()
+    src_b, _ = init_and_sync(url=RPM_MODULAR_FIXTURE_URL)
+    dest_a = rpm_repository_factory()
+    dest_b = rpm_repository_factory()
+    initial_a = _repo_version_number(dest_a.latest_version_href)
+    initial_b = _repo_version_number(dest_b.latest_version_href)
+
+    src_a_seed = rpm_package_api.list(
+        repository_version=src_a.latest_version_href, name="whale"
+    ).results[0]
+    src_b_packages = rpm_package_api.list(repository_version=src_b.latest_version_href).results
+    assert src_b_packages, "modular fixture must contain at least one package"
+    src_b_any = src_b_packages[0]
+
+    data = Copy(
+        config=[
+            {
+                "source_repo_version": src_a.latest_version_href,
+                "dest_repo": dest_a.pulp_href,
+                "content": [src_a_seed.pulp_href],
+            },
+            {
+                "source_repo_version": src_b.latest_version_href,
+                "dest_repo": dest_b.pulp_href,
+                "content": [src_b_any.pulp_href],
+            },
+        ],
+        dependency_solving=True,
+    )
+    monitor_task(rpm_copy_api.copy_content(data).task)
+
+    dest_a = rpm_repository_api.read(dest_a.pulp_href)
+    dest_b = rpm_repository_api.read(dest_b.pulp_href)
+
+    # Each distinct destination got exactly one new repository version.
+    assert _repo_version_number(dest_a.latest_version_href) == initial_a + 1
+    assert _repo_version_number(dest_b.latest_version_href) == initial_b + 1
+
+    # Compare by pulp_href, not name: the unsigned and modular fixtures share
+    # several package names, so a name-based check could match a same-named but
+    # distinct package the depsolver legitimately pulled in.
+    dest_a_pkg_hrefs = {
+        p.pulp_href
+        for p in rpm_package_api.list(repository_version=dest_a.latest_version_href).results
+    }
+    dest_b_pkg_hrefs = {
+        p.pulp_href
+        for p in rpm_package_api.list(repository_version=dest_b.latest_version_href).results
+    }
+    # Each destination received its own source's requested package ...
+    assert src_a_seed.pulp_href in dest_a_pkg_hrefs
+    assert src_b_any.pulp_href in dest_b_pkg_hrefs
+    # ... and did NOT receive the other source's requested package. This is
+    # the actual "distinct destinations" invariant the test name promises.
+    assert src_b_any.pulp_href not in dest_a_pkg_hrefs
+    assert src_a_seed.pulp_href not in dest_b_pkg_hrefs
+
+
 class TestCopyWithKickstartRepoSyncedImmediate:
     def test_kickstart_content(
         self,
