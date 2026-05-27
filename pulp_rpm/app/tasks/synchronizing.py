@@ -19,6 +19,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.core.files import File
 from django.db import transaction
 from django.db.models import Q
+from rpm_rs import Evr
 
 from pulpcore.plugin.exceptions import SyncError
 from pulpcore.plugin.models import (
@@ -90,7 +91,6 @@ from pulp_rpm.app.models import (
     Variant,
 )
 from pulp_rpm.app.modulemd import parse_modular
-from pulp_rpm.app.rpm_version import RpmVersion
 from pulp_rpm.app.shared_utils import (
     get_sha256,
     is_previous_version,
@@ -1291,7 +1291,7 @@ class RpmFirstStage(Stage):
             # modular packages on the basis of being too old or nonmodular packages on the basis of
             # newer modular packages existing.
             if self.repository.retain_package_versions and pkg_nevra not in modular_artifact_nevras:
-                pkg_evr = RpmVersion(pkg.epoch, pkg.version, pkg.release)
+                pkg_evr = Evr(pkg.epoch, pkg.version, pkg.release).sortkey()
                 latest_packages_by_arch_and_name[pkg.arch][pkg_name].append((pkg_evr, pkg_nevra))
 
         # Ew, callback-based API, gross. The streaming API doesn't support optionally

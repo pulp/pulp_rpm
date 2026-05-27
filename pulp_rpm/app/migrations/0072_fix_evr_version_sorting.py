@@ -31,9 +31,14 @@
 # higher epoch always dominates regardless of version/release — matching RPM
 # semantics. NULL epochs are coalesced to 0.
 #
-# Each version/release sortkey uses five byte markers, chosen so their numeric
+# Only ASCII alphanumeric characters participate in comparison — non-ASCII
+# characters and non-alphanumeric ASCII characters (except ~ and ^) are
+# treated as segment separators and skipped, matching RPM's risalpha()/risdigit().
+#
+# Each version/release sortkey uses six byte markers, chosen so their numeric
 # order matches the required RPM sort order:
 #
+#   \x00  — segment delimiter (terminates alpha and numeric segments)
 #   \x01  — tilde (~), sorts lowest, before end-of-version
 #   \x02  — end-of-version (appended once at the end of the key)
 #   \x03  — caret (^), sorts after end but before real segments
@@ -65,7 +70,7 @@
 #
 #   version sortkey ("1.0~rc1"):
 #     \x05 \x01 1 \x00               — numeric segment "1"
-#     \x05 \x01 0 \x00               — numeric segment "0"
+#     \x05 \x00 \x00                  — numeric segment "0" (leading zeros stripped, length=0)
 #     \x01                            — tilde
 #     \x04 rc \x00                    — alpha segment "rc"
 #     \x05 \x01 1 \x00               — numeric segment "1"
