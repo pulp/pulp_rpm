@@ -1,0 +1,1 @@
+Replace the `RpmVersion` implementation written in Python with `Evr` and `Evr.sortkey()` imported from rpm_rs
