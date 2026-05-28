@@ -1381,6 +1381,29 @@ class RpmFirstStage(Stage):
             "total": total_packages,
         }
         async with ProgressReport(**progress_data) as packages_pb:
+            # Pre-load existing packages from the latest repo version keyed by pkgId.
+            # Cache hits reuse the saved model object, causing QueryExistingContents to
+            # skip them (because _state.adding is False on already-saved objects).
+            def _build_existing_packages_cache():
+                cache = {}
+                latest_version = self.repository.latest_version()
+                if latest_version:
+                    # ignore particularly expensive metadata which we do not need to handle for already-synced packages
+                    for existing_pkg in (
+                        Package.objects.filter(pk__in=latest_version.content.all())
+                        .defer(
+                            "files",
+                            "requires",
+                            "provides",
+                            "changelogs",
+                        )
+                        .iterator()
+                    ):
+                        cache[existing_pkg.pkgId] = existing_pkg
+                return cache
+
+            existing_packages = await sync_to_async(_build_existing_packages_cache)()
+
             string_cache = {}
             tuple_cache = {}
 
@@ -1403,43 +1426,75 @@ class RpmFirstStage(Stage):
                 if pkg.name != last_seen_package_name and not use_global_caching:
                     string_cache.clear()
                     tuple_cache.clear()
-                # Implicit: There can be multiple package entries that are completely identical
-                # (same NEVRA, same build time, same checksum / pkgid) and the same or different
-                # location_href. We're not explicitly handling this, the pipeline will deduplicate.
-                package = Package(
-                    **Package.createrepo_to_dict(
-                        pkg, string_cache=string_cache, tuple_cache=tuple_cache
+
+                # If we see a package that's in the cache (generated from latest repo_version)
+                # avoid generating a new empty Package and instead pass the saved one. This avoids
+                # more expensive queries down the line in QueryExistingContents.
+                cached = existing_packages.pop(pkg.pkgId, None)
+                if cached is not None:
+                    base_url = pkg.location_base or self.remote_url
+                    url = urlpath_sanitize(base_url, pkg.location_href)
+                    store_package_for_mirroring(self.repository, cached.pkgId, pkg.location_href)
+                    last_seen_package_name = pkg.name
+                    del pkg  # delete & free the memory as soon as we're done with it
+
+                    artifact = Artifact(size=cached.size_package)
+                    checksum_type = getattr(CHECKSUM_TYPES, cached.checksum_type.upper())
+                    setattr(artifact, checksum_type, cached.pkgId)
+                    da = DeclarativeArtifact(
+                        artifact=artifact,
+                        url=url,
+                        relative_path=cached.location_href,
+                        remote=self.remote,
+                        deferred_download=self.deferred_download,
                     )
-                )
-                base_url = pkg.location_base or self.remote_url
-                url = urlpath_sanitize(base_url, package.location_href)
-                last_seen_package_name = pkg.name
-                del pkg  # delete it as soon as we're done with it
+                    dc = DeclarativeContent(content=cached, d_artifacts=[da])
+                    dc.extra_data = defaultdict(list)
+                else:
+                    # Implicit: There can be multiple package entries that are completely
+                    # identical (same NEVRA, same build time, same checksum / pkgid) and the
+                    # same or different location_href. We're not explicitly handling this, the
+                    # pipeline will deduplicate.
+                    package = Package(
+                        **Package.createrepo_to_dict(
+                            pkg, string_cache=string_cache, tuple_cache=tuple_cache
+                        )
+                    )
+                    # TODO: set signing_keys when we support package signing during sync
+                    package.signing_keys = None
+                    base_url = pkg.location_base or self.remote_url
+                    url = urlpath_sanitize(base_url, package.location_href)
+                    last_seen_package_name = pkg.name
+                    del pkg  # delete & free the memory as soon as we're done with it
 
-                # Location_href is not a property of the Package in isolation [0], and Pulp has
-                # a well defined way of generating the layout/locations on publication time.
-                # We only need to use the original location_href for metadata mirroring
-                # [0] https://github.com/pulp/pulp_rpm/issues/2580
-                original_location_href = package.location_href
-                package.location_href = package.filename
-                store_package_for_mirroring(self.repository, package.pkgId, original_location_href)
+                    # Location_href is not a property of the Package in isolation [0], and
+                    # Pulp has a well defined way of generating the layout/locations on
+                    # publication time. We only need to use the original location_href for
+                    # metadata mirroring.
+                    # [0] https://github.com/pulp/pulp_rpm/issues/2580
+                    original_location_href = package.location_href
+                    package.location_href = package.filename
+                    store_package_for_mirroring(
+                        self.repository, package.pkgId, original_location_href
+                    )
 
-                artifact = Artifact(size=package.size_package)
-                checksum_type = getattr(CHECKSUM_TYPES, package.checksum_type.upper())
-                setattr(artifact, checksum_type, package.pkgId)
-                da = DeclarativeArtifact(
-                    artifact=artifact,
-                    url=url,
-                    relative_path=package.location_href,
-                    remote=self.remote,
-                    deferred_download=self.deferred_download,
-                )
-                dc = DeclarativeContent(content=package, d_artifacts=[da])
-                dc.extra_data = defaultdict(list)
+                    artifact = Artifact(size=package.size_package)
+                    checksum_type = getattr(CHECKSUM_TYPES, package.checksum_type.upper())
+                    setattr(artifact, checksum_type, package.pkgId)
+                    da = DeclarativeArtifact(
+                        artifact=artifact,
+                        url=url,
+                        relative_path=package.location_href,
+                        remote=self.remote,
+                        deferred_download=self.deferred_download,
+                    )
+                    dc = DeclarativeContent(content=package, d_artifacts=[da])
+                    dc.extra_data = defaultdict(list)
 
                 # find if a package relates to a modulemd
                 if dc.content.nevra in self.nevra_to_module.keys():
-                    dc.content.is_modular = True
+                    if dc.content._state.adding:  # don't edit existing packages though
+                        dc.content.is_modular = True
                     for dc_modulemd in self.nevra_to_module[dc.content.nevra]:
                         dc.extra_data["modulemd_relation"].append(dc_modulemd)
                         dc_modulemd.extra_data["package_relation"].append(dc)
