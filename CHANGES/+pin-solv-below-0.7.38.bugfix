@@ -1,0 +1,1 @@
+Pin ``solv`` dependency to ``<0.7.38`` to avoid broken PyPI wheels that install the module under ``bindings/python3/`` instead of ``solv/``, causing ``import solv`` to fail with ``ModuleNotFoundError``.
