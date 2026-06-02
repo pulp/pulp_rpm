@@ -1,6 +1,8 @@
 import json
 import subprocess
 
+import pytest
+
 from pulp_rpm.tests.functional.constants import (
     RPM_KICKSTART_FIXTURE_SIZE,
     RPM_KICKSTART_FIXTURE_URL,
@@ -9,6 +11,8 @@ from pulp_rpm.tests.functional.constants import (
 )
 
 
+# Asserts exact disk-size; parallel immediate syncs share artifacts and inflate it
+@pytest.mark.serial
 def test_repo_size(init_and_sync, delete_orphans_pre, monitor_task, pulpcore_bindings):
     """Test that RPM repos correctly report their on-disk artifact sizes."""
     monitor_task(pulpcore_bindings.OrphansCleanupApi.cleanup({"orphan_protection_time": 0}).task)
@@ -39,6 +43,8 @@ def test_repo_size(init_and_sync, delete_orphans_pre, monitor_task, pulpcore_bin
     assert report["on-demand-size"] == 0
 
 
+# Asserts exact disk-size; parallel immediate syncs share artifacts and inflate it
+@pytest.mark.serial
 def test_kickstart_repo_size(init_and_sync, delete_orphans_pre, monitor_task, pulpcore_bindings):
     """Test that kickstart RPM repos correctly report their on-disk artifact sizes."""
     monitor_task(pulpcore_bindings.OrphansCleanupApi.cleanup({"orphan_protection_time": 0}).task)

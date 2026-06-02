@@ -245,6 +245,8 @@ def test_distribution_tree_import(
         assert trees.count == 1
 
 
+# Runs orphan cleanup to create a content-free zone; conflicts with parallel tests
+@pytest.mark.serial
 def test_clean_import(
     rpm_repository_api,
     import_export_repositories,
@@ -286,6 +288,8 @@ def test_clean_import(
     assert rpm_repository_api.list().count == existing_repos
 
 
+# Runs orphan cleanup to create a content-free zone; conflicts with parallel tests
+@pytest.mark.serial
 def test_create_missing_repos(
     init_and_sync,
     rpm_rpmremote_api,
