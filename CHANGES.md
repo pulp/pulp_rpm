@@ -8,6 +8,36 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.37.0 (2026-06-03) {: #3.37.0 }
+
+#### Features {: #3.37.0-feature }
+
+- Added ``dependency_upgrade`` boolean field to the copy API. When enabled,
+  transitive dependencies are resolved to their latest available versions
+  instead of preferring versions already present in the destination repository.
+  [#4368](https://github.com/pulp/pulp_rpm/issues/4368)
+- Added support for the new `overwrite` parameter on the RPM repository modify
+  endpoint. Packages already produced by Pulp's signing workflow (tracked via
+  `RpmPackageSigningResult`) and present in the repository version are exempted
+  from the overwrite check so the operation remains a NOOP.
+- Replaced generic exceptions (ValueError, TypeError, Exception, etc.) in task contexts with
+  PulpException subclasses that carry unique error codes (RPM0001–RPM0018). This ensures that
+  error details are preserved when ``REDACT_UNSAFE_EXCEPTIONS`` is enabled, instead of being
+  sanitized into generic "An error occurred" messages.
+
+#### Bugfixes {: #3.37.0-bugfix }
+
+- Populate `signing_keys` directly from package headers upon upload - fixing an issue where the fingerprint does not match the actual one, when the package was signed by a subkey using the Pulp signing service which specified a non-signing mainkey `package_signing_fingerprint`.
+  [#4458](https://github.com/pulp/pulp_rpm/issues/4458)
+- Substantially (>50%) reduced sync memory use and runtime requirements by using caching within the sync stage.
+- Take advantage of pulpcore's `ResourceBudget` feature which enables the sync pipeline to keep disk usage down without an excessive performance hit.
+
+#### Misc {: #3.37.0-misc }
+
+- 
+
+---
+
 ## 3.36.0 (2026-04-20) {: #3.36.0 }
 
 #### Features {: #3.36.0-feature }
