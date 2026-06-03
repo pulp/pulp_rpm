@@ -8,6 +8,14 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.27.13 (2026-06-03) {: #3.27.13 }
+
+#### Bugfixes {: #3.27.13-bugfix }
+
+- Substantially (>50%) reduced sync memory use and runtime requirements by using caching within the sync stage.
+
+---
+
 ## 3.27.12 (2026-04-22) {: #3.27.12 }
 
 #### Bugfixes {: #3.27.12-bugfix }
