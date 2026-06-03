@@ -8,6 +8,16 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.32.10 (2026-06-03) {: #3.32.10 }
+
+#### Bugfixes {: #3.32.10-bugfix }
+
+- Fixed a bug where two packages with the same NEVRA and identical build times but different checksums could both pass the sync tie-breaker and be added to the repository version. The first-seen package now wins deterministically.
+  [#4341](https://github.com/pulp/pulp_rpm/issues/4341)
+- Substantially (>50%) reduced sync memory use and runtime requirements by using caching within the sync stage.
+
+---
+
 ## 3.32.9 (2026-03-16) {: #3.32.9 }
 
 #### Bugfixes {: #3.32.9-bugfix }
