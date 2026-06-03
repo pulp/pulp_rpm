@@ -1,1 +1,0 @@
-Substantially (>50%) reduced sync memory use and runtime requirements by using caching within the sync stage.
