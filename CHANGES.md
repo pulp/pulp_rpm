@@ -8,6 +8,18 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.29.11 (2026-06-03) {: #3.29.11 }
+
+#### Bugfixes {: #3.29.11-bugfix }
+
+- Fixed `RpmRepository.package_signing_fingerprint` field to accept and default to `null` instead of empty string.
+  [#4007](https://github.com/pulp/pulp_rpm/issues/4007)
+- Fixed a bug where two packages with the same NEVRA and identical build times but different checksums could both pass the sync tie-breaker and be added to the repository version. The first-seen package now wins deterministically.
+  [#4341](https://github.com/pulp/pulp_rpm/issues/4341)
+- Substantially (>50%) reduced sync memory use and runtime requirements by using caching within the sync stage.
+
+---
+
 ## 3.29.10 (2026-02-24) {: #3.29.10 }
 
 #### Bugfixes {: #3.29.10-bugfix }
