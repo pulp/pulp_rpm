@@ -8,6 +8,42 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.37.0 (2026-06-03) {: #3.37.0 }
+
+#### Features {: #3.37.0-feature }
+
+- Added ``dependency_upgrade`` boolean field to the copy API. When enabled,
+  transitive dependencies are resolved to their latest available versions
+  instead of preferring versions already present in the destination repository.
+  [#4368](https://github.com/pulp/pulp_rpm/issues/4368)
+- Added support for the new `overwrite` parameter on the RPM repository modify
+  endpoint. Packages already produced by Pulp's signing workflow (tracked via
+  `RpmPackageSigningResult`) and present in the repository version are exempted
+  from the overwrite check so the operation remains a NOOP.
+- Replaced generic exceptions (ValueError, TypeError, Exception, etc.) in task contexts with
+  PulpException subclasses that carry unique error codes (RPM0001–RPM0018). This ensures that
+  error details are preserved when ``REDACT_UNSAFE_EXCEPTIONS`` is enabled, instead of being
+  sanitized into generic "An error occurred" messages.
+
+#### Bugfixes {: #3.37.0-bugfix }
+
+- Populate `signing_keys` directly from package headers upon upload - fixing an issue where the fingerprint does not match the actual one, when the package was signed by a subkey using the Pulp signing service which specified a non-signing mainkey `package_signing_fingerprint`.
+  [#4458](https://github.com/pulp/pulp_rpm/issues/4458)
+- Substantially (>50%) reduced sync memory use and runtime requirements by using caching within the sync stage.
+- Take advantage of pulpcore's `ResourceBudget` feature which enables the sync pipeline to keep disk usage down without an excessive performance hit.
+
+#### Misc {: #3.37.0-misc }
+
+- 
+
+---
+
+## 3.36.1 (2026-06-03) {: #3.36.1 }
+
+No significant changes.
+
+---
+
 ## 3.36.0 (2026-04-20) {: #3.36.0 }
 
 #### Features {: #3.36.0-feature }
@@ -41,6 +77,16 @@
 #### Misc {: #3.36.0-misc }
 
 - 
+
+---
+
+## 3.35.3 (2026-06-03) {: #3.35.3 }
+
+#### Bugfixes {: #3.35.3-bugfix }
+
+- Fixed a bug where two packages with the same NEVRA and identical build times but different checksums could both pass the sync tie-breaker and be added to the repository version. The first-seen package now wins deterministically.
+  [#4341](https://github.com/pulp/pulp_rpm/issues/4341)
+- Substantially (>50%) reduced sync memory use and runtime requirements by using caching within the sync stage.
 
 ---
 
@@ -165,6 +211,16 @@
 #### Misc {: #3.33.0-misc }
 
 - 
+
+---
+
+## 3.32.10 (2026-06-03) {: #3.32.10 }
+
+#### Bugfixes {: #3.32.10-bugfix }
+
+- Fixed a bug where two packages with the same NEVRA and identical build times but different checksums could both pass the sync tie-breaker and be added to the repository version. The first-seen package now wins deterministically.
+  [#4341](https://github.com/pulp/pulp_rpm/issues/4341)
+- Substantially (>50%) reduced sync memory use and runtime requirements by using caching within the sync stage.
 
 ---
 
@@ -355,6 +411,18 @@
 
 ---
 
+## 3.29.11 (2026-06-03) {: #3.29.11 }
+
+#### Bugfixes {: #3.29.11-bugfix }
+
+- Fixed `RpmRepository.package_signing_fingerprint` field to accept and default to `null` instead of empty string.
+  [#4007](https://github.com/pulp/pulp_rpm/issues/4007)
+- Fixed a bug where two packages with the same NEVRA and identical build times but different checksums could both pass the sync tie-breaker and be added to the repository version. The first-seen package now wins deterministically.
+  [#4341](https://github.com/pulp/pulp_rpm/issues/4341)
+- Substantially (>50%) reduced sync memory use and runtime requirements by using caching within the sync stage.
+
+---
+
 ## 3.29.10 (2026-02-24) {: #3.29.10 }
 
 #### Bugfixes {: #3.29.10-bugfix }
@@ -516,6 +584,14 @@ No significant changes.
 #### Misc {: #3.28.0-misc }
 
 - [#3828](https://github.com/pulp/pulp_rpm/issues/3828), [#3854](https://github.com/pulp/pulp_rpm/issues/3854), [#3856](https://github.com/pulp/pulp_rpm/issues/3856)
+
+---
+
+## 3.27.13 (2026-06-03) {: #3.27.13 }
+
+#### Bugfixes {: #3.27.13-bugfix }
+
+- Substantially (>50%) reduced sync memory use and runtime requirements by using caching within the sync stage.
 
 ---
 
