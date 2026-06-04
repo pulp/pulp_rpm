@@ -78,7 +78,7 @@ def format_signing_keys(signatures):
 
 def extract_signing_keys(path):
     """Extract signing key fingerprints from an RPM file using rpm_rs."""
-    pkg = rpm_rs.Package.open(path)
+    pkg = rpm_rs.PackageMetadata.open(path)
     return format_signing_keys(pkg.signatures())
 
 
