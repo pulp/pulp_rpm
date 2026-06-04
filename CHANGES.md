@@ -8,6 +8,14 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.37.1 (2026-06-04) {: #3.37.1 }
+
+#### Bugfixes {: #3.37.1-bugfix }
+
+- Don't read the entire package on package upload, just read the header.
+
+---
+
 ## 3.37.0 (2026-06-03) {: #3.37.0 }
 
 #### Features {: #3.37.0-feature }
