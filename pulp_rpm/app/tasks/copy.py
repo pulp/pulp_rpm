@@ -233,9 +233,25 @@ def copy_content(config, dependency_solving, dependency_upgrade=False):
             content_to_copy, focus_installed=not dependency_upgrade
         )
 
+        # Group units by destination repository before creating new versions.
+        # Multiple config entries may map to the same destination repository;
+        # calling new_version() more than once per destination would violate
+        # the unique (repository, number) constraint on RepositoryVersion.
+        dest_content = {}
         for from_repo, units in content_to_copy.items():
             src_repo_version = libsolv_repo_names[from_repo]
             dest_repo_version = repo_mapping[src_repo_version]
             base_version = dest_repo_version if base_versions[src_repo_version] else None
-            with dest_repo_version.repository.new_version(base_version=base_version) as new_version:
-                new_version.add_content(Content.objects.filter(pk__in=units))
+            dest_repo = dest_repo_version.repository
+            if dest_repo.pk not in dest_content:
+                dest_content[dest_repo.pk] = {
+                    "repo": dest_repo,
+                    "base_version": base_version,
+                    "units": set(),
+                }
+            dest_content[dest_repo.pk]["units"].update(units)
+        for d in dest_content.values():
+            if not d["units"]:
+                continue
+            with d["repo"].new_version(base_version=d["base_version"]) as new_version:
+                new_version.add_content(Content.objects.filter(pk__in=d["units"]))
