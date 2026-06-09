@@ -64,16 +64,23 @@ _VERSION_PREFIX = {
 
 
 def format_signing_keys(signatures):
-    """Format rpm_rs signature objects into prefixed fingerprint strings.
+    """Format rpm_rs signature objects into prefixed identifier strings.
 
-    Returns prefixed, uppercased fingerprints (e.g. "v4:ABCD1234...") consistent
-    with PgpKeyFingerprintField normalization.
+    Uses "v4:"/"v6:" prefix with the full fingerprint when available, or
+    "keyid:" prefix with the short key ID for signatures that only carry a
+    key ID without the issuer fingerprint subpacket (common in RPMs signed
+    by older GPG versions).
+
+    Output is consistent with PgpKeyFingerprintField normalization, which
+    accepts "v4:<hex>", "v6:<hex>", and "keyid:<16-hex>" forms.
     """
-    return [
-        f"{_VERSION_PREFIX[sig.version]}:{sig.fingerprint.upper()}"
-        for sig in signatures
-        if sig.fingerprint is not None
-    ]
+    result = []
+    for sig in signatures:
+        if sig.fingerprint is not None:
+            result.append(f"{_VERSION_PREFIX[sig.version]}:{sig.fingerprint.upper()}")
+        elif sig.key_id is not None:
+            result.append(f"keyid:{sig.key_id.upper()}")
+    return result
 
 
 def extract_signing_keys(path):
