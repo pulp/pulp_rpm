@@ -1,6 +1,4 @@
-import hashlib
 import shutil
-import uuid
 
 import pytest
 import requests
@@ -148,64 +146,6 @@ def test_sign_package_on_upload(
         )
 
 
-@pytest.fixture
-def pulpcore_chunked_file_factory(tmp_path):
-    """Returns a function to create chunks from file to be uploaded."""
-
-    def _create_chunks(upload_path, chunk_size=512):
-        """Chunks file to be uploaded."""
-        chunks = {"chunks": []}
-        hasher = hashlib.new("sha256")
-        start = 0
-        with open(upload_path, "rb") as f:
-            data = f.read()
-        chunks["size"] = len(data)
-
-        while start < len(data):
-            content = data[start : start + chunk_size]
-            chunk_file = tmp_path / str(uuid.uuid4())
-            hasher.update(content)
-            chunk_file.write_bytes(content)
-            content_sha = hashlib.sha256(content).hexdigest()
-            end = start + len(content) - 1
-            chunks["chunks"].append(
-                (str(chunk_file), f"bytes {start}-{end}/{chunks['size']}", content_sha)
-            )
-            start += len(content)
-        chunks["digest"] = hasher.hexdigest()
-        return chunks
-
-    return _create_chunks
-
-
-@pytest.fixture
-def pulpcore_upload_chunks(
-    pulpcore_bindings,
-    gen_object_with_cleanup,
-    monitor_task,
-):
-    """Upload file in chunks."""
-
-    def _upload_chunks(size, chunks, sha256, include_chunk_sha256=False):
-        """
-        Chunks is a list of tuples in the form of (chunk_filename, "bytes-ranges", optional_sha256).
-        """
-        upload = gen_object_with_cleanup(pulpcore_bindings.UploadsApi, {"size": size})
-
-        for data in chunks:
-            kwargs = {"file": data[0], "content_range": data[1], "upload_href": upload.pulp_href}
-            if include_chunk_sha256:
-                if len(data) != 3:
-                    raise Exception(f"Chunk didn't include its sha256: {data}")
-                kwargs["sha256"] = data[2]
-
-            pulpcore_bindings.UploadsApi.update(**kwargs)
-
-        return upload
-
-    yield _upload_chunks
-
-
 @pytest.mark.parallel
 def test_sign_chunked_package_on_upload(
     tmp_path,
@@ -251,7 +191,7 @@ def test_sign_chunked_package_on_upload(
         chunks = file_chunks_data["chunks"]
         sha256 = file_chunks_data["digest"]
 
-        upload = pulpcore_upload_chunks(size, chunks, sha256, include_chunk_sha256=True)
+        upload = pulpcore_upload_chunks(size, chunks, sha256)
         upload_response = rpm_package_api.create(
             upload=upload.pulp_href,
             repository=repository.pulp_href,
