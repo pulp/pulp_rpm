@@ -5,6 +5,7 @@ from tempfile import NamedTemporaryFile
 
 import pytest
 import requests
+import rpm_rs
 
 from pulpcore.client.pulp_rpm import ApiException
 from pulpcore.client.pulpcore.exceptions import BadRequestException
@@ -16,7 +17,9 @@ from pulp_rpm.tests.functional.constants import (
     BIG_ENVIRONMENTS,
     BIG_GROUPS,
     BIG_LANGPACK,
+    KEY_V4_RSA4K,
     LEGACY_SIGNING_KEY,
+    RPM_FIXTURE_SIGNED,
     RPM_PACKAGE_FILENAME,
     RPM_PACKAGE_FILENAME2,
     RPM_PACKAGECATEGORY_CONTENT_NAME,
@@ -35,6 +38,28 @@ from pulp_rpm.tests.functional.constants import (
 
 SMALL_CONTENT = SMALL_GROUPS + SMALL_CATEGORY + SMALL_LANGPACK + SMALL_ENVIRONMENTS
 CENTOS8_CONTENT = BIG_GROUPS + BIG_CATEGORY + BIG_LANGPACK + BIG_ENVIRONMENTS
+
+MICROSOFT_PROD_RPM_URL = "https://packages.microsoft.com/config/rhel/10/packages-microsoft-prod.rpm"
+
+
+@pytest.fixture
+def key_id_only_signed_rpm(tmp_path):
+    """Download an RPM whose signatures carry only a key ID (no issuer fingerprint subpacket).
+
+    This is common for RPMs signed by older GPG versions. The Microsoft prod RPM
+    is a convenient, publicly available example.
+    """
+    path = tmp_path / "packages-microsoft-prod.rpm"
+    path.write_bytes(requests.get(MICROSOFT_PROD_RPM_URL).content)
+
+    pkg = rpm_rs.PackageMetadata.open(str(path))
+    sigs = list(pkg.signatures())
+    assert len(sigs) > 0, "Test RPM should be signed"
+    assert any(s.fingerprint is None and s.key_id is not None for s in sigs), (
+        "Test RPM should have key_id-only signatures (no fingerprint subpacket)"
+    )
+
+    return path
 
 
 def test_single_request_unit_and_duplicate_unit(
@@ -304,7 +329,12 @@ def test_synchronous_package_upload_from_artifact(
 
 
 def test_synchronous_package_upload_from_chunks(
-    delete_orphans_pre, rpm_package_api, gen_user, pulpcore_bindings, tmp_path
+    delete_orphans_pre,
+    rpm_package_api,
+    gen_user,
+    tmp_path,
+    pulpcore_chunked_file_factory,
+    pulpcore_upload_chunks,
 ):
     """Test synchronously uploading an RPM using chunked upload.
 
@@ -312,60 +342,158 @@ def test_synchronous_package_upload_from_chunks(
     2. Use synchronous RPM upload API with the upload object.
     3. Assert that the RPM package is created successfully.
     """
-    import hashlib
-    import uuid
-
     file_to_use = os.path.join(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
 
-    # Download the file and prepare chunks
-    with NamedTemporaryFile(delete=False) as file_to_upload:
-        file_to_upload.write(requests.get(file_to_use).content)
-        file_to_upload.flush()
-        file_path = file_to_upload.name
+    file_path = tmp_path / RPM_PACKAGE_FILENAME
+    file_path.write_bytes(requests.get(file_to_use).content)
 
-    # Create chunks (similar to pulpcore_chunked_file_factory)
-    chunk_size = 512
-    chunks = []
-    hasher = hashlib.new("sha256")
+    file_chunks_data = pulpcore_chunked_file_factory(file_path)
+    upload = pulpcore_upload_chunks(
+        file_chunks_data["size"], file_chunks_data["chunks"], file_chunks_data["digest"]
+    )
 
-    with open(file_path, "rb") as f:
-        data = f.read()
-
-    file_size = len(data)
-    start = 0
-
-    while start < len(data):
-        content = data[start : start + chunk_size]
-        chunk_file = tmp_path / str(uuid.uuid4())
-        hasher.update(content)
-        chunk_file.write_bytes(content)
-        content_sha = hashlib.sha256(content).hexdigest()
-        end = start + len(content) - 1
-        chunks.append((str(chunk_file), f"bytes {start}-{end}/{file_size}", content_sha))
-        start += len(content)
-
-    # Create an Upload object (requires core permissions, done outside gen_user)
-    upload = pulpcore_bindings.UploadsApi.create({"size": file_size})
-
-    # Upload all chunks
-    for chunk_file, content_range, chunk_sha in chunks:
-        pulpcore_bindings.UploadsApi.update(
-            upload_href=upload.pulp_href,
-            file=chunk_file,
-            content_range=content_range,
-            sha256=chunk_sha,
-        )
-
-    # Use synchronous upload API with the upload object (requires rpm uploader role)
     with gen_user(model_roles=["rpm.rpm_package_uploader"]):
-        upload_attrs = {"upload": upload.pulp_href}
-        package = rpm_package_api.upload(**upload_attrs)
-
-        # Verify package was created successfully
+        package = rpm_package_api.upload(upload=upload.pulp_href)
         assert package.location_href == RPM_PACKAGE_FILENAME
 
-    # Clean up
-    os.unlink(file_path)
+
+@pytest.mark.parametrize(
+    "fixture_url, expect_signed",
+    [
+        (RPM_UNSIGNED_FIXTURE_URL, False),
+        (RPM_SIGNED_FIXTURE_URL, True),
+    ],
+)
+def test_async_upload_signing_keys(
+    delete_orphans_pre, rpm_package_api, monitor_task, fixture_url, expect_signed
+):
+    """Test that signing_keys is populated correctly on async upload (rpm_package_api.create).
+
+    Upload both signed and unsigned packages via the async create endpoint and verify
+    that signing_keys reflects the actual signatures in the RPM.
+    """
+    file_to_use = os.path.join(fixture_url, RPM_PACKAGE_FILENAME)
+
+    with NamedTemporaryFile() as file_to_upload:
+        file_to_upload.write(requests.get(file_to_use).content)
+        upload = rpm_package_api.create(file=file_to_upload.name)
+
+    content = monitor_task(upload.task).created_resources[0]
+    package = rpm_package_api.read(content)
+
+    if expect_signed:
+        assert package.signing_keys == [f"v4:{LEGACY_SIGNING_KEY.signing_fingerprint}"]
+    else:
+        assert package.signing_keys == []
+
+
+def test_async_upload_signing_keys_from_artifact(
+    delete_orphans_pre, rpm_package_api, monitor_task, signed_artifact
+):
+    """Test that signing_keys is populated correctly on async upload from an artifact."""
+    upload = rpm_package_api.create(artifact=signed_artifact.pulp_href)
+    content = monitor_task(upload.task).created_resources[0]
+    package = rpm_package_api.read(content)
+
+    assert package.signing_keys == [f"v4:{LEGACY_SIGNING_KEY.signing_fingerprint}"]
+
+
+@pytest.mark.parametrize(
+    "fixture_url, expect_signed",
+    [
+        (RPM_UNSIGNED_FIXTURE_URL, False),
+        (RPM_SIGNED_FIXTURE_URL, True),
+    ],
+)
+def test_synchronous_upload_signing_keys_from_chunks(
+    delete_orphans_pre,
+    rpm_package_api,
+    gen_user,
+    tmp_path,
+    fixture_url,
+    expect_signed,
+    pulpcore_chunked_file_factory,
+    pulpcore_upload_chunks,
+):
+    """Test that signing_keys is populated correctly on synchronous chunked upload."""
+    file_to_use = os.path.join(fixture_url, RPM_PACKAGE_FILENAME)
+
+    file_path = tmp_path / RPM_PACKAGE_FILENAME
+    file_path.write_bytes(requests.get(file_to_use).content)
+
+    file_chunks_data = pulpcore_chunked_file_factory(file_path)
+    upload = pulpcore_upload_chunks(
+        file_chunks_data["size"], file_chunks_data["chunks"], file_chunks_data["digest"]
+    )
+
+    with gen_user(model_roles=["rpm.rpm_package_uploader"]):
+        package = rpm_package_api.upload(upload=upload.pulp_href)
+
+    if expect_signed:
+        assert package.signing_keys == [f"v4:{LEGACY_SIGNING_KEY.signing_fingerprint}"]
+    else:
+        assert package.signing_keys == []
+
+
+def test_async_upload_signing_keys_key_id_only(
+    delete_orphans_pre,
+    rpm_package_api,
+    monitor_task,
+    key_id_only_signed_rpm,
+):
+    """Test that signing_keys is populated for RPMs with key_id-only signatures.
+
+    Some RPMs (e.g. those signed by older GPG versions) have signatures that contain
+    only a key_id without a full fingerprint. These should still populate signing_keys.
+
+    Regression test for https://github.com/pulp/pulp_rpm/issues/4487
+    """
+    upload = rpm_package_api.create(file=str(key_id_only_signed_rpm))
+    content = monitor_task(upload.task).created_resources[0]
+    package = rpm_package_api.read(content)
+
+    assert package.signing_keys is not None
+    assert len(package.signing_keys) > 0, (
+        "signing_keys should be populated for RPMs with key_id-only signatures"
+    )
+    assert all(k.startswith("keyid:") for k in package.signing_keys)
+
+
+def test_sync_upload_signing_keys_key_id_only(
+    delete_orphans_pre,
+    rpm_package_api,
+    gen_user,
+    key_id_only_signed_rpm,
+):
+    """Test that signing_keys is populated on sync upload for RPMs with key_id-only signatures.
+
+    Regression test for https://github.com/pulp/pulp_rpm/issues/4487
+    """
+    with gen_user(model_roles=["rpm.rpm_package_uploader"]):
+        package = rpm_package_api.upload(file=str(key_id_only_signed_rpm))
+
+    assert package.signing_keys is not None
+    assert len(package.signing_keys) > 0, (
+        "signing_keys should be populated for RPMs with key_id-only signatures"
+    )
+    assert all(k.startswith("keyid:") for k in package.signing_keys)
+
+
+def test_async_upload_with_newer_fixture_rpm(
+    delete_orphans_pre,
+    rpm_package_api,
+    monitor_task,
+    tmp_path,
+):
+    """Test async upload with a newer fixture RPM (signed with KEY_V4_RSA4K)."""
+    file_to_upload = tmp_path / "test-package-signed.rpm"
+    file_to_upload.write_bytes(requests.get(RPM_FIXTURE_SIGNED).content)
+
+    upload = rpm_package_api.create(file=str(file_to_upload))
+    content = monitor_task(upload.task).created_resources[0]
+    package = rpm_package_api.read(content)
+
+    assert package.signing_keys == [f"v4:{KEY_V4_RSA4K.signing_fingerprint}"]
 
 
 def eval_resources(resources, is_small=True):
