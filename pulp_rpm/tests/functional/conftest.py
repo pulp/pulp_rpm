@@ -186,6 +186,53 @@ def rpm_package_factory(
     return _rpm_package_factory
 
 
+@pytest.fixture
+def pulpcore_chunked_file_factory(tmp_path):
+    """Returns a function to create chunks from a file to be uploaded."""
+
+    def _create_chunks(upload_path, chunk_size=512):
+        chunks = {"chunks": []}
+        hasher = hashlib.new("sha256")
+        start = 0
+        with open(upload_path, "rb") as f:
+            data = f.read()
+        chunks["size"] = len(data)
+
+        while start < len(data):
+            content = data[start : start + chunk_size]
+            chunk_file = tmp_path / str(uuid.uuid4())
+            hasher.update(content)
+            chunk_file.write_bytes(content)
+            content_sha = hashlib.sha256(content).hexdigest()
+            end = start + len(content) - 1
+            chunks["chunks"].append(
+                (str(chunk_file), f"bytes {start}-{end}/{chunks['size']}", content_sha)
+            )
+            start += len(content)
+        chunks["digest"] = hasher.hexdigest()
+        return chunks
+
+    return _create_chunks
+
+
+@pytest.fixture
+def pulpcore_upload_chunks(pulpcore_bindings, gen_object_with_cleanup):
+    """Upload file in chunks and return the Upload object."""
+
+    def _upload_chunks(size, chunks, sha256):
+        upload = gen_object_with_cleanup(pulpcore_bindings.UploadsApi, {"size": size})
+        for chunk_file, content_range, chunk_sha in chunks:
+            pulpcore_bindings.UploadsApi.update(
+                upload_href=upload.pulp_href,
+                file=chunk_file,
+                content_range=content_range,
+                sha256=chunk_sha,
+            )
+        return upload
+
+    yield _upload_chunks
+
+
 @pytest.fixture(scope="class")
 def rpm_unsigned_repo_immediate(init_and_sync):
     repo, _ = init_and_sync()
