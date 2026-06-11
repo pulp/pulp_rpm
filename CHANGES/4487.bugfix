@@ -1,1 +1,0 @@
-Fixed `signing_keys` not being populated for RPMs whose signatures contain only a key ID without a full fingerprint (common in packages signed by older GPG versions).

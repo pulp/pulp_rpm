@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.37.2 (2026-06-11) {: #3.37.2 }
+
+#### Bugfixes {: #3.37.2-bugfix }
+
+- Fixed `signing_keys` not being populated for RPMs whose signatures contain only a key ID without a full fingerprint (common in packages signed by older GPG versions).
+  [#4487](https://github.com/pulp/pulp_rpm/issues/4487)
+
+---
+
 ## 3.37.1 (2026-06-04) {: #3.37.1 }
 
 #### Bugfixes {: #3.37.1-bugfix }
