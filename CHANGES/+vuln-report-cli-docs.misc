@@ -1,0 +1,1 @@
+Updated vulnerability report guide to use `pulp-cli` commands instead of raw HTTP calls.
