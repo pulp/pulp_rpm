@@ -1,4 +1,4 @@
-"""Functional tests for the vulnerability_report action on RpmRepositoryVersionViewSet."""
+"""Functional tests for the scan action on RpmRepositoryVersionViewSet."""
 
 import uuid
 
@@ -94,10 +94,10 @@ class TestOsvConfig:
 
     @pytest.mark.parallel
     def test_missing_config(self, rpm_repository_factory, rpm_repository_versions_api):
-        """Repository without osv_config returns 400 when vulnerability_report is called."""
+        """Repository without osv_config returns 400 when scan is called."""
         repo = rpm_repository_factory()
         with pytest.raises(ApiException) as exc:
-            rpm_repository_versions_api.vulnerability_report(repo.latest_version_href)
+            rpm_repository_versions_api.scan(repo.latest_version_href)
         assert exc.value.status == 400
         assert "Required label" in exc.value.body
 
@@ -167,7 +167,7 @@ class TestVulnReportIntegration:
             monitor_task=monitor_task,
         )
 
-        resp = rpm_repository_versions_api.vulnerability_report(repo.latest_version_href)
+        resp = rpm_repository_versions_api.scan(repo.latest_version_href)
         monitor_task(resp.task)
 
         vulns_list = pulpcore_bindings.VulnReportApi.list()
