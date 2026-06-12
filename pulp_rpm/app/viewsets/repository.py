@@ -321,7 +321,7 @@ class RpmRepositoryVersionViewSet(RepositoryVersionViewSet):
                 ],
             },
             {
-                "action": ["vulnerability_report"],
+                "action": ["scan"],
                 "principal": "authenticated",
                 "effect": "allow",
                 "condition": "has_repository_model_or_domain_or_obj_perms:rpm.view_rpmrepository",
@@ -341,7 +341,7 @@ class RpmRepositoryVersionViewSet(RepositoryVersionViewSet):
         responses={202: AsyncOperationResponseSerializer},
     )
     @action(detail=True, methods=["post"], serializer_class=None)
-    def vulnerability_report(self, request, repository_pk, **kwargs):
+    def scan(self, request, repository_pk, **kwargs):
         repository_version = self.get_object()
         repo = repository_version.repository
 

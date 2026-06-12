@@ -1,1 +1,2 @@
-Added a `vulnerability_report` action to `RpmRepositoryVersionViewSet` that scans all RPM packages in a repository version for known CVEs via osv.dev. Repositories are opted in by setting the `osv.rpm.config` label to a JSON list of ecosystem entries with required `releases` (e.g., `[{"name": "Red Hat", "releases": ["cpe:/o:redhat:enterprise_linux:9::baseos"]}]`).
+Added a `scan` action to `RepositoryVersion` endpoint that scans all RPM packages in a repository version via <https://osv.dev/>.
+Repositories must be configured via the `osv_config` field, which specifies the ecosystems and releases to query.
