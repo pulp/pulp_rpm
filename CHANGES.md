@@ -8,6 +8,21 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.38.0 (2026-06-17) {: #3.38.0 }
+
+#### Features {: #3.38.0-feature }
+
+- Added a `scan` action to `RepositoryVersion` endpoint that scans all RPM packages in a repository version via <https://osv.dev/>.
+  Repositories must be configured via the `osv_config` field, which specifies the ecosystems and releases to query.
+
+#### Bugfixes {: #3.38.0-bugfix }
+
+- Fixed `signing_keys` not being populated for RPMs whose signatures contain only a key ID without a full fingerprint (common in packages signed by older GPG versions).
+  [#4487](https://github.com/pulp/pulp_rpm/issues/4487)
+- Don't read the entire package on package upload, just read the header.
+
+---
+
 ## 3.37.2 (2026-06-11) {: #3.37.2 }
 
 #### Bugfixes {: #3.37.2-bugfix }
