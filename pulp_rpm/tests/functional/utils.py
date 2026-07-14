@@ -10,7 +10,7 @@ import uuid
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
 from pathlib import Path
-from typing import NamedTuple, Optional
+from typing import Optional
 
 import createrepo_c as cr
 import pyzstd
@@ -112,7 +112,8 @@ def get_metadata_content_helper(base_url, repomd_elem, meta_type):
     return download_and_decompress_file(os.path.join(base_url, location_href))
 
 
-class Nevra(NamedTuple):
+@dataclass(frozen=True)
+class Nevra:
     name: str
     epoch: int
     version: str
@@ -131,9 +132,23 @@ class MetaPackage:
     """Simplified package representation."""
 
     nevra: Nevra
-    digest: str
-    time_build: int
-    location: str
+    time_build: int = 0
+    location: str = ""
+    digest: Optional[str] = None
+    content: Optional[bytes] = None
+
+    def __post_init__(self):
+        if self.location and self.digest is None and self.content is None:
+            raise ValueError("Either digest or content must be provided")
+
+    def replace(self, **overrides):
+        nevra_fields = {f.name for f in dataclasses.fields(Nevra)}
+        nevra_overrides = {k: v for k, v in overrides.items() if k in nevra_fields}
+        pkg_overrides = {k: v for k, v in overrides.items() if k not in nevra_fields}
+        new_nevra = (
+            dataclasses.replace(self.nevra, **nevra_overrides) if nevra_overrides else self.nevra
+        )
+        return dataclasses.replace(self, nevra=new_nevra, **pkg_overrides)
 
     @classmethod
     def generate_nevra(cls, n: int) -> Nevra:
@@ -150,10 +165,13 @@ class MetaPackage:
         return hashlib.sha256(f"digest-{SALT}-{n}".encode()).hexdigest()
 
 
-def build_rpm(nevra: Nevra, path: Path) -> None:
+def build_rpm(nevra: Nevra, path: Path, *, file_contents: Optional[bytes] = None) -> None:
     """Build a minimal RPM file at path using rpm_rs."""
     builder = rpm_rs.PackageBuilder(nevra.name, nevra.version, "GPLv2", nevra.arch)
     builder.release(nevra.release)
+    builder.epoch(nevra.epoch)
+    if file_contents is not None:
+        builder.with_file_contents(file_contents, rpm_rs.FileOptions.new("/usr/share/data"))
     builder.build().write_file(path)
 
 
@@ -262,29 +280,41 @@ class RepositoryBuilder:
 
         cr_packages = []
         for pkg in packages:
-            cr_pkg = cr.Package()
-            cr_pkg.name = pkg.nevra.name
-            cr_pkg.arch = pkg.nevra.arch
-            cr_pkg.epoch = str(pkg.nevra.epoch)
-            cr_pkg.version = pkg.nevra.version
-            cr_pkg.release = pkg.nevra.release
-            cr_pkg.pkgId = pkg.digest
-            cr_pkg.checksum_type = "sha256"
-            cr_pkg.location_href = pkg.location
-            cr_pkg.summary = f"Headless package {pkg.nevra.name}"
-            cr_pkg.description = ""
-            cr_pkg.size_package = 0
-            cr_pkg.size_installed = 0
-            cr_pkg.size_archive = 0
-            cr_pkg.time_file = 0
-            cr_pkg.time_build = pkg.time_build
-            cr_pkg.rpm_header_start = 0
-            cr_pkg.rpm_header_end = 0
-            cr_pkg.rpm_license = ""
-            cr_pkg.rpm_vendor = ""
-            cr_pkg.rpm_group = ""
-            cr_pkg.rpm_buildhost = ""
-            cr_pkg.rpm_sourcerpm = ""
+            if pkg.content is not None:
+                rpm_path = repo_dir / pkg.location
+                if rpm_path.exists():
+                    raise FileExistsError(f"RPM already exists at {rpm_path}")
+                rpm_path.parent.mkdir(parents=True, exist_ok=True)
+                build_rpm(pkg.nevra, rpm_path, file_contents=pkg.content)
+                pkg.digest = hashlib.sha256(rpm_path.read_bytes()).hexdigest()
+
+                cr_pkg = cr.package_from_rpm(str(rpm_path))
+                cr_pkg.location_href = pkg.location
+                cr_pkg.time_build = pkg.time_build
+            else:
+                cr_pkg = cr.Package()
+                cr_pkg.name = pkg.nevra.name
+                cr_pkg.arch = pkg.nevra.arch
+                cr_pkg.epoch = str(pkg.nevra.epoch)
+                cr_pkg.version = pkg.nevra.version
+                cr_pkg.release = pkg.nevra.release
+                cr_pkg.pkgId = pkg.digest
+                cr_pkg.checksum_type = "sha256"
+                cr_pkg.location_href = pkg.location
+                cr_pkg.summary = f"Headless package {pkg.nevra.name}"
+                cr_pkg.description = ""
+                cr_pkg.size_package = 0
+                cr_pkg.size_installed = 0
+                cr_pkg.size_archive = 0
+                cr_pkg.time_file = 0
+                cr_pkg.time_build = pkg.time_build
+                cr_pkg.rpm_header_start = 0
+                cr_pkg.rpm_header_end = 0
+                cr_pkg.rpm_license = ""
+                cr_pkg.rpm_vendor = ""
+                cr_pkg.rpm_group = ""
+                cr_pkg.rpm_buildhost = ""
+                cr_pkg.rpm_sourcerpm = ""
             cr_packages.append(cr_pkg)
 
         with cr.RepositoryWriter(str(repo_dir), compression=cr.NO_COMPRESSION) as writer:
