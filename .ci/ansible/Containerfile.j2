@@ -46,4 +46,6 @@ USER root:root
 RUN mkdir /.pytest_cache
 RUN chown pulp:pulp /.pytest_cache
 
+RUN echo KILL > /etc/s6-overlay/s6-rc.d/redis/down-signal
+
 ENTRYPOINT ["/init"]
