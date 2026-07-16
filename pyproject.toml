@@ -10,11 +10,12 @@ name = "pulp-rpm"
 version = "3.39.0.dev"
 description = "Pulp plugin to manage RPM repositories"
 readme = "README.rst"
+license = "GPL-2.0-or-later"
+license-files = ["LICENSE"]
 authors = [
   {name="Pulp Rpm Plugin Project Developers", email="pulp-dev@redhat.com"}
 ]
 classifiers = [
-  "License :: OSI Approved :: GNU General Public License v2 or later (GPLv2+)",
   "Operating System :: POSIX :: Linux",
   "Development Status :: 5 - Production/Stable",
   "Framework :: Django",
