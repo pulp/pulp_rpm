@@ -724,7 +724,7 @@ def test_directory_layout_distribute_with_modules(
     repository_root_items = []
     for elem in repository.iter():
         if elem.tag == "a" and not elem.text.startswith(".."):  # skip parent-dir if present
-            repository_root_items.append(elem.attrib["href"])
+            repository_root_items.append(elem.attrib["href"].removeprefix("./"))
 
     # Check if 'Packages' and 'repodata' are present
     # Trailing '/' is present for easier check
@@ -748,7 +748,7 @@ def test_directory_layout_distribute_with_treeinfo(
     repository_root_items = []
     for elem in repository.iter():
         if elem.tag == "a" and not elem.text.startswith(".."):  # skip parent-dir if present
-            repository_root_items.append(elem.attrib["href"])
+            repository_root_items.append(elem.attrib["href"].removeprefix("./"))
     # Check if all treeinfo related directories are present
     # Trailing '/' is present for easier check
     for directory in RPM_KICKSTART_REPOSITORY_ROOT_CONTENT:
