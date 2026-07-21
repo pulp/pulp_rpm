@@ -40,6 +40,9 @@ jobs:
           twine check dist/*
       - name: "Install built packages"
         run: |
+          if [ -f ci_requirements.txt ]; then
+            pip install -r ci_requirements.txt -c .ci/assets/ci_constraints.txt
+          fi
           pip install dist/pulp_rpm-*-py3-none-any.whl -c .ci/assets/ci_constraints.txt
       - name: "Generate api specs"
         run: |

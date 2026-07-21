@@ -1,0 +1,1 @@
+pulpcore @ git+https://github.com/pedro-psb/pulpcore.git@experiment-hotfix
