@@ -53,7 +53,7 @@ class CompsXmlViewSet(viewsets.ViewSet):
         request=CompsXmlSerializer,
         responses={202: AsyncOperationResponseSerializer},
     )
-    def create(self, request):
+    def create(self, request, **kwargs):
         """Upload a comps.xml file and create Content from it."""
         serializer = CompsXmlSerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)

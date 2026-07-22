@@ -127,7 +127,7 @@ class RpmAlternateContentSourceViewSet(AlternateContentSourceViewSet, RolesMixin
         request=None,
     )
     @action(methods=["post"], detail=True)
-    def refresh(self, request, pk):
+    def refresh(self, request, pk, **kwargs):
         """
         Refresh ACS metadata.
         """
