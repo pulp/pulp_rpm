@@ -139,7 +139,7 @@ def prune_packages(
     #   https://github.com/pulp/pulpcore/blob/main/pulpcore/app/tasks/importer.py#L503-L512
     # When we have a generic-approach to throttling mass-task-spawning, both places should
     # be refactored to take advantage thereof.
-    prune_workers = int(settings.get("PRUNE_WORKERS_MAX", 5))
+    prune_workers = int(getattr(settings, "PRUNE_WORKERS_MAX", 5))
 
     gpr = GroupProgressReport(
         message="Pruning old Packages",

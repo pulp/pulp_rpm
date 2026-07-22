@@ -56,7 +56,7 @@ class RpmModifyRepositoryActionMixin(ModifyRepositoryActionMixin):
         responses={202: AsyncOperationResponseSerializer},
     )
     @action(detail=True, methods=["post"], serializer_class=RepositoryAddRemoveContentSerializer)
-    def modify(self, request, pk):
+    def modify(self, request, pk, **kwargs):
         add_content_units = request.data.get("add_content_units", [])
         package_ids = [extract_pk(href) for href in add_content_units if "/packages/" in href]
         repository = self.get_object()
@@ -229,7 +229,7 @@ class RpmRepositoryViewSet(RepositoryViewSet, RpmModifyRepositoryActionMixin, Ro
         responses={202: AsyncOperationResponseSerializer},
     )
     @action(detail=True, methods=["post"], serializer_class=RpmRepositorySyncURLSerializer)
-    def sync(self, request, pk):
+    def sync(self, request, pk, **kwargs):
         """
         Dispatches a sync task.
         """
@@ -592,7 +592,7 @@ class RpmPublicationViewSet(PublicationViewSet, RolesMixin):
         description="Trigger an asynchronous task to create a new RPM content publication.",
         responses={202: AsyncOperationResponseSerializer},
     )
-    def create(self, request):
+    def create(self, request, **kwargs):
         """
         Dispatches a publish task.
         """
@@ -749,7 +749,7 @@ class CopyViewSet(viewsets.ViewSet):
         request=CopySerializer,
         responses={202: AsyncOperationResponseSerializer},
     )
-    def create(self, request):
+    def create(self, request, **kwargs):
         """Copy content."""
         serializer = CopySerializer(data=request.data, context={"request": request})
         serializer.is_valid(raise_exception=True)
@@ -759,7 +759,6 @@ class CopyViewSet(viewsets.ViewSet):
         config = serializer.validated_data["config"]
 
         config, shared_repos, exclusive_repos = self._process_config(config)
-
         async_result = dispatch(
             tasks.copy_content,
             shared_resources=shared_repos,
