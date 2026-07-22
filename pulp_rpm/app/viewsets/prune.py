@@ -36,7 +36,7 @@ class PrunePackagesViewSet(ViewSet):
         description="Trigger an asynchronous old-Package-prune operation.",
         responses={202: TaskGroupOperationResponseSerializer},
     )
-    def prune_packages(self, request):
+    def prune_packages(self, request, **kwargs):
         """
         Triggers an asynchronous old-Package-purge operation.
 

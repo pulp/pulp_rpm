@@ -7,10 +7,12 @@ from urllib.parse import urljoin
 import django
 
 django.setup()
-from django.conf import settings
+
+from pulpcore.plugin.find_url import find_api_root
+
+_, BASE_PATH = find_api_root(set_domain=False)
 
 # start from-pulp-smash
-BASE_PATH = settings.V3_API_ROOT or "/pulp/api/v3/"
 
 BASE_CONTENT_PATH = urljoin(BASE_PATH, "content/")
 
