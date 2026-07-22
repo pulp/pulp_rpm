@@ -1,0 +1,1 @@
+Fixed an `IntegrityError` that could abort `signed_add_and_remove` when the same package was signed concurrently by making the `RpmPackageSigningResult` creation race-safe and reusing the existing result.
