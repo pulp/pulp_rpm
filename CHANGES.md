@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.38.2 (2026-07-24) {: #3.38.2 }
+
+#### Bugfixes {: #3.38.2-bugfix }
+
+- Fixed an `IntegrityError` that could abort `signed_add_and_remove` when the same package was signed concurrently by making the `RpmPackageSigningResult` creation race-safe and reusing the existing result.
+  [#4522](https://github.com/pulp/pulp_rpm/issues/4522)
+
+---
+
 ## 3.38.1 (2026-07-22) {: #3.38.1 }
 
 No significant changes.
