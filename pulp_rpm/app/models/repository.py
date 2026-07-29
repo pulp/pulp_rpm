@@ -8,6 +8,8 @@ from aiohttp.web_response import Response
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
+from django.db.models import Count, IntegerField, Max
+from django.db.models.functions import Cast
 
 from pulpcore.plugin.download import DownloaderFactory
 from pulpcore.plugin.models import (
@@ -192,6 +194,31 @@ class UlnRemote(Remote, AutoAddObjPermsMixin):
         permissions = [
             ("manage_roles_ulnremote", "Can manage roles on an ULN remotes"),
         ]
+
+
+def _resolve_nvra_duplicates(new_version):
+    """Keep only the highest-epoch package per NVRA+location_href in the version."""
+    epoch_as_int = Cast("epoch", IntegerField())
+    nvra_groups = (
+        Package.objects.filter(pk__in=new_version.content)
+        .values(*Package.repo_key_fields)
+        .annotate(count=Count("pk"), max_epoch=Max(epoch_as_int))
+        .filter(count__gt=1)
+    )
+
+    to_remove = Package.objects.none()
+    for group in nvra_groups:
+        max_epoch = group.pop("max_epoch")
+        group.pop("count")
+        losers = (
+            Package.objects.filter(pk__in=new_version.content, **group)
+            .annotate(epoch_int=epoch_as_int)
+            .filter(epoch_int__lt=max_epoch)
+        )
+        to_remove = to_remove | losers
+
+    if to_remove.exists():
+        new_version.remove_content(to_remove)
 
 
 class RpmRepository(Repository, AutoAddObjPermsMixin):
@@ -423,6 +450,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
             except RepositoryVersion.DoesNotExist:
                 previous_version = None
 
+        _resolve_nvra_duplicates(new_version)
         remove_duplicates(new_version)
         self._resolve_distribution_trees(new_version, previous_version)
 
