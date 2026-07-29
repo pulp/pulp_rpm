@@ -8,7 +8,7 @@ from aiohttp.web_response import Response
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
-from django.db.models import Count, IntegerField, Max
+from django.db.models import Case, IntegerField, Value, When
 from django.db.models.functions import Cast
 
 from pulpcore.plugin.download import DownloaderFactory
@@ -196,29 +196,23 @@ class UlnRemote(Remote, AutoAddObjPermsMixin):
         ]
 
 
-def _resolve_nvra_duplicates(new_version):
-    """Keep only the highest-epoch package per NVRA+location_href in the version."""
-    epoch_as_int = Cast("epoch", IntegerField())
-    nvra_groups = (
-        Package.objects.filter(pk__in=new_version.content)
-        .values(*Package.repo_key_fields)
-        .annotate(count=Count("pk"), max_epoch=Max(epoch_as_int))
-        .filter(count__gt=1)
+def resolve_package_duplicates(new_version):
+    """Deduplicate packages that share NVRA but differ in other properties."""
+    repo_key = Package.repo_key_fields
+    is_incoming = Case(
+        When(pk__in=new_version.added(), then=Value(1)),
+        default=Value(0),
+        output_field=IntegerField(),
     )
-
-    to_remove = Package.objects.none()
-    for group in nvra_groups:
-        max_epoch = group.pop("max_epoch")
-        group.pop("count")
-        losers = (
-            Package.objects.filter(pk__in=new_version.content, **group)
-            .annotate(epoch_int=epoch_as_int)
-            .filter(epoch_int__lt=max_epoch)
-        )
-        to_remove = to_remove | losers
-
-    if to_remove.exists():
-        new_version.remove_content(to_remove)
+    # Greatest-1-per-group via postgres DISTINCT ON
+    winners = (
+        Package.objects.filter(pk__in=new_version.content)
+        .annotate(epoch_int=Cast("epoch", IntegerField()), is_incoming=is_incoming)
+        .order_by(*repo_key, "-epoch_int", "-is_incoming", "-time_build", "-pkgId")
+        .distinct(*repo_key)
+    )
+    losers = Package.objects.filter(pk__in=new_version.content).exclude(pk__in=winners)
+    new_version.remove_content(losers)
 
 
 class RpmRepository(Repository, AutoAddObjPermsMixin):
@@ -450,7 +444,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
             except RepositoryVersion.DoesNotExist:
                 previous_version = None
 
-        _resolve_nvra_duplicates(new_version)
+        resolve_package_duplicates(new_version)
         remove_duplicates(new_version)
         self._resolve_distribution_trees(new_version, previous_version)
 

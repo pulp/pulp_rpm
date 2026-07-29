@@ -141,6 +141,9 @@ class MetaPackage:
         if self.location and self.digest is None and self.content is None:
             raise ValueError("Either digest or content must be provided")
 
+    def ignore(self, *fields):
+        return tuple(v for f, v in dataclasses.asdict(self).items() if f not in fields)
+
     def replace(self, **overrides):
         nevra_fields = {f.name for f in dataclasses.fields(Nevra)}
         nevra_overrides = {k: v for k, v in overrides.items() if k in nevra_fields}

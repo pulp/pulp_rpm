@@ -3,7 +3,6 @@ import uuid
 
 import pytest
 
-from pulpcore.exceptions import DuplicateContentInRepositoryError
 from pulpcore.plugin.models import Content, Domain
 
 from pulp_rpm.app.models import Package
@@ -35,7 +34,7 @@ def _create_package(domain, pkg):
         arch=nevra.arch,
         location_href=f"{nevra.to_nvra()}.rpm",
         time_build=pkg.time_build or None,
-        pkgId=uuid.uuid4(),
+        pkgId=pkg.digest or str(uuid.uuid4()),
         pulp_type="rpm.package",
         _pulp_domain=domain,
         **BLANK_FIELDS,
@@ -47,6 +46,7 @@ def _get_version_packages(version):
         MetaPackage(
             Nevra(p.name, int(p.epoch), p.version, p.release, p.arch),
             time_build=p.time_build or 0,
+            digest=p.pkgId,
         )
         for p in Package.objects.filter(pk__in=version.content).order_by("name")
     ]
@@ -63,6 +63,7 @@ class DedupCase:
     expected1: list[MetaPackage]
     add_packages2: list[MetaPackage] | None = None
     expected2: list[MetaPackage] | None = None
+    compare_digest: bool = False
 
 
 CASES = [
@@ -108,6 +109,31 @@ CASES = [
         expected2=[PENGUIN.replace(epoch=4), WALRUS.replace(epoch=3)],
     ),
     DedupCase(
+        id="incoming-same-epoch-higher-build-time-wins",
+        add_packages1=[
+            WALRUS.replace(epoch=1, time_build=1000),
+            WALRUS.replace(epoch=1, time_build=2000),
+        ],
+        expected1=[WALRUS.replace(epoch=1, time_build=2000)],
+    ),
+    DedupCase(
+        id="incoming-same-epoch-higher-build-time-wins-reversed",
+        add_packages1=[
+            WALRUS.replace(epoch=1, time_build=2000),
+            WALRUS.replace(epoch=1, time_build=1000),
+        ],
+        expected1=[WALRUS.replace(epoch=1, time_build=2000)],
+    ),
+    DedupCase(
+        id="all-tied-highest-pkgid-wins",
+        add_packages1=[
+            WALRUS.replace(epoch=1, time_build=1000, digest="aaa"),
+            WALRUS.replace(epoch=1, time_build=1000, digest="zzz"),
+        ],
+        expected1=[WALRUS.replace(epoch=1, time_build=1000, digest="zzz")],
+        compare_digest=True,
+    ),
+    DedupCase(
         id="incoming-same-epoch-keeps-incoming",
         add_packages1=[
             WALRUS.replace(epoch=1, time_build=1000),
@@ -143,7 +169,10 @@ def test_finalize_new_version_dedup(case: DedupCase):
         version.add_content(Content.objects.filter(pk__in=[p.pk for p in pkgs1]))
 
     version.refresh_from_db()
-    assert _get_version_packages(version) == case.expected1
+    ign = () if case.compare_digest else ("digest",)
+    assert [p.ignore(*ign) for p in _get_version_packages(version)] == [
+        p.ignore(*ign) for p in case.expected1
+    ]
 
     if case.add_packages2 is None:
         return
@@ -153,24 +182,6 @@ def test_finalize_new_version_dedup(case: DedupCase):
         version.add_content(Content.objects.filter(pk__in=[p.pk for p in pkgs2]))
 
     latest = repo.latest_version()
-    assert _get_version_packages(latest) == case.expected2
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize(
-    "packages",
-    [
-        [WALRUS.replace(epoch=1, time_build=1000), WALRUS.replace(epoch=1, time_build=2000)],
-        [WALRUS.replace(epoch=1, time_build=2000), WALRUS.replace(epoch=1, time_build=1000)],
-    ],
-    ids=["older-first", "newer-first"],
-)
-def test_same_nvra_same_epoch_raises(packages):
-    """Same NVRA+epoch in one batch is not deduplicated and raises."""
-    domain, _ = Domain.objects.get_or_create(name="default")
-    pkgs = [_create_package(domain, pkg) for pkg in packages]
-    repo = RpmRepository.objects.create(name="test-repo", pulp_domain=domain)
-
-    with pytest.raises(DuplicateContentInRepositoryError):
-        with repo.new_version() as version:
-            version.add_content(Content.objects.filter(pk__in=[p.pk for p in pkgs]))
+    assert [p.ignore(*ign) for p in _get_version_packages(latest)] == [
+        p.ignore(*ign) for p in case.expected2
+    ]
