@@ -1,0 +1,1 @@
+Fixed queries in the content copy API that could exceed PostgreSQL's 65535 bound-parameter limit.
