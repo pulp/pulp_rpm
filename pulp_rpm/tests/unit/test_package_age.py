@@ -5,7 +5,7 @@ Unit tests for Package age calculation functionality.
 from django.test import TestCase
 
 from pulp_rpm.app.models import Package
-from pulp_rpm.app.shared_utils import annotate_with_age
+from pulp_rpm.app.sql_utils import annotate_with_age
 
 
 class TestPackageAge(TestCase):
