@@ -53,7 +53,8 @@ from pulp_rpm.app.models import (
     UpdateRecord,
 )
 from pulp_rpm.app.models.content import RpmPackageSigningResult
-from pulp_rpm.app.shared_utils import annotate_with_age, urlpath_sanitize
+from pulp_rpm.app.shared_utils import urlpath_sanitize
+from pulp_rpm.app.sql_utils import annotate_with_age, get_content_in_repoversion
 
 log = getLogger(__name__)
 
@@ -505,7 +506,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
                                                                        the current incomplete one
         """
         disttree_pulp_type = DistributionTree.get_pulp_type()
-        current_disttrees = new_version.content.filter(pulp_type=disttree_pulp_type)
+        current_disttrees = get_content_in_repoversion(new_version, pulp_type=disttree_pulp_type)
 
         if len(current_disttrees) < 2:
             return
