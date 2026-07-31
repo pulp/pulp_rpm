@@ -20,6 +20,7 @@ from pulp_rpm.app.models import (
     UpdateRecord,
 )
 from pulp_rpm.app.shared_utils import is_previous_version
+from pulp_rpm.app.sql_utils import get_content_in_repoversion
 
 
 def resolve_advisories(version, previous_version):
@@ -47,8 +48,8 @@ def resolve_advisories(version, previous_version):
     """
     # identify conflicting advisories
     advisory_pulp_type = UpdateRecord.get_pulp_type()
-    current_advisories = UpdateRecord.objects.filter(
-        pk__in=version.content.filter(pulp_type=advisory_pulp_type)
+    current_advisories = get_content_in_repoversion(
+        version, pulp_type=advisory_pulp_type, cast=True
     )
 
     # check for any conflict
@@ -62,8 +63,8 @@ def resolve_advisories(version, previous_version):
         current_advisories_by_id[advisory.id].append(advisory)
 
     if previous_version:
-        previous_advisories = UpdateRecord.objects.filter(
-            pk__in=previous_version.content.filter(pulp_type=advisory_pulp_type)
+        previous_advisories = get_content_in_repoversion(
+            previous_version, pulp_type=advisory_pulp_type, cast=True
         )
         previous_advisory_ids = set(previous_advisories.values_list("id", flat=True))
 
