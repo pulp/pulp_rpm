@@ -7,7 +7,10 @@ from gettext import gettext as _  # noqa:F401
 
 import createrepo_c as cr
 import yaml
+from django.db.models import Prefetch
 from jsonschema import Draft7Validator
+
+from pulpcore.plugin.models import Content
 
 from pulp_rpm.app.constants import (
     PULP_MODULE_ATTR,
@@ -18,6 +21,7 @@ from pulp_rpm.app.constants import (
 )
 from pulp_rpm.app.models import Modulemd, Package
 from pulp_rpm.app.schema import MODULEMD_SCHEMA
+from pulp_rpm.app.sql_utils import get_content_in_repoversion, safe_in
 
 log = logging.getLogger(__name__)
 
@@ -32,22 +36,28 @@ def resolve_module_packages(version, previous_version):
                                                                     repository to compare to
 
     """
+    modulemd_pulp_type = Modulemd.get_pulp_type()
 
     def modules_packages(modules):
         packages = set()
-        for module in modules:
-            packages.update(module.packages.all().only("pk"))
+        # Materialize pks because Django dont allow prefetching on a difference's result
+        module_pks = [module.pk for module in modules]
+        modules_in_content = Content.objects.filter(
+            safe_in("pk", module_pks), pulp_type=modulemd_pulp_type
+        )
+        prefetched_modules = Modulemd.objects.filter(pk__in=modules_in_content).prefetch_related(
+            Prefetch("packages", queryset=Package.objects.only("pk"))
+        )
+        for module in prefetched_modules.only("pk", "pulp_type").iterator(chunk_size=2000):
+            packages.update(module.packages.all())
         return packages
 
-    modulemd_pulp_type = Modulemd.get_pulp_type()
-    current_modules = Modulemd.objects.filter(
-        pk__in=version.content.filter(pulp_type=modulemd_pulp_type)
-    )
+    current_modules = get_content_in_repoversion(version, pulp_type=modulemd_pulp_type, cast=True)
     current_module_packages = modules_packages(current_modules)
 
     if previous_version:
-        previous_modules = Modulemd.objects.filter(
-            pk__in=previous_version.content.filter(pulp_type=modulemd_pulp_type)
+        previous_modules = get_content_in_repoversion(
+            previous_version, pulp_type=modulemd_pulp_type, cast=True
         )
         added_modules = current_modules.difference(previous_modules)
         removed_modules = previous_modules.difference(current_modules)
