@@ -21,3 +21,11 @@ PRUNE_WORKERS_MAX = 5
 SPECTACULAR_SETTINGS__OAS_VERSION = "3.0.1"
 MAX_PACKAGE_SIGNING_WORKERS = 5
 RPM_SIGNING_COPY_LABELS = True
+DATABASE = {
+    "dynaconf_merge": True,
+    "default": {
+        "OPTIONS": {
+            "server_side_binding": True,
+        },
+    },
+}
