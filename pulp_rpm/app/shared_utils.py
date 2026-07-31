@@ -5,32 +5,9 @@ from hashlib import sha256
 import createrepo_c as cr
 import rpm_rs
 from django.conf import settings
-from django.db.models import F, Window
-from django.db.models.functions import RowNumber
 from django.utils.dateparse import parse_datetime
 
 from pulp_rpm.app.constants import CR_HEADER_FLAGS
-
-
-def annotate_with_age(qs):
-    """Provide an "age" score for each Package object in the queryset.
-
-    Annotate the Package objects with an "age". Age is calculated by partitioning the
-    Packages by name and architecture and ordering the packages in each group by 'evr',
-    which is the relative "age" within the group. The newest package gets age=1, second
-    newest age=2, and so on.
-
-    A second partition by architecture is important because there can be packages with
-    the same name and version numbers but they are not interchangeable because they have
-    differing arch, such as 'x86_64' and 'i686', or 'src' (SRPM) and any other arch.
-    """
-    return qs.annotate(
-        age=Window(
-            expression=RowNumber(),
-            partition_by=[F("name"), F("arch")],
-            order_by=F("evr").desc(),
-        )
-    )
 
 
 def format_nevra(name=None, epoch=0, version=None, release=None, arch=None):
