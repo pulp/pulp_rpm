@@ -1,15 +1,40 @@
 import shutil
 import tempfile
+from collections.abc import Iterable
 from hashlib import sha256
 
 import createrepo_c as cr
 import rpm_rs
 from django.conf import settings
-from django.db.models import F, Window
+from django.db.models import F, Field, Q, Window
 from django.db.models.functions import RowNumber
+from django.db.models.lookups import Lookup
 from django.utils.dateparse import parse_datetime
 
 from pulp_rpm.app.constants import CR_HEADER_FLAGS
+
+
+class _AnyArray(Lookup):
+    """PostgreSQL ``= ANY(%s)`` lookup. Passes the list as one array parameter."""
+
+    lookup_name = "any_array"
+
+    def get_prep_lookup(self):
+        return [self.lhs.output_field.get_prep_value(v) for v in self.rhs]
+
+    def as_sql(self, compiler, connection):
+        lhs, lhs_params = self.process_lhs(compiler, connection)
+        return f"{lhs} = ANY(%s)", lhs_params + [list(self.rhs)]
+
+
+Field.register_lookup(_AnyArray)
+
+
+def safe_in(field_name: str, values: Iterable) -> Q:
+    """WHERE x = ANY(%s)  -- passes the list as one array parameter."""
+    if not isinstance(values, (list, set, tuple, frozenset)):
+        return Q(**{f"{field_name}__in": values})
+    return Q(**{f"{field_name}__any_array": list(values)})
 
 
 def annotate_with_age(qs):

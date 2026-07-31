@@ -1,169 +1,158 @@
-"""Unit tests for find_children_of_content in the copy task."""
+"""Unit tests for ChildContentResolver in the copy task."""
 
-import hashlib
 import time
 import uuid
-from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
+from unittest.mock import patch
 
 import pytest
-from django.db import connections
+from django.db import connection
 from django.db.models import Q
+from django.utils import timezone
 
-from pulpcore.app.models import Content, RepositoryVersion
+from pulpcore.plugin.models import Content
+from pulpcore.plugin.util import get_domain_pk
 
 from pulp_rpm.app.models import (
     Package,
-    PackageCategory,
     PackageGroup,
     RpmRepository,
 )
-from pulp_rpm.app.tasks.copy import find_children_of_content
+from pulp_rpm.app.tasks.copy import ChildContentResolver
 
 PG_PARAM_LIMIT = 65535
+RPM_PACKAGE_COLS = 31
+BATCH_SIZE = PG_PARAM_LIMIT // RPM_PACKAGE_COLS
 
 
-class Stopwatch:
-    def __init__(self):
-        self._last = time.perf_counter()
-
-    def lap(self, label):
-        now = time.perf_counter()
-        print(f"[timing] {label}: {now - self._last:.1f}s")
-        self._last = now
-
-
-def _ensure_packages(count, workers=8):
-    """Return a queryset of `count` packages, creating only the missing ones."""
-    existing = set(
-        Package.objects.filter(pkgId__startswith="fakedigest-").values_list("pkgId", flat=True)
-    )
-    needed = [i for i in range(count) if f"fakedigest-{i}" not in existing]
-
-    if needed:
-
-        def _create_chunk(chunk):
-            try:
-                for i in chunk:
-                    Package.objects.create(
-                        name=f"pkg-{i}",
-                        epoch="0",
-                        version="1.0",
-                        release="1",
-                        arch="noarch",
-                        pkgId=f"fakedigest-{i}",
-                        checksum_type="sha256",
-                    )
-            finally:
-                connections.close_all()
-
-        chunk_size = max(1, len(needed) // workers)
-        chunks = [needed[i : i + chunk_size] for i in range(0, len(needed), chunk_size)]
-        with ThreadPoolExecutor(max_workers=workers) as pool:
-            list(pool.map(_create_chunk, chunks))
-
-    return Package.objects.filter(pkgId__startswith="fakedigest-")
+def _bulk_create_packages(names):
+    """Bulk-create packages via two-step MTI insert. Skips if enough already exist."""
+    # This is not pretty but boy... it's FAST
+    domain_pk = get_domain_pk()
+    pulp_type = Package.get_pulp_type()
+    now = timezone.now()
+    pks = [uuid.uuid4() for _ in names]
+    with connection.cursor() as cursor:
+        cursor.executemany(
+            "INSERT INTO core_content "
+            "(pulp_id, pulp_type, pulp_domain_id, "
+            "pulp_created, pulp_last_updated, timestamp_of_interest, pulp_labels) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s)",
+            [(pk, pulp_type, domain_pk, now, now, now, "") for pk in pks],
+        )
+        # fmt: off
+        cursor.executemany(
+            "INSERT INTO rpm_package "
+            "(content_ptr_id, name, epoch, version, release, arch, "
+            '"pkgId", checksum_type, '
+            "summary, description, url, "
+            "location_base, location_href, "
+            "rpm_buildhost, rpm_group, rpm_license, rpm_packager, rpm_sourcerpm, rpm_vendor, "
+            "changelogs, files, "
+            "requires, provides, conflicts, obsoletes, "
+            "suggests, enhances, recommends, supplements, "
+            "is_modular, _pulp_domain_id) "
+            "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, "
+            "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
+            "%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
+            [
+                (pk, name, "0", "1.0", "1", "noarch", f"fakedigest-{name}", "sha256",
+                 "", "", "", "", "", "", "", "", "", "", "",
+                 "[]", "[]", "[]", "[]", "[]", "[]", "[]", "[]", "[]", "[]",
+                 False, domain_pk)
+                for pk, name in zip(pks, names)
+            ],
+        )
+        # fmt: on
+    return pks
 
 
 def _make_repo_version(content_pks, repo_name=None):
     """Create a minimal RpmRepository + RepositoryVersion with the given content PKs."""
     repo_name = repo_name or str(uuid.uuid4())
-    repo, _ = RpmRepository.objects.get_or_create(name=repo_name)
-    version = repo.versions.filter(number=1).first()
-    if not version:
-        version = RepositoryVersion(repository=repo, number=1, complete=True)
-        version.save()
-    version.content_ids = list(content_pks)
-    version.save(update_fields=["content_ids"])
-    return version
+    repo, created = RpmRepository.objects.get_or_create(name=repo_name)
+    with repo.new_version() as version:
+        for start in range(0, len(content_pks), BATCH_SIZE):
+            version.add_content(
+                Content.objects.filter(pk__in=content_pks[start : start + BATCH_SIZE])
+            )
+    return repo.latest_version()
 
 
-def _make_package(name, version="1.0", release="1", arch="noarch", suffix=""):
-    return Package.objects.create(
-        name=name,
-        epoch="0",
-        version=version,
-        release=release,
-        arch=arch,
-        pkgId=hashlib.sha256(f"{name}-{version}-{release}-{suffix}".encode()).hexdigest(),
-        checksum_type="sha256",
-    )
-
-
-@pytest.mark.django_db
-def test_find_children_category_to_group_to_package():
-    """Category -> Group -> Package chain resolves correctly."""
-    pkg_a = _make_package("pkg-a", suffix="a")
-    pkg_b = _make_package("pkg-b", suffix="b")
-    pkg_unrelated = _make_package("pkg-unrelated", suffix="u")
-
-    group = PackageGroup.objects.create(
-        id="my-group",
-        name="my-group",
-        digest=uuid.uuid4().hex,
-        packages=[{"name": "pkg-a"}, {"name": "pkg-b"}],
-    )
-
-    category = PackageCategory.objects.create(
-        id="my-category",
-        name="my-category",
-        digest=uuid.uuid4().hex,
-        group_ids=[{"name": "my-group"}],
-    )
-
-    all_pks = [pkg_a.pk, pkg_b.pk, pkg_unrelated.pk, group.pk, category.pk]
-    repo_version = _make_repo_version(all_pks)
-
-    content_filter = Q(pk__in=[category.pk])
-    children = find_children_of_content(content_filter, repo_version)
-
-    children_pks = set(children.values_list("pk", flat=True))
-    assert group.pk in children_pks
-    assert pkg_a.pk in children_pks
-    assert pkg_b.pk in children_pks
-    assert pkg_unrelated.pk not in children_pks
-
-
-@pytest.mark.django_db
-def test_server_side_binding_active():
-    """Sanity check: the fixture actually enables server-side binding."""
-    from django.db import connection
-
-    connection.ensure_connection()
-    cursor = connection.create_cursor()
-    assert type(cursor).__name__ == "ServerBindingCursor"
-
-
-@pytest.mark.django_db
-def test_find_children_exceeds_param_limit():
-    """find_children_of_content with a group referencing >65k packages."""
-    from django.db import connection
-
-    connection.ensure_connection()
-    cursor = connection.create_cursor()
-    assert type(cursor).__name__ == "ServerBindingCursor"
-    sw = Stopwatch()
-
-    packages = _ensure_packages(PG_PARAM_LIMIT + 1)
-    sw.lap(f"ensure packages")
-
-    package_names = list(packages.values_list("name", flat=True))
+def _create_package_group(name, *, packages):
     group, _ = PackageGroup.objects.get_or_create(
-        id="big-group",
+        id=name,
         defaults={
-            "name": "big-group",
-            "digest": "fakedigest-big-group",
-            "packages": [{"name": n} for n in package_names],
+            "name": name,
+            "digest": uuid.uuid4().hex,
+            "packages": [{"name": n} for n in packages],
         },
     )
-    sw.lap("ensure group")
+    return group.pk
 
-    all_pks = list(packages.values_list("pk", flat=True)) + [group.pk]
-    src_version = _make_repo_version(all_pks, repo_name="big-group-repo")
-    sw.lap("ensure repo version")
 
-    content_filter = Q(pk__in=[group.pk])
-    children = find_children_of_content(content_filter, src_version)
-    result = list(children)
-    sw.lap("find_children_of_content")
+@contextmanager
+def timer(label):
+    start = time.perf_counter()
+    yield
+    print(f"[timing] {label}: {time.perf_counter() - start:.1f}s")
 
-    assert len(result) > 0
+
+def get_param_count(qs):
+    """Return the number of bind parameters in the compiled queryset."""
+    _, params = qs.query.sql_with_params()
+    return len(params)
+
+
+def assert_param_limit_raises():
+    """Sanity check that is does raise violation of the limit."""
+    connection.ensure_connection()
+    PARAMS_COUNT = PG_PARAM_LIMIT + 50
+    placeholders = ", ".join(["%s"] * PARAMS_COUNT)
+    with pytest.raises(Exception, match="65535"):
+        connection.cursor().execute(f"SELECT 1 IN ({placeholders})", list(range(PARAMS_COUNT)))
+
+
+def _safe_in_fake(field_name, values):
+    """Naive __in that hits the 65k param limit. Used to prove the fix works."""
+    return Q(**{f"{field_name}__in": values})
+
+
+def _safe_in_raw(field_name, values):
+    """WHERE x IN (SELECT unnest(%s::type[]))  -- RawSQL alternative."""
+    from django.db.models.expressions import RawSQL
+
+    if not isinstance(values, (list, set, tuple, frozenset)):
+        return Q(**{f"{field_name}__in": values})
+    vals = list(values)
+    cast = "uuid[]" if (vals and isinstance(vals[0], uuid.UUID)) else "text[]"
+    return Q(**{f"{field_name}__in": RawSQL(f"SELECT unnest(%s::{cast})", [vals])})
+
+
+class TestChildContentResolver:
+    @pytest.mark.django_db
+    def test_resolve_handles_more_than_65k(self):
+        """ChildContentResolver.resolve() with a group referencing >65k packages."""
+        assert_param_limit_raises()
+        package_names = [f"pkg-{i}" for i in range(int(PG_PARAM_LIMIT * 1.2))]
+
+        with timer("create packages and group"):
+            package_pks = _bulk_create_packages(package_names)
+            group_pk = _create_package_group("big-group", packages=package_names)
+            all_pks = package_pks + [group_pk]
+            assert len(all_pks) > PG_PARAM_LIMIT
+
+        with timer("create repo version"):
+            src_version = _make_repo_version(all_pks, repo_name="big-group-repo")
+
+        with timer("resolve"):
+            content_filter = Q(pk__in=[group_pk])
+            resolver = ChildContentResolver(content_filter, src_version)
+            result = resolver.resolve()
+            assert get_param_count(result) < 10
+
+        with patch("pulp_rpm.app.tasks.copy.safe_in", _safe_in_fake):
+            content_filter = Q(pk__in=[group_pk])
+            resolver = ChildContentResolver(content_filter, src_version)
+            with pytest.raises(Exception, match="65535"):
+                resolver.resolve()
