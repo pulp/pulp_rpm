@@ -5,6 +5,18 @@ from django.db.models import Func, Q, QuerySet, TextField, Value
 from pulpcore.plugin.models import Content, RepositoryVersion
 from pulpcore.plugin.util import get_domain_pk
 
+from pulp_rpm.app.depsolving import Solver
+from pulp_rpm.app.models import (
+    Modulemd,
+    Package,
+    PackageCategory,
+    PackageEnvironment,
+    PackageGroup,
+    RpmRepository,
+    UpdateRecord,
+)
+from pulp_rpm.app.shared_utils import annotate_with_age
+
 
 def _unnest_names(names):
     """Wrap a set of names in a subquery using unnest(ARRAY[...]).
@@ -20,38 +32,28 @@ def _unnest_names(names):
     ).values("_unnested")
 
 
-from pulp_rpm.app.depsolving import Solver
-from pulp_rpm.app.models import (
-    Modulemd,
-    Package,
-    PackageCategory,
-    PackageEnvironment,
-    PackageGroup,
-    RpmRepository,
-    UpdateRecord,
-)
-from pulp_rpm.app.shared_utils import annotate_with_age
-
-
-def _content_of_type(content_qs, model):
+def _content_of_type(content_qs: QuerySet[Content], model) -> QuerySet:
     """Filter a Content queryset to a specific subclass and return a typed queryset."""
     return model.objects.filter(
         pk__in=content_qs.filter(pulp_type=model.get_pulp_type()).only("pk")
     )
 
 
-def _resolve_advisory_children(content, src_repo_version) -> QuerySet[Content]:
+def _resolve_advisory_children(
+    content: QuerySet[Content], src_repo_version: RepositoryVersion
+) -> QuerySet[Content]:
     """Find packages and modules referenced by advisories via NEVRA/NSVCA matching."""
     advisories = _content_of_type(content, UpdateRecord)
     packages = _content_of_type(src_repo_version.content, Package)
     modules = _content_of_type(src_repo_version.content, Modulemd)
 
-    all_package_q = Q(pk__in=[])
-    all_module_q = Q(pk__in=[])
+    child_pks = set()
     for advisory in advisories.iterator():
-        for nevra in advisory.get_pkglist():
+        package_nevras = advisory.get_pkglist()
+        advisory_package_q = Q(pk__in=[])
+        for nevra in package_nevras:
             name, epoch, version, release, arch = nevra
-            all_package_q |= Q(
+            advisory_package_q |= Q(
                 name=name,
                 epoch=epoch,
                 version=version,
@@ -59,10 +61,13 @@ def _resolve_advisory_children(content, src_repo_version) -> QuerySet[Content]:
                 arch=arch,
                 pulp_domain=get_domain_pk(),
             )
+        child_pks.update(packages.filter(advisory_package_q).values_list("pk", flat=True))
 
-        for nsvca in advisory.get_module_list():
+        module_nsvcas = advisory.get_module_list()
+        advisory_module_q = Q(pk__in=[])
+        for nsvca in module_nsvcas:
             name, stream, version, context, arch = nsvca
-            all_module_q |= Q(
+            advisory_module_q |= Q(
                 name=name,
                 stream=stream,
                 version=version,
@@ -70,20 +75,16 @@ def _resolve_advisory_children(content, src_repo_version) -> QuerySet[Content]:
                 arch=arch,
                 pulp_domain=get_domain_pk(),
             )
-
-    matched_packages = packages.filter(all_package_q)
-    matched_modules = modules.filter(all_module_q)
-    return Content.objects.filter(
-        Q(pk__in=matched_packages.values("pk")) | Q(pk__in=matched_modules.values("pk"))
-    )
+        child_pks.update(modules.filter(advisory_module_q).values_list("pk", flat=True))
+    return Content.objects.filter(pk__in=child_pks)
 
 
 def _resolve_child_groups(
-    content, src_repo_version
+    content: QuerySet[Content], src_repo_version: RepositoryVersion
 ) -> tuple[QuerySet[Content], QuerySet[PackageGroup]]:
     """Resolve groups referenced by categories/environments.
 
-    Returns (children_qs, expanded_groups).
+    Returns (child_pks, expanded_groups queryset).
     """
     packagecategories = _content_of_type(content, PackageCategory)
     packageenvironments = _content_of_type(content, PackageEnvironment)
@@ -104,10 +105,14 @@ def _resolve_child_groups(
         name__in=packagegroup_names, pk__in=src_repo_version.content
     )
     expanded_groups = packagegroups.union(child_package_groups)
-    return Content.objects.filter(pk__in=child_package_groups.values("pk")), expanded_groups
+    return Content.objects.filter(pk__in=child_package_groups), expanded_groups
 
 
-def _resolve_group_packages(packagegroups, content, src_repo_version) -> QuerySet[Content]:
+def _resolve_group_packages(
+    packagegroups: QuerySet[PackageGroup],
+    content: QuerySet[Content],
+    src_repo_version: RepositoryVersion,
+) -> QuerySet[Content]:
     """Find the latest version of each package referenced by groups but not already in content."""
     packagegroup_package_names = set()
     for packagegroup in packagegroups.iterator():
@@ -124,32 +129,36 @@ def _resolve_group_packages(packagegroups, content, src_repo_version) -> QuerySe
     )
 
     missing_package_names = packagegroup_package_names - set(existing_package_names)
+    missing_package_names_qs = Package.objects.filter(name__in=_unnest_names(missing_package_names))
 
-    needed_packages = annotate_with_age(
-        Package.objects.filter(
-            name__in=_unnest_names(missing_package_names), pk__in=src_repo_version.content
-        )
-    ).filter(age=1)
+    needed_packages = annotate_with_age(src_repo_version.get_content(missing_package_names_qs))
 
-    return Content.objects.filter(pk__in=needed_packages.values("pk"))
+    child_pks = set()
+    for pkg in needed_packages.iterator():
+        if pkg.age == 1:
+            child_pks.add(pkg.pk)
+    return Content.objects.filter(pk__in=child_pks)
 
 
-def find_children_of_content(content_filter, src_repo_version) -> QuerySet[Content]:
+def find_children_of_content(
+    content_filter: Q, src_repo_version: RepositoryVersion
+) -> QuerySet[Content]:
     """Finds the content referenced directly by other content and returns it all together.
 
     Args:
-        content_filter (Q): Filter to select content from the source repo version
+        content_filter (Q): Filter to select content from src_repo_version
         src_repo_version (pulpcore.models.RepositoryVersion): Source repo version
 
-    Returns: Queryset of Content objects that are children of the intial set of content
+    Returns: Queryset of Content objects that are children of the initial set of content
     """
-    content = src_repo_version.content.filter(content_filter)
+    filter_qs = Content.objects.filter(content_filter)
+    content = src_repo_version.get_content(filter_qs)
 
     advisory_children = _resolve_advisory_children(content, src_repo_version)
     group_children, expanded_groups = _resolve_child_groups(content, src_repo_version)
     package_children = _resolve_group_packages(expanded_groups, content, src_repo_version)
 
-    return advisory_children | group_children | package_children
+    return content | advisory_children | group_children | package_children
 
 
 @transaction.atomic
@@ -207,7 +216,9 @@ def copy_content(config, dependency_solving, dependency_upgrade=False):
                 content_filter,
                 dest_version_provided,
             ) = process_entry(entry)
+
             content_to_copy = find_children_of_content(content_filter, source_repo_version)
+
             base_version = dest_repo_version if dest_version_provided else None
             with dest_repo.new_version(base_version=base_version) as new_version:
                 new_version.add_content(content_to_copy)
@@ -247,9 +258,9 @@ def copy_content(config, dependency_solving, dependency_upgrade=False):
             # Find all of the matching content in the repository version, then determine
             # child relationships (e.g. RPM children of Errata/Advisories), then combine
             # those two sets to copy the specified content + children.
-            content = source_repo_version.content.filter(content_filter)
-            children = find_children_of_content(content_filter, source_repo_version)
-            content_to_copy[source_repo_name] = content | children
+            content_to_copy[source_repo_name] = find_children_of_content(
+                content_filter, source_repo_version
+            )
 
         solver.finalize()
 
