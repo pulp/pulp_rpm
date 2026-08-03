@@ -20,7 +20,6 @@ from pulpcore.client.pulp_rpm import (
     ContentPackagecategoriesApi,
     ContentPackagegroupsApi,
     ContentPackagelangpacksApi,
-    ContentPackagesApi,
     RemotesUlnApi,
     RepositoriesRpmVersionsApi,
     RpmCompsApi,
@@ -55,12 +54,6 @@ def rpm_ulnremote_api(rpm_client):
 def rpm_acs_api(rpm_client):
     """Fixture for RPM alternate content source API."""
     return AcsRpmApi(rpm_client)
-
-
-@pytest.fixture(scope="session")
-def rpm_package_api(rpm_client):
-    """Fixture for RPM distribution API."""
-    return ContentPackagesApi(rpm_client)
 
 
 @pytest.fixture

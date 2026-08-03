@@ -8,6 +8,7 @@ from pulpcore.client.pulp_rpm import (
     ApiClient as RpmApiClient,
 )
 from pulpcore.client.pulp_rpm import (
+    ContentPackagesApi,
     ContentRepoMetadataFilesApi,
     DistributionsRpmApi,
     PublicationsRpmApi,
@@ -66,6 +67,12 @@ def rpm_rpmremote_api(rpm_client):
 def rpm_repository_api(rpm_client):
     """Fixture for RPM repositories API."""
     return RepositoriesRpmApi(rpm_client)
+
+
+@pytest.fixture(scope="session")
+def rpm_package_api(rpm_client):
+    """Fixture for RPM packages API."""
+    return ContentPackagesApi(rpm_client)
 
 
 @pytest.fixture(scope="class")
