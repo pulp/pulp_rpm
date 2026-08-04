@@ -212,7 +212,7 @@ class Package(Content):
     # createrepo_c treats 'nosrc' arch (opensuse specific use) as 'src' so it can seem that two
     # packages are the same when they are not. By adding 'location_href' here we can recognize this.
     # E.g. glibc-2.26.11.3.2.nosrc.rpm vs glibc-2.26.11.3.2.src.rpm
-    repo_key_fields = ("name", "epoch", "version", "release", "arch", "location_href")
+    repo_key_fields = ("name", "version", "release", "arch", "location_href")
 
     _pulp_domain = models.ForeignKey("core.Domain", default=get_domain_pk, on_delete=models.PROTECT)
 

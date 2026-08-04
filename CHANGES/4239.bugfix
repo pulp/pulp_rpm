@@ -1,0 +1,1 @@
+Changed repository-level uniqueness constraint from NEVRA to NVRA, so that packages differing only in epoch are treated as duplicates. The highest epoch is always kept.
