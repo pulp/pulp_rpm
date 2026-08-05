@@ -2,11 +2,9 @@ import hashlib
 import json
 import subprocess
 import uuid
-from dataclasses import dataclass
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-import gnupg
 import pytest
 import requests
 
@@ -40,7 +38,6 @@ from pulp_rpm.tests.functional.utils import (
     PackageListFetcher,
     RepositoryBuilder,
     build_rpm,
-    init_signed_repo_configuration,
 )
 
 
@@ -272,17 +269,15 @@ def rpm_kickstart_repo_immediate(init_and_sync):
 
 
 @pytest.fixture(scope="session")
-def rpm_metadata_signing_service(pulpcore_bindings):
-    results = pulpcore_bindings.SigningServicesApi.list(name="sign-metadata")
-    signing_service = None
-    if results.count == 0:
-        result = init_signed_repo_configuration()
-        if result.returncode == 0:
-            results = pulpcore_bindings.SigningServicesApi.list(name="sign-metadata")
-    if results.count == 1:
-        signing_service = results.results[0]
+def rpm_metadata_signing_service(pulpcore_bindings, tmp_path_factory):
+    """Session-scoped GPG-based metadata signing service using KEY_V4_RSA4K."""
+    home = tmp_path_factory.mktemp("metadata_signing_gpg")
+    _, fingerprint, _ = import_signing_key(KEY_V4_RSA4K.private_url, home, backend="gpg")
+    script_path = make_signing_script(home, fingerprint, backend="gpg")
+    service_name = create_signing_service(home, fingerprint, script_path, backend="gpg")
 
-    return signing_service
+    results = pulpcore_bindings.SigningServicesApi.list(name=service_name)
+    return results.results[0] if results.count == 1 else None
 
 
 @pytest.fixture
@@ -428,342 +423,152 @@ def cleanup_domains(pulpcore_bindings, monitor_task, rpm_repository_api):
     return _cleanup_domains
 
 
-# package signing
+SIGNING_SCRIPT_STRING = """#!/usr/bin/env bash
 
-SIGNING_SCRIPT_TEMPLATE = r"""#!/usr/bin/env bash
 FILE_PATH=$1
-GPG_HOME=HOMEDIRHERE
-GPG_BIN=/usr/bin/gpg
-GPG_NAME="${PULP_SIGNING_KEY_FINGERPRINT}"
+SIGNATURE_PATH="$1.asc"
 
-rpmsign \
-    --define "_gpg_path ${GPG_HOME}" \
-    --define "_gpg_name ${GPG_NAME}" \
-    --define "_gpgbin ${GPG_BIN}" \
-    SIGN_ARGS_HERE "${FILE_PATH}" 1> /dev/null
+GPG_KEY_ID="{gpg_key_id}"
 
+# Create a detached signature
+gpg --quiet --batch --homedir {gpg_home} --detach-sign --local-user "${{GPG_KEY_ID}}" \\
+   --armor --output ${{SIGNATURE_PATH}} ${{FILE_PATH}}
+
+# Check the exit status
 STATUS=$?
-if [[ ${STATUS} -eq 0 ]]; then
-   echo {\"rpm_package\": \"${FILE_PATH}\"}
+if [[ ${{STATUS}} -eq 0 ]]; then
+   echo '{{"file": "'${{FILE_PATH}}'", "signature": "'${{SIGNATURE_PATH}}'"}}'
 else
-   exit ${STATUS}
+   exit ${{STATUS}}
+fi
+"""
+
+SQ_SIGNING_SCRIPT_STRING = """#!/usr/bin/env bash
+
+FILE_PATH=$1
+SIGNATURE_PATH="$1.asc"
+
+SQ_HOME="{sq_home}"
+SIGNER="{signer_fingerprint}"
+
+# Create a detached signature using Sequoia (sq)
+sq --home "${{SQ_HOME}}" sign --signer "${{SIGNER}}" \\
+   --signature-file="${{SIGNATURE_PATH}}" "${{FILE_PATH}}"
+
+# Check the exit status
+STATUS=$?
+if [[ ${{STATUS}} -eq 0 ]]; then
+   echo '{{"file": "'${{FILE_PATH}}'", "signature": "'${{SIGNATURE_PATH}}'"}}'
+else
+   exit ${{STATUS}}
 fi
 """
 
 
-def _make_signing_script(signing_script_temp_dir, signing_gpg_homedir_path, name, sign_args):
-    script = signing_script_temp_dir / name
-    content = SIGNING_SCRIPT_TEMPLATE.replace("HOMEDIRHERE", str(signing_gpg_homedir_path)).replace(
-        "SIGN_ARGS_HERE", sign_args
-    )
-    script.write_text(content)
-    script.chmod(0o755)
-    return script
+def import_signing_key(key_url, home, *, backend="gpg"):
+    """Import a PGP key into a keyring and return metadata.
 
-
-@pytest.fixture(scope="session")
-def signing_script_path(signing_script_temp_dir, signing_gpg_homedir_path):
-    return _make_signing_script(
-        signing_script_temp_dir,
-        signing_gpg_homedir_path,
-        "sign-rpm-package.sh",
-        "--addsign",
-    )
-
-
-@pytest.fixture(scope="session")
-def signing_script_temp_dir(tmp_path_factory):
-    return tmp_path_factory.mktemp("sigining_script_dir")
-
-
-@pytest.fixture(scope="session")
-def signing_gpg_homedir_path(tmp_path_factory):
-    return tmp_path_factory.mktemp("gpghome")
-
-
-@pytest.fixture
-def sign_with_rpm_package_signing_service(signing_script_path, signing_gpg_metadata):
+    Returns ``(gpg_instance_or_none, fingerprint, keyid)``.
+    The first element is a ``gnupg.GPG`` instance when *backend* is ``"gpg"``,
+    or ``None`` when *backend* is ``"sq"``.
     """
-    Runs the test signing script manually, locally, and returns the signature file produced.
-    """
+    response = requests.get(key_url)
+    response.raise_for_status()
 
-    def _sign_with_rpm_package_signing_service(filename):
-        env = {"PULP_SIGNING_KEY_FINGERPRINT": signing_gpg_metadata[1]}
-        cmd = (signing_script_path, filename)
-        completed_process = subprocess.run(
-            cmd,
-            env=env,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+    if backend == "sq":
+        from pysequoia import Cert
+
+        completed = subprocess.run(
+            ("sq", "--home", str(home), "key", "import"),
+            input=response.content,
+            capture_output=True,
         )
+        assert completed.returncode == 0, completed.stderr.decode()
 
-        if completed_process.returncode != 0:
-            raise RuntimeError(str(completed_process.stderr))
+        cert = Cert.from_bytes(response.content)
+        fingerprint = cert.fingerprint.upper()
+        keyid = fingerprint[-16:]
 
+        return None, fingerprint, keyid
+    else:
         try:
-            return_value = json.loads(completed_process.stdout)
-        except json.JSONDecodeError:
-            raise RuntimeError("The signing script did not return valid JSON!")
+            import gnupg
+        except ImportError:
+            pytest.skip("python-gnupg not installed")
 
-        return return_value
+        gpg = gnupg.GPG(gnupghome=home)
 
-    return _sign_with_rpm_package_signing_service
+        result = gpg.import_keys(response.content)
+        assert result.count >= 1, f"Failed to import key from {key_url}"
+
+        key_info = gpg.list_keys()[0]
+        fingerprint = key_info["fingerprint"]
+        keyid = key_info["keyid"]
+        gpg.trust_keys(fingerprint, "TRUST_ULTIMATE")
+
+        return gpg, fingerprint, keyid
 
 
-@dataclass
-class GPGMetadata:
-    public_key: str
-    fingerprint: str
-    keyid: str
+def make_signing_script(home, fingerprint, script_dir=None, *, backend="gpg"):
+    """Create a detached-signature signing script.
 
-
-@pytest.fixture(scope="session")
-def signing_gpg_metadata2(signing_gpg_homedir_path) -> tuple[gnupg.GPG, list[GPGMetadata]]:
+    Returns the script path.
     """
-    A fixture that returns a GPG instance and related metadata (i.e., fingerprint, keyid).
-    """
-    PRIVATE_KEY_URLS = (
-        "https://raw.githubusercontent.com/pulp/pulp-fixtures/master/common/GPG-PRIVATE-KEY-fixture-signing",  # noqa: E501
-        "https://raw.githubusercontent.com/pulp/pulp-fixtures/master/common/GPG-PRIVATE-KEY-pulp-qe",  # noqa: E501
-    )
-
-    gpg = gnupg.GPG(gnupghome=signing_gpg_homedir_path)
-    keys = []
-    for privatekey_url in PRIVATE_KEY_URLS:
-        response_private = requests.get(privatekey_url)
-        response_private.raise_for_status()
-
-        gpg.import_keys(response_private.content)
-        key_info = gpg.list_keys()[-1]
-        gpg_md = GPGMetadata(
-            fingerprint=key_info["fingerprint"],
-            keyid=key_info["keyid"],
-            public_key=gpg.export_keys(key_info["keyid"]),
+    if script_dir is None:
+        script_dir = home
+    if backend == "sq":
+        script_path = script_dir / "sq_sign.sh"
+        script_path.write_text(
+            SQ_SIGNING_SCRIPT_STRING.format(sq_home=home, signer_fingerprint=fingerprint)
         )
-        gpg.trust_keys(gpg_md.fingerprint, "TRUST_ULTIMATE")
-        keys.append(gpg_md)
-
-    return (gpg, keys)
-
-
-@pytest.fixture(scope="session")
-def signing_gpg_metadata(signing_gpg_homedir_path):
-    """A fixture that returns a GPG instance and related metadata (i.e., fingerprint, keyid)."""
-    response_private = requests.get(KEY_V4_RSA4K.private_url)
-    response_private.raise_for_status()
-
-    gpg = gnupg.GPG(gnupghome=signing_gpg_homedir_path)
-    import_result = gpg.import_keys(response_private.content)
-
-    fingerprint = KEY_V4_RSA4K.signing_fingerprint
-    keyid = fingerprint[-8:]
-
-    gpg.trust_keys(import_result.fingerprints[0], "TRUST_ULTIMATE")
-
-    return gpg, fingerprint, keyid
+    else:
+        script_path = script_dir / "sign.sh"
+        script_path.write_text(SIGNING_SCRIPT_STRING.format(gpg_home=home, gpg_key_id=fingerprint))
+    script_path.chmod(0o755)
+    return script_path
 
 
-@pytest.fixture(scope="session")
-def pulp_trusted_public_key(signing_gpg_metadata):
-    """Fixture to extract the ascii armored trusted public test key."""
-    gpg, _, keyid = signing_gpg_metadata
-    return gpg.export_keys([keyid])
-
-
-@pytest.fixture(scope="session")
-def pulp_trusted_public_key_fingerprint(signing_gpg_metadata):
-    """Fixture to extract the ascii armored trusted public test keys fingerprint."""
-    return signing_gpg_metadata[1]
-
-
-@pytest.fixture(scope="session")
-def _rpm_package_signing_service_name(
-    bindings_cfg,
-    signing_script_path,
-    signing_gpg_metadata,
-    signing_gpg_homedir_path,
-    pytestconfig,
+def create_signing_service(
+    home,
+    fingerprint,
+    script_path,
+    *,
+    backend="gpg",
+    service_class="core:AsciiArmoredDetachedSigningService",
 ):
-    service_name = str(uuid.uuid4())
-    gpg, fingerprint, keyid = signing_gpg_metadata
+    """Register a signing service via pulpcore-manager.
 
-    cmd = (
+    Returns the service name.
+    """
+    service_name = str(uuid.uuid4())
+    cmd = [
         "pulpcore-manager",
         "add-signing-service",
         service_name,
-        str(signing_script_path),
+        str(script_path),
         fingerprint,
         "--class",
-        "rpm:RpmPackageSigningService",
+        service_class,
+        "--backend",
+        backend,
         "--gnupghome",
-        str(signing_gpg_homedir_path),
-    )
-    completed_process = subprocess.run(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
+        str(home),
+    ]
+    completed = subprocess.run(cmd, capture_output=True, text=True)
+    assert completed.returncode == 0, completed.stderr
 
-    assert completed_process.returncode == 0
+    return service_name
 
-    yield service_name
 
-    cmd = (
-        "pulpcore-manager",
-        "remove-signing-service",
-        service_name,
-        "--class",
-        "rpm:RpmPackageSigningService",
-    )
+def remove_signing_service(service_name, service_class="core:AsciiArmoredDetachedSigningService"):
+    """Remove a signing service created by ``create_signing_service``."""
     subprocess.run(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
+        (
+            "pulpcore-manager",
+            "remove-signing-service",
+            service_name,
+            "--class",
+            service_class,
+        ),
+        capture_output=True,
     )
-
-
-@pytest.fixture
-def rpm_package_signing_service(_rpm_package_signing_service_name, pulpcore_bindings):
-    return pulpcore_bindings.SigningServicesApi.list(
-        name=_rpm_package_signing_service_name
-    ).results[0]
-
-
-@pytest.fixture(scope="session")
-def has_rpmv6_support():
-    result = subprocess.run(
-        ("rpmsign", "--help"),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-    )
-    return "--rpmv6" in result.stdout.decode()
-
-
-@pytest.fixture(scope="session")
-def rpmv6_signing_script_path(signing_script_temp_dir, signing_gpg_homedir_path):
-    return _make_signing_script(
-        signing_script_temp_dir,
-        signing_gpg_homedir_path,
-        "sign-rpm-package-v6.sh",
-        "--addsign --rpmv6",
-    )
-
-
-@pytest.fixture(scope="session")
-def _rpm_package_signing_service_rpmv6_name(
-    bindings_cfg,
-    rpmv6_signing_script_path,
-    signing_gpg_metadata,
-    signing_gpg_homedir_path,
-    has_rpmv6_support,
-    pytestconfig,
-):
-    if not has_rpmv6_support:
-        pytest.skip("rpmsign --rpmv6 not available")
-
-    service_name = str(uuid.uuid4())
-    gpg, fingerprint, keyid = signing_gpg_metadata
-
-    cmd = (
-        "pulpcore-manager",
-        "add-signing-service",
-        service_name,
-        str(rpmv6_signing_script_path),
-        fingerprint,
-        "--class",
-        "rpm:RpmPackageSigningService",
-        "--gnupghome",
-        str(signing_gpg_homedir_path),
-    )
-    completed_process = subprocess.run(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-
-    assert completed_process.returncode == 0
-
-    yield service_name
-
-    cmd = (
-        "pulpcore-manager",
-        "remove-signing-service",
-        service_name,
-        "--class",
-        "rpm:RpmPackageSigningService",
-    )
-    subprocess.run(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-
-
-@pytest.fixture
-def rpm_package_signing_service_rpmv6(_rpm_package_signing_service_rpmv6_name, pulpcore_bindings):
-    return pulpcore_bindings.SigningServicesApi.list(
-        name=_rpm_package_signing_service_rpmv6_name
-    ).results[0]
-
-
-@pytest.fixture(scope="session")
-def resign_signing_script_path(signing_script_temp_dir, signing_gpg_homedir_path):
-    return _make_signing_script(
-        signing_script_temp_dir,
-        signing_gpg_homedir_path,
-        "sign-rpm-package-resign.sh",
-        "--resign",
-    )
-
-
-@pytest.fixture(scope="session")
-def _rpm_package_signing_service_resign_name(
-    bindings_cfg,
-    resign_signing_script_path,
-    signing_gpg_metadata,
-    signing_gpg_homedir_path,
-    pytestconfig,
-):
-    service_name = str(uuid.uuid4())
-    gpg, fingerprint, keyid = signing_gpg_metadata
-
-    cmd = (
-        "pulpcore-manager",
-        "add-signing-service",
-        service_name,
-        str(resign_signing_script_path),
-        fingerprint,
-        "--class",
-        "rpm:RpmPackageSigningService",
-        "--gnupghome",
-        str(signing_gpg_homedir_path),
-    )
-    completed_process = subprocess.run(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-
-    assert completed_process.returncode == 0
-
-    yield service_name
-
-    cmd = (
-        "pulpcore-manager",
-        "remove-signing-service",
-        service_name,
-        "--class",
-        "rpm:RpmPackageSigningService",
-    )
-    subprocess.run(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-    )
-
-
-@pytest.fixture
-def rpm_package_signing_service_resign(_rpm_package_signing_service_resign_name, pulpcore_bindings):
-    return pulpcore_bindings.SigningServicesApi.list(
-        name=_rpm_package_signing_service_resign_name
-    ).results[0]
