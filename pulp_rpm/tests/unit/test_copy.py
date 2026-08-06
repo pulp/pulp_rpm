@@ -118,17 +118,6 @@ def _safe_in_fake(field_name, values):
     return Q(**{f"{field_name}__in": values})
 
 
-def _safe_in_raw(field_name, values):
-    """WHERE x IN (SELECT unnest(%s::type[]))  -- RawSQL alternative."""
-    from django.db.models.expressions import RawSQL
-
-    if not isinstance(values, (list, set, tuple, frozenset)):
-        return Q(**{f"{field_name}__in": values})
-    vals = list(values)
-    cast = "uuid[]" if (vals and isinstance(vals[0], uuid.UUID)) else "text[]"
-    return Q(**{f"{field_name}__in": RawSQL(f"SELECT unnest(%s::{cast})", [vals])})
-
-
 class TestChildContentResolver:
     @pytest.mark.django_db
     def test_resolve_handles_more_than_65k(self):
@@ -146,13 +135,33 @@ class TestChildContentResolver:
             src_version = _make_repo_version(all_pks, repo_name="big-group-repo")
 
         with timer("resolve"):
-            content_filter = Q(pk__in=[group_pk])
-            resolver = ChildContentResolver(content_filter, src_version)
+            resolver = ChildContentResolver(src_version, [group_pk])
             result = resolver.resolve()
             assert get_param_count(result) < 10
 
         with patch("pulp_rpm.app.tasks.copy.safe_in", _safe_in_fake):
-            content_filter = Q(pk__in=[group_pk])
-            resolver = ChildContentResolver(content_filter, src_version)
+            resolver = ChildContentResolver(src_version, [group_pk])
             with pytest.raises(Exception, match="65535"):
                 resolver.resolve()
+
+    @pytest.mark.django_db
+    def test_resolve_handles_union_of_two_large_get_content_calls(self):
+        """resolve() must not exceed the param limit when unioning two large-but-safe querysets."""
+        assert_param_limit_raises()
+
+        # Comfortably under 65535 on its own; doubled (via union) it currently is not.
+        package_count = PG_PARAM_LIMIT // 2 + 1000
+        package_names = [f"pkg-{i}" for i in range(package_count)]
+
+        with timer("create packages"):
+            package_pks = _bulk_create_packages(package_names)
+
+        with timer("create repo version"):
+            src_version = _make_repo_version(package_pks, repo_name="union-limit-repo")
+            assert len(src_version.content_ids) < PG_PARAM_LIMIT
+
+        resolver = ChildContentResolver(src_version, package_pks)
+
+        with timer("resolve"):
+            result = resolver.resolve()
+            assert get_param_count(result) < PG_PARAM_LIMIT

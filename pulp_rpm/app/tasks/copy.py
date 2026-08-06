@@ -20,10 +20,23 @@ from pulp_rpm.app.shared_utils import annotate_with_age, safe_in
 class ChildContentResolver:
     """Resolves content referenced by other content within a repository version."""
 
-    def __init__(self, content_filter: Q, repo_version: RepositoryVersion):
-        filter_qs = Content.objects.filter(content_filter)
+    def __init__(self, repo_version: RepositoryVersion, only_content_ids=None):
         self.repo_version = repo_version
-        self._content = repo_version.get_content(filter_qs)
+        content_qs = Content.objects.filter(pulp_domain=get_domain_pk())
+        if only_content_ids is not None:
+            content_qs = content_qs.filter(safe_in("pk", only_content_ids))
+        self._content = self._restrict_to_repo_version(content_qs)
+
+    def _restrict_to_repo_version(self, qs: QuerySet) -> QuerySet:
+        """Restrict a queryset to the content present in this repository version.
+
+        Built on Content (plain pulp_id pk), since safe_in's any_array lookup doesn't support
+        the relation field backing pk on subclasses like PackageGroup/Package. Keeps the id list
+        as a single array param, unlike get_content()'s literal pk__in=[...], which would
+        multiply bound params when combined via .union()/|.
+        """
+        repo_content = Content.objects.filter(safe_in("pk", self.repo_version.content_ids))
+        return qs.filter(pk__in=repo_content)
 
     def resolve(self) -> QuerySet[Content]:
         """Return the selected content combined with all resolved children."""
@@ -99,7 +112,7 @@ class ChildContentResolver:
                 packagegroup_names.add(group_id["name"])
 
         package_group_qs = PackageGroup.objects.filter(safe_in("name", packagegroup_names))
-        child_package_groups = self.repo_version.get_content(package_group_qs)
+        child_package_groups = self._restrict_to_repo_version(package_group_qs)
         expanded_groups = packagegroups.union(child_package_groups)
         return Content.objects.filter(pk__in=child_package_groups), expanded_groups
 
@@ -119,7 +132,7 @@ class ChildContentResolver:
 
         missing_package_names = packagegroup_package_names - set(existing_package_names)
         needed_packages = annotate_with_age(
-            self.repo_version.get_content(
+            self._restrict_to_repo_version(
                 Package.objects.filter(safe_in("name", missing_package_names))
             )
         )
@@ -167,18 +180,13 @@ def copy_content(config, dependency_solving, dependency_upgrade=False):
         else:
             dest_repo_version = dest_repo.latest_version()
 
-        if entry.get("content") is not None:
-            content_filter = safe_in("pk", entry.get("content"))
-        else:
-            content_filter = Q()
-
-        content_filter &= Q(pulp_domain=get_domain_pk())
+        content_ids = entry.get("content")
 
         return (
             source_repo_version,
             dest_repo_version,
             dest_repo,
-            content_filter,
+            content_ids,
             dest_version_provided,
         )
 
@@ -190,11 +198,11 @@ def copy_content(config, dependency_solving, dependency_upgrade=False):
                 source_repo_version,
                 dest_repo_version,
                 dest_repo,
-                content_filter,
+                content_ids,
                 dest_version_provided,
             ) = process_entry(entry)
 
-            resolver = ChildContentResolver(content_filter, source_repo_version)
+            resolver = ChildContentResolver(source_repo_version, content_ids)
             content_to_copy = resolver.resolve()
             base_version = dest_repo_version if dest_version_provided else None
             with dest_repo.new_version(base_version=base_version) as new_version:
@@ -216,7 +224,7 @@ def copy_content(config, dependency_solving, dependency_upgrade=False):
                 source_repo_version,
                 dest_repo_version,
                 dest_repo,
-                content_filter,
+                content_ids,
                 dest_version_provided,
             ) = process_entry(entry)
 
@@ -236,7 +244,7 @@ def copy_content(config, dependency_solving, dependency_upgrade=False):
             # child relationships (e.g. RPM children of Errata/Advisories), then combine
             # those two sets to copy the specified content + children.
             content_to_copy[source_repo_name] = ChildContentResolver(
-                content_filter, source_repo_version
+                source_repo_version, content_ids
             ).resolve()
 
         solver.finalize()

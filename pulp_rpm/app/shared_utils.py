@@ -31,7 +31,11 @@ Field.register_lookup(_AnyArray)
 
 
 def safe_in(field_name: str, values: Iterable) -> Q:
-    """WHERE x = ANY(%s)  -- passes the list as one array parameter."""
+    """WHERE x = ANY(%s)  -- passes the list as one array parameter.
+
+    Doesn't work on "pk" for casted Content subclasses (e.g. PackageGroup, Package): there,
+    pk is a foreign key (content_ptr), not a plain UUID field, and any_array isn't supported.
+    """
     if not isinstance(values, (list, set, tuple, frozenset)):
         return Q(**{f"{field_name}__in": values})
     return Q(**{f"{field_name}__any_array": list(values)})
