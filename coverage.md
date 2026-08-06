@@ -38,7 +38,7 @@ This file contains list of features and their test coverage.
 | **Publish** |  |  |
 | As a user, I can publish repodata with specific checksum type | PART | "on_demand is not covered, https://pulp.plan.io/issues/6503" |
 | As a user, I have the published root directory containing the ‘Package’ directory and packages in alphabetical order inside it. | YES | testing with modularity and kickstarter repositories, contains test if no extra files are present |
-| As a user, I can sign repository metadata using a signing service and publish such repo | PART |  |
+| As a user, I can sign repository metadata using a signing service and publish such repo | YES |  |
 | As a user, I can have a config.repo file generated for any distribution at runtime | YES |  |
 | As a user I can set/update repo_gpgcheck and gpg_check options | YES | |
 | **Upload** |  |  |

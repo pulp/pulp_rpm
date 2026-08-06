@@ -1,22 +1,208 @@
 import shutil
+import subprocess
 
+import gnupg
 import pytest
 import requests
 import rpm_rs
 
 from pulpcore.client.pulp_rpm.exceptions import ApiException
 
+from pulp_rpm.tests.functional.conftest import (
+    create_signing_service,
+    import_signing_key,
+    remove_signing_service,
+)
 from pulp_rpm.tests.functional.constants import (
     KEY_V4_RSA2K,
     KEY_V4_RSA4K,
     KEY_V6_MLDSA65_ED25519,
+    KEY_V6_MLDSA87_ED448,
+    RPM_FIXTURE_MULTI_SIGNED,
     RPM_PACKAGE_FILENAME,
     RPM_PACKAGE_FILENAME2,
     RPM_SIGNED_URL,
     RPM_UNSIGNED_URL,
     RPM_UNSIGNED_URL2,
 )
-from pulp_rpm.tests.functional.utils import get_package_repo_path
+from pulp_rpm.tests.functional.utils import (
+    Nevra,
+    RepositoryBuilder,
+    build_rpm,
+    get_package_repo_path,
+)
+
+SIGNING_SCRIPT_TEMPLATE = r"""#!/usr/bin/env bash
+FILE_PATH=$1
+GPG_HOME=HOMEDIRHERE
+GPG_BIN=/usr/bin/gpg
+GPG_NAME="${PULP_SIGNING_KEY_FINGERPRINT}"
+
+rpmsign \
+    --define "_gpg_path ${GPG_HOME}" \
+    --define "_gpg_name ${GPG_NAME}" \
+    --define "_gpgbin ${GPG_BIN}" \
+    SIGN_ARGS_HERE "${FILE_PATH}" 1> /dev/null
+
+STATUS=$?
+if [[ ${STATUS} -eq 0 ]]; then
+   echo {\"rpm_package\": \"${FILE_PATH}\"}
+else
+   exit ${STATUS}
+fi
+"""
+
+
+def _make_signing_script(signing_script_temp_dir, signing_gpg_homedir_path, name, sign_args):
+    script = signing_script_temp_dir / name
+    content = SIGNING_SCRIPT_TEMPLATE.replace("HOMEDIRHERE", str(signing_gpg_homedir_path)).replace(
+        "SIGN_ARGS_HERE", sign_args
+    )
+    script.write_text(content)
+    script.chmod(0o755)
+    return script
+
+
+@pytest.fixture(scope="session")
+def signing_script_temp_dir(tmp_path_factory):
+    return tmp_path_factory.mktemp("sigining_script_dir")
+
+
+@pytest.fixture(scope="session")
+def signing_gpg_homedir_path(tmp_path_factory):
+    return tmp_path_factory.mktemp("gpghome")
+
+
+@pytest.fixture(scope="session")
+def signing_gpg_metadata(signing_gpg_homedir_path):
+    response_private = requests.get(KEY_V4_RSA4K.private_url)
+    response_private.raise_for_status()
+
+    gpg = gnupg.GPG(gnupghome=signing_gpg_homedir_path)
+    import_result = gpg.import_keys(response_private.content)
+
+    fingerprint = KEY_V4_RSA4K.signing_fingerprint
+    keyid = fingerprint[-8:]
+
+    gpg.trust_keys(import_result.fingerprints[0], "TRUST_ULTIMATE")
+
+    return gpg, fingerprint, keyid
+
+
+@pytest.fixture(scope="session")
+def signing_script_path(signing_script_temp_dir, signing_gpg_homedir_path):
+    return _make_signing_script(
+        signing_script_temp_dir,
+        signing_gpg_homedir_path,
+        "sign-rpm-package.sh",
+        "--addsign",
+    )
+
+
+@pytest.fixture(scope="session")
+def _rpm_package_signing_service_name(
+    signing_script_path,
+    signing_gpg_metadata,
+    signing_gpg_homedir_path,
+):
+    _, fingerprint, _ = signing_gpg_metadata
+    service_name = create_signing_service(
+        signing_gpg_homedir_path,
+        fingerprint,
+        signing_script_path,
+        service_class="rpm:RpmPackageSigningService",
+    )
+    yield service_name
+    remove_signing_service(service_name, service_class="rpm:RpmPackageSigningService")
+
+
+@pytest.fixture
+def rpm_package_signing_service(_rpm_package_signing_service_name, pulpcore_bindings):
+    return pulpcore_bindings.SigningServicesApi.list(
+        name=_rpm_package_signing_service_name
+    ).results[0]
+
+
+@pytest.fixture(scope="session")
+def has_rpmv6_support():
+    result = subprocess.run(
+        ("rpmsign", "--help"),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+    )
+    return "--rpmv6" in result.stdout.decode()
+
+
+@pytest.fixture(scope="session")
+def rpmv6_signing_script_path(signing_script_temp_dir, signing_gpg_homedir_path):
+    return _make_signing_script(
+        signing_script_temp_dir,
+        signing_gpg_homedir_path,
+        "sign-rpm-package-v6.sh",
+        "--addsign --rpmv6",
+    )
+
+
+@pytest.fixture(scope="session")
+def _rpm_package_signing_service_rpmv6_name(
+    rpmv6_signing_script_path,
+    signing_gpg_metadata,
+    signing_gpg_homedir_path,
+    has_rpmv6_support,
+):
+    if not has_rpmv6_support:
+        pytest.skip("rpmsign --rpmv6 not available")
+
+    _, fingerprint, _ = signing_gpg_metadata
+    service_name = create_signing_service(
+        signing_gpg_homedir_path,
+        fingerprint,
+        rpmv6_signing_script_path,
+        service_class="rpm:RpmPackageSigningService",
+    )
+    yield service_name
+    remove_signing_service(service_name, service_class="rpm:RpmPackageSigningService")
+
+
+@pytest.fixture
+def rpm_package_signing_service_rpmv6(_rpm_package_signing_service_rpmv6_name, pulpcore_bindings):
+    return pulpcore_bindings.SigningServicesApi.list(
+        name=_rpm_package_signing_service_rpmv6_name
+    ).results[0]
+
+
+@pytest.fixture(scope="session")
+def resign_signing_script_path(signing_script_temp_dir, signing_gpg_homedir_path):
+    return _make_signing_script(
+        signing_script_temp_dir,
+        signing_gpg_homedir_path,
+        "sign-rpm-package-resign.sh",
+        "--resign",
+    )
+
+
+@pytest.fixture(scope="session")
+def _rpm_package_signing_service_resign_name(
+    resign_signing_script_path,
+    signing_gpg_metadata,
+    signing_gpg_homedir_path,
+):
+    _, fingerprint, _ = signing_gpg_metadata
+    service_name = create_signing_service(
+        signing_gpg_homedir_path,
+        fingerprint,
+        resign_signing_script_path,
+        service_class="rpm:RpmPackageSigningService",
+    )
+    yield service_name
+    remove_signing_service(service_name, service_class="rpm:RpmPackageSigningService")
+
+
+@pytest.fixture
+def rpm_package_signing_service_resign(_rpm_package_signing_service_resign_name, pulpcore_bindings):
+    return pulpcore_bindings.SigningServicesApi.list(
+        name=_rpm_package_signing_service_resign_name
+    ).results[0]
 
 
 def _sign_package(rpm_path, private_key_url, output=None, key_fpr=None):
@@ -511,16 +697,17 @@ def test_upload_signed_package(
     """Upload a pre-signed package without signing enabled; signing_keys should be populated."""
     repository = rpm_repository_factory()
 
-    file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
-    file_to_upload.write_bytes(requests.get(RPM_SIGNED_URL).content)
+    nevra = Nevra(name="upload-signed-test", epoch=0, version="1.0", release="1", arch="noarch")
+    rpm_path = tmp_path / f"{nevra.to_nvra()}.rpm"
+    build_rpm(nevra, rpm_path)
+    _sign_package(rpm_path, KEY_V4_RSA4K.private_url)
 
-    # Extract the expected fingerprint from the pre-signed RPM
-    pkg = rpm_rs.PackageMetadata.open(str(file_to_upload))
+    pkg = rpm_rs.PackageMetadata.open(str(rpm_path))
     expected_sigs = [f"v4:{s.fingerprint.upper()}" for s in pkg.signatures() if s.fingerprint]
     assert len(expected_sigs) > 0
 
     upload_response = rpm_package_api.create(
-        file=str(file_to_upload.absolute()),
+        file=str(rpm_path.absolute()),
         repository=repository.pulp_href,
     )
     package_href = monitor_task(upload_response.task).created_resources[1]
@@ -732,11 +919,17 @@ def test_sign_multi_signed_package_on_upload(
 
 
 @pytest.mark.parallel
+@pytest.mark.parametrize(
+    "key",
+    [KEY_V6_MLDSA65_ED25519, KEY_V6_MLDSA87_ED448],
+    ids=["mldsa65-ed25519", "mldsa87-ed448"],
+)
 def test_upload_mldsa_signed_package(
     tmp_path,
     monitor_task,
     rpm_package_api,
     rpm_repository_factory,
+    key,
 ):
     """Upload a package signed with an ML-DSA (post-quantum) v6 key.
 
@@ -745,7 +938,7 @@ def test_upload_mldsa_signed_package(
     rpm_path = tmp_path / RPM_PACKAGE_FILENAME
     rpm_path.write_bytes(requests.get(RPM_UNSIGNED_URL).content)
 
-    _sign_package(rpm_path, KEY_V6_MLDSA65_ED25519.private_url)
+    _sign_package(rpm_path, key.private_url)
 
     pkg = rpm_rs.PackageMetadata.open(str(rpm_path))
     sigs = [s for s in pkg.signatures() if s.fingerprint is not None]
@@ -763,3 +956,205 @@ def test_upload_mldsa_signed_package(
 
     assert package.signing_keys is not None
     assert expected_fingerprint in package.signing_keys
+
+
+@pytest.mark.parallel
+def test_upload_multi_signed_v4_v6_mldsa_package(
+    tmp_path,
+    monitor_task,
+    rpm_package_api,
+    rpm_repository_factory,
+):
+    """Upload the pre-built multi-signed fixture (v4 RSA4K + v6 ML-DSA87+Ed448).
+
+    Verifies that signing_keys contains both v4 and v6 prefixed fingerprints.
+    """
+    rpm_path = tmp_path / "multi-signed.rpm"
+    rpm_path.write_bytes(requests.get(RPM_FIXTURE_MULTI_SIGNED).content)
+
+    pkg = rpm_rs.PackageMetadata.open(str(rpm_path))
+    sigs = [s for s in pkg.signatures() if s.fingerprint is not None]
+    assert len(sigs) == 2, f"Expected 2 signatures, got {len(sigs)}"
+
+    repository = rpm_repository_factory()
+
+    upload_response = rpm_package_api.create(
+        file=str(rpm_path.absolute()),
+        repository=repository.pulp_href,
+    )
+    package_href = monitor_task(upload_response.task).created_resources[1]
+    package = rpm_package_api.read(package_href)
+
+    assert package.signing_keys is not None
+    assert len(package.signing_keys) == 2
+
+    v4_keys = [k for k in package.signing_keys if k.startswith("v4:")]
+    v6_keys = [k for k in package.signing_keys if k.startswith("v6:")]
+    assert len(v4_keys) == 1, "Expected one v4 signing key"
+    assert len(v6_keys) == 1, "Expected one v6 signing key"
+
+
+@pytest.mark.parallel
+def test_signing_key_filter_v6_mldsa(
+    tmp_path,
+    monitor_task,
+    rpm_package_api,
+    rpm_repository_factory,
+    rpm_repository_api,
+):
+    """Test that the signing_key filter works with v6 ML-DSA fingerprints."""
+    rpm_path = tmp_path / RPM_PACKAGE_FILENAME
+    rpm_path.write_bytes(requests.get(RPM_UNSIGNED_URL).content)
+
+    # TODO: generate a new PQC key in-place to make it truly unique, avoid conflicts with other tests
+    _sign_package(rpm_path, KEY_V6_MLDSA65_ED25519.private_url)
+
+    pkg = rpm_rs.PackageMetadata.open(str(rpm_path))
+    sigs = [s for s in pkg.signatures() if s.fingerprint is not None]
+    expected_fingerprint = f"v6:{sigs[0].fingerprint.upper()}"
+
+    repository = rpm_repository_factory()
+    upload_response = rpm_package_api.create(
+        file=str(rpm_path.absolute()),
+        repository=repository.pulp_href,
+    )
+    monitor_task(upload_response.task)
+    repository = rpm_repository_api.read(repository.pulp_href)
+
+    results = rpm_package_api.list(
+        repository_version=repository.latest_version_href,
+        signing_key=expected_fingerprint,
+    )
+    assert results.count == 1
+
+    results = rpm_package_api.list(
+        repository_version=repository.latest_version_href,
+        signing_key="v6:0000000000000000000000000000000000000000000000000000000000000000",
+    )
+    assert results.count == 0
+
+
+@pytest.mark.parallel
+def test_sync_mldsa_signed_package(
+    tmp_path,
+    init_and_sync,
+    rpm_package_api,
+):
+    """Sync a repository containing an ML-DSA signed package.
+
+    signing_keys is expected to be None after sync because the sync pipeline
+    does not yet extract signing information from packages.
+    """
+    nevra = Nevra(name="mldsa-sync-test", epoch=0, version="1.0", release="1", arch="noarch")
+    rpm_path = tmp_path / f"{nevra.to_nvra()}.rpm"
+    build_rpm(nevra, rpm_path)
+
+    _sign_package(rpm_path, KEY_V6_MLDSA65_ED25519.private_url)
+
+    pkg_meta = rpm_rs.PackageMetadata.open(str(rpm_path))
+    sigs = [s for s in pkg_meta.signatures() if s.fingerprint is not None]
+    assert len(sigs) >= 1
+
+    builder = RepositoryBuilder(tmp_path)
+    remote_repo = builder.build_from_files(rpm_paths=[rpm_path])
+
+    repository, _ = init_and_sync(url=remote_repo.url, policy="immediate")
+
+    packages = rpm_package_api.list(
+        repository_version=repository.latest_version_href,
+        name=nevra.name,
+    )
+    assert packages.count == 1
+    synced_package = packages.results[0]
+    assert synced_package.name == nevra.name
+    assert synced_package.version == nevra.version
+
+    # signing_keys is None after sync (known limitation, see synchronizing.py:1470-1471)
+    assert synced_package.signing_keys is None
+
+
+PQC_RPMSIGN_SCRIPT_TEMPLATE = r"""#!/usr/bin/env bash
+FILE_PATH=$1
+FINGERPRINT="${PULP_SIGNING_KEY_FINGERPRINT}"
+
+rpmsign \
+    --define "_openpgp_sign sq" \
+    --define "_openpgp_sign_id ${FINGERPRINT}" \
+    --addsign --rpmv6 "${FILE_PATH}" 1> /dev/null
+
+STATUS=$?
+if [[ ${STATUS} -eq 0 ]]; then
+   echo {"rpm_package": "${FILE_PATH}"}
+else
+   exit ${STATUS}
+fi
+"""
+
+
+@pytest.fixture
+def pqc_package_signing_service(tmp_path, has_rpmv6_support, pulpcore_bindings):
+    """Create a PQC (ML-DSA) package signing service using Sequoia."""
+    if not has_rpmv6_support:
+        pytest.skip("rpmsign --rpmv6 not available")
+
+    key = KEY_V6_MLDSA65_ED25519
+    sq_home = tmp_path / "sq"
+    sq_home.mkdir(mode=0o700)
+
+    _, fingerprint, _ = import_signing_key(key.private_url, sq_home, backend="sq")
+
+    script_path = tmp_path / "sign-pqc-package.sh"
+    script_path.write_text(PQC_RPMSIGN_SCRIPT_TEMPLATE)
+    script_path.chmod(0o755)
+
+    service_name = create_signing_service(
+        sq_home,
+        fingerprint,
+        script_path,
+        backend="sq",
+        service_class="rpm:RpmPackageSigningService",
+    )
+
+    service = pulpcore_bindings.SigningServicesApi.list(name=service_name).results[0]
+    yield service, fingerprint
+    remove_signing_service(service_name, service_class="rpm:RpmPackageSigningService")
+
+
+@pytest.mark.parallel
+@pytest.mark.xfail(
+    strict=True,
+    reason="add-signing-service uses GPG internally, which cannot handle ML-DSA / v6 keys",
+)
+def test_sign_package_with_mldsa_via_signing_service(
+    pqc_package_signing_service,
+    monitor_task,
+    rpm_package_api,
+    rpm_package_factory,
+    rpm_repository_api,
+    rpm_repository_factory,
+):
+    """Attempt to set up a full ML-DSA package signing service.
+
+    The `add-signing-service` management command uses GPG internally to
+    extract key metadata, which fails for ML-DSA / OpenPGP v6 keys. Once
+    that bottleneck is resolved, this test should pass end-to-end.
+    """
+    service, fingerprint = pqc_package_signing_service
+    prefixed_fingerprint = f"v6:{fingerprint}"
+
+    repository = rpm_repository_factory(
+        package_signing_service=service.pulp_href,
+        package_signing_fingerprint=prefixed_fingerprint,
+    )
+
+    unsigned_package = rpm_package_factory(url=RPM_UNSIGNED_URL)
+    modify_response = rpm_repository_api.modify(
+        repository.pulp_href, {"add_content_units": [unsigned_package.pulp_href]}
+    )
+    monitor_task(modify_response.task)
+
+    repository = rpm_repository_api.read(repository.pulp_href)
+    signed_package = rpm_package_api.list(
+        repository_version=repository.latest_version_href,
+    ).results[0]
+    assert signed_package.signing_keys == [prefixed_fingerprint]
