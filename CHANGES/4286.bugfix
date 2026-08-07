@@ -1,0 +1,1 @@
+Fixed an `IntegrityError` raised when `copy_content` was invoked with `dependency_solving=True` and multiple source repository versions in the config mapped to the same destination repository. Units from all such config entries are now merged into a single new repository version on each shared destination, instead of attempting one new version per source entry.
