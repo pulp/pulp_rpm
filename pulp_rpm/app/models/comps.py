@@ -79,6 +79,7 @@ class PackageGroup(Content):
 
     @classmethod
     def pkglist_to_list(cls, packages):
+        """Convert rpmmd CompsPackageReq objects to a JSON-serializable list of dicts."""
         package_list = []
         for pkg in packages:
             as_dict = {
