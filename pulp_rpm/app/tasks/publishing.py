@@ -7,7 +7,7 @@ from typing import NamedTuple
 from uuid import UUID
 
 import createrepo_c as cr
-import libcomps
+import rpmrepo_metadata as rpmmd
 from django.conf import settings
 from django.core.files import File
 from django.db.models import Q
@@ -22,7 +22,6 @@ from pulpcore.plugin.models import (
     RepositoryVersion,
 )
 
-from pulp_rpm.app.comps import dict_to_strdict
 from pulp_rpm.app.constants import (
     ALLOWED_CHECKSUM_ERROR_MSG,
     CHECKSUM_TYPES,
@@ -781,35 +780,35 @@ def generate_repo_metadata(
                 has_modules = True
 
         # Process comps
-        comps = libcomps.Comps()
+        comps = rpmmd.CompsData()
+        groups = []
         for pkg_grp in PackageGroup.objects.filter(pk__in=content).order_by("id").iterator():
-            group = pkg_grp.pkg_grp_to_libcomps()
-            comps.groups.append(group)
+            groups.append(pkg_grp.to_comps_group())
             has_comps = True
+        comps.groups = groups
+        categories = []
         for pkg_cat in PackageCategory.objects.filter(pk__in=content).order_by("id").iterator():
-            cat = pkg_cat.pkg_cat_to_libcomps()
-            comps.categories.append(cat)
+            categories.append(pkg_cat.to_comps_category())
             has_comps = True
+        comps.categories = categories
+        environments = []
         for pkg_env in PackageEnvironment.objects.filter(pk__in=content).order_by("id").iterator():
-            env = pkg_env.pkg_env_to_libcomps()
-            comps.environments.append(env)
+            environments.append(pkg_env.to_comps_environment())
             has_comps = True
+        comps.environments = environments
+        langpacks = []
         package_langpacks = PackageLangpacks.objects.filter(pk__in=content).order_by(
             *PackageLangpacks.natural_key_fields()
         )
         for pkg_lng in package_langpacks.iterator():
-            comps.langpacks = dict_to_strdict(pkg_lng.matches)
+            langpacks.extend(
+                rpmmd.CompsLangpack(name=k, install=v) for k, v in pkg_lng.matches.items()
+            )
             has_comps = True
+        comps.langpacks = langpacks
 
-        comps.toxml_f(
-            comps_xml_path,
-            xml_options={
-                "default_explicit": True,
-                "empty_groups": True,
-                "empty_packages": True,
-                "uservisible_explicit": True,
-            },
-        )
+        with open(comps_xml_path, "w") as f:
+            f.write(comps.to_xml())
 
         if has_modules:
             writer.add_repomd_metadata("modules", mod_yml_path, use_compression=False)
