@@ -4,9 +4,9 @@ import os
 from tempfile import NamedTemporaryFile
 from xml.etree import ElementTree
 
-import libcomps
 import pytest
 import requests
+import rpmrepo_metadata as rpmmd
 
 from pulpcore.client.pulp_rpm import RpmRpmPublication
 
@@ -17,39 +17,29 @@ from pulp_rpm.tests.functional.constants import (
 )
 from pulp_rpm.tests.functional.utils import get_metadata_content_helper
 
+PACKAGE_TYPE_MAPPING = {
+    rpmmd.PackageReqType.DEFAULT: 0,
+    rpmmd.PackageReqType.OPTIONAL: 1,
+    rpmmd.PackageReqType.CONDITIONAL: 2,
+    rpmmd.PackageReqType.MANDATORY: 3,
+}
+
 
 def _parse_comps(xml):
     """Parse a comps XML string or bytes into a libcomps.Comps object."""
     if isinstance(xml, bytes):
         xml = xml.decode("utf-8")
-    comps = libcomps.Comps()
-    comps.fromxml_str(xml)
-    return comps
+    return rpmmd.CompsData.from_xml(xml)
 
 
-def _strdict_to_dict(sd):
-    """Convert a libcomps StrDict to a plain Python dict, returning {} for None."""
-    if sd is None:
-        return {}
-    return {k: sd[k] for k in sd}
-
-
-def _grplist_to_list(gl):
-    """Convert a libcomps group/option list to a sorted list of {name, default} dicts."""
-    return sorted(
-        [{"name": g.name, "default": bool(g.default)} for g in gl],
-        key=lambda d: d["name"],
-    )
-
-
-def _pkglist_to_list(pl):
-    """Convert a libcomps package list to a sorted, deduplicated list of package dicts."""
+def _pkglist_to_list(packages):
+    """Convert a comps package list to a sorted, deduplicated list of package dicts."""
     seen = []
-    for p in pl:
+    for p in packages:
         d = {
             "name": p.name,
-            "type": p.type,
-            "basearchonly": bool(p.basearchonly),
+            "type": PACKAGE_TYPE_MAPPING.get(p.reqtype, 0),
+            "basearchonly": bool(p.basearchonly) if p.basearchonly is not None else False,
             "requires": p.requires,
         }
         if d not in seen:
@@ -58,19 +48,33 @@ def _pkglist_to_list(pl):
 
 
 def _group_to_dict(g):
-    """Normalize a libcomps Group into a comparable dict."""
+    """Normalize a comps Group into a comparable dict."""
     return {
         "id": g.id,
         "name": g.name,
-        "description": g.desc or "",
-        "default": bool(g.default),
-        "user_visible": bool(g.uservisible),
+        "description": g.description or "",
+        "default": g.default,
+        "user_visible": g.uservisible,
         "display_order": g.display_order,
-        "biarch_only": bool(g.biarchonly),
+        "biarch_only": g.biarchonly,
         "packages": _pkglist_to_list(g.packages),
-        "name_by_lang": _strdict_to_dict(g.name_by_lang),
-        "desc_by_lang": _strdict_to_dict(g.desc_by_lang),
+        "name_by_lang": dict(g.name_by_lang),
+        "desc_by_lang": dict(g.desc_by_lang),
     }
+
+
+def _grplist_to_list(group_ids):
+    return sorted(
+        [{"name": gid, "default": False} for gid in group_ids],
+        key=lambda d: d["name"],
+    )
+
+
+def _optlist_to_list(option_ids):
+    return sorted(
+        [{"name": opt.group_id, "default": opt.default} for opt in option_ids],
+        key=lambda d: d["name"],
+    )
 
 
 def _category_to_dict(c):
@@ -78,11 +82,11 @@ def _category_to_dict(c):
     return {
         "id": c.id,
         "name": c.name,
-        "description": c.desc or "",
+        "description": c.description or "",
         "display_order": c.display_order,
         "group_ids": _grplist_to_list(c.group_ids),
-        "name_by_lang": _strdict_to_dict(c.name_by_lang),
-        "desc_by_lang": _strdict_to_dict(c.desc_by_lang),
+        "name_by_lang": dict(c.name_by_lang),
+        "desc_by_lang": dict(c.desc_by_lang),
     }
 
 
@@ -91,12 +95,12 @@ def _environment_to_dict(e):
     return {
         "id": e.id,
         "name": e.name,
-        "description": e.desc or "",
+        "description": e.description or "",
         "display_order": e.display_order,
         "group_ids": _grplist_to_list(e.group_ids),
-        "option_ids": _grplist_to_list(e.option_ids),
-        "name_by_lang": _strdict_to_dict(e.name_by_lang),
-        "desc_by_lang": _strdict_to_dict(e.desc_by_lang),
+        "option_ids": _optlist_to_list(e.option_ids),
+        "name_by_lang": dict(e.name_by_lang),
+        "desc_by_lang": dict(e.desc_by_lang),
     }
 
 
@@ -110,7 +114,7 @@ def _comps_to_dicts(comps):
         "environments": sorted(
             [_environment_to_dict(e) for e in comps.environments], key=lambda d: d["id"]
         ),
-        "langpacks": _strdict_to_dict(comps.langpacks),
+        "langpacks": {lp.name: lp.install for lp in comps.langpacks},
     }
 
 
@@ -259,7 +263,7 @@ class TestCompsFieldVerification:
     @pytest.mark.parallel
     def test_langpacks_fields(self, small_comps_repo, rpm_package_lang_packs_api):
         expected_comps = _parse_comps(SMALL_COMPS_XML)
-        expected_matches = _strdict_to_dict(expected_comps.langpacks)
+        expected_matches = {lp.name: lp.install for lp in expected_comps.langpacks}
 
         api_langpacks = rpm_package_lang_packs_api.list(
             repository_version=small_comps_repo.latest_version_href
