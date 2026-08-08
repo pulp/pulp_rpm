@@ -11,7 +11,7 @@ from collections import defaultdict
 from gettext import gettext as _  # noqa:F401
 
 import createrepo_c as cr
-import libcomps
+import rpmrepo_metadata as rpmmd
 from aiohttp.client_exceptions import ClientResponseError
 from asgiref.sync import sync_to_async
 from django.conf import settings
@@ -47,7 +47,7 @@ from pulpcore.plugin.stages import (
 from pulpcore.plugin.util import get_domain
 
 from pulp_rpm.app.advisory import hash_update_record
-from pulp_rpm.app.comps import dict_digest, strdict_to_dict
+from pulp_rpm.app.comps import dict_digest
 from pulp_rpm.app.constants import (
     CHECKSUM_TYPES,
     COMPS_REPODATA,
@@ -1100,12 +1100,11 @@ class RpmFirstStage(Stage):
         dc_environments = []
         dc_groups = []
 
-        comps = libcomps.Comps()
         with tempfile.TemporaryDirectory(dir=".") as tf:
             decompressed_path = os.path.join(tf, "comps.xml")
             cr.decompress_file(comps_result.path, decompressed_path, cr.AUTO_DETECT_COMPRESSION)
             with open(decompressed_path) as f:
-                comps.fromxml_str(f.read())
+                comps = rpmmd.CompsData.from_xml(f.read())
 
         async with ProgressReport(message="Parsed Comps", code="sync.parsing.comps") as comps_pb:
             comps_total = len(comps.groups) + len(comps.categories) + len(comps.environments)
@@ -1113,9 +1112,10 @@ class RpmFirstStage(Stage):
             comps_pb.done = comps_total
 
         if comps.langpacks:
-            langpack_dict = PackageLangpacks.libcomps_to_dict(comps.langpacks)
+            langpack_dict = PackageLangpacks.comps_to_dict(comps.langpacks)
             packagelangpack = PackageLangpacks(
-                matches=strdict_to_dict(comps.langpacks), digest=dict_digest(langpack_dict)
+                matches={lp.name: lp.install for lp in comps.langpacks},
+                digest=dict_digest(langpack_dict),
             )
             package_language_pack_dc = DeclarativeContent(content=packagelangpack)
             package_language_pack_dc.extra_data = defaultdict(list)
@@ -1123,7 +1123,7 @@ class RpmFirstStage(Stage):
         # init categories declarative content
         if comps.categories:
             for category in comps.categories:
-                category_dict = PackageCategory.libcomps_to_dict(category)
+                category_dict = PackageCategory.comps_to_dict(category)
                 category_dict["digest"] = dict_digest(category_dict)
                 packagecategory = PackageCategory(**category_dict)
                 dc = DeclarativeContent(content=packagecategory)
@@ -1137,7 +1137,7 @@ class RpmFirstStage(Stage):
         # init environments declarative content
         if comps.environments:
             for environment in comps.environments:
-                environment_dict = PackageEnvironment.libcomps_to_dict(environment)
+                environment_dict = PackageEnvironment.comps_to_dict(environment)
                 environment_dict["digest"] = dict_digest(environment_dict)
                 packageenvironment = PackageEnvironment(**environment_dict)
                 dc = DeclarativeContent(content=packageenvironment)
@@ -1156,7 +1156,7 @@ class RpmFirstStage(Stage):
         # init groups declarative content
         if comps.groups:
             for group in comps.groups:
-                group_dict = PackageGroup.libcomps_to_dict(group)
+                group_dict = PackageGroup.comps_to_dict(group)
                 group_dict["digest"] = dict_digest(group_dict)
                 packagegroup = PackageGroup(**group_dict)
                 dc = DeclarativeContent(content=packagegroup)
