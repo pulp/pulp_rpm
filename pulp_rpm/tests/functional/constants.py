@@ -389,6 +389,11 @@ RPM_FIXTURE_MULTI_SIGNED = urljoin(
 RPM_FIXTURE_COMPLEX = urljoin(RPM_FIXTURES_PACKAGES_URL, "complex-package-2.3.4-5.el8.x86_64.rpm")
 """An RPM fixture package with complex metadata."""
 
+RPM_FIXTURE_KEYID_SIGNED = urljoin(
+    RPM_FIXTURES_PACKAGES_URL, "static/test-package-keyid-signed-1.0-1.fc41.noarch.rpm"
+)
+"""An RPM fixture package signed with KEY_V4_RSA4K, carrying only an issuer key ID."""
+
 RPM_UPDATED_UPDATEINFO_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-updated-updateinfo/")
 """The URL to a repository containing UpdateRecords (Advisory) with the same IDs
 as the ones in the standard repositories, but with different metadata.

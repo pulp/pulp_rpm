@@ -39,6 +39,8 @@ _VERSION_PREFIX = {
     rpm_rs.SignatureVersion.V6: "v6",
 }
 
+_KEY_ID_LENGTH = 16
+
 
 def format_signing_keys(signatures):
     """Format rpm_rs signature objects into prefixed identifier strings.
@@ -64,6 +66,50 @@ def extract_signing_keys(path):
     """Extract signing key fingerprints from an RPM file using rpm_rs."""
     pkg = rpm_rs.PackageMetadata.open(path)
     return format_signing_keys(pkg.signatures())
+
+
+def _split_key_identifier(identifier):
+    """Split a key identifier into (prefix, uppercase hex); a bare hex is assumed to be v4."""
+    prefix, sep, hex_part = identifier.partition(":")
+    return (prefix.lower(), hex_part.upper()) if sep else ("v4", identifier.upper())
+
+
+def _key_id_of(prefix, hex_part):
+    """Derive the key ID of a key identifier, or None if no rule is known for it."""
+    if len(hex_part) < _KEY_ID_LENGTH:
+        return None
+    if prefix == "keyid":
+        return hex_part
+    if prefix == "v4":  # a v4 key ID is the low-order 64 bits of the fingerprint
+        return hex_part[-_KEY_ID_LENGTH:]
+    if prefix == "v6":  # a v6 key ID is the high-order 64 bits (RFC 9580)
+        return hex_part[:_KEY_ID_LENGTH]
+    return None
+
+
+def _same_key(identifier, other):
+    """Check whether two key identifiers refer to the same key."""
+    prefix, hex_part = _split_key_identifier(identifier)
+    other_prefix, other_hex = _split_key_identifier(other)
+    if (prefix, hex_part) == (other_prefix, other_hex):
+        return True
+    # Only fall back to comparing key IDs when one side lacks a full fingerprint.
+    if "keyid" not in (prefix, other_prefix):
+        return False
+    key_id = _key_id_of(prefix, hex_part)
+    return key_id is not None and key_id == _key_id_of(other_prefix, other_hex)
+
+
+def signing_key_matches(fingerprint, signing_keys):
+    """Check whether fingerprint refers to the same key as any of signing_keys.
+
+    All arguments are prefixed identifiers of the form produced by format_signing_keys,
+    i.e. "v4:<hex>", "v6:<hex>" or "keyid:<16-hex>". Two full fingerprints must be equal,
+    but when either side carries only a key ID the comparison falls back to key IDs, so a
+    configured fingerprint still matches a package whose signature has no issuer
+    fingerprint subpacket.
+    """
+    return any(_same_key(fingerprint, signing_key) for signing_key in signing_keys)
 
 
 def read_crpackage_from_artifact(artifact, working_dir="."):

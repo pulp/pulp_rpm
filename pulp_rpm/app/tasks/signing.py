@@ -4,7 +4,6 @@ from pathlib import Path
 from tempfile import NamedTemporaryFile
 
 import createrepo_c as cr
-import rpm_rs
 from django.conf import settings
 
 from pulpcore.plugin.models import (
@@ -22,7 +21,7 @@ from pulp_rpm.app.exceptions import PackageSigningError
 from pulp_rpm.app.models.content import RpmPackageSigningResult, RpmPackageSigningService
 from pulp_rpm.app.models.package import Package
 from pulp_rpm.app.models.repository import RpmRepository
-from pulp_rpm.app.shared_utils import extract_signing_keys
+from pulp_rpm.app.shared_utils import extract_signing_keys, signing_key_matches
 
 log = logging.getLogger(__name__)
 
@@ -43,25 +42,11 @@ def _save_upload(uploadobj, final_package):
 
 def _verify_package_fingerprint(path, fingerprint):
     """Verify if the package at path is signed with signing_fingerprint or not."""
-    _, _, raw_fingerprint = fingerprint.upper().partition(":")
-    if not raw_fingerprint:
-        raw_fingerprint = fingerprint.upper()
-    pkg = rpm_rs.PackageMetadata.open(path)
-    key_ids = []
-    fingerprints = []
-    for sig in pkg.signatures():
-        if sig.fingerprint:
-            fingerprints.append(sig.fingerprint.upper())
-        elif sig.key_id:
-            key_ids.append(sig.key_id.upper())
-
-    if raw_fingerprint in key_ids + fingerprints:
+    signing_keys = extract_signing_keys(path)
+    if signing_key_matches(fingerprint, signing_keys):
         return True
 
-    log.debug(
-        f"Fingerprint mismatch for {path}: expected {raw_fingerprint}, "
-        f"found key IDs {key_ids} and fingerprints {fingerprints}."
-    )
+    log.debug(f"Fingerprint mismatch for {path}: expected {fingerprint}, found {signing_keys}.")
     return False
 
 
