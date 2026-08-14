@@ -1,0 +1,1 @@
+Fixed packages being re-signed on every add when their signature carries only an issuer key ID and no issuer fingerprint subpacket, by comparing the configured fingerprint against the package's signing keys on their key IDs whenever either side lacks a full fingerprint.
