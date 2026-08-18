@@ -11,6 +11,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_SIGNED_FIXTURE_URL,
 )
 from pulp_rpm.tests.functional.utils import (
+    Nevra,
     get_package_repo_path,
 )
 
@@ -181,8 +182,12 @@ def test_artifact_from_file(
     pulpcore_bindings,
     gen_object_with_cleanup,
     rpm_artifact_factory,
+    rpm_create_package,
 ):
     """Test uploading artifacts in separate domains."""
+    # Build one RPM and upload the same file into each domain.
+    rpm_path = rpm_create_package(Nevra(f"artifact-{uuid.uuid4().hex[:8]}", 0, "1.0", "1", "noarch"))
+
     body = {
         "name": str(uuid.uuid4()),
         "storage_class": "pulpcore.app.models.storage.FileSystem",
@@ -198,13 +203,13 @@ def test_artifact_from_file(
     domain2 = gen_object_with_cleanup(pulpcore_bindings.DomainsApi, body)
 
     # Create as-artifact in domain1
-    domain1_artifact = rpm_artifact_factory(pulp_domain=domain1.name)
+    domain1_artifact = rpm_artifact_factory(path=rpm_path, pulp_domain=domain1.name)
     artifacts = pulpcore_bindings.ArtifactsApi.list(pulp_domain=domain1.name)
     assert artifacts.count == 1
     assert domain1_artifact.pulp_href == artifacts.results[0].pulp_href
 
     # Create as-artifact in domain2
-    domain2_artifact = rpm_artifact_factory(pulp_domain=domain2.name)
+    domain2_artifact = rpm_artifact_factory(path=rpm_path, pulp_domain=domain2.name)
     artifacts = pulpcore_bindings.ArtifactsApi.list(pulp_domain=domain2.name)
     assert artifacts.count == 1
     assert domain2_artifact.pulp_href == artifacts.results[0].pulp_href
@@ -215,7 +220,7 @@ def test_artifact_from_file(
 
     # Show that duplicate artifact can not be uploaded in same domain
     with pytest.raises(CoreApiException) as e:
-        rpm_artifact_factory(pulp_domain=domain1.name)
+        rpm_artifact_factory(path=rpm_path, pulp_domain=domain1.name)
     assert e.value.status == 400
     assert json.loads(e.value.body) == {
         "non_field_errors": [
@@ -229,6 +234,7 @@ def test_rpm_from_file(
     cleanup_domains,
     pulpcore_bindings,
     rpm_package_factory,
+    rpm_create_package,
     gen_object_with_cleanup,
     rpm_package_api,
 ):
@@ -240,9 +246,12 @@ def test_rpm_from_file(
     }
     domain = gen_object_with_cleanup(pulpcore_bindings.DomainsApi, body)
 
+    # Build one RPM and upload the same file into the default and custom domains.
+    rpm_path = rpm_create_package(Nevra(f"content-{uuid.uuid4().hex[:8]}", 0, "1.0", "1", "noarch"))
+
     try:
-        default_content = rpm_package_factory()
-        domain_content = rpm_package_factory(pulp_domain=domain.name)
+        default_content = rpm_package_factory(path=rpm_path)
+        domain_content = rpm_package_factory(path=rpm_path, pulp_domain=domain.name)
         assert default_content.pulp_href != domain_content.pulp_href
         assert default_content.sha256 == domain_content.sha256
 

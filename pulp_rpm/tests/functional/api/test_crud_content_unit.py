@@ -16,16 +16,14 @@ from pulp_rpm.tests.functional.constants import (
     RPM_MODULAR_MODULES_CONTENT_NAME,
     RPM_MODULES_OBSOLETE_CONTENT_NAME,
     RPM_PACKAGE_CONTENT_NAME,
-    RPM_PACKAGE_FILENAME,
-    RPM_PACKAGE_FILENAME2,
     RPM_REPO_METADATA_FIXTURE_URL,
 )
 from pulp_rpm.tests.functional.utils import gen_rpm_content_attrs
 
 
+@pytest.mark.parallel
 def test_crud_content_unit(
-    delete_orphans_pre,
-    signed_artifact,
+    rpm_artifact_factory,
     gen_object_with_cleanup,
     rpm_package_api,
     rpm_repository_api,
@@ -35,8 +33,10 @@ def test_crud_content_unit(
 ):
     """Test creating, reading, updating, and deleting a content unit of package type."""
     # Create content unit
+    artifact = rpm_artifact_factory()
+    relative_path = "test-crud-content-unit-1.0-1.noarch.rpm"
 
-    attrs = gen_rpm_content_attrs(signed_artifact, RPM_PACKAGE_FILENAME)
+    attrs = gen_rpm_content_attrs(artifact, relative_path)
     response = rpm_package_api.create(**attrs)
     content_unit = rpm_package_api.read(monitor_task(response.task).created_resources[0])
     # rpm package doesn't keep relative_path but the location href
@@ -55,14 +55,14 @@ def test_crud_content_unit(
     assert page.results[0] == content_unit
 
     # Attempt to update a content unit using HTTP PATCH
-    attrs = gen_rpm_content_attrs(signed_artifact, RPM_PACKAGE_FILENAME2)
+    attrs = gen_rpm_content_attrs(artifact, relative_path)
     with pytest.raises(AttributeError) as exc:
         rpm_package_api.partial_update(content_unit.pulp_href, attrs)
     msg = "object has no attribute 'partial_update'"
     assert msg in str(exc)
 
     # Attempt to update a content unit using HTTP PUT
-    attrs = gen_rpm_content_attrs(signed_artifact, RPM_PACKAGE_FILENAME2)
+    attrs = gen_rpm_content_attrs(artifact, relative_path)
     with pytest.raises(AttributeError) as exc:
         rpm_package_api.update(content_unit.pulp_href, attrs)
     msg = "object has no attribute 'update'"
@@ -75,14 +75,14 @@ def test_crud_content_unit(
     assert msg in str(exc)
 
     # Attempt to create duplicate package without specifying a repository
-    attrs = gen_rpm_content_attrs(signed_artifact, RPM_PACKAGE_FILENAME)
+    attrs = gen_rpm_content_attrs(artifact, relative_path)
     response = rpm_package_api.create(**attrs)
     duplicate = rpm_package_api.read(monitor_task(response.task).created_resources[0])
     assert duplicate.pulp_href == content_unit.pulp_href
 
     # Attempt to create duplicate package while specifying a repository
     repo = rpm_repository_factory()
-    attrs = gen_rpm_content_attrs(signed_artifact, RPM_PACKAGE_FILENAME)
+    attrs = gen_rpm_content_attrs(artifact, relative_path)
     attrs["repository"] = repo.pulp_href
     response = rpm_package_api.create(**attrs)
     monitored_response = monitor_task(response.task)

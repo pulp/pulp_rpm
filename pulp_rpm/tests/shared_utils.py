@@ -66,14 +66,22 @@ class MetaPackage:
         return hashlib.sha256(f"digest-{SALT}-{n}".encode()).hexdigest()
 
 
-def build_rpm(nevra: Nevra, path: Path, *, file_contents: Optional[bytes] = None) -> None:
-    """Build a minimal RPM file at path using rpm_rs."""
+def build_rpm(nevra: Nevra, path: Path, *, file_contents: Optional[bytes] = None, signer: Optional[rpm_rs.Signer] = None) -> None:
+    """Build a minimal RPM file at path using rpm_rs.
+
+    If `signer` (an `rpm_rs.Signer`) is given, the package is signed.
+
+    If `contents` (bytes) are provided, the RPM will incorporate them as payload.
+    """
     builder = rpm_rs.PackageBuilder(nevra.name, nevra.version, "GPLv2", nevra.arch)
     builder.release(nevra.release)
     builder.epoch(nevra.epoch)
     if file_contents is not None:
         builder.with_file_contents(file_contents, rpm_rs.FileOptions.new("/usr/share/data"))
-    builder.build().write_file(path)
+    if signer is not None:
+        builder.build_and_sign(signer).write_file(path)
+    else:
+        builder.build().write_file(path)
 
 
 def normalized_location(pkg: MetaPackage, prefix: bool = True) -> MetaPackage:
