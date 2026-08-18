@@ -237,10 +237,10 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
     REMOTE_TYPES = [RpmRemote, UlnRemote]
 
     metadata_signing_service = models.ForeignKey(
-        AsciiArmoredDetachedSigningService, on_delete=models.SET_NULL, null=True
+        AsciiArmoredDetachedSigningService, on_delete=models.PROTECT, null=True
     )
     package_signing_service = models.ForeignKey(
-        RpmPackageSigningService, on_delete=models.SET_NULL, null=True
+        RpmPackageSigningService, on_delete=models.PROTECT, null=True
     )
     package_signing_fingerprint = models.TextField(null=True)
     last_sync_details = models.JSONField(default=dict)
