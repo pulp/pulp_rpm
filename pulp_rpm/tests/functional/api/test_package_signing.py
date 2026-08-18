@@ -19,10 +19,7 @@ from pulp_rpm.tests.functional.constants import (
     KEY_V6_MLDSA87_ED448,
     RPM_FIXTURE_MULTI_SIGNED,
     RPM_PACKAGE_FILENAME,
-    RPM_PACKAGE_FILENAME2,
     RPM_SIGNED_URL,
-    RPM_UNSIGNED_URL,
-    RPM_UNSIGNED_URL2,
 )
 from pulp_rpm.tests.functional.utils import (
     Nevra,
@@ -75,11 +72,8 @@ def signing_gpg_homedir_path(tmp_path_factory):
 
 @pytest.fixture(scope="session")
 def signing_gpg_metadata(signing_gpg_homedir_path):
-    response_private = requests.get(KEY_V4_RSA4K.private_url)
-    response_private.raise_for_status()
-
     gpg = gnupg.GPG(gnupghome=signing_gpg_homedir_path)
-    import_result = gpg.import_keys(response_private.content)
+    import_result = gpg.import_keys(fetch_url(KEY_V4_RSA4K.private_url))
 
     fingerprint = KEY_V4_RSA4K.signing_fingerprint
     keyid = fingerprint[-8:]
@@ -289,8 +283,8 @@ def test_sign_package_on_upload(
     verifier.load_from_asc_bytes(fetch_url(KEY_V4_RSA2K.public_url))
     verifier.load_from_asc_bytes(fetch_url(KEY_V4_RSA4K.public_url))
 
-    file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
-    file_to_upload.write_bytes(fetch_url(RPM_UNSIGNED_URL))
+    file_to_upload = tmp_path / "upload.rpm"
+    build_rpm(Nevra("kangaroo", 0, "0.3", "1", "noarch"), file_to_upload)
     assert len(rpm_rs.PackageMetadata.open(str(file_to_upload)).signatures()) == 0
 
     # Upload Package to Repository
@@ -358,8 +352,8 @@ def test_sign_chunked_package_on_upload(
     verifier.load_from_asc_bytes(fetch_url(KEY_V4_RSA2K.public_url))
     verifier.load_from_asc_bytes(fetch_url(KEY_V4_RSA4K.public_url))
 
-    file_to_upload = tmp_path / RPM_PACKAGE_FILENAME2
-    file_to_upload.write_bytes(fetch_url(RPM_UNSIGNED_URL2))
+    file_to_upload = tmp_path / "upload.rpm"
+    build_rpm(Nevra("test-chunked", 0, "1.0", "1", "noarch"), file_to_upload)
     assert len(rpm_rs.PackageMetadata.open(str(file_to_upload)).signatures()) == 0
 
     # Upload Package to Repository
@@ -396,9 +390,9 @@ def test_sign_chunked_package_on_upload(
         rpm_rs.Package.open(str(downloaded_package)).verify_signature(verifier)
 
 
+@pytest.mark.parallel
 def test_signed_repo_modify(
     tmp_path,
-    delete_orphans_pre,
     monitor_task,
     download_content_unit,
     signing_gpg_metadata,
@@ -418,9 +412,9 @@ def test_signed_repo_modify(
     verifier = rpm_rs.Verifier()
     verifier.load_from_asc_bytes(fetch_url(KEY_V4_RSA4K.public_url))
 
-    # Confirm the fixture RPM is initially unsigned.
-    unsigned_package = tmp_path / RPM_PACKAGE_FILENAME
-    unsigned_package.write_bytes(fetch_url(RPM_UNSIGNED_URL))
+    # Confirm a freshly generated RPM is initially unsigned.
+    unsigned_package = tmp_path / "unsigned.rpm"
+    build_rpm(Nevra("test-modify", 0, "1.0", "1", "noarch"), unsigned_package)
     assert len(rpm_rs.PackageMetadata.open(str(unsigned_package)).signatures()) == 0
 
     repository = rpm_repository_factory(
@@ -428,7 +422,7 @@ def test_signed_repo_modify(
         package_signing_fingerprint=prefixed_fingerprint,
     )
 
-    created_package = rpm_package_factory(url=RPM_UNSIGNED_URL)
+    created_package = rpm_package_factory()
     assert created_package.signing_keys == []
     package_href = created_package.pulp_href
     modify_response = rpm_repository_api.modify(
@@ -471,8 +465,8 @@ def test_signed_repo_modify(
     assert task_result.created_resources == []
 
 
+@pytest.mark.parallel
 def test_already_signed_package(
-    delete_orphans_pre,
     monitor_task,
     signing_gpg_metadata,
     rpm_package_signing_service,
@@ -495,7 +489,7 @@ def test_already_signed_package(
         package_signing_fingerprint=prefixed_fingerprint,
     )
 
-    created_package = rpm_package_factory(url=RPM_UNSIGNED_URL)
+    created_package = rpm_package_factory()
     package_href = created_package.pulp_href
 
     first_modify = rpm_repository_api.modify(
@@ -532,8 +526,8 @@ def test_already_signed_package(
     assert task_result.created_resources == [repo_two.latest_version_href]
 
 
+@pytest.mark.parallel
 def test_signing_with_primary_key_fingerprint(
-    delete_orphans_pre,
     monitor_task,
     download_content_unit,
     signing_gpg_metadata,
@@ -563,7 +557,7 @@ def test_signing_with_primary_key_fingerprint(
         package_signing_fingerprint=prefixed_primary,
     )
 
-    created_package = rpm_package_factory(url=RPM_UNSIGNED_URL)
+    created_package = rpm_package_factory()
     modify_response = rpm_repository_api.modify(
         repository.pulp_href, {"add_content_units": [created_package.pulp_href]}
     )
@@ -600,8 +594,8 @@ def test_signing_with_primary_key_fingerprint(
     assert signed_package.signing_keys == sig_fingerprints
 
 
+@pytest.mark.parallel
 def test_signed_repo_modify_overwrite_false_noop(
-    delete_orphans_pre,
     monitor_task,
     signing_gpg_metadata,
     rpm_package_signing_service,
@@ -626,7 +620,7 @@ def test_signed_repo_modify_overwrite_false_noop(
         package_signing_fingerprint=prefixed_fingerprint,
     )
 
-    created_package = rpm_package_factory(url=RPM_UNSIGNED_URL)
+    created_package = rpm_package_factory()
     package_href = created_package.pulp_href
 
     # First add: package gets signed and the result gets stored.
@@ -731,7 +725,7 @@ def test_upload_multi_signed_package(
 
     repository = rpm_repository_factory()
 
-    file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
+    file_to_upload = tmp_path / "upload.rpm"
     shutil.copy2(multi_signed_rpm, file_to_upload)
 
     upload_response = rpm_package_api.create(
@@ -834,7 +828,7 @@ def test_sign_already_signed_package_on_upload_rpmv6(
     builder = rpm_rs.PackageBuilder("kangaroo", "0.3", "Public Domain", "noarch")
     builder.using_config(config)
     builder.release("1")
-    file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
+    file_to_upload = tmp_path / "upload.rpm"
     pkg = builder.build()
     pkg.write_file(str(file_to_upload))
     _sign_package(file_to_upload, key_a.private_url)
@@ -892,7 +886,7 @@ def test_sign_multi_signed_package_on_upload(
     prefixed_a = f"v4:{key_a.signing_fingerprint.upper()}"
     prefixed_b = f"v4:{key_b.signing_fingerprint.upper()}"
 
-    file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
+    file_to_upload = tmp_path / "upload.rpm"
     shutil.copy2(multi_signed_rpm, file_to_upload)
 
     # Sign with key_a — which the package already has.
@@ -933,8 +927,8 @@ def test_upload_mldsa_signed_package(
 
     The signing_keys field should contain the v6-prefixed fingerprint.
     """
-    rpm_path = tmp_path / RPM_PACKAGE_FILENAME
-    rpm_path.write_bytes(fetch_url(RPM_UNSIGNED_URL))
+    rpm_path = tmp_path / "upload.rpm"
+    build_rpm(Nevra("test-mldsa", 0, "1.0", "1", "noarch"), rpm_path)
 
     _sign_package(rpm_path, key.private_url)
 
@@ -968,7 +962,7 @@ def test_upload_multi_signed_v4_v6_mldsa_package(
     Verifies that signing_keys contains both v4 and v6 prefixed fingerprints.
     """
     rpm_path = tmp_path / "multi-signed.rpm"
-    rpm_path.write_bytes(requests.get(RPM_FIXTURE_MULTI_SIGNED).content)
+    rpm_path.write_bytes(fetch_url(RPM_FIXTURE_MULTI_SIGNED))
 
     pkg = rpm_rs.PackageMetadata.open(str(rpm_path))
     sigs = [s for s in pkg.signatures() if s.fingerprint is not None]
@@ -1001,9 +995,8 @@ def test_signing_key_filter_v6_mldsa(
     rpm_repository_api,
 ):
     """Test that the signing_key filter works with v6 ML-DSA fingerprints."""
-    rpm_path = tmp_path / RPM_PACKAGE_FILENAME
-    rpm_path.write_bytes(requests.get(RPM_UNSIGNED_URL).content)
-
+    rpm_path = tmp_path / "upload.rpm"
+    build_rpm(Nevra("test-mldsa-filter", 0, "1.0", "1", "noarch"), rpm_path)
     # TODO: generate a new PQC key in-place to make it truly unique, avoid conflicts with other tests
     _sign_package(rpm_path, KEY_V6_MLDSA65_ED25519.private_url)
 
@@ -1145,7 +1138,7 @@ def test_sign_package_with_mldsa_via_signing_service(
         package_signing_fingerprint=prefixed_fingerprint,
     )
 
-    unsigned_package = rpm_package_factory(url=RPM_UNSIGNED_URL)
+    unsigned_package = rpm_package_factory()
     modify_response = rpm_repository_api.modify(
         repository.pulp_href, {"add_content_units": [unsigned_package.pulp_href]}
     )

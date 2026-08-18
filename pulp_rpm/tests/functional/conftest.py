@@ -31,7 +31,6 @@ from pulp_rpm.tests.functional.constants import (
     RPM_KICKSTART_FIXTURE_URL,
     RPM_MODULAR_FIXTURE_URL,
     RPM_SIGNED_FIXTURE_URL,
-    RPM_SIGNED_URL,
 )
 from pulp_rpm.tests.functional.utils import (
     Nevra,
@@ -128,35 +127,42 @@ def rpm_repository_versions_api(rpm_client):
     return RepositoriesRpmVersionsApi(rpm_client)
 
 
-@pytest.fixture
-def signed_artifact(pulpcore_bindings, tmp_path):
-    data = fetch_url(RPM_SIGNED_URL)
-    artifacts = pulpcore_bindings.ArtifactsApi.list(
-        sha256=hashlib.sha256(data).hexdigest(), limit=1
-    )
-    try:
-        return artifacts.results[0]
-    except IndexError:
-        pass
+@pytest.fixture(scope="session")
+def rpm_signer():
+    """A session-scoped `rpm_rs.Signer` using the v4 RSA4k fixture signing key.
 
-    temp_file = tmp_path / str(uuid.uuid4())
-    temp_file.write_bytes(data)
-    return pulpcore_bindings.ArtifactsApi.create(str(temp_file))
+    Returns `(signer, "v4:<FINGERPRINT>")` for generating locally-signed RPMs
+    whose detected `signing_keys` is predictable.
+    """
+    import rpm_rs
+
+    signer = rpm_rs.Signer(fetch_url(KEY_V4_RSA4K.private_url))
+    return signer, f"v4:{KEY_V4_RSA4K.signing_fingerprint}"
+
+
+def _make_rpm_file(tmp_path, url=None):
+    """Write an RPM to a temp file; fetch from url if given, otherwise generate one."""
+    uid = uuid.uuid4().hex[:8]
+    path = tmp_path / f"test-pkg-{uid}-1.0-1.noarch.rpm"
+    if url is not None:
+        path.write_bytes(fetch_url(url))
+    else:
+        build_rpm(Nevra(f"test-pkg-{uid}", 0, "1.0", "1", "noarch"), path)
+    return path
 
 
 @pytest.fixture
 def rpm_artifact_factory(pulpcore_bindings, gen_object_with_cleanup, pulp_domain_enabled, tmp_path):
     """Return an artifact created from uploading an RPM file."""
 
-    def _rpm_artifact_factory(url=RPM_SIGNED_URL, pulp_domain=None):
-        temp_file = tmp_path / str(uuid.uuid4())
-        temp_file.write_bytes(fetch_url(url))
+    def _rpm_artifact_factory(url=None, pulp_domain=None):
+        rpm_file = _make_rpm_file(tmp_path, url)
         kwargs = {}
         if pulp_domain:
             if not pulp_domain_enabled:
                 raise RuntimeError("Server does not have domains enabled.")
             kwargs["pulp_domain"] = pulp_domain
-        return gen_object_with_cleanup(pulpcore_bindings.ArtifactsApi, str(temp_file), **kwargs)
+        return gen_object_with_cleanup(pulpcore_bindings.ArtifactsApi, str(rpm_file), **kwargs)
 
     return _rpm_artifact_factory
 
@@ -178,22 +184,21 @@ def rpm_package_factory(
     gen_object_with_cleanup,
     pulp_domain_enabled,
     rpm_package_api,
+    tmp_path,
 ):
     """Return a Package created from uploading an RPM file."""
 
-    def _rpm_package_factory(url=RPM_SIGNED_URL, pulp_domain=None):
-        with NamedTemporaryFile() as file_to_upload:
-            file_to_upload.write(fetch_url(url))
-            file_to_upload.flush()
-            upload_attrs = {"file": file_to_upload.name}
+    def _rpm_package_factory(url=None, pulp_domain=None):
+        rpm_file = _make_rpm_file(tmp_path, url)
+        upload_attrs = {"file": str(rpm_file)}
 
-            kwargs = {}
-            if pulp_domain:
-                if not pulp_domain_enabled:
-                    raise RuntimeError("Server does not have domains enabled.")
-                kwargs["pulp_domain"] = pulp_domain
+        kwargs = {}
+        if pulp_domain:
+            if not pulp_domain_enabled:
+                raise RuntimeError("Server does not have domains enabled.")
+            kwargs["pulp_domain"] = pulp_domain
 
-            return gen_object_with_cleanup(rpm_package_api, **upload_attrs, **kwargs)
+        return gen_object_with_cleanup(rpm_package_api, **upload_attrs, **kwargs)
 
     return _rpm_package_factory
 

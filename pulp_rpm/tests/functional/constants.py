@@ -342,14 +342,6 @@ RPM_PACKAGE_FILENAME = "{}-{}-{}.{}.rpm".format(
 )
 """The filename of one RPM package."""
 
-RPM_PACKAGE_FILENAME2 = "{}-{}-{}.{}.rpm".format(
-    RPM_PACKAGE_DATA2["name"],
-    RPM_PACKAGE_DATA2["version"],
-    RPM_PACKAGE_DATA2["release"],
-    RPM_PACKAGE_DATA2["arch"],
-)
-"""The filename of one RPM package."""
-
 RPM_REFERENCES_UPDATEINFO_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-references-updateinfo/")
 """The URL to a repository with ``updateinfo.xml`` containing references.
 
@@ -363,14 +355,8 @@ RPM_RICH_WEAK_FIXTURE_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm-richnweak-deps/
 RPM_SIGNED_URL = urljoin(RPM_SIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
 """The path to a single signed RPM package."""
 
-RPM_SIGNED_URL2 = urljoin(RPM_SIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME2)
-"""The path to a single signed RPM package."""
-
 RPM_UNSIGNED_URL = urljoin(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
 """The path to a single unsigned RPM package."""
-
-RPM_UNSIGNED_URL2 = urljoin(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME2)
-"""The path to a second single unsigned RPM package."""
 
 RPM_FIXTURES_PACKAGES_URL = urljoin(PULP_FIXTURES_BASE_URL, "rpm/packages/")
 """Base URL for standalone fixture RPM packages."""
@@ -643,13 +629,6 @@ class FixtureKey:
     public_url: str
     private_url: str
 
-
-LEGACY_SIGNING_KEY = FixtureKey(
-    primary_fingerprint="0C1A894EBB86AFAE218424CADDEF3019C2D4A8CF",
-    signing_fingerprint="0C1A894EBB86AFAE218424CADDEF3019C2D4A8CF",
-    public_url=urljoin(PULP_FIXTURES_COMMON_URL, "GPG-KEY-fixture-signing"),
-    private_url=urljoin(PULP_FIXTURES_COMMON_URL, "GPG-PRIVATE-KEY-fixture-signing"),
-)
 
 # Newer per-algorithm test keys used by the standalone fixture packages and signing tests.
 PULP_FIXTURES_SIGNING_KEYS_URL = urljoin(PULP_FIXTURES_COMMON_URL, "signing_keys/")
