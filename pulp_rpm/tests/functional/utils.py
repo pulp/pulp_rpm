@@ -88,7 +88,6 @@ def get_metadata_content_helper(base_url, repomd_elem, meta_type):
 
     return download_and_decompress_file(os.path.join(base_url, location_href))
 
-
 @dataclass
 class RemoteRepository:
     url: str
@@ -204,11 +203,11 @@ class RepositoryBuilder:
         else:
             cr_packages = []
             for pkg in packages:
+                rpm_path = repo_dir / pkg.location
+                if rpm_path.exists():
+                    raise FileExistsError(f"RPM already exists at {rpm_path}")
+                rpm_path.parent.mkdir(parents=True, exist_ok=True)
                 if pkg.content is not None:
-                    rpm_path = repo_dir / pkg.location
-                    if rpm_path.exists():
-                        raise FileExistsError(f"RPM already exists at {rpm_path}")
-                    rpm_path.parent.mkdir(parents=True, exist_ok=True)
                     build_rpm(pkg.nevra, rpm_path, file_contents=pkg.content)
                     pkg.digest = hashlib.sha256(rpm_path.read_bytes()).hexdigest()
 
@@ -216,9 +215,6 @@ class RepositoryBuilder:
                     cr_pkg.location_href = pkg.location
                     cr_pkg.time_build = pkg.time_build
                 else:
-                    cr_pkg = cr.package_from_rpm(str(rpm_path))
-                    cr_pkg.location_href = pkg.location
-                    cr_pkg.time_build = pkg.time_build
                     cr_pkg = cr.Package()
                     cr_pkg.name = pkg.nevra.name
                     cr_pkg.arch = pkg.nevra.arch
