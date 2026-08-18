@@ -1,7 +1,6 @@
 from types import SimpleNamespace
 
 import pytest
-import requests
 import rpm_rs
 
 from pulp_rpm.app.shared_utils import extract_signing_keys, format_signing_keys, signing_key_matches
@@ -11,6 +10,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_FIXTURE_SIGNED,
     RPM_FIXTURE_UNSIGNED,
 )
+from pulp_rpm.tests.functional.utils import fetch_url
 
 V4_FINGERPRINT = "AA86F75E427A19DD33346403EE4D7792F748182B"
 V4_KEY_ID = "EE4D7792F748182B"  # low-order 64 bits of V4_FINGERPRINT
@@ -20,9 +20,8 @@ V6_KEY_ID = "CB186C4F0609A697"  # high-order 64 bits of V6_FINGERPRINT
 
 def _download_rpm(tmp_path, url, name="test.rpm"):
     path = str(tmp_path / name)
-    data = requests.get(url).content
     with open(path, "wb") as f:
-        f.write(data)
+        f.write(fetch_url(url))
     return path
 
 
