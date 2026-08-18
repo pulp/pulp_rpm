@@ -44,10 +44,18 @@ def get_package_repo_path(package_filename):
     return os.path.join(PACKAGES_DIRECTORY, package_filename.lower()[0], package_filename)
 
 
+def fetch_url(url):
+    """Download a URL and return its content bytes, raising on HTTP error."""
+    resp = requests.get(url)
+    resp.raise_for_status()
+    return resp.content
+
+
 def download_and_decompress_file(url):
     # Tests work normally but fails for S3 due '.gz'
     # Why is it only compressed for S3?
     resp = requests.get(url)
+    resp.raise_for_status()
     decompression = None
     if url.endswith(".gz"):
         decompression = gzip.decompress
@@ -200,7 +208,7 @@ class PackageListFetcher:
     @staticmethod
     def _from_http_url(base_url: str) -> PackageList:
         repomd_url = base_url.rstrip("/") + "/repodata/repomd.xml"
-        repomd = ET.fromstring(requests.get(repomd_url).content)
+        repomd = ET.fromstring(fetch_url(repomd_url))
         content = get_metadata_content_helper(base_url, repomd, "primary")
         assert content is not None, "No primary metadata found in repomd.xml"
         with tempfile.NamedTemporaryFile(suffix=".xml", delete=False) as f:

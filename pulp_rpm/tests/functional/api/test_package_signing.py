@@ -3,7 +3,6 @@ import subprocess
 
 import gnupg
 import pytest
-import requests
 import rpm_rs
 
 from pulpcore.client.pulp_rpm.exceptions import ApiException
@@ -29,6 +28,7 @@ from pulp_rpm.tests.functional.utils import (
     Nevra,
     RepositoryBuilder,
     build_rpm,
+    fetch_url,
     get_package_repo_path,
 )
 
@@ -208,7 +208,7 @@ def rpm_package_signing_service_resign(_rpm_package_signing_service_resign_name,
 def _sign_package(rpm_path, private_key_url, output=None, key_fpr=None):
     """Sign an RPM in place using rpm_rs with a private key fetched from a URL."""
     output = output or rpm_path
-    key_bytes = requests.get(private_key_url).content
+    key_bytes = fetch_url(private_key_url)
     signer = rpm_rs.Signer(key_bytes)
     if key_fpr:
         signer = signer.with_signing_key(key_fpr)
@@ -256,9 +256,7 @@ def signing_gpg_extra(signing_gpg_metadata):
     gpg, _, _ = signing_gpg_metadata
 
     for url in (KEY_V4_RSA2K.private_url, KEY_V4_RSA4K.private_url):
-        response = requests.get(url)
-        response.raise_for_status()
-        import_result = gpg.import_keys(response.content)
+        import_result = gpg.import_keys(fetch_url(url))
         gpg.trust_keys(import_result.fingerprints[0], "TRUST_ULTIMATE")
 
     return KEY_V4_RSA2K, KEY_V4_RSA4K
@@ -288,11 +286,11 @@ def test_sign_package_on_upload(
     assert len(fingerprint_set) == 2
 
     verifier = rpm_rs.Verifier()
-    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA2K.public_url).content)
-    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA4K.public_url).content)
+    verifier.load_from_asc_bytes(fetch_url(KEY_V4_RSA2K.public_url))
+    verifier.load_from_asc_bytes(fetch_url(KEY_V4_RSA4K.public_url))
 
     file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
-    file_to_upload.write_bytes(requests.get(RPM_UNSIGNED_URL).content)
+    file_to_upload.write_bytes(fetch_url(RPM_UNSIGNED_URL))
     assert len(rpm_rs.PackageMetadata.open(str(file_to_upload)).signatures()) == 0
 
     # Upload Package to Repository
@@ -357,11 +355,11 @@ def test_sign_chunked_package_on_upload(
     assert len(fingerprint_set) == 2
 
     verifier = rpm_rs.Verifier()
-    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA2K.public_url).content)
-    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA4K.public_url).content)
+    verifier.load_from_asc_bytes(fetch_url(KEY_V4_RSA2K.public_url))
+    verifier.load_from_asc_bytes(fetch_url(KEY_V4_RSA4K.public_url))
 
     file_to_upload = tmp_path / RPM_PACKAGE_FILENAME2
-    file_to_upload.write_bytes(requests.get(RPM_UNSIGNED_URL2).content)
+    file_to_upload.write_bytes(fetch_url(RPM_UNSIGNED_URL2))
     assert len(rpm_rs.PackageMetadata.open(str(file_to_upload)).signatures()) == 0
 
     # Upload Package to Repository
@@ -418,11 +416,11 @@ def test_signed_repo_modify(
     prefixed_fingerprint = f"v4:{fingerprint}"
 
     verifier = rpm_rs.Verifier()
-    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA4K.public_url).content)
+    verifier.load_from_asc_bytes(fetch_url(KEY_V4_RSA4K.public_url))
 
     # Confirm the fixture RPM is initially unsigned.
     unsigned_package = tmp_path / RPM_PACKAGE_FILENAME
-    unsigned_package.write_bytes(requests.get(RPM_UNSIGNED_URL).content)
+    unsigned_package.write_bytes(fetch_url(RPM_UNSIGNED_URL))
     assert len(rpm_rs.PackageMetadata.open(str(unsigned_package)).signatures()) == 0
 
     repository = rpm_repository_factory(
@@ -582,7 +580,7 @@ def test_signing_with_primary_key_fingerprint(
 
     # Verify the served package has a valid signature
     verifier = rpm_rs.Verifier()
-    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA4K.public_url).content)
+    verifier.load_from_asc_bytes(fetch_url(KEY_V4_RSA4K.public_url))
 
     publication = rpm_publication_factory(repository=repository.pulp_href)
     distribution = rpm_distribution_factory(publication=publication.pulp_href)
@@ -770,11 +768,11 @@ def test_sign_already_signed_package_on_upload(
     prefixed_b = f"v4:{key_b.signing_fingerprint.upper()}"
 
     verifier = rpm_rs.Verifier()
-    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA4K.public_url).content)
+    verifier.load_from_asc_bytes(fetch_url(KEY_V4_RSA4K.public_url))
 
     # The fixture RPM is already signed with the old fixture key.
     file_to_upload = tmp_path / RPM_PACKAGE_FILENAME
-    file_to_upload.write_bytes(requests.get(RPM_SIGNED_URL).content)
+    file_to_upload.write_bytes(fetch_url(RPM_SIGNED_URL))
 
     # Extract the existing signature fingerprint from the pre-signed RPM.
     pkg = rpm_rs.PackageMetadata.open(str(file_to_upload))
@@ -828,8 +826,8 @@ def test_sign_already_signed_package_on_upload_rpmv6(
     prefixed_b = f"v4:{key_b.signing_fingerprint.upper()}"
 
     verifier = rpm_rs.Verifier()
-    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA2K.public_url).content)
-    verifier.load_from_asc_bytes(requests.get(KEY_V4_RSA4K.public_url).content)
+    verifier.load_from_asc_bytes(fetch_url(KEY_V4_RSA2K.public_url))
+    verifier.load_from_asc_bytes(fetch_url(KEY_V4_RSA4K.public_url))
 
     # Build a v6-format RPM pre-signed with key_a (no legacy v4 signature).
     config = rpm_rs.BuildConfig(format=rpm_rs.RpmFormat.V6)
@@ -936,7 +934,7 @@ def test_upload_mldsa_signed_package(
     The signing_keys field should contain the v6-prefixed fingerprint.
     """
     rpm_path = tmp_path / RPM_PACKAGE_FILENAME
-    rpm_path.write_bytes(requests.get(RPM_UNSIGNED_URL).content)
+    rpm_path.write_bytes(fetch_url(RPM_UNSIGNED_URL))
 
     _sign_package(rpm_path, key.private_url)
 

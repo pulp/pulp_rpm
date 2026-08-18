@@ -4,7 +4,6 @@ import os
 from tempfile import NamedTemporaryFile
 
 import pytest
-import requests
 import rpm_rs
 
 from pulpcore.client.pulp_rpm import ApiException
@@ -35,6 +34,7 @@ from pulp_rpm.tests.functional.constants import (
     SMALL_GROUPS,
     SMALL_LANGPACK,
 )
+from pulp_rpm.tests.functional.utils import fetch_url
 
 SMALL_CONTENT = SMALL_GROUPS + SMALL_CATEGORY + SMALL_LANGPACK + SMALL_ENVIRONMENTS
 CENTOS8_CONTENT = BIG_GROUPS + BIG_CATEGORY + BIG_LANGPACK + BIG_ENVIRONMENTS
@@ -50,7 +50,7 @@ def key_id_only_signed_rpm(tmp_path):
     is a convenient, publicly available example.
     """
     path = tmp_path / "packages-microsoft-prod.rpm"
-    path.write_bytes(requests.get(MICROSOFT_PROD_RPM_URL).content)
+    path.write_bytes(fetch_url(MICROSOFT_PROD_RPM_URL))
 
     pkg = rpm_rs.PackageMetadata.open(str(path))
     sigs = list(pkg.signatures())
@@ -75,7 +75,7 @@ def test_single_request_unit_and_duplicate_unit(
 
     labels = {"key_1": "value_1"}
     with NamedTemporaryFile() as file_to_upload:
-        file_to_upload.write(requests.get(file_to_use).content)
+        file_to_upload.write(fetch_url(file_to_use))
         upload_attrs = {"file": file_to_upload.name, "pulp_labels": labels}
         upload = rpm_package_api.create(**upload_attrs)
 
@@ -86,7 +86,7 @@ def test_single_request_unit_and_duplicate_unit(
 
     # Duplicate unit
     with NamedTemporaryFile() as file_to_upload:
-        file_to_upload.write(requests.get(file_to_use).content)
+        file_to_upload.write(fetch_url(file_to_use))
         upload_attrs = {"file": file_to_upload.name}
         upload = rpm_package_api.create(**upload_attrs)
 
@@ -102,7 +102,7 @@ def test_upload_non_ascii(delete_orphans_pre, rpm_package_api, monitor_task):
     """Test whether one can upload an RPM with non-ascii metadata."""
     packages_count = rpm_package_api.list().count
     with NamedTemporaryFile() as file_to_upload:
-        file_to_upload.write(requests.get(RPM_WITH_NON_ASCII_URL).content)
+        file_to_upload.write(fetch_url(RPM_WITH_NON_ASCII_URL))
         upload_attrs = {"file": file_to_upload.name}
         upload = rpm_package_api.create(**upload_attrs)
 
@@ -259,7 +259,7 @@ def test_synchronous_package_upload(
     with gen_user(model_roles=["rpm.rpm_package_uploader"]):
         labels = {"key_1": "value_1"}
         with NamedTemporaryFile() as file_to_upload:
-            file_to_upload.write(requests.get(file_to_use).content)
+            file_to_upload.write(fetch_url(file_to_use))
             upload_attrs = {"file": file_to_upload.name, "pulp_labels": labels}
             package = rpm_package_api.upload(**upload_attrs)
 
@@ -273,7 +273,7 @@ def test_synchronous_package_upload(
         # Duplicate unit
         with NamedTemporaryFile() as file_to_upload:
             new_labels = {"key_2": "value_2"}
-            file_to_upload.write(requests.get(file_to_use).content)
+            file_to_upload.write(fetch_url(file_to_use))
             upload_attrs = {"file": file_to_upload.name, "pulp_labels": new_labels}
             duplicate_package = rpm_package_api.upload(**upload_attrs)
 
@@ -284,7 +284,7 @@ def test_synchronous_package_upload(
     with gen_user(model_roles=[]), pytest.raises(ApiException) as ctx:
         labels = {"key_1": "value_1"}
         with NamedTemporaryFile() as file_to_upload:
-            file_to_upload.write(requests.get(file_to_use).content)
+            file_to_upload.write(fetch_url(file_to_use))
             upload_attrs = {"file": file_to_upload.name, "pulp_labels": labels}
             rpm_package_api.upload(**upload_attrs)
     assert ctx.value.status == 403
@@ -308,7 +308,7 @@ def test_synchronous_package_upload_from_artifact(
     """
     file_to_use = os.path.join(fixture_url, RPM_PACKAGE_FILENAME2)
     with NamedTemporaryFile() as file_to_upload:
-        file_to_upload.write(requests.get(file_to_use).content)
+        file_to_upload.write(fetch_url(file_to_use))
         try:
             artifact = pulpcore_bindings.ArtifactsApi.create(file_to_upload.name)
         except BadRequestException as exc:
@@ -345,7 +345,7 @@ def test_synchronous_package_upload_from_chunks(
     file_to_use = os.path.join(RPM_UNSIGNED_FIXTURE_URL, RPM_PACKAGE_FILENAME)
 
     file_path = tmp_path / RPM_PACKAGE_FILENAME
-    file_path.write_bytes(requests.get(file_to_use).content)
+    file_path.write_bytes(fetch_url(file_to_use))
 
     file_chunks_data = pulpcore_chunked_file_factory(file_path)
     upload = pulpcore_upload_chunks(
@@ -375,7 +375,7 @@ def test_async_upload_signing_keys(
     file_to_use = os.path.join(fixture_url, RPM_PACKAGE_FILENAME)
 
     with NamedTemporaryFile() as file_to_upload:
-        file_to_upload.write(requests.get(file_to_use).content)
+        file_to_upload.write(fetch_url(file_to_use))
         upload = rpm_package_api.create(file=file_to_upload.name)
 
     content = monitor_task(upload.task).created_resources[0]
@@ -419,7 +419,7 @@ def test_synchronous_upload_signing_keys_from_chunks(
     file_to_use = os.path.join(fixture_url, RPM_PACKAGE_FILENAME)
 
     file_path = tmp_path / RPM_PACKAGE_FILENAME
-    file_path.write_bytes(requests.get(file_to_use).content)
+    file_path.write_bytes(fetch_url(file_to_use))
 
     file_chunks_data = pulpcore_chunked_file_factory(file_path)
     upload = pulpcore_upload_chunks(
@@ -487,7 +487,7 @@ def test_async_upload_with_newer_fixture_rpm(
 ):
     """Test async upload with a newer fixture RPM (signed with KEY_V4_RSA4K)."""
     file_to_upload = tmp_path / "test-package-signed.rpm"
-    file_to_upload.write_bytes(requests.get(RPM_FIXTURE_SIGNED).content)
+    file_to_upload.write_bytes(fetch_url(RPM_FIXTURE_SIGNED))
 
     upload = rpm_package_api.create(file=str(file_to_upload))
     content = monitor_task(upload.task).created_resources[0]

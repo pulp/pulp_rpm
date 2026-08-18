@@ -5,12 +5,11 @@ from random import choice
 from urllib.parse import urljoin
 
 import pytest
-import requests
-
 from pulpcore.client.pulp_rpm import RpmRpmPublication
 
 from pulp_rpm.tests.functional.constants import RPM_UNSIGNED_FIXTURE_URL
 from pulp_rpm.tests.functional.utils import (
+    fetch_url,
     get_package_repo_path,
 )
 
@@ -59,7 +58,7 @@ def test_all(
     package_paths = [p.location_href for p in packages.results]
     unit_path = choice(package_paths)
     fixture_hash = hashlib.sha256(
-        requests.get(urljoin(RPM_UNSIGNED_FIXTURE_URL, unit_path)).content
+        fetch_url(urljoin(RPM_UNSIGNED_FIXTURE_URL, unit_path))
     ).hexdigest()
 
     # …and Pulp.

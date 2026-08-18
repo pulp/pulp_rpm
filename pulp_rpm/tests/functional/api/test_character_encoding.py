@@ -3,8 +3,6 @@
 import uuid
 
 import pytest
-import requests
-
 from pulpcore.tests.functional.utils import PulpTaskError
 
 from pulp_rpm.tests.functional.constants import (
@@ -13,6 +11,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_WITH_NON_UTF_8_NAME,
     RPM_WITH_NON_UTF_8_URL,
 )
+from pulp_rpm.tests.functional.utils import fetch_url
 
 """Test upload of RPMs with different character encoding.
 
@@ -28,7 +27,7 @@ def test_upload_non_ascii(
 ):
     """Test whether one can upload an RPM with non-ascii metadata."""
     temp_file = tmp_path / str(uuid.uuid4())
-    temp_file.write_bytes(requests.get(RPM_WITH_NON_ASCII_URL).content)
+    temp_file.write_bytes(fetch_url(RPM_WITH_NON_ASCII_URL))
     artifact = pulpcore_bindings.ArtifactsApi.create(str(temp_file))
     response = rpm_package_api.create(
         artifact=artifact.pulp_href,
@@ -43,7 +42,7 @@ def test_upload_non_utf8(
 ):
     """Test whether an exception is raised when non-utf-8 is uploaded."""
     temp_file = tmp_path / str(uuid.uuid4())
-    temp_file.write_bytes(requests.get(RPM_WITH_NON_UTF_8_URL).content)
+    temp_file.write_bytes(fetch_url(RPM_WITH_NON_UTF_8_URL))
     artifact = pulpcore_bindings.ArtifactsApi.create(str(temp_file))
     with pytest.raises(PulpTaskError) as ctx:
         response = rpm_package_api.create(

@@ -7,10 +7,10 @@ from time import sleep
 from urllib.parse import urlparse
 
 import pytest
-import requests
 from aiohttp import ClientResponseError
 
 from pulp_rpm.tests.functional.constants import RPM_SIGNED_URL
+from pulp_rpm.tests.functional.utils import fetch_url
 
 
 @pytest.fixture(scope="class")
@@ -23,7 +23,7 @@ def rpm_package_factory_class(
 
     def _rpm_package_factory_class(url=RPM_SIGNED_URL, pulp_domain=None):
         with NamedTemporaryFile() as file_to_upload:
-            file_to_upload.write(requests.get(url).content)
+            file_to_upload.write(fetch_url(url))
             file_to_upload.flush()
             upload_attrs = {"file": file_to_upload.name}
 

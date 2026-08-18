@@ -38,6 +38,7 @@ from pulp_rpm.tests.functional.utils import (
     PackageListFetcher,
     RepositoryBuilder,
     build_rpm,
+    fetch_url,
 )
 
 
@@ -129,7 +130,7 @@ def rpm_repository_versions_api(rpm_client):
 
 @pytest.fixture
 def signed_artifact(pulpcore_bindings, tmp_path):
-    data = requests.get(RPM_SIGNED_URL).content
+    data = fetch_url(RPM_SIGNED_URL)
     artifacts = pulpcore_bindings.ArtifactsApi.list(
         sha256=hashlib.sha256(data).hexdigest(), limit=1
     )
@@ -149,7 +150,7 @@ def rpm_artifact_factory(pulpcore_bindings, gen_object_with_cleanup, pulp_domain
 
     def _rpm_artifact_factory(url=RPM_SIGNED_URL, pulp_domain=None):
         temp_file = tmp_path / str(uuid.uuid4())
-        temp_file.write_bytes(requests.get(url).content)
+        temp_file.write_bytes(fetch_url(url))
         kwargs = {}
         if pulp_domain:
             if not pulp_domain_enabled:
@@ -182,7 +183,7 @@ def rpm_package_factory(
 
     def _rpm_package_factory(url=RPM_SIGNED_URL, pulp_domain=None):
         with NamedTemporaryFile() as file_to_upload:
-            file_to_upload.write(requests.get(url).content)
+            file_to_upload.write(fetch_url(url))
             file_to_upload.flush()
             upload_attrs = {"file": file_to_upload.name}
 
@@ -284,7 +285,7 @@ def rpm_metadata_signing_service(pulpcore_bindings, tmp_path_factory):
 def upload_wrong_file_type(rpm_advisory_api):
     def _upload(remote_path):
         with NamedTemporaryFile() as file_to_upload:
-            file_to_upload.write(requests.get(remote_path).content)
+            file_to_upload.write(fetch_url(remote_path))
             file_to_upload.flush()
             upload_attrs = {"file": file_to_upload.name}
             return rpm_advisory_api.create(**upload_attrs)
