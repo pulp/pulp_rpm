@@ -49,9 +49,9 @@ def key_id_only_signed_rpm(tmp_path):
     pkg = rpm_rs.PackageMetadata.open(str(path))
     sigs = list(pkg.signatures())
     assert len(sigs) > 0, "Test RPM should be signed"
-    assert any(
-        s.fingerprint is None and s.key_id is not None for s in sigs
-    ), "Test RPM should have key_id-only signatures (no fingerprint subpacket)"
+    assert any(s.fingerprint is None and s.key_id is not None for s in sigs), (
+        "Test RPM should have key_id-only signatures (no fingerprint subpacket)"
+    )
 
     return path
 
@@ -444,9 +444,9 @@ def test_async_upload_signing_keys_key_id_only(
     package = rpm_package_api.read(content)
 
     assert package.signing_keys is not None
-    assert (
-        len(package.signing_keys) > 0
-    ), "signing_keys should be populated for RPMs with key_id-only signatures"
+    assert len(package.signing_keys) > 0, (
+        "signing_keys should be populated for RPMs with key_id-only signatures"
+    )
     assert all(k.startswith("keyid:") for k in package.signing_keys)
 
 
@@ -464,9 +464,9 @@ def test_sync_upload_signing_keys_key_id_only(
         package = rpm_package_api.upload(file=str(key_id_only_signed_rpm))
 
     assert package.signing_keys is not None
-    assert (
-        len(package.signing_keys) > 0
-    ), "signing_keys should be populated for RPMs with key_id-only signatures"
+    assert len(package.signing_keys) > 0, (
+        "signing_keys should be populated for RPMs with key_id-only signatures"
+    )
     assert all(k.startswith("keyid:") for k in package.signing_keys)
 
 
