@@ -197,12 +197,13 @@ class UpdateRecord(Content):
             pkglist(list): list of tuples with NEVRA info
 
         """
-        pkglist = []
-        for collection in self.collections.all():
-            for pkg in collection.packages.all().order_by("sum"):
-                nevra = (pkg.name, pkg.epoch, pkg.version, pkg.release, pkg.arch)
-                pkglist.append(nevra)
-        return pkglist
+        collection_pks = self.collections.values_list("pk", flat=True)  # lazy
+        packages = (
+            UpdateCollectionPackage.objects.filter(update_collection__in=collection_pks)
+            .order_by("sum")
+            .values_list("name", "epoch", "version", "release", "arch")
+        )
+        return list(packages.iterator())
 
     def get_module_list(self):
         """

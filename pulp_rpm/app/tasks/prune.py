@@ -16,7 +16,7 @@ from pulpcore.plugin.tasking import dispatch
 
 from pulp_rpm.app.models.package import Package
 from pulp_rpm.app.models.repository import RpmRepository
-from pulp_rpm.app.shared_utils import annotate_with_age
+from pulp_rpm.app.sql_utils import annotate_with_age
 
 log = getLogger(__name__)
 
