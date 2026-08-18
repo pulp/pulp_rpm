@@ -128,16 +128,60 @@ def rpm_repository_versions_api(rpm_client):
 
 
 @pytest.fixture(scope="session")
-def rpm_signer():
-    """A session-scoped `rpm_rs.Signer` using the v4 RSA4k fixture signing key.
+def rpm_key_bytes():
+    """Session-scoped cache of fetched signing-key bytes, keyed by URL.
 
-    Returns `(signer, "v4:<FINGERPRINT>")` for generating locally-signed RPMs
-    whose detected `signing_keys` is predictable.
+    Prevents the same public/private key file from being downloaded once per test.
+    """
+    cache = {}
+
+    def _fetch(url):
+        if url not in cache:
+            cache[url] = fetch_url(url)
+        return cache[url]
+
+    return _fetch
+
+
+@pytest.fixture(scope="session")
+def rpm_signer_factory(rpm_key_bytes):
+    """Return a factory building an `rpm_rs.Signer` from a fixture key constant.
+
+    The factory takes a `FixtureKey` (default `KEY_V4_RSA4K`) and returns
+    `(signer, "<version>:<FINGERPRINT>")` so the detected `signing_keys` is predictable.
     """
     import rpm_rs
 
-    signer = rpm_rs.Signer(fetch_url(KEY_V4_RSA4K.private_url))
-    return signer, f"v4:{KEY_V4_RSA4K.signing_fingerprint}"
+    def _factory(key=KEY_V4_RSA4K):
+        signer = rpm_rs.Signer(rpm_key_bytes(key.private_url))
+        return signer, f"{key.version}:{key.signing_fingerprint}"
+
+    return _factory
+
+
+@pytest.fixture(scope="session")
+def rpm_signer(rpm_signer_factory):
+    """A session-scoped signer using the v4 RSA4k fixture key. See `rpm_signer_factory`."""
+    return rpm_signer_factory()
+
+
+@pytest.fixture(scope="session")
+def rpm_verifier_factory(rpm_key_bytes):
+    """Return a factory building an `rpm_rs.Verifier` from fixture key constants.
+
+    Accepts one or more `FixtureKey` objects so a single verifier can validate
+    artifacts carrying multiple signatures. Public keys are fetched once per
+    session and cached.
+    """
+    import rpm_rs
+
+    def _factory(*keys):
+        verifier = rpm_rs.Verifier()
+        for key in keys:
+            verifier.load_from_asc_bytes(rpm_key_bytes(key.public_url))
+        return verifier
+
+    return _factory
 
 
 def _make_rpm_file(tmp_path, url=None):
