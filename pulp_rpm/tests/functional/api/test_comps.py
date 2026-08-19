@@ -32,6 +32,35 @@ def _parse_comps(xml):
     return rpmmd.CompsData.from_xml(xml)
 
 
+def _upload_comps(rpm_comps_api, repo_href, xml, monitor_task, replace=False):
+    """Upload a comps XML string into a repository and wait for the task."""
+    with NamedTemporaryFile("w+", suffix=".xml") as f:
+        f.write(xml)
+        f.flush()
+        response = rpm_comps_api.rpm_comps_upload(
+            file=f.name, repository=repo_href, replace=replace
+        )
+    return monitor_task(response.task)
+
+
+def _modify_comps_group_name(xml, group_id, new_name):
+    """Return a copy of the comps XML with one group's untranslated name changed.
+
+    The group `id` is preserved, so the result is a genuinely modified variant
+    of the same logical group (which yields a new content unit on upload).
+    """
+    if isinstance(xml, bytes):
+        xml = xml.decode("utf-8")
+    root = ElementTree.fromstring(xml)
+    for group in root.findall("group"):
+        gid = group.find("id")
+        if gid is not None and gid.text == group_id:
+            for name in group.findall("name"):
+                if not name.attrib:  # the untranslated <name>, not an xml:lang variant
+                    name.text = new_name
+    return ElementTree.tostring(root, encoding="unicode")
+
+
 def _pkglist_to_list(packages):
     """Convert a comps package list to a sorted, deduplicated list of package dicts."""
     seen = []
@@ -344,3 +373,60 @@ class TestCompsPublishRoundtrip:
         assert published_comps_xml is not None, "No comps metadata in published repo"
 
         _assert_comps_equal(original_comps_xml, published_comps_xml)
+
+
+class TestCompsReupload:
+    """Verify re-uploading modified comps into a repo that already has comps."""
+
+    @pytest.mark.parallel
+    def test_reupload_modified_comps_replaces(
+        self,
+        rpm_comps_api,
+        rpm_repository_factory,
+        rpm_repository_api,
+        rpm_package_groups_api,
+        rpm_publication_api,
+        rpm_distribution_factory,
+        distribution_base_url,
+        monitor_task,
+    ):
+        repo = rpm_repository_factory()
+
+        # Initial upload.
+        _upload_comps(rpm_comps_api, repo.pulp_href, SMALL_COMPS_XML, monitor_task)
+
+        # Re-upload a modified variant (same group id, changed name) with
+        # replace=True so the original comps content is swapped out.
+        modified_xml = _modify_comps_group_name(SMALL_COMPS_XML, "birds", "Modified Birds")
+        _upload_comps(rpm_comps_api, repo.pulp_href, modified_xml, monitor_task, replace=True)
+
+        repo = rpm_repository_api.read(repo.pulp_href)
+
+        # Exactly one 'birds' group must remain, carrying the modified name.
+        # (Without replace, the same-id original would linger alongside it.)
+        api_groups = rpm_package_groups_api.list(
+            repository_version=repo.latest_version_href
+        ).results
+        birds = [g for g in api_groups if g.id == "birds"]
+        assert len(birds) == 1, "replace should leave exactly one 'birds' group"
+        assert birds[0].name == "Modified Birds"
+
+        # Publish and verify the served comps.xml reflects the modification and
+        # no longer matches the original upload.
+        publish_data = RpmRpmPublication(repository=repo.pulp_href)
+        publication_href = monitor_task(
+            rpm_publication_api.create(publish_data).task
+        ).created_resources[0]
+
+        distribution = rpm_distribution_factory(publication=publication_href)
+        dist_url = distribution_base_url(distribution.base_url)
+
+        repomd = ElementTree.fromstring(
+            requests.get(os.path.join(dist_url, "repodata/repomd.xml")).text
+        )
+        published_comps_xml = get_metadata_content_helper(dist_url, repomd, "group")
+        assert published_comps_xml is not None, "No comps metadata in published repo"
+
+        _assert_comps_equal(modified_xml, published_comps_xml)
+        with pytest.raises(AssertionError):
+            _assert_comps_equal(SMALL_COMPS_XML, published_comps_xml)
