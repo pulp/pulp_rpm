@@ -8,6 +8,14 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.32.11 (2026-08-19) {: #3.32.11 }
+
+#### Bugfixes {: #3.32.11-bugfix }
+
+- Fixed queries in the content copy API that could exceed PostgreSQL's 65535 bound-parameter limit.
+
+---
+
 ## 3.32.10 (2026-06-03) {: #3.32.10 }
 
 #### Bugfixes {: #3.32.10-bugfix }
