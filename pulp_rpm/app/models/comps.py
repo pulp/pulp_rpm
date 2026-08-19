@@ -121,8 +121,8 @@ class PackageGroup(Content):
             "packages": cls.pkglist_to_list(group.packages),
             "biarch_only": group.biarchonly,
             "langonly": group.langonly,
-            "desc_by_lang": dict(group.desc_by_lang),
-            "name_by_lang": dict(group.name_by_lang),
+            "desc_by_lang": group.desc_by_lang,
+            "name_by_lang": group.name_by_lang,
         }
 
     def to_comps_group(self):
@@ -137,8 +137,8 @@ class PackageGroup(Content):
             langonly=self.langonly,
         )
         group.packages = self.list_to_pkglist(self.packages)
-        group.desc_by_lang = list(self.desc_by_lang.items())
-        group.name_by_lang = list(self.name_by_lang.items())
+        group.desc_by_lang = self.desc_by_lang
+        group.name_by_lang = self.name_by_lang
         return group
 
 
@@ -191,7 +191,7 @@ class PackageCategory(Content):
         unique_together = ("_pulp_domain", "digest")
 
     @classmethod
-    def grplist_to_lst(cls, group_ids):
+    def grouplist_to_list(cls, group_ids):
         return [{"name": gid, "default": False} for gid in group_ids]
 
     @classmethod
@@ -201,9 +201,9 @@ class PackageCategory(Content):
             "name": category.name,
             "description": category.description or "",
             "display_order": category.display_order,
-            "group_ids": cls.grplist_to_lst(category.group_ids),
-            "desc_by_lang": dict(category.desc_by_lang),
-            "name_by_lang": dict(category.name_by_lang),
+            "group_ids": cls.grouplist_to_list(category.group_ids),
+            "desc_by_lang": category.desc_by_lang,
+            "name_by_lang": category.name_by_lang,
         }
 
     def to_comps_category(self):
@@ -214,8 +214,8 @@ class PackageCategory(Content):
             display_order=self.display_order,
         )
         cat.group_ids = [g["name"] for g in self.group_ids]
-        cat.desc_by_lang = list(self.desc_by_lang.items())
-        cat.name_by_lang = list(self.name_by_lang.items())
+        cat.desc_by_lang = self.desc_by_lang
+        cat.name_by_lang = self.name_by_lang
         return cat
 
 
@@ -271,7 +271,7 @@ class PackageEnvironment(Content):
         unique_together = ("_pulp_domain", "digest")
 
     @classmethod
-    def grplist_to_lst(cls, group_ids):
+    def grouplist_to_list(cls, group_ids):
         return [{"name": gid, "default": False} for gid in group_ids]
 
     @classmethod
@@ -285,10 +285,10 @@ class PackageEnvironment(Content):
             "name": environment.name,
             "description": environment.description or "",
             "display_order": environment.display_order,
-            "group_ids": cls.grplist_to_lst(environment.group_ids),
+            "group_ids": cls.grouplist_to_list(environment.group_ids),
             "option_ids": cls.optlist_to_lst(environment.option_ids),
-            "desc_by_lang": dict(environment.desc_by_lang),
-            "name_by_lang": dict(environment.name_by_lang),
+            "desc_by_lang": environment.desc_by_lang,
+            "name_by_lang": environment.name_by_lang,
         }
 
     def to_comps_environment(self):
@@ -303,8 +303,8 @@ class PackageEnvironment(Content):
             rpmmd.CompsEnvironmentOption(group_id=o["name"], default=o["default"])
             for o in self.option_ids
         ]
-        env.desc_by_lang = list(self.desc_by_lang.items())
-        env.name_by_lang = list(self.name_by_lang.items())
+        env.desc_by_lang = self.desc_by_lang
+        env.name_by_lang = self.name_by_lang
         return env
 
 
