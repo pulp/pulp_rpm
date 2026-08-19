@@ -4,6 +4,7 @@ import subprocess
 import gnupg
 import pytest
 import rpm_rs
+from pysequoia import SigningAlgorithm
 
 from pulpcore.client.pulp_rpm.exceptions import ApiException
 
@@ -201,9 +202,13 @@ def rpm_package_signing_service_resign(_rpm_package_signing_service_resign_name,
 
 def _sign_package(rpm_path, private_key_url, output=None, key_fpr=None):
     """Sign an RPM in place using rpm_rs with a private key fetched from a URL."""
+    signer = rpm_rs.Signer(fetch_url(private_key_url))
+    _sign_package_with_signer(rpm_path, signer, output=output, key_fpr=key_fpr)
+
+
+def _sign_package_with_signer(rpm_path, signer, output=None, key_fpr=None):
+    """Sign an RPM in place using rpm_rs with the given `rpm_rs.Signer`."""
     output = output or rpm_path
-    key_bytes = fetch_url(private_key_url)
-    signer = rpm_rs.Signer(key_bytes)
     if key_fpr:
         signer = signer.with_signing_key(key_fpr)
     pkg = rpm_rs.Package.open(rpm_path)
@@ -990,12 +995,15 @@ def test_signing_key_filter_v6_mldsa(
     rpm_package_api,
     rpm_repository_factory,
     rpm_repository_api,
+    rpm_signer_factory,
 ):
     """Test that the signing_key filter works with v6 ML-DSA fingerprints."""
     rpm_path = tmp_path / "upload.rpm"
     build_rpm(Nevra("test-mldsa-filter", 0, "1.0", "1", "noarch"), rpm_path)
-    # TODO: generate a new PQC key in-place to make it truly unique, avoid conflicts with other tests
-    _sign_package(rpm_path, KEY_V6_MLDSA65_ED25519.private_url)
+    # Generate a fresh ML-DSA key so this test's fingerprint is unique and
+    # doesn't collide with other tests that reuse the static fixture key.
+    signer, _ = rpm_signer_factory(signing_algorithm=SigningAlgorithm.MLDSA65_Ed25519)
+    _sign_package_with_signer(rpm_path, signer)
 
     pkg = rpm_rs.PackageMetadata.open(str(rpm_path))
     sigs = [s for s in pkg.signatures() if s.fingerprint is not None]
@@ -1109,10 +1117,6 @@ def pqc_package_signing_service(tmp_path, has_rpmv6_support, pulpcore_bindings):
 
 
 @pytest.mark.parallel
-@pytest.mark.xfail(
-    strict=True,
-    reason="add-signing-service uses GPG internally, which cannot handle ML-DSA / v6 keys",
-)
 def test_sign_package_with_mldsa_via_signing_service(
     pqc_package_signing_service,
     monitor_task,

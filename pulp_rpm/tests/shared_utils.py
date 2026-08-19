@@ -66,7 +66,13 @@ class MetaPackage:
         return hashlib.sha256(f"digest-{SALT}-{n}".encode()).hexdigest()
 
 
-def build_rpm(nevra: Nevra, path: Path, *, file_contents: Optional[bytes] = None, signer: Optional[rpm_rs.Signer] = None) -> None:
+def build_rpm(
+    nevra: Nevra,
+    path: Path,
+    *,
+    file_contents: Optional[bytes] = None,
+    signer: Optional[rpm_rs.Signer] = None,
+) -> None:
     """Build a minimal RPM file at path using rpm_rs.
 
     If `signer` (an `rpm_rs.Signer`) is given, the package is signed.

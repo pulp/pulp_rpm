@@ -88,6 +88,7 @@ def get_metadata_content_helper(base_url, repomd_elem, meta_type):
 
     return download_and_decompress_file(os.path.join(base_url, location_href))
 
+
 @dataclass
 class RemoteRepository:
     url: str

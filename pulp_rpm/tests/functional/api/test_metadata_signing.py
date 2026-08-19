@@ -36,14 +36,7 @@ def metadata_signing_service(request, tmp_path, pulpcore_bindings):
     "metadata_signing_service",
     [
         (KEY_V4_RSA4K, "gpg"),
-        pytest.param(
-            (KEY_V6_MLDSA65_ED25519, "sq"),
-            marks=pytest.mark.xfail(
-                strict=True,
-                reason="add-signing-service uses GPG internally,"
-                " which cannot handle ML-DSA / v6 keys",
-            ),
-        ),
+        (KEY_V6_MLDSA65_ED25519, "sq"),
     ],
     indirect=True,
 )
