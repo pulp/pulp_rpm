@@ -23,6 +23,7 @@ PACKAGE_TYPE_MAPPING = {
     rpmmd.PackageReqType.CONDITIONAL: 2,
     rpmmd.PackageReqType.MANDATORY: 3,
 }
+PACKAGE_TYPE_REVERSE = {v: k for k, v in PACKAGE_TYPE_MAPPING.items()}
 
 
 def _parse_comps(xml):
@@ -61,136 +62,78 @@ def _modify_comps_group_name(xml, group_id, new_name):
     return ElementTree.tostring(root, encoding="unicode")
 
 
-def _pkglist_to_list(packages):
-    """Convert a comps package list to a sorted, deduplicated list of package dicts."""
-    seen = []
-    for p in packages:
-        d = {
-            "name": p.name,
-            "type": PACKAGE_TYPE_MAPPING.get(p.reqtype, 0),
-            "basearchonly": bool(p.basearchonly) if p.basearchonly is not None else False,
-            "requires": p.requires,
-        }
-        if d not in seen:
-            seen.append(d)
-    return sorted(seen, key=lambda d: d["name"])
-
-
-def _group_to_dict(g):
-    """Normalize a comps Group into a comparable dict."""
-    return {
-        "id": g.id,
-        "name": g.name,
-        "description": g.description or "",
-        "default": g.default,
-        "user_visible": g.uservisible,
-        "display_order": g.display_order,
-        "biarch_only": g.biarchonly,
-        "packages": _pkglist_to_list(g.packages),
-        "name_by_lang": dict(g.name_by_lang),
-        "desc_by_lang": dict(g.desc_by_lang),
-    }
-
-
-def _grplist_to_list(group_ids):
-    return sorted(
-        [{"name": gid, "default": False} for gid in group_ids],
-        key=lambda d: d["name"],
+def _api_group_to_rpmmd(api_grp):
+    """Build an rpmmd CompsGroup from an API PackageGroup response."""
+    group = rpmmd.CompsGroup(
+        id=api_grp.id,
+        name=api_grp.name,
+        description=api_grp.description or "",
+        default=api_grp.default,
+        uservisible=api_grp.user_visible,
+        biarchonly=api_grp.biarch_only,
+        langonly=api_grp.langonly,
+        display_order=api_grp.display_order,
     )
+    group.packages = [
+        rpmmd.CompsPackageReq(
+            name=p["name"],
+            reqtype=PACKAGE_TYPE_REVERSE.get(p["type"], rpmmd.PackageReqType.DEFAULT),
+            requires=p["requires"],
+            basearchonly=bool(p["basearchonly"]) if p["basearchonly"] else None,
+        )
+        for p in api_grp.packages
+    ]
+    group.name_by_lang = api_grp.name_by_lang
+    group.desc_by_lang = api_grp.desc_by_lang
+    return group
 
 
-def _optlist_to_list(option_ids):
-    return sorted(
-        [{"name": opt.group_id, "default": opt.default} for opt in option_ids],
-        key=lambda d: d["name"],
+def _api_category_to_rpmmd(api_cat):
+    """Build an rpmmd CompsCategory from an API PackageCategory response."""
+    cat = rpmmd.CompsCategory(
+        id=api_cat.id,
+        name=api_cat.name,
+        description=api_cat.description or "",
+        display_order=api_cat.display_order,
     )
+    cat.group_ids = [g["name"] for g in api_cat.group_ids]
+    cat.name_by_lang = api_cat.name_by_lang
+    cat.desc_by_lang = api_cat.desc_by_lang
+    return cat
 
 
-def _category_to_dict(c):
-    """Normalize a libcomps Category into a comparable dict."""
-    return {
-        "id": c.id,
-        "name": c.name,
-        "description": c.description or "",
-        "display_order": c.display_order,
-        "group_ids": _grplist_to_list(c.group_ids),
-        "name_by_lang": dict(c.name_by_lang),
-        "desc_by_lang": dict(c.desc_by_lang),
-    }
-
-
-def _environment_to_dict(e):
-    """Normalize an environment object into a comparable dict."""
-    return {
-        "id": e.id,
-        "name": e.name,
-        "description": e.description or "",
-        "display_order": e.display_order,
-        "group_ids": _grplist_to_list(e.group_ids),
-        "option_ids": _optlist_to_list(e.option_ids),
-        "name_by_lang": dict(e.name_by_lang),
-        "desc_by_lang": dict(e.desc_by_lang),
-    }
-
-
-def _comps_to_dicts(comps):
-    """Convert a parsed Comps object into a dict of sorted, comparable lists."""
-    return {
-        "groups": sorted([_group_to_dict(g) for g in comps.groups], key=lambda d: d["id"]),
-        "categories": sorted(
-            [_category_to_dict(c) for c in comps.categories], key=lambda d: d["id"]
-        ),
-        "environments": sorted(
-            [_environment_to_dict(e) for e in comps.environments], key=lambda d: d["id"]
-        ),
-        "langpacks": {lp.name: lp.install for lp in comps.langpacks},
-    }
-
-
-def _normalize_api_packages(packages):
-    """Normalize package dicts from the API response for comparison against parsed XML."""
-    return sorted(
-        [
-            {
-                "name": p["name"],
-                "type": p["type"],
-                "basearchonly": bool(p["basearchonly"]),
-                "requires": p["requires"],
-            }
-            for p in packages
-        ],
-        key=lambda d: d["name"],
+def _api_environment_to_rpmmd(api_env):
+    """Build an rpmmd CompsEnvironment from an API PackageEnvironment response."""
+    env = rpmmd.CompsEnvironment(
+        id=api_env.id,
+        name=api_env.name,
+        description=api_env.description or "",
+        display_order=api_env.display_order,
     )
-
-
-def _normalize_api_group_ids(group_ids):
-    """Normalize group_ids dicts from the API response for comparison against parsed XML."""
-    return sorted(
-        [{"name": g["name"], "default": bool(g["default"])} for g in group_ids],
-        key=lambda d: d["name"],
-    )
+    env.group_ids = [g["name"] for g in api_env.group_ids]
+    env.option_ids = [
+        rpmmd.CompsEnvironmentOption(group_id=o["name"], default=o["default"])
+        for o in api_env.option_ids
+    ]
+    env.name_by_lang = api_env.name_by_lang
+    env.desc_by_lang = api_env.desc_by_lang
+    return env
 
 
 def _assert_comps_equal(original_xml, published_xml):
-    """Assert that two comps XML documents are semantically equivalent."""
-    original = _comps_to_dicts(_parse_comps(original_xml))
-    published = _comps_to_dicts(_parse_comps(published_xml))
+    """Assert that two comps XML documents are semantically equivalent.
 
-    assert len(original["groups"]) == len(published["groups"]), "Group count mismatch"
-    for orig, pub in zip(original["groups"], published["groups"]):
-        assert orig == pub, f"Group mismatch for id={orig['id']}"
+    Element ordering in comps is not significant and is not preserved across a
+    publish round-trip, so both sides are canonicalized (deterministically
+    ordered) before comparison. Comparing the `dict` representations rather
+    than the objects directly gives a readable diff on failure.
+    """
+    original = _parse_comps(original_xml)
+    published = _parse_comps(published_xml)
+    original.canonicalize()
+    published.canonicalize()
 
-    assert len(original["categories"]) == len(published["categories"]), "Category count mismatch"
-    for orig, pub in zip(original["categories"], published["categories"]):
-        assert orig == pub, f"Category mismatch for id={orig['id']}"
-
-    assert len(original["environments"]) == len(published["environments"]), (
-        "Environment count mismatch"
-    )
-    for orig, pub in zip(original["environments"], published["environments"]):
-        assert orig == pub, f"Environment mismatch for id={orig['id']}"
-
-    assert original["langpacks"] == published["langpacks"], "Langpacks mismatch"
+    assert original.to_dict() == published.to_dict()
 
 
 @pytest.fixture(scope="class")
@@ -221,73 +164,53 @@ class TestCompsFieldVerification:
     @pytest.mark.parallel
     def test_group_fields(self, big_comps_repo, rpm_package_groups_api):
         expected_comps = _parse_comps(BIG_COMPS_XML)
-        expected_groups = sorted(
-            [_group_to_dict(g) for g in expected_comps.groups], key=lambda d: d["id"]
-        )
+        expected_comps.canonicalize()
 
         api_groups = rpm_package_groups_api.list(
             repository_version=big_comps_repo.latest_version_href
         ).results
-        api_groups = sorted(api_groups, key=lambda g: g.id)
+        actual_groups = [_api_group_to_rpmmd(g) for g in api_groups]
+        for group in actual_groups:
+            group.canonicalize()
+        actual_groups.sort(key=lambda g: g.id)
 
-        assert len(api_groups) == len(expected_groups)
-        for api_grp, expected in zip(api_groups, expected_groups):
-            assert api_grp.id == expected["id"]
-            assert api_grp.name == expected["name"]
-            assert api_grp.description == expected["description"]
-            assert api_grp.default == expected["default"]
-            assert api_grp.user_visible == expected["user_visible"]
-            assert api_grp.display_order == expected["display_order"]
-            assert api_grp.biarch_only == expected["biarch_only"]
-            assert _normalize_api_packages(api_grp.packages) == expected["packages"]
-            assert api_grp.name_by_lang == expected["name_by_lang"]
-            assert api_grp.desc_by_lang == expected["desc_by_lang"]
+        assert len(actual_groups) == len(expected_comps.groups)
+        for actual, expected in zip(actual_groups, expected_comps.groups):
+            assert actual.to_dict() == expected.to_dict()
 
     @pytest.mark.parallel
     def test_category_fields(self, big_comps_repo, rpm_package_category_api):
         expected_comps = _parse_comps(BIG_COMPS_XML)
-        expected_categories = sorted(
-            [_category_to_dict(c) for c in expected_comps.categories], key=lambda d: d["id"]
-        )
+        expected_comps.canonicalize()
 
         api_categories = rpm_package_category_api.list(
             repository_version=big_comps_repo.latest_version_href
         ).results
-        api_categories = sorted(api_categories, key=lambda c: c.id)
+        actual_categories = [_api_category_to_rpmmd(c) for c in api_categories]
+        for cat in actual_categories:
+            cat.canonicalize()
+        actual_categories.sort(key=lambda c: c.id)
 
-        assert len(api_categories) == len(expected_categories)
-        for api_cat, expected in zip(api_categories, expected_categories):
-            assert api_cat.id == expected["id"]
-            assert api_cat.name == expected["name"]
-            assert api_cat.description == expected["description"]
-            assert api_cat.display_order == expected["display_order"]
-            assert _normalize_api_group_ids(api_cat.group_ids) == expected["group_ids"]
-            assert api_cat.name_by_lang == expected["name_by_lang"]
-            assert api_cat.desc_by_lang == expected["desc_by_lang"]
+        assert len(actual_categories) == len(expected_comps.categories)
+        for actual, expected in zip(actual_categories, expected_comps.categories):
+            assert actual.to_dict() == expected.to_dict()
 
     @pytest.mark.parallel
     def test_environment_fields(self, big_comps_repo, rpm_package_environment_api):
         expected_comps = _parse_comps(BIG_COMPS_XML)
-        expected_envs = sorted(
-            [_environment_to_dict(e) for e in expected_comps.environments],
-            key=lambda d: d["id"],
-        )
+        expected_comps.canonicalize()
 
         api_envs = rpm_package_environment_api.list(
             repository_version=big_comps_repo.latest_version_href
         ).results
-        api_envs = sorted(api_envs, key=lambda e: e.id)
+        actual_envs = [_api_environment_to_rpmmd(e) for e in api_envs]
+        for env in actual_envs:
+            env.canonicalize()
+        actual_envs.sort(key=lambda e: e.id)
 
-        assert len(api_envs) == len(expected_envs)
-        for api_env, expected in zip(api_envs, expected_envs):
-            assert api_env.id == expected["id"]
-            assert api_env.name == expected["name"]
-            assert api_env.description == expected["description"]
-            assert api_env.display_order == expected["display_order"]
-            assert _normalize_api_group_ids(api_env.group_ids) == expected["group_ids"]
-            assert _normalize_api_group_ids(api_env.option_ids) == expected["option_ids"]
-            assert api_env.name_by_lang == expected["name_by_lang"]
-            assert api_env.desc_by_lang == expected["desc_by_lang"]
+        assert len(actual_envs) == len(expected_comps.environments)
+        for actual, expected in zip(actual_envs, expected_comps.environments):
+            assert actual.to_dict() == expected.to_dict()
 
     @pytest.mark.parallel
     def test_langpacks_fields(self, small_comps_repo, rpm_package_lang_packs_api):
