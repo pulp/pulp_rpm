@@ -145,14 +145,25 @@ def rpm_key_bytes():
 
 @pytest.fixture(scope="session")
 def rpm_signer_factory(rpm_key_bytes):
-    """Return a factory building an `rpm_rs.Signer` from a fixture key constant.
+    """Return a factory building an `rpm_rs.Signer`.
 
-    The factory takes a `FixtureKey` (default `KEY_V4_RSA4K`) and returns
+    By default the factory takes a `FixtureKey` (default `KEY_V4_RSA4K`) and returns
     `(signer, "<version>:<FINGERPRINT>")` so the detected `signing_keys` is predictable.
+
+    Pass `signing_algorithm` (a `pysequoia.SigningAlgorithm`) to instead generate a
+    fresh RFC 9580 key in-place. This is useful for PQC (e.g. ML-DSA) tests that need
+    a unique fingerprint to avoid collisions with other tests reusing a static fixture
+    key. The fingerprint isn't known ahead of time, so `None` is returned in its place.
     """
     import rpm_rs
 
-    def _factory(key=KEY_V4_RSA4K):
+    def _factory(key=KEY_V4_RSA4K, *, signing_algorithm=None):
+        if signing_algorithm is not None:
+            from pysequoia import Profile, Tsk
+
+            tsk = Tsk.generate(profile=Profile.RFC9580, signing_algorithm=signing_algorithm)
+            # rpm_rs.Signer expects ASCII-armored bytes
+            return rpm_rs.Signer(str(tsk).encode()), None
         signer = rpm_rs.Signer(rpm_key_bytes(key.private_url))
         return signer, f"{key.version}:{key.signing_fingerprint}"
 
