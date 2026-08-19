@@ -32,6 +32,9 @@ class PackageGroupSerializer(NoArtifactContentSerializer):
     description = serializers.CharField(help_text=_("PackageGroup description."), allow_blank=True)
     packages = serializers.JSONField(help_text=_("PackageGroup package list."), allow_null=True)
     biarch_only = serializers.BooleanField(help_text=_("PackageGroup biarch only."), required=False)
+    langonly = serializers.CharField(
+        help_text=_("PackageGroup language restriction."), allow_null=True, required=False
+    )
     desc_by_lang = serializers.JSONField(
         help_text=_("PackageGroup description by language."), allow_null=True
     )
@@ -52,6 +55,7 @@ class PackageGroupSerializer(NoArtifactContentSerializer):
             "description",
             "packages",
             "biarch_only",
+            "langonly",
             "desc_by_lang",
             "name_by_lang",
             "digest",
