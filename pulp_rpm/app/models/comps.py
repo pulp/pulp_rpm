@@ -41,6 +41,8 @@ class PackageGroup(Content):
             The list of packages in this group
         biarch_only (Bool):
             Flag to identify whether the group is biarch
+        langonly (Text):
+            Language restriction for the group, if any
         desc_by_lang (Text):
             A dictionary of descriptions by language
         name_by_lang (Text):
@@ -63,6 +65,7 @@ class PackageGroup(Content):
     packages = models.JSONField(default=list)
 
     biarch_only = models.BooleanField(default=False)
+    langonly = models.TextField(null=True)
 
     desc_by_lang = models.JSONField(default=dict)
     name_by_lang = models.JSONField(default=dict)
@@ -117,6 +120,7 @@ class PackageGroup(Content):
             "description": group.description or "",
             "packages": cls.pkglist_to_list(group.packages),
             "biarch_only": group.biarchonly,
+            "langonly": group.langonly,
             "desc_by_lang": dict(group.desc_by_lang),
             "name_by_lang": dict(group.name_by_lang),
         }
@@ -130,6 +134,7 @@ class PackageGroup(Content):
             uservisible=self.user_visible,
             display_order=self.display_order,
             biarchonly=self.biarch_only,
+            langonly=self.langonly,
         )
         group.packages = self.list_to_pkglist(self.packages)
         group.desc_by_lang = list(self.desc_by_lang.items())
