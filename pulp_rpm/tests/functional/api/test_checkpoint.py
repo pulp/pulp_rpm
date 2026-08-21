@@ -1,16 +1,15 @@
 """Tests for checkpoint distribution and publications."""
 
 import re
+import uuid
 from datetime import datetime, timedelta
-from tempfile import NamedTemporaryFile
 from time import sleep
 from urllib.parse import urlparse
 
 import pytest
-import requests
 from aiohttp import ClientResponseError
 
-from pulp_rpm.tests.functional.constants import RPM_SIGNED_URL
+from pulp_rpm.tests.functional.utils import Nevra, build_rpm, fetch_url
 
 
 @pytest.fixture(scope="class")
@@ -18,22 +17,27 @@ def rpm_package_factory_class(
     gen_object_with_cleanup,
     pulp_domain_enabled,
     rpm_package_api,
+    tmp_path_factory,
 ):
     """Return a Package created from uploading an RPM file."""
 
-    def _rpm_package_factory_class(url=RPM_SIGNED_URL, pulp_domain=None):
-        with NamedTemporaryFile() as file_to_upload:
-            file_to_upload.write(requests.get(url).content)
-            file_to_upload.flush()
-            upload_attrs = {"file": file_to_upload.name}
+    def _rpm_package_factory_class(url=None, pulp_domain=None):
+        tmp_path = tmp_path_factory.mktemp("rpm_pkg")
+        uid = uuid.uuid4().hex[:8]
+        rpm_file = tmp_path / f"test-pkg-{uid}-1.0-1.noarch.rpm"
+        if url is not None:
+            rpm_file.write_bytes(fetch_url(url))
+        else:
+            build_rpm(Nevra(f"test-pkg-{uid}", 0, "1.0", "1", "noarch"), rpm_file)
+        upload_attrs = {"file": str(rpm_file)}
 
-            kwargs = {}
-            if pulp_domain:
-                if not pulp_domain_enabled:
-                    raise RuntimeError("Server does not have domains enabled.")
-                kwargs["pulp_domain"] = pulp_domain
+        kwargs = {}
+        if pulp_domain:
+            if not pulp_domain_enabled:
+                raise RuntimeError("Server does not have domains enabled.")
+            kwargs["pulp_domain"] = pulp_domain
 
-            return gen_object_with_cleanup(rpm_package_api, **upload_attrs, **kwargs)
+        return gen_object_with_cleanup(rpm_package_api, **upload_attrs, **kwargs)
 
     return _rpm_package_factory_class
 
