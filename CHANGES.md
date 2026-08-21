@@ -8,6 +8,16 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.38.5 (2026-08-20) {: #3.38.5 }
+
+#### Bugfixes {: #3.38.5-bugfix }
+
+- Fixed packages being re-signed on every add when their signature carries only an issuer key ID and no issuer fingerprint subpacket, by comparing the configured fingerprint against the package's signing keys on their key IDs whenever either side lacks a full fingerprint.
+  [#4545](https://github.com/pulp/pulp_rpm/issues/4545)
+- Fixed queries in the content copy API that could exceed PostgreSQL's 65535 bound-parameter limit.
+
+---
+
 ## 3.38.4 (2026-08-03) {: #3.38.4 }
 
 No significant changes.
