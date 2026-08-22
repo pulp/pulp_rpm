@@ -1,0 +1,1 @@
+Added six RPM search endpoints nested under pulpcore's new ``ContentView`` resource (``search/rpm/packages``, ``package-groups``, ``environments``, ``errata``, ``module-streams``, and ``packages/list``), enabling RBAC-respecting search across the repository versions served by a Content View's Distributions, even when those Distributions span multiple domains.
