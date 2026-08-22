@@ -29,13 +29,13 @@ dependencies = [
     "createrepo_c~=1.2.3",
     "django_readonly_field~=1.1.1",
     "jsonschema>=4.6,<5.0",
-    "libcomps>=0.1.23.post1,<0.2",
     "productmd~=1.33.0",
     "pulpcore>=3.111.0,<3.130",
     "solv~=0.7.21",
     "aiohttp_xmlrpc~=1.5.0",
     "importlib-resources~=6.4.0",
-    "rpm-rs>=0.25,<0.26",
+    "rpm-rs>=0.27,<0.28",
+    "rpmrepo_metadata>=0.6.1,<0.7",
 ]
 
 [project.urls]

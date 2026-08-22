@@ -1,31 +1,26 @@
 from logging import getLogger
 
-import libcomps
+import rpmrepo_metadata as rpmmd
 from django.db import models
 
 from pulpcore.plugin.models import Content
 from pulpcore.plugin.util import get_domain_pk
 
-from pulp_rpm.app.comps import dict_to_strdict, list_to_idlist, strdict_to_dict
-from pulp_rpm.app.constants import (
-    LIBCOMPS_CATEGORY_ATTRS,
-    LIBCOMPS_ENVIRONMENT_ATTRS,
-    LIBCOMPS_GROUP_ATTRS,
-    PULP_CATEGORY_ATTRS,
-    PULP_ENVIRONMENT_ATTRS,
-    PULP_GROUP_ATTRS,
-    PULP_LANGPACKS_ATTRS,
-)
-
 log = getLogger(__name__)
+
+PACKAGE_TYPE_MAPPING = {
+    rpmmd.PackageReqType.DEFAULT: 0,
+    rpmmd.PackageReqType.OPTIONAL: 1,
+    rpmmd.PackageReqType.CONDITIONAL: 2,
+    rpmmd.PackageReqType.MANDATORY: 3,
+}
+
+PACKAGE_TYPE_REVERSE = {v: k for k, v in PACKAGE_TYPE_MAPPING.items()}
 
 
 class PackageGroup(Content):
     """
     The "PackageGroup" content type.
-
-    Maps directly to the fields provided by libcomps.
-    https://github.com/rpm-software-management/libcomps
 
     Fields:
 
@@ -46,6 +41,8 @@ class PackageGroup(Content):
             The list of packages in this group
         biarch_only (Bool):
             Flag to identify whether the group is biarch
+        langonly (Text):
+            Language restriction for the group, if any
         desc_by_lang (Text):
             A dictionary of descriptions by language
         name_by_lang (Text):
@@ -68,6 +65,7 @@ class PackageGroup(Content):
     packages = models.JSONField(default=list)
 
     biarch_only = models.BooleanField(default=False)
+    langonly = models.TextField(null=True)
 
     desc_by_lang = models.JSONField(default=dict)
     name_by_lang = models.JSONField(default=dict)
@@ -83,24 +81,15 @@ class PackageGroup(Content):
         unique_together = ("_pulp_domain", "digest")
 
     @classmethod
-    def pkglist_to_list(cls, value):
-        """
-        Convert libcomps PkgList to list.
-
-        Args:
-            value: a libcomps PkgList
-
-        Returns:
-            A list
-
-        """
+    def pkglist_to_list(cls, packages):
+        """Convert rpmmd CompsPackageReq objects to a JSON-serializable list of dicts."""
         package_list = []
-        for i in value:
+        for pkg in packages:
             as_dict = {
-                "name": i.name,
-                "type": i.type,
-                "basearchonly": i.basearchonly,
-                "requires": i.requires,
+                "name": pkg.name,
+                "type": PACKAGE_TYPE_MAPPING.get(pkg.reqtype, 0),
+                "basearchonly": pkg.basearchonly,
+                "requires": pkg.requires,
             }
             if as_dict not in package_list:
                 package_list.append(as_dict)
@@ -108,88 +97,54 @@ class PackageGroup(Content):
 
     @classmethod
     def list_to_pkglist(cls, lst):
-        """
-        Convert list of Packages to libcomps PackageList object.
-
-        Args:
-            list: a list of Packages
-
-        Returns:
-            pkglist: a libcomps PackageList
-
-        """
-        pkglist = libcomps.PackageList()
+        pkglist = []
         for pkg in lst:
-            lib_pkg = libcomps.Package()
-            lib_pkg.name = pkg["name"]
-            lib_pkg.type = pkg["type"]
-            lib_pkg.basearchonly = bool(pkg["basearchonly"])
-            lib_pkg.requires = pkg["requires"]
-            pkglist.append(lib_pkg)
-
+            pkglist.append(
+                rpmmd.CompsPackageReq(
+                    name=pkg["name"],
+                    reqtype=PACKAGE_TYPE_REVERSE.get(pkg["type"], rpmmd.PackageReqType.DEFAULT),
+                    requires=pkg["requires"],
+                    basearchonly=bool(pkg["basearchonly"]) if pkg["basearchonly"] else None,
+                )
+            )
         return pkglist
 
     @classmethod
-    def libcomps_to_dict(cls, group):
-        """
-        Convert libcomps group object to dict for instantiating PackageGroup object.
-
-        Args:
-            group(libcomps.group): a RPM/SRPM group to convert
-
-        Returns:
-            dict: all data for RPM/SRPM group content creation
-
-        """
+    def comps_to_dict(cls, group):
         return {
-            PULP_GROUP_ATTRS.ID: getattr(group, LIBCOMPS_GROUP_ATTRS.ID),
-            PULP_GROUP_ATTRS.DEFAULT: getattr(group, LIBCOMPS_GROUP_ATTRS.DEFAULT),
-            PULP_GROUP_ATTRS.USER_VISIBLE: getattr(group, LIBCOMPS_GROUP_ATTRS.USER_VISIBLE),
-            PULP_GROUP_ATTRS.DISPLAY_ORDER: getattr(group, LIBCOMPS_GROUP_ATTRS.DISPLAY_ORDER),
-            PULP_GROUP_ATTRS.NAME: getattr(group, LIBCOMPS_GROUP_ATTRS.NAME),
-            PULP_GROUP_ATTRS.DESCRIPTION: getattr(group, LIBCOMPS_GROUP_ATTRS.DESCRIPTION) or "",
-            PULP_GROUP_ATTRS.PACKAGES: cls.pkglist_to_list(
-                getattr(group, LIBCOMPS_GROUP_ATTRS.PACKAGES)
-            ),
-            PULP_GROUP_ATTRS.BIARCH_ONLY: getattr(group, LIBCOMPS_GROUP_ATTRS.BIARCH_ONLY),
-            PULP_GROUP_ATTRS.DESC_BY_LANG: strdict_to_dict(
-                getattr(group, LIBCOMPS_GROUP_ATTRS.DESC_BY_LANG)
-            ),
-            PULP_GROUP_ATTRS.NAME_BY_LANG: strdict_to_dict(
-                getattr(group, LIBCOMPS_GROUP_ATTRS.NAME_BY_LANG)
-            ),
+            "id": group.id,
+            "default": group.default,
+            "user_visible": group.uservisible,
+            "display_order": group.display_order,
+            "name": group.name,
+            "description": group.description or "",
+            "packages": cls.pkglist_to_list(group.packages),
+            "biarch_only": group.biarchonly,
+            "langonly": group.langonly,
+            "desc_by_lang": group.desc_by_lang,
+            "name_by_lang": group.name_by_lang,
         }
 
-    def pkg_grp_to_libcomps(self):
-        """
-        Convert PackageGroup object to libcomps Group object.
-
-        Returns:
-            group: libcomps.Group object
-
-        """
-        group = libcomps.Group()
-
-        group.id = getattr(self, PULP_GROUP_ATTRS.ID)
-        group.default = getattr(self, PULP_GROUP_ATTRS.DEFAULT)
-        group.uservisible = getattr(self, PULP_GROUP_ATTRS.USER_VISIBLE)
-        group.display_order = getattr(self, PULP_GROUP_ATTRS.DISPLAY_ORDER)
-        group.name = getattr(self, PULP_GROUP_ATTRS.NAME)
-        group.desc = getattr(self, PULP_GROUP_ATTRS.DESCRIPTION)
-        group.packages = self.list_to_pkglist(getattr(self, PULP_GROUP_ATTRS.PACKAGES))
-        group.biarchonly = getattr(self, PULP_GROUP_ATTRS.BIARCH_ONLY)
-        group.desc_by_lang = dict_to_strdict(getattr(self, PULP_GROUP_ATTRS.DESC_BY_LANG))
-        group.name_by_lang = dict_to_strdict(getattr(self, PULP_GROUP_ATTRS.NAME_BY_LANG))
-
+    def to_comps_group(self):
+        group = rpmmd.CompsGroup(
+            id=self.id,
+            name=self.name,
+            description=self.description,
+            default=self.default,
+            uservisible=self.user_visible,
+            display_order=self.display_order,
+            biarchonly=self.biarch_only,
+            langonly=self.langonly,
+        )
+        group.packages = self.list_to_pkglist(self.packages)
+        group.desc_by_lang = self.desc_by_lang
+        group.name_by_lang = self.name_by_lang
         return group
 
 
 class PackageCategory(Content):
     """
     The "PackageCategory" content type.
-
-    Maps directly to the fields provided by libcomps.
-    https://github.com/rpm-software-management/libcomps
 
     Fields:
 
@@ -236,80 +191,37 @@ class PackageCategory(Content):
         unique_together = ("_pulp_domain", "digest")
 
     @classmethod
-    def grplist_to_lst(cls, value):
-        """
-        Convert libcomps GrpList to list.
-
-        Args:
-            value: a libcomps GrpList
-
-        Returns:
-            A list
-
-        """
-        grp_list = []
-        for i in value:
-            grp_list.append({"name": i.name, "default": i.default})
-        return grp_list
+    def grouplist_to_list(cls, group_ids):
+        return [{"name": gid, "default": False} for gid in group_ids]
 
     @classmethod
-    def libcomps_to_dict(cls, category):
-        """
-        Convert libcomps category object to dict for instantiating PackageCategory object.
-
-        Args:
-            category(libcomps.category): a RPM/SRPM category to convert
-
-        Returns:
-            dict: all data for RPM/SRPM category content creation
-
-        """
+    def comps_to_dict(cls, category):
         return {
-            PULP_CATEGORY_ATTRS.ID: getattr(category, LIBCOMPS_CATEGORY_ATTRS.ID),
-            PULP_CATEGORY_ATTRS.NAME: getattr(category, LIBCOMPS_CATEGORY_ATTRS.NAME),
-            PULP_CATEGORY_ATTRS.DESCRIPTION: getattr(category, LIBCOMPS_CATEGORY_ATTRS.DESCRIPTION)
-            or "",
-            PULP_CATEGORY_ATTRS.DISPLAY_ORDER: getattr(
-                category, LIBCOMPS_CATEGORY_ATTRS.DISPLAY_ORDER
-            ),
-            PULP_CATEGORY_ATTRS.GROUP_IDS: cls.grplist_to_lst(
-                getattr(category, LIBCOMPS_CATEGORY_ATTRS.GROUP_IDS)
-            ),
-            PULP_CATEGORY_ATTRS.DESC_BY_LANG: strdict_to_dict(
-                getattr(category, LIBCOMPS_CATEGORY_ATTRS.DESC_BY_LANG)
-            ),
-            PULP_CATEGORY_ATTRS.NAME_BY_LANG: strdict_to_dict(
-                getattr(category, LIBCOMPS_CATEGORY_ATTRS.NAME_BY_LANG)
-            ),
+            "id": category.id,
+            "name": category.name,
+            "description": category.description or "",
+            "display_order": category.display_order,
+            "group_ids": cls.grouplist_to_list(category.group_ids),
+            "desc_by_lang": category.desc_by_lang,
+            "name_by_lang": category.name_by_lang,
         }
 
-    def pkg_cat_to_libcomps(self):
-        """
-        Convert PackageCategory object to libcomps Category object.
-
-        Returns:
-            group: libcomps.Category object
-
-        """
-        cat = libcomps.Category()
-
-        cat.id = getattr(self, PULP_CATEGORY_ATTRS.ID)
-        cat.name = getattr(self, PULP_CATEGORY_ATTRS.NAME)
-        cat.desc = getattr(self, PULP_CATEGORY_ATTRS.DESCRIPTION)
-        cat.display_order = getattr(self, PULP_CATEGORY_ATTRS.DISPLAY_ORDER)
-        cat.group_ids = list_to_idlist(getattr(self, PULP_CATEGORY_ATTRS.GROUP_IDS))
-        cat.desc_by_lang = dict_to_strdict(getattr(self, PULP_CATEGORY_ATTRS.DESC_BY_LANG))
-        cat.name_by_lang = dict_to_strdict(getattr(self, PULP_CATEGORY_ATTRS.NAME_BY_LANG))
-
+    def to_comps_category(self):
+        cat = rpmmd.CompsCategory(
+            id=self.id,
+            name=self.name,
+            description=self.description,
+            display_order=self.display_order,
+        )
+        cat.group_ids = [g["name"] for g in self.group_ids]
+        cat.desc_by_lang = self.desc_by_lang
+        cat.name_by_lang = self.name_by_lang
         return cat
 
 
 class PackageEnvironment(Content):
     """
     The "PackageEnvironment" content type.
-
-    Maps directly to the fields provided by libcomps.
-    https://github.com/rpm-software-management/libcomps
 
     Fields:
 
@@ -359,86 +271,46 @@ class PackageEnvironment(Content):
         unique_together = ("_pulp_domain", "digest")
 
     @classmethod
-    def grplist_to_lst(cls, value):
-        """
-        Convert libcomps GrpList to list.
-
-        Args:
-            value: a libcomps GrpList
-
-        Returns:
-            A list
-
-        """
-        grp_list = []
-        for i in value:
-            grp_list.append({"name": i.name, "default": i.default})
-        return grp_list
+    def grouplist_to_list(cls, group_ids):
+        return [{"name": gid, "default": False} for gid in group_ids]
 
     @classmethod
-    def libcomps_to_dict(cls, environment):
-        """
-        Convert libcomps environment object to dict for instantiating PackageEnvironment object.
+    def optlist_to_lst(cls, option_ids):
+        return [{"name": opt.group_id, "default": opt.default} for opt in option_ids]
 
-        Args:
-            environment(libcomps.environment): a RPM/SRPM environment to convert
-
-        Returns:
-            dict: all data for RPM/SRPM environment content creation
-
-        """
+    @classmethod
+    def comps_to_dict(cls, environment):
         return {
-            PULP_ENVIRONMENT_ATTRS.ID: getattr(environment, LIBCOMPS_ENVIRONMENT_ATTRS.ID),
-            PULP_ENVIRONMENT_ATTRS.NAME: getattr(environment, LIBCOMPS_ENVIRONMENT_ATTRS.NAME),
-            PULP_ENVIRONMENT_ATTRS.DESCRIPTION: getattr(
-                environment, LIBCOMPS_ENVIRONMENT_ATTRS.DESCRIPTION
-            )
-            or "",
-            PULP_ENVIRONMENT_ATTRS.DISPLAY_ORDER: getattr(
-                environment, LIBCOMPS_ENVIRONMENT_ATTRS.DISPLAY_ORDER
-            ),
-            PULP_ENVIRONMENT_ATTRS.GROUP_IDS: cls.grplist_to_lst(
-                getattr(environment, LIBCOMPS_ENVIRONMENT_ATTRS.GROUP_IDS)
-            ),
-            PULP_ENVIRONMENT_ATTRS.OPTION_IDS: cls.grplist_to_lst(
-                getattr(environment, LIBCOMPS_ENVIRONMENT_ATTRS.OPTION_IDS)
-            ),
-            PULP_ENVIRONMENT_ATTRS.DESC_BY_LANG: strdict_to_dict(
-                getattr(environment, LIBCOMPS_ENVIRONMENT_ATTRS.DESC_BY_LANG)
-            ),
-            PULP_ENVIRONMENT_ATTRS.NAME_BY_LANG: strdict_to_dict(
-                getattr(environment, LIBCOMPS_ENVIRONMENT_ATTRS.NAME_BY_LANG)
-            ),
+            "id": environment.id,
+            "name": environment.name,
+            "description": environment.description or "",
+            "display_order": environment.display_order,
+            "group_ids": cls.grouplist_to_list(environment.group_ids),
+            "option_ids": cls.optlist_to_lst(environment.option_ids),
+            "desc_by_lang": environment.desc_by_lang,
+            "name_by_lang": environment.name_by_lang,
         }
 
-    def pkg_env_to_libcomps(self):
-        """
-        Convert PackageEnvironment object to libcomps Environment object.
-
-        Returns:
-            group: libcomps.Environment object
-
-        """
-        env = libcomps.Environment()
-
-        env.id = getattr(self, PULP_ENVIRONMENT_ATTRS.ID)
-        env.name = getattr(self, PULP_ENVIRONMENT_ATTRS.NAME)
-        env.desc = getattr(self, PULP_ENVIRONMENT_ATTRS.DESCRIPTION)
-        env.display_order = getattr(self, PULP_ENVIRONMENT_ATTRS.DISPLAY_ORDER)
-        env.group_ids = list_to_idlist(getattr(self, PULP_ENVIRONMENT_ATTRS.GROUP_IDS))
-        env.option_ids = list_to_idlist(getattr(self, PULP_ENVIRONMENT_ATTRS.OPTION_IDS))
-        env.desc_by_lang = dict_to_strdict(getattr(self, PULP_ENVIRONMENT_ATTRS.DESC_BY_LANG))
-        env.name_by_lang = dict_to_strdict(getattr(self, PULP_ENVIRONMENT_ATTRS.NAME_BY_LANG))
-
+    def to_comps_environment(self):
+        env = rpmmd.CompsEnvironment(
+            id=self.id,
+            name=self.name,
+            description=self.description,
+            display_order=self.display_order,
+        )
+        env.group_ids = [g["name"] for g in self.group_ids]
+        env.option_ids = [
+            rpmmd.CompsEnvironmentOption(group_id=o["name"], default=o["default"])
+            for o in self.option_ids
+        ]
+        env.desc_by_lang = self.desc_by_lang
+        env.name_by_lang = self.name_by_lang
         return env
 
 
 class PackageLangpacks(Content):
     """
     The "PackageLangpacks" content type.
-
-    Maps directly to the fields provided by libcomps.
-    https://github.com/rpm-software-management/libcomps
 
     Fields:
 
@@ -459,15 +331,5 @@ class PackageLangpacks(Content):
         unique_together = ("_pulp_domain", "digest")
 
     @classmethod
-    def libcomps_to_dict(cls, langpacks):
-        """
-        Convert libcomps langpacks object to dict for instantiating PackageLangpacks object.
-
-        Args:
-            langpacks(libcomps.langpacks): a RPM/SRPM langpacks to convert
-
-        Returns:
-            dict: all data for RPM/SRPM langpacks content creation
-
-        """
-        return {PULP_LANGPACKS_ATTRS.MATCHES: strdict_to_dict(langpacks)}
+    def comps_to_dict(cls, langpacks):
+        return {"matches": {lp.name: lp.install for lp in langpacks}}
