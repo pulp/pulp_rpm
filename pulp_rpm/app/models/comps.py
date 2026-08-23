@@ -6,6 +6,13 @@ from django.db import models
 from pulpcore.plugin.models import Content
 from pulpcore.plugin.util import get_domain_pk
 
+from pulp_rpm.app.constants import (
+    PULP_CATEGORY_ATTRS,
+    PULP_ENVIRONMENT_ATTRS,
+    PULP_GROUP_ATTRS,
+    PULP_LANGPACKS_ATTRS,
+)
+
 log = getLogger(__name__)
 
 PACKAGE_TYPE_MAPPING = {
@@ -112,17 +119,17 @@ class PackageGroup(Content):
     @classmethod
     def comps_to_dict(cls, group):
         return {
-            "id": group.id,
-            "default": group.default,
-            "user_visible": group.uservisible,
-            "display_order": group.display_order,
-            "name": group.name,
-            "description": group.description or "",
-            "packages": cls.pkglist_to_list(group.packages),
-            "biarch_only": group.biarchonly,
-            "langonly": group.langonly,
-            "desc_by_lang": group.desc_by_lang,
-            "name_by_lang": group.name_by_lang,
+            PULP_GROUP_ATTRS.ID: group.id,
+            PULP_GROUP_ATTRS.DEFAULT: group.default,
+            PULP_GROUP_ATTRS.USER_VISIBLE: group.uservisible,
+            PULP_GROUP_ATTRS.DISPLAY_ORDER: group.display_order,
+            PULP_GROUP_ATTRS.NAME: group.name,
+            PULP_GROUP_ATTRS.DESCRIPTION: group.description or "",
+            PULP_GROUP_ATTRS.PACKAGES: cls.pkglist_to_list(group.packages),
+            PULP_GROUP_ATTRS.BIARCH_ONLY: group.biarchonly,
+            PULP_GROUP_ATTRS.LANGONLY: group.langonly,
+            PULP_GROUP_ATTRS.DESC_BY_LANG: group.desc_by_lang,
+            PULP_GROUP_ATTRS.NAME_BY_LANG: group.name_by_lang,
         }
 
     def to_comps_group(self):
@@ -198,18 +205,18 @@ class PackageCategory(Content):
         per-group `default` flag, so `default` is always `False` here. The dict
         shape is retained to match Pulp's stored/serialized representation.
         """
-        return [{"name": gid, "default": False} for gid in group_ids]
+        return [{PULP_GROUP_ATTRS.NAME: gid, PULP_GROUP_ATTRS.DEFAULT: False} for gid in group_ids]
 
     @classmethod
     def comps_to_dict(cls, category):
         return {
-            "id": category.id,
-            "name": category.name,
-            "description": category.description or "",
-            "display_order": category.display_order,
-            "group_ids": cls.grouplist_to_list(category.group_ids),
-            "desc_by_lang": category.desc_by_lang,
-            "name_by_lang": category.name_by_lang,
+            PULP_CATEGORY_ATTRS.ID: category.id,
+            PULP_CATEGORY_ATTRS.NAME: category.name,
+            PULP_CATEGORY_ATTRS.DESCRIPTION: category.description or "",
+            PULP_CATEGORY_ATTRS.DISPLAY_ORDER: category.display_order,
+            PULP_CATEGORY_ATTRS.GROUP_IDS: cls.grouplist_to_list(category.group_ids),
+            PULP_CATEGORY_ATTRS.DESC_BY_LANG: category.desc_by_lang,
+            PULP_CATEGORY_ATTRS.NAME_BY_LANG: category.name_by_lang,
         }
 
     def to_comps_category(self):
@@ -285,7 +292,7 @@ class PackageEnvironment(Content):
         groups (which do carry a `default` flag) come from `option_ids` instead;
         see `optlist_to_list`.
         """
-        return [{"name": gid, "default": False} for gid in group_ids]
+        return [{PULP_GROUP_ATTRS.NAME: gid, PULP_GROUP_ATTRS.DEFAULT: False} for gid in group_ids]
 
     @classmethod
     def optlist_to_list(cls, option_ids):
@@ -295,19 +302,22 @@ class PackageEnvironment(Content):
         indicating whether they are preselected, which is preserved here as
         `[{"name", "default"}]`.
         """
-        return [{"name": opt.group_id, "default": opt.default} for opt in option_ids]
+        return [
+            {PULP_GROUP_ATTRS.NAME: opt.group_id, PULP_GROUP_ATTRS.DEFAULT: opt.default}
+            for opt in option_ids
+        ]
 
     @classmethod
     def comps_to_dict(cls, environment):
         return {
-            "id": environment.id,
-            "name": environment.name,
-            "description": environment.description or "",
-            "display_order": environment.display_order,
-            "group_ids": cls.grouplist_to_list(environment.group_ids),
-            "option_ids": cls.optlist_to_list(environment.option_ids),
-            "desc_by_lang": environment.desc_by_lang,
-            "name_by_lang": environment.name_by_lang,
+            PULP_ENVIRONMENT_ATTRS.ID: environment.id,
+            PULP_ENVIRONMENT_ATTRS.NAME: environment.name,
+            PULP_ENVIRONMENT_ATTRS.DESCRIPTION: environment.description or "",
+            PULP_ENVIRONMENT_ATTRS.DISPLAY_ORDER: environment.display_order,
+            PULP_ENVIRONMENT_ATTRS.GROUP_IDS: cls.grouplist_to_list(environment.group_ids),
+            PULP_ENVIRONMENT_ATTRS.OPTION_IDS: cls.optlist_to_list(environment.option_ids),
+            PULP_ENVIRONMENT_ATTRS.DESC_BY_LANG: environment.desc_by_lang,
+            PULP_ENVIRONMENT_ATTRS.NAME_BY_LANG: environment.name_by_lang,
         }
 
     def to_comps_environment(self):
@@ -351,4 +361,4 @@ class PackageLangpacks(Content):
 
     @classmethod
     def comps_to_dict(cls, langpacks):
-        return {"matches": {lp.name: lp.install for lp in langpacks}}
+        return {PULP_LANGPACKS_ATTRS.MATCHES: {lp.name: lp.install for lp in langpacks}}
