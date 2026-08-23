@@ -175,6 +175,43 @@ PULP_UPDATE_COLLECTION_PACKAGE_ATTRS = CR_UPDATE_COLLECTION_PACKAGE_ATTRS
 
 PULP_UPDATE_COLLECTION_ATTRS_MODULE = CR_UPDATE_COLLECTION_ATTRS_MODULE
 
+PULP_LANGPACKS_ATTRS = SimpleNamespace(MATCHES="matches")
+
+PULP_GROUP_ATTRS = SimpleNamespace(
+    ID="id",
+    DEFAULT="default",
+    USER_VISIBLE="user_visible",
+    DISPLAY_ORDER="display_order",
+    NAME="name",
+    DESCRIPTION="description",
+    PACKAGES="packages",
+    BIARCH_ONLY="biarch_only",
+    LANGONLY="langonly",
+    DESC_BY_LANG="desc_by_lang",
+    NAME_BY_LANG="name_by_lang",
+)
+
+PULP_CATEGORY_ATTRS = SimpleNamespace(
+    ID="id",
+    NAME="name",
+    DESCRIPTION="description",
+    DISPLAY_ORDER="display_order",
+    GROUP_IDS="group_ids",
+    DESC_BY_LANG="desc_by_lang",
+    NAME_BY_LANG="name_by_lang",
+)
+
+PULP_ENVIRONMENT_ATTRS = SimpleNamespace(
+    ID="id",
+    NAME="name",
+    DESCRIPTION="description",
+    DISPLAY_ORDER="display_order",
+    GROUP_IDS="group_ids",
+    OPTION_IDS="option_ids",
+    DESC_BY_LANG="desc_by_lang",
+    NAME_BY_LANG="name_by_lang",
+)
+
 MODULEMD_MODULE_ATTR = SimpleNamespace(
     ARCH="arch",
     ARTIFACTS="artifacts",
