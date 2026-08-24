@@ -186,7 +186,7 @@ PULP_GROUP_ATTRS = SimpleNamespace(
     DESCRIPTION="description",
     PACKAGES="packages",
     BIARCH_ONLY="biarch_only",
-    LANGONLY="langonly",
+    LANGONLY="langonly",  # not used
     DESC_BY_LANG="desc_by_lang",
     NAME_BY_LANG="name_by_lang",
 )
