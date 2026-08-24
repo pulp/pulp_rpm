@@ -71,7 +71,6 @@ def _api_group_to_rpmmd(api_grp):
         default=api_grp.default,
         uservisible=api_grp.user_visible,
         biarchonly=api_grp.biarch_only,
-        langonly=api_grp.langonly,
         display_order=api_grp.display_order,
     )
     group.packages = [

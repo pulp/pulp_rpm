@@ -26,7 +26,6 @@ from pulp_rpm.app.models import (
 #   * conditional `requires`
 #   * `basearchonly="true"`
 #   * `biarchonly` written only when true; a group with it false
-#   * `langonly` restriction
 #   * optional `display_order` (present on some, absent on others)
 #   * empty packagelist and missing packagelist (both -> 0 packages)
 #   * environment grouplist (mandatory) + optionlist with/without default
@@ -59,7 +58,6 @@ COMPS_XML = """<?xml version="1.0" encoding="UTF-8"?>
     <description>Language support.</description>
     <default>false</default>
     <uservisible>false</uservisible>
-    <langonly>sr</langonly>
     <packagelist>
       <packagereq type="mandatory">glibc-langpack-sr</packagereq>
     </packagelist>
@@ -209,11 +207,6 @@ class TestCompsModelRoundtrip(TestCase):
         """`biarchonly` is preserved both when true and when false."""
         self.assertEqual(self._roundtrip_group("biarch").biarchonly, True)
         self.assertEqual(self._roundtrip_group("core").biarchonly, False)
-
-    def test_langonly_preserved(self):
-        """A group's `langonly` restriction survives; absent stays None."""
-        self.assertEqual(self._roundtrip_group("i18n").langonly, "sr")
-        self.assertIsNone(self._roundtrip_group("core").langonly)
 
     def test_display_order_optional(self):
         """`display_order` is preserved when set and None when absent."""
