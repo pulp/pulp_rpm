@@ -9,7 +9,7 @@ from django.db import transaction
 from pulpcore.plugin.models import Content, CreatedResource, PulpTemporaryFile
 from pulpcore.plugin.util import get_domain
 
-from pulp_rpm.app.comps import dict_digest
+from pulp_rpm.app.comps import comps_to_model_dicts
 from pulp_rpm.app.models import (
     PackageCategory,
     PackageEnvironment,
@@ -26,6 +26,8 @@ def parse_comps_components(comps_file):
     created_objects = []
     all_objects = []
     curr_domain = get_domain()
+
+    # Decompress and parse the comps XML file
     with comps_file.file.open("rb") as comps_uploaded:
         with tempfile.NamedTemporaryFile(dir=".", delete=False) as comps_on_disk:
             comps_on_disk.write(comps_uploaded.read())
@@ -36,48 +38,38 @@ def parse_comps_components(comps_file):
             with open(decompressed_path) as f:
                 comps = rpmmd.CompsData.from_xml(f.read())
 
-    if comps.langpacks:
-        langpack_dict = PackageLangpacks.comps_to_dict(comps.langpacks)
-        langpack, created = PackageLangpacks.objects.get_or_create(
-            matches={lp.name: lp.install for lp in comps.langpacks},
-            digest=dict_digest(langpack_dict),
-            _pulp_domain=curr_domain,
-        )
+    # Convert to model dicts with digests
+    group_dicts, category_dicts, environment_dicts, langpack_dict = comps_to_model_dicts(
+        comps, curr_domain
+    )
+
+    # Save langpacks to DB
+    if langpack_dict is not None:
+        langpack, created = PackageLangpacks.objects.get_or_create(**langpack_dict)
         if created:
             created_objects.append(langpack)
         all_objects.append(langpack)
 
-    if comps.categories:
-        for category in comps.categories:
-            category_dict = PackageCategory.comps_to_dict(category)
-            category_dict["digest"] = dict_digest(category_dict)
-            category_dict["_pulp_domain"] = curr_domain
-            packagecategory, created = PackageCategory.objects.get_or_create(**category_dict)
-            if created:
-                created_objects.append(packagecategory)
-            all_objects.append(packagecategory)
+    # Save categories to DB
+    for category_dict in category_dicts:
+        packagecategory, created = PackageCategory.objects.get_or_create(**category_dict)
+        if created:
+            created_objects.append(packagecategory)
+        all_objects.append(packagecategory)
 
-    if comps.environments:
-        for environment in comps.environments:
-            environment_dict = PackageEnvironment.comps_to_dict(environment)
-            environment_dict["digest"] = dict_digest(environment_dict)
-            environment_dict["_pulp_domain"] = curr_domain
-            packageenvironment, created = PackageEnvironment.objects.get_or_create(
-                **environment_dict
-            )
-            if created:
-                created_objects.append(packageenvironment)
-            all_objects.append(packageenvironment)
+    # Save environments to DB
+    for environment_dict in environment_dicts:
+        packageenvironment, created = PackageEnvironment.objects.get_or_create(**environment_dict)
+        if created:
+            created_objects.append(packageenvironment)
+        all_objects.append(packageenvironment)
 
-    if comps.groups:
-        for group in comps.groups:
-            group_dict = PackageGroup.comps_to_dict(group)
-            group_dict["digest"] = dict_digest(group_dict)
-            group_dict["_pulp_domain"] = curr_domain
-            packagegroup, created = PackageGroup.objects.get_or_create(**group_dict)
-            if created:
-                created_objects.append(packagegroup)
-            all_objects.append(packagegroup)
+    # Save groups to DB
+    for group_dict in group_dicts:
+        packagegroup, created = PackageGroup.objects.get_or_create(**group_dict)
+        if created:
+            created_objects.append(packagegroup)
+        all_objects.append(packagegroup)
 
     return created_objects, all_objects
 

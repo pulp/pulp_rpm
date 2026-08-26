@@ -7,7 +7,6 @@ from typing import NamedTuple
 from uuid import UUID
 
 import createrepo_c as cr
-import rpmrepo_metadata as rpmmd
 from django.conf import settings
 from django.core.files import File
 from django.db.models import Q
@@ -22,6 +21,7 @@ from pulpcore.plugin.models import (
     RepositoryVersion,
 )
 
+from pulp_rpm.app.comps import models_to_comps_data
 from pulp_rpm.app.constants import (
     ALLOWED_CHECKSUM_ERROR_MSG,
     CHECKSUM_TYPES,
@@ -683,8 +683,6 @@ def generate_repo_metadata(
     """
     cwd = os.getcwd()
     repodata_path = REPODATA_PATH
-    has_modules = False
-    has_comps = False
     requested_checksum_type = get_checksum_type(checksum_types)
 
     if requested_checksum_type not in ALLOWED_CONTENT_CHECKSUMS:
@@ -757,6 +755,7 @@ def generate_repo_metadata(
 
         # Process modulemd, modulemd_defaults and obsoletes
         with open(mod_yml_path, "ab") as mod_yml:
+            has_modules = False
             modulemds = Modulemd.objects.filter(pk__in=content).order_by(
                 *Modulemd.natural_key_fields()
             )
@@ -779,41 +778,25 @@ def generate_repo_metadata(
                 mod_yml.write(b"\n")
                 has_modules = True
 
-        # Process comps
-        comps = rpmmd.CompsData()
-        groups = []
-        for pkg_grp in PackageGroup.objects.filter(pk__in=content).order_by("id").iterator():
-            groups.append(pkg_grp.to_comps_group())
-            has_comps = True
-        comps.groups = groups
-        categories = []
-        for pkg_cat in PackageCategory.objects.filter(pk__in=content).order_by("id").iterator():
-            categories.append(pkg_cat.to_comps_category())
-            has_comps = True
-        comps.categories = categories
-        environments = []
-        for pkg_env in PackageEnvironment.objects.filter(pk__in=content).order_by("id").iterator():
-            environments.append(pkg_env.to_comps_environment())
-            has_comps = True
-        comps.environments = environments
-        langpacks = []
+            if has_modules:
+                writer.add_repomd_metadata("modules", mod_yml_path, use_compression=False)
+
+        # Process comps - collect model instances and convert to CompsData
+        groups = list(PackageGroup.objects.filter(pk__in=content).order_by("id"))
+        categories = list(PackageCategory.objects.filter(pk__in=content).order_by("id"))
+        environments = list(PackageEnvironment.objects.filter(pk__in=content).order_by("id"))
         package_langpacks = PackageLangpacks.objects.filter(pk__in=content).order_by(
             *PackageLangpacks.natural_key_fields()
         )
-        for pkg_lng in package_langpacks.iterator():
-            langpacks.extend(
-                rpmmd.CompsLangpack(name=k, install=v) for k, v in pkg_lng.matches.items()
-            )
-            has_comps = True
-        comps.langpacks = langpacks
+        # PackageLangpacks is unique per repo, take first if any exist
+        langpacks = package_langpacks.first() if package_langpacks.exists() else None
 
-        with open(comps_xml_path, "w") as f:
-            f.write(comps.to_xml())
-
-        if has_modules:
-            writer.add_repomd_metadata("modules", mod_yml_path, use_compression=False)
+        has_comps = bool(groups or categories or environments or langpacks)
 
         if has_comps:
+            comps = models_to_comps_data(groups, categories, environments, langpacks)
+            with open(comps_xml_path, "w") as f:
+                f.write(comps.to_xml())
             writer.add_repomd_metadata("group", comps_xml_path, use_compression=False)
 
         for name, record in extra_repomdrecords:

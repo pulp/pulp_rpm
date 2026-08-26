@@ -47,7 +47,7 @@ from pulpcore.plugin.stages import (
 from pulpcore.plugin.util import get_domain
 
 from pulp_rpm.app.advisory import hash_update_record
-from pulp_rpm.app.comps import dict_digest
+from pulp_rpm.app.comps import comps_to_model_dicts
 from pulp_rpm.app.constants import (
     CHECKSUM_TYPES,
     COMPS_REPODATA,
@@ -1100,6 +1100,7 @@ class RpmFirstStage(Stage):
         dc_environments = []
         dc_groups = []
 
+        # Parse comps XML
         with tempfile.TemporaryDirectory(dir=".") as tf:
             decompressed_path = os.path.join(tf, "comps.xml")
             cr.decompress_file(comps_result.path, decompressed_path, cr.AUTO_DETECT_COMPRESSION)
@@ -1111,77 +1112,68 @@ class RpmFirstStage(Stage):
             comps_pb.total = comps_total
             comps_pb.done = comps_total
 
-        if comps.langpacks:
-            langpack_dict = PackageLangpacks.comps_to_dict(comps.langpacks)
-            packagelangpack = PackageLangpacks(
-                matches={lp.name: lp.install for lp in comps.langpacks},
-                digest=dict_digest(langpack_dict),
-            )
+        # Convert to model dicts with digests
+        group_dicts, category_dicts, environment_dicts, langpack_dict = comps_to_model_dicts(comps)
+
+        # Create langpacks declarative content
+        if langpack_dict:
+            packagelangpack = PackageLangpacks(**langpack_dict)
             package_language_pack_dc = DeclarativeContent(content=packagelangpack)
             package_language_pack_dc.extra_data = defaultdict(list)
 
-        # init categories declarative content
-        if comps.categories:
-            for category in comps.categories:
-                category_dict = PackageCategory.comps_to_dict(category)
-                category_dict["digest"] = dict_digest(category_dict)
-                packagecategory = PackageCategory(**category_dict)
-                dc = DeclarativeContent(content=packagecategory)
-                dc.extra_data = defaultdict(list)
+        # Create categories declarative content and track relationships
+        for category_dict in category_dicts:
+            packagecategory = PackageCategory(**category_dict)
+            dc = DeclarativeContent(content=packagecategory)
+            dc.extra_data = defaultdict(list)
 
-                if packagecategory.group_ids:
-                    for group_id in packagecategory.group_ids:
-                        group_to_categories[group_id["name"]].append(dc)
-                dc_categories.append(dc)
+            if packagecategory.group_ids:
+                for group_id in packagecategory.group_ids:
+                    group_to_categories[group_id["name"]].append(dc)
+            dc_categories.append(dc)
 
-        # init environments declarative content
-        if comps.environments:
-            for environment in comps.environments:
-                environment_dict = PackageEnvironment.comps_to_dict(environment)
-                environment_dict["digest"] = dict_digest(environment_dict)
-                packageenvironment = PackageEnvironment(**environment_dict)
-                dc = DeclarativeContent(content=packageenvironment)
-                dc.extra_data = defaultdict(list)
+        # Create environments declarative content and track relationships
+        for environment_dict in environment_dicts:
+            packageenvironment = PackageEnvironment(**environment_dict)
+            dc = DeclarativeContent(content=packageenvironment)
+            dc.extra_data = defaultdict(list)
 
-                if packageenvironment.option_ids:
-                    for option_id in packageenvironment.option_ids:
-                        optionalgroup_to_environments[option_id["name"]].append(dc)
+            if packageenvironment.option_ids:
+                for option_id in packageenvironment.option_ids:
+                    optionalgroup_to_environments[option_id["name"]].append(dc)
 
-                if packageenvironment.group_ids:
-                    for group_id in packageenvironment.group_ids:
-                        group_to_environments[group_id["name"]].append(dc)
+            if packageenvironment.group_ids:
+                for group_id in packageenvironment.group_ids:
+                    group_to_environments[group_id["name"]].append(dc)
 
-                dc_environments.append(dc)
+            dc_environments.append(dc)
 
-        # init groups declarative content
-        if comps.groups:
-            for group in comps.groups:
-                group_dict = PackageGroup.comps_to_dict(group)
-                group_dict["digest"] = dict_digest(group_dict)
-                packagegroup = PackageGroup(**group_dict)
-                dc = DeclarativeContent(content=packagegroup)
-                dc.extra_data = defaultdict(list)
+        # Create groups declarative content and wire up relationships
+        for group_dict in group_dicts:
+            packagegroup = PackageGroup(**group_dict)
+            dc = DeclarativeContent(content=packagegroup)
+            dc.extra_data = defaultdict(list)
 
-                if packagegroup.packages:
-                    for package in packagegroup.packages:
-                        self.pkgname_to_groups[package["name"]].append(dc)
+            if packagegroup.packages:
+                for package in packagegroup.packages:
+                    self.pkgname_to_groups[package["name"]].append(dc)
 
-                if dc.content.id in group_to_categories.keys():
-                    for dc_category in group_to_categories[dc.content.id]:
-                        dc.extra_data["category_relations"].append(dc_category)
-                        dc_category.extra_data["packagegroups"].append(dc)
+            if dc.content.id in group_to_categories.keys():
+                for dc_category in group_to_categories[dc.content.id]:
+                    dc.extra_data["category_relations"].append(dc_category)
+                    dc_category.extra_data["packagegroups"].append(dc)
 
-                if dc.content.id in group_to_environments.keys():
-                    for dc_environment in group_to_environments[dc.content.id]:
-                        dc.extra_data["environment_relations"].append(dc_environment)
-                        dc_environment.extra_data["packagegroups"].append(dc)
+            if dc.content.id in group_to_environments.keys():
+                for dc_environment in group_to_environments[dc.content.id]:
+                    dc.extra_data["environment_relations"].append(dc_environment)
+                    dc_environment.extra_data["packagegroups"].append(dc)
 
-                if dc.content.id in optionalgroup_to_environments.keys():
-                    for dc_environment in optionalgroup_to_environments[dc.content.id]:
-                        dc.extra_data["env_relations_optional"].append(dc_environment)
-                        dc_environment.extra_data["optionalgroups"].append(dc)
+            if dc.content.id in optionalgroup_to_environments.keys():
+                for dc_environment in optionalgroup_to_environments[dc.content.id]:
+                    dc.extra_data["env_relations_optional"].append(dc_environment)
+                    dc_environment.extra_data["optionalgroups"].append(dc)
 
-                dc_groups.append(dc)
+            dc_groups.append(dc)
 
         if package_language_pack_dc:
             await self.put(package_language_pack_dc)
