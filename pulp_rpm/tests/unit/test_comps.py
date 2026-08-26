@@ -2,17 +2,18 @@
 
 These tests exercise a full round-trip: comps.xml -> rpmmd objects ->
 Pulp content models (as they would be stored) -> rpmmd objects -> comps.xml,
-mirroring the conversion done by ``parse_comps_components`` (upload/sync) and
-the publish loop, but entirely in memory. They lock down the corner cases
-documented in rpmrepo_metadata's ``docs/comps.md``.
+using the production conversion functions from `app/comps.py`. They lock down
+the corner cases documented in rpmrepo_metadata's
+[docs/comps.md](https://github.com/dralley/rpmrepo_metadata/blob/master/docs/comps.md).
 
 The API/DB/publish integration is covered separately by the functional tests;
-here we isolate the pure translation logic in ``models/comps.py``.
+here we isolate the pure translation logic.
 """
 
 import rpmrepo_metadata as rpmmd
 from django.test import TestCase
 
+from pulp_rpm.app.comps import comps_to_model_dicts, models_to_comps_data
 from pulp_rpm.app.models import (
     PackageCategory,
     PackageEnvironment,
@@ -20,7 +21,7 @@ from pulp_rpm.app.models import (
     PackageLangpacks,
 )
 
-# A comps document engineered to cover the corner cases from docs/comps.md:
+# A comps document engineered to cover corner cases:
 #   * name/description translations (xml:lang)
 #   * every packagereq type (mandatory/default/optional/conditional)
 #   * conditional `requires`
@@ -127,36 +128,17 @@ COMPS_XML = """<?xml version="1.0" encoding="UTF-8"?>
 def _models_from_comps(xml):
     """Parse comps XML and build (unsaved) Pulp content models from it.
 
-    Mirrors ``parse_comps_components`` without touching the database.
+    Uses the production conversion function `comps_to_model_dicts`.
     """
     comps = rpmmd.CompsData.from_xml(xml)
-    groups = [PackageGroup(**PackageGroup.comps_to_dict(g)) for g in comps.groups]
-    categories = [PackageCategory(**PackageCategory.comps_to_dict(c)) for c in comps.categories]
-    environments = [
-        PackageEnvironment(**PackageEnvironment.comps_to_dict(e)) for e in comps.environments
-    ]
-    langpacks = None
-    if comps.langpacks:
-        matches = PackageLangpacks.comps_to_dict(comps.langpacks)["matches"]
-        langpacks = PackageLangpacks(matches=matches)
+    group_dicts, category_dicts, environment_dicts, langpack_dict = comps_to_model_dicts(comps)
+
+    groups = [PackageGroup(**gd) for gd in group_dicts]
+    categories = [PackageCategory(**cd) for cd in category_dicts]
+    environments = [PackageEnvironment(**ed) for ed in environment_dicts]
+    langpacks = PackageLangpacks(**langpack_dict) if langpack_dict else None
+
     return comps, groups, categories, environments, langpacks
-
-
-def _comps_from_models(groups, categories, environments, langpacks):
-    """Rebuild an rpmmd CompsData from Pulp content models.
-
-    Mirrors the publish loop in ``tasks/publishing.py``.
-    """
-    comps = rpmmd.CompsData()
-    comps.groups = [g.to_comps_group() for g in groups]
-    comps.categories = [c.to_comps_category() for c in categories]
-    comps.environments = [e.to_comps_environment() for e in environments]
-    if langpacks is not None:
-        comps.langpacks = [
-            rpmmd.CompsLangpack(name=name, install=install)
-            for name, install in langpacks.matches.items()
-        ]
-    return comps
 
 
 class TestCompsModelRoundtrip(TestCase):
@@ -165,7 +147,7 @@ class TestCompsModelRoundtrip(TestCase):
     def test_full_roundtrip_is_lossless(self):
         """The whole document survives a round-trip through the Pulp models."""
         original, groups, categories, environments, langpacks = _models_from_comps(COMPS_XML)
-        rebuilt = _comps_from_models(groups, categories, environments, langpacks)
+        rebuilt = models_to_comps_data(groups, categories, environments, langpacks)
 
         reparsed = rpmmd.CompsData.from_xml(rebuilt.to_xml())
 
@@ -197,11 +179,11 @@ class TestCompsModelRoundtrip(TestCase):
         self.assertEqual(ibus.requires, "gtk3")
 
     def test_basearchonly_preserved(self):
-        """`basearchonly="true"` survives; absent stays absent (None)."""
+        """`basearchonly="true"` survives; absent normalized to false (continuity behavior, maybe change in the future)."""
         group = self._roundtrip_group("core")
         by_name = {p.name: p for p in group.packages}
         self.assertEqual(by_name["grub2-efi-x64"].basearchonly, True)
-        self.assertIsNone(by_name["bash"].basearchonly)
+        self.assertFalse(by_name["bash"].basearchonly)
 
     def test_biarchonly_preserved(self):
         """`biarchonly` is preserved both when true and when false."""
@@ -257,3 +239,79 @@ class TestCompsModelRoundtrip(TestCase):
                 "libreoffice-core": "libreoffice-langpack-%{lang}",
             },
         )
+
+
+class TestCompsDigests(TestCase):
+    """Digest calculation is deterministic and detects changes."""
+
+    def test_digest_calculated_for_all_types(self):
+        """All model types get a digest attribute from comps_to_model_dicts."""
+        _, groups, categories, environments, langpacks = _models_from_comps(COMPS_XML)
+
+        # All groups have digests
+        for group in groups:
+            self.assertIsNotNone(group.digest)
+            self.assertEqual(len(group.digest), 64)  # SHA256 hex digest
+
+        # All categories have digests
+        for category in categories:
+            self.assertIsNotNone(category.digest)
+            self.assertEqual(len(category.digest), 64)
+
+        # All environments have digests
+        for environment in environments:
+            self.assertIsNotNone(environment.digest)
+            self.assertEqual(len(environment.digest), 64)
+
+        # Langpacks has a digest
+        self.assertIsNotNone(langpacks.digest)
+        self.assertEqual(len(langpacks.digest), 64)
+
+    def test_digest_detects_content_changes(self):
+        """Different content produces different digests."""
+        xml_modified = COMPS_XML.replace(
+            "Smallest possible installation.", "A different description."
+        )
+
+        _, original_groups, _, _, _ = _models_from_comps(COMPS_XML)
+        _, modified_groups, _, _, _ = _models_from_comps(xml_modified)
+
+        original_core = next(g for g in original_groups if g.id == "core")
+        modified_core = next(g for g in modified_groups if g.id == "core")
+
+        # Same ID but different content -> different digest
+        self.assertEqual(original_core.id, modified_core.id)
+        self.assertNotEqual(original_core.digest, modified_core.digest)
+
+    def test_known_static_digests(self):
+        """Known digests for COMPS_XML items to detect unintentional algorithm changes.
+
+        If this test fails after code changes, the digest algorithm may have changed
+        unintentionally, which would break existing content deduplication in the DB.
+        Only update these values if the change is intentional and you understand
+        the migration impact.
+        """
+        _, groups, categories, environments, langpacks = _models_from_comps(COMPS_XML)
+
+        # Known digests calculated from the COMPS_XML fixture
+        KNOWN_DIGESTS = {
+            "group:core": "b098917f95323f5161c28fff0035e7b239f28a9f9a9efb3e2ab3d5cf20219b1f",
+            "group:i18n": "d288729a5b8b3dad3f945703f8d102064d9a2334c65999cf3ec6af0f41c98a69",
+            "category:development": "c9f1bdafccbb6c85371408e10f0080784bef26d4beb2e3d6c74daa629ebd98e4",
+            "environment:minimal": "f59e181354c89128d8a838bea22088bfec044f28fa769c15547ca83f31e782a8",
+            "langpacks": "eed1c4b53c7e2af3e33fda022aaae987940b967e7a251930eab1e151e88d7968",
+        }
+
+        groups_by_id = {g.id: g for g in groups}
+        self.assertEqual(groups_by_id["core"].digest, KNOWN_DIGESTS["group:core"])
+        self.assertEqual(groups_by_id["i18n"].digest, KNOWN_DIGESTS["group:i18n"])
+
+        categories_by_id = {c.id: c for c in categories}
+        self.assertEqual(
+            categories_by_id["development"].digest, KNOWN_DIGESTS["category:development"]
+        )
+
+        environments_by_id = {e.id: e for e in environments}
+        self.assertEqual(environments_by_id["minimal"].digest, KNOWN_DIGESTS["environment:minimal"])
+
+        self.assertEqual(langpacks.digest, KNOWN_DIGESTS["langpacks"])

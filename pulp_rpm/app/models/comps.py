@@ -91,7 +91,11 @@ class PackageGroup(Content):
         for pkg in packages:
             as_dict = {
                 "name": pkg.name,
-                "type": PACKAGE_TYPE_MAPPING.get(pkg.reqtype, 0),
+                # libcomps historically normalized used a default value of "mandatory",
+                # we do the same to preserve the behavior continuity.
+                "type": PACKAGE_TYPE_MAPPING.get(
+                    pkg.reqtype, PACKAGE_TYPE_MAPPING[rpmmd.PackageReqType.MANDATORY]
+                ),
                 "basearchonly": pkg.basearchonly,
                 "requires": pkg.requires,
             }
@@ -106,19 +110,29 @@ class PackageGroup(Content):
             pkglist.append(
                 rpmmd.CompsPackageReq(
                     name=pkg["name"],
-                    reqtype=PACKAGE_TYPE_REVERSE.get(pkg["type"], rpmmd.PackageReqType.DEFAULT),
+                    # libcomps historically normalized used a default value of "mandatory",
+                    # we do the same to preserve the behavior continuity.
+                    reqtype=PACKAGE_TYPE_REVERSE.get(pkg["type"], rpmmd.PackageReqType.MANDATORY),
                     requires=pkg["requires"],
-                    basearchonly=bool(pkg["basearchonly"]) if pkg["basearchonly"] else None,
+                    # libcomps only initialized `basearchonly` when it had a value of "true" during parsing.
+                    # Any other value including "false" and absent attribute would leave the value null.
+                    # Therefore, libcomps could only return "True" or "None" when parsing from a comps document.
+                    #
+                    # Therefore, the value stored in the DB could be None, and we kept that behavior for
+                    # continuity with existing documents.
+                    basearchonly=bool(pkg["basearchonly"]),
                 )
             )
         return pkglist
 
     @classmethod
     def comps_to_dict(cls, group):
+        # libcomps defaulted to True here
+        uservisible = group.uservisible if group.uservisible is not None else True
         return {
             PULP_GROUP_ATTRS.ID: group.id,
             PULP_GROUP_ATTRS.DEFAULT: group.default,
-            PULP_GROUP_ATTRS.USER_VISIBLE: group.uservisible,
+            PULP_GROUP_ATTRS.USER_VISIBLE: uservisible,
             PULP_GROUP_ATTRS.DISPLAY_ORDER: group.display_order,
             PULP_GROUP_ATTRS.NAME: group.name,
             PULP_GROUP_ATTRS.DESCRIPTION: group.description or "",
