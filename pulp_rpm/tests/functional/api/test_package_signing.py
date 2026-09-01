@@ -1069,18 +1069,42 @@ def test_sync_mldsa_signed_package(
     assert synced_package.signing_keys is None
 
 
+# rpm's pluggable OpenPGP signer (%_openpgp_sign, RPM >= 4.20) can drive `sq`
+# directly, but older rpm (e.g. 4.19) silently ignores it and falls back to
+# GPG, which cannot handle ML-DSA / OpenPGP v6 keys. Instead, override rpm's
+# gpg signing command (%__gpg_sign_cmd) with a shim that shells out to `sq`.
+# This works on both old and new rpm. rpm probes the signer with `--version`,
+# then invokes it with the target `--signature-file` and pipes the payload on
+# stdin (`-`), expecting a detached binary signature in that file.
+SQ_GPG_SHIM_TEMPLATE = r"""#!/usr/bin/env bash
+if [[ "$1" == "--version" ]]; then
+    echo "gpg (GnuPG) 2.4.0"
+    exit 0
+fi
+SIGFILE=""
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --signature-file) SIGFILE="$2"; shift 2 ;;
+        *) shift ;;
+    esac
+done
+exec sq --home "SQ_HOME_HERE" sign --binary --overwrite \
+    --signer "${PULP_SIGNING_KEY_FINGERPRINT}" --signature-file "${SIGFILE}" -
+"""
+
 PQC_RPMSIGN_SCRIPT_TEMPLATE = r"""#!/usr/bin/env bash
 FILE_PATH=$1
 FINGERPRINT="${PULP_SIGNING_KEY_FINGERPRINT}"
 
 rpmsign \
-    --define "_openpgp_sign sq" \
-    --define "_openpgp_sign_id ${FINGERPRINT}" \
+    --define "_gpg_name ${FINGERPRINT}" \
+    --define "__gpg SHIM_PATH_HERE" \
+    --define "__gpg_sign_cmd %{__gpg} sq --signature-file %{__signature_filename} %{__plaintext_filename}" \
     --addsign --rpmv6 "${FILE_PATH}" 1> /dev/null
 
 STATUS=$?
 if [[ ${STATUS} -eq 0 ]]; then
-   echo {"rpm_package": "${FILE_PATH}"}
+   echo {\"rpm_package\": \"${FILE_PATH}\"}
 else
    exit ${STATUS}
 fi
@@ -1099,8 +1123,12 @@ def pqc_package_signing_service(tmp_path, has_rpmv6_support, pulpcore_bindings):
 
     _, fingerprint, _ = import_signing_key(key.private_url, sq_home, backend="sq")
 
+    shim_path = tmp_path / "sq-gpg-shim.sh"
+    shim_path.write_text(SQ_GPG_SHIM_TEMPLATE.replace("SQ_HOME_HERE", str(sq_home)))
+    shim_path.chmod(0o755)
+
     script_path = tmp_path / "sign-pqc-package.sh"
-    script_path.write_text(PQC_RPMSIGN_SCRIPT_TEMPLATE)
+    script_path.write_text(PQC_RPMSIGN_SCRIPT_TEMPLATE.replace("SHIM_PATH_HERE", str(shim_path)))
     script_path.chmod(0o755)
 
     service_name = create_signing_service(
@@ -1125,18 +1153,12 @@ def test_sign_package_with_mldsa_via_signing_service(
     rpm_repository_api,
     rpm_repository_factory,
 ):
-    """Attempt to set up a full ML-DSA package signing service.
-
-    The `add-signing-service` management command uses GPG internally to
-    extract key metadata, which fails for ML-DSA / OpenPGP v6 keys. Once
-    that bottleneck is resolved, this test should pass end-to-end.
-    """
+    """Set up a full ML-DSA package signing service and sign a package with it."""
     service, fingerprint = pqc_package_signing_service
-    prefixed_fingerprint = f"v6:{fingerprint}"
 
     repository = rpm_repository_factory(
         package_signing_service=service.pulp_href,
-        package_signing_fingerprint=prefixed_fingerprint,
+        package_signing_fingerprint=f"v6:{fingerprint}",
     )
 
     unsigned_package = rpm_package_factory()
@@ -1149,4 +1171,5 @@ def test_sign_package_with_mldsa_via_signing_service(
     signed_package = rpm_package_api.list(
         repository_version=repository.latest_version_href,
     ).results[0]
-    assert signed_package.signing_keys == [prefixed_fingerprint]
+    # Signatures are issued by the signing subkey, not the primary key.
+    assert signed_package.signing_keys == [f"v6:{KEY_V6_MLDSA65_ED25519.signing_fingerprint}"]
