@@ -186,7 +186,7 @@ def test_artifact_from_file(
 ):
     """Test uploading artifacts in separate domains."""
     # Build one RPM and upload the same file into each domain.
-    rpm_path = rpm_create_package(Nevra(f"artifact-{uuid.uuid4().hex[:8]}", 0, "1.0", "1", "noarch"))
+    rpm_path = rpm_create_package(Nevra(f"package-{uuid.uuid4().hex[:8]}", 0, "1.0", "1", "noarch"))
 
     body = {
         "name": str(uuid.uuid4()),
