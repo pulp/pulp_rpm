@@ -1,1 +1,0 @@
-Replaced the libcomps dependency with rpmrepo_metadata for comps XML parsing and serialization.
