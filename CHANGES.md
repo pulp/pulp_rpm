@@ -8,6 +8,26 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.39.0 (2026-09-03) {: #3.39.0 }
+
+#### Bugfixes {: #3.39.0-bugfix }
+
+- Changed repository-level uniqueness constraint from NEVRA to NVRA, so that packages differing only in epoch are treated as duplicates. The highest epoch is always kept.
+  [#4239](https://github.com/pulp/pulp_rpm/issues/4239)
+- Fixed an `IntegrityError` that could abort `signed_add_and_remove` when the same package was signed concurrently by making the `RpmPackageSigningResult` creation race-safe and reusing the existing result.
+  [#4522](https://github.com/pulp/pulp_rpm/issues/4522)
+- Fixed packages being re-signed on every add when their signature carries only an issuer key ID and no issuer fingerprint subpacket, by comparing the configured fingerprint against the package's signing keys on their key IDs whenever either side lacks a full fingerprint.
+  [#4545](https://github.com/pulp/pulp_rpm/issues/4545)
+- Prevent deletion of metadata/package signing service if it is still in use.
+  [#4554](https://github.com/pulp/pulp_rpm/issues/4554)
+- Fixed queries in the content copy API that could exceed PostgreSQL's 65535 bound-parameter limit.
+
+#### Misc {: #3.39.0-misc }
+
+- 
+
+---
+
 ## 3.38.5 (2026-08-20) {: #3.38.5 }
 
 #### Bugfixes {: #3.38.5-bugfix }
