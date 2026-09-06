@@ -1,0 +1,1 @@
+Fixed RPM package upload returning HTTP 500 when the artifact file exists in storage but the corresponding database record is absent. The upload now returns a descriptive HTTP 400 error instead.

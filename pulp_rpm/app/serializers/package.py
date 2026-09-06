@@ -8,7 +8,7 @@ from django.conf import settings
 from django.db import DatabaseError
 from drf_spectacular.utils import extend_schema_serializer
 from rest_framework import serializers
-from rest_framework.exceptions import NotAcceptable
+from rest_framework.exceptions import NotAcceptable, ValidationError
 
 from pulpcore.plugin.files import PulpTemporaryUploadedFile
 from pulpcore.plugin.models import Artifact, UploadChunk
@@ -485,7 +485,16 @@ class PackageUploadSerializer(PackageSerializer):
                 artifact_data = {"file": file}
                 serializer = ArtifactSerializer(data=artifact_data)
                 serializer.is_valid(raise_exception=True)
-                artifact = serializer.save()
+                try:
+                    artifact = serializer.save()
+                except ValueError as e:
+                    raise ValidationError(
+                        detail=_(
+                            "The artifact file for this RPM already exists in storage but "
+                            "has no corresponding database record. Run the orphan cleanup "
+                            "task and try again."
+                        )
+                    ) from e
             data["artifact"] = artifact
 
         filename = (
