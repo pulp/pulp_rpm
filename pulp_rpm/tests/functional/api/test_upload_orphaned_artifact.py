@@ -8,7 +8,6 @@ import hashlib
 import os
 from pathlib import Path
 
-import pytest
 import requests
 
 from pulp_rpm.tests.functional.utils import Nevra, build_rpm
@@ -26,6 +25,7 @@ def _api_url(path: str) -> str:
     base = f"{protocol}://{host}:{port}"
     try:
         from django.conf import settings
+
         api_root = getattr(settings, "API_ROOT", "/pulp/")
         # pulp-service uses domain-scoped URLs: {API_ROOT}{domain}/api/v3/
         # upstream uses: {API_ROOT}api/v3/
@@ -37,9 +37,7 @@ def _api_url(path: str) -> str:
     return f"{base}/pulp/api/v3/{path}"
 
 
-def test_upload_returns_client_error_when_artifact_file_exists_without_db_record(
-    tmp_path
-):
+def test_upload_returns_client_error_when_artifact_file_exists_without_db_record(tmp_path):
     """RPM upload returns 4xx (not 500) when the artifact file is in storage with no DB record.
 
     The inconsistent state is created by pre-placing the RPM file at its expected artifact
@@ -57,6 +55,7 @@ def test_upload_returns_client_error_when_artifact_file_exists_without_db_record
     # Determine the artifact storage path from Django settings.
     try:
         from django.conf import settings
+
         media_root = Path(settings.MEDIA_ROOT)
     except Exception:
         media_root = Path("/var/lib/pulp/media")
@@ -71,7 +70,8 @@ def test_upload_returns_client_error_when_artifact_file_exists_without_db_record
         os.environ.get("ADMIN_USERNAME", "admin"),
         os.environ.get("ADMIN_PASSWORD", "password"),
     )
-    url = _api_url(f"content/rpm/packages/")
+    # Use the synchronous upload action, which is the endpoint that exhibits the bug.
+    url = _api_url("content/rpm/packages/upload/")
 
     # The upload must NOT return HTTP 500.
     # Before the fix, an unhandled ValueError propagated through DRF and produced a 500.
