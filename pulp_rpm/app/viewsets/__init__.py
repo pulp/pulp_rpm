@@ -7,6 +7,14 @@ from .comps import (  # noqa
     PackageEnvironmentViewSet,
     PackageLangpacksViewSet,
 )
+from .content_view_search import (  # noqa
+    RpmContentViewEnvironmentSearchViewSet,
+    RpmContentViewErrataViewSet,
+    RpmContentViewModuleStreamsViewSet,
+    RpmContentViewPackageGroupSearchViewSet,
+    RpmContentViewPackageListViewSet,
+    RpmContentViewPackageSearchViewSet,
+)
 from .custom_metadata import RepoMetadataFileViewSet  # noqa
 from .distribution import DistributionTreeViewSet  # noqa
 from .modulemd import ModulemdViewSet, ModulemdDefaultsViewSet, ModulemdObsoleteViewSet  # noqa
