@@ -13,6 +13,14 @@ from .comps import (  # noqa
     PackageGroupSerializer,
     PackageLangpacksSerializer,
 )
+from .content_view_search import (  # noqa
+    ContentViewErrataSerializer,
+    ContentViewModuleStreamSerializer,
+    ContentViewPackageEnvironmentSerializer,
+    ContentViewPackageGroupSerializer,
+    ContentViewPackageSerializer,
+    ContentViewUpdateReferenceSerializer,
+)
 from .custom_metadata import RepoMetadataFileSerializer  # noqa
 from .distribution import (  # noqa
     AddonSerializer,
