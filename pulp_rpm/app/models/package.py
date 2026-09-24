@@ -284,7 +284,9 @@ class Package(Content):
         readonly = ["evr"]
 
     @classmethod
-    def createrepo_to_dict(cls, package, tuple_cache=None, string_cache=None, signing_keys=None):
+    def createrepo_to_dict(
+        cls, package, tuple_cache=None, string_cache=None, signing_keys=None, changelogs=None
+    ):
         """
         Convert createrepo_c package object to dict for instantiating Package object.
 
@@ -296,12 +298,15 @@ class Package(Content):
             string_cache(dict): A dictionary used to intern strings - helpful to avoid
                 duplicate strings in memory by converting them into shallow refcounted "copies"
                 of existing strings
+            changelogs(list): Pre-read (name, time, text) changelog tuples, used instead of
+                ``package.changelogs`` when given
 
         Returns:
             dict: all data for RPM/SRPM content creation
 
         """
-        changelogs = package.changelogs
+        if changelogs is None:
+            changelogs = package.changelogs
 
         # make sure the changelogs are sorted by date
         changelogs.sort(key=lambda t: t[1])

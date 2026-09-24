@@ -68,6 +68,12 @@ def extract_signing_keys(path):
     return format_signing_keys(pkg.signatures())
 
 
+def read_changelogs(path):
+    """Read an RPM's changelog entries using rpm_rs instead of createrepo_c."""
+    pkg = rpm_rs.PackageMetadata.open(path)
+    return [(entry.name, entry.timestamp, entry.description) for entry in pkg.changelog_entries()]
+
+
 def _split_key_identifier(identifier):
     """Split a key identifier into (prefix, uppercase hex); a bare hex is assumed to be v4."""
     prefix, sep, hex_part = identifier.partition(":")
@@ -118,7 +124,7 @@ def read_crpackage_from_artifact(artifact, working_dir="."):
 
     Copy file to a temp directory and parse it.
 
-    Returns: (cr_package, signing_keys) tuple
+    Returns: (cr_package, signing_keys, changelogs) tuple
 
     Args:
         artifact: inited and validated artifact to save
@@ -134,9 +140,10 @@ def read_crpackage_from_artifact(artifact, working_dir="."):
             header_reading_flags=CR_HEADER_FLAGS,
         )
         signing_keys = extract_signing_keys(temp_file.name)
+        changelogs = read_changelogs(temp_file.name)
 
     artifact_file.close()
-    return cr_pkginfo, signing_keys
+    return cr_pkginfo, signing_keys, changelogs
 
 
 def urlpath_sanitize(*args):

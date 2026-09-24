@@ -21,7 +21,7 @@ from pulp_rpm.app.exceptions import PackageSigningError
 from pulp_rpm.app.models.content import RpmPackageSigningResult, RpmPackageSigningService
 from pulp_rpm.app.models.package import Package
 from pulp_rpm.app.models.repository import RpmRepository
-from pulp_rpm.app.shared_utils import extract_signing_keys, signing_key_matches
+from pulp_rpm.app.shared_utils import extract_signing_keys, read_changelogs, signing_key_matches
 
 log = logging.getLogger(__name__)
 
@@ -112,7 +112,10 @@ def _sign_package(package, signing_service, signing_fingerprint):
         signing_keys = extract_signing_keys(str(signed_package_path))
         # Read all updated metadata from the signed RPM
         cr_pkg = cr.package_from_rpm(str(signed_package_path))
-        new_pkg_dict = Package.createrepo_to_dict(cr_pkg, signing_keys=signing_keys)
+        changelogs = read_changelogs(str(signed_package_path))
+        new_pkg_dict = Package.createrepo_to_dict(
+            cr_pkg, signing_keys=signing_keys, changelogs=changelogs
+        )
         artifact = _save_artifact(signed_package_path)
         extra_fields = {}
         if settings.RPM_SIGNING_COPY_LABELS:

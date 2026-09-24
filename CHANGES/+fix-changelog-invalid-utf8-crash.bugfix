@@ -1,0 +1,4 @@
+Fixed a crash (worker SIGSEGV) when reading metadata for RPM packages whose changelog
+entries contain bytes that aren't valid UTF-8 (e.g. legacy packages built with a
+non-UTF-8-locale rpmbuild toolchain). Changelogs are now read via ``rpm_rs`` instead of
+``createrepo_c``, which decodes the same data leniently instead of crashing the process.
