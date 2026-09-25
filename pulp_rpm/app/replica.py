@@ -23,9 +23,11 @@ class RpmReplicator(Replicator):
     remote_serializer_name = "RpmRemoteSerializer"
     sync_task = rpm_synchronize
 
-    def repository_extra_fields(self, remote):
-        """Returns a dictionary where each key is a field on an RpmRemote."""
-        return dict(autopublish=False)
+    def repository_extra_fields(self, remote, **kwargs):
+        """Returns a dictionary where each key is a field on an RpmRepository."""
+        fields = super().repository_extra_fields(remote, **kwargs)
+        fields.update(dict(autopublish=False))
+        return fields
 
     def sync_params(self, repository, remote):
         """Returns a dictionary where key is a parameter for the sync task."""
