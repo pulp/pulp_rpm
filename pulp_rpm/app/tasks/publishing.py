@@ -77,6 +77,15 @@ class PublicationData:
         self.sub_repos = []
         self.repomdrecords = []
 
+    @staticmethod
+    def _publication_path(path):
+        """Return a path contained by the publication working directory."""
+        publication_root = os.path.realpath(".")
+        target = os.path.realpath(path)
+        if os.path.commonpath((publication_root, target)) != publication_root:
+            raise ValueError(f"Path outside publication working directory: {path}")
+        return target
+
     def prepare_metadata_files(self, content, folder=None):
         """
         Copies metadata files from the Artifact storage.
@@ -114,6 +123,7 @@ class PublicationData:
                     path = "-".join(filename)
             if folder:
                 path = os.path.join(folder, path)
+            path = self._publication_path(path)
             with open(path, "wb") as new_file:
                 shutil.copyfileobj(current_file, new_file)
                 repomdrecords.append((repo_metadata_file.data_type, new_file.name))
@@ -294,7 +304,7 @@ class PublicationData:
             self.handle_sub_repos(distribution_tree)
 
         for name, content, checksum_types in self.sub_repos:
-            os.mkdir(name)
+            os.mkdir(self._publication_path(name))
             setattr(self, f"{name}_content", content)
             setattr(self, f"{name}_checksums", checksum_types)
             setattr(self, f"{name}_repomdrecords", self.prepare_metadata_files(content, name))
