@@ -23,6 +23,49 @@ KEEP_CHANGELOG_LIMIT = settings.KEEP_CHANGELOG_LIMIT
 log = getLogger(__name__)
 
 
+class _RpmrepoPackageAdapter:
+    """Expose rpmrepo_metadata package attributes under createrepo_c names."""
+
+    def __init__(self, package):
+        self.package = package
+
+    @property
+    def files(self):
+        # createrepo_c represents a regular file with an empty string, whereas the Rust
+        # binding uses None.
+        return [
+            (file_type or "", parent_dir, name)
+            for file_type, parent_dir, name in self.package.files_split
+        ]
+
+    @property
+    def epoch(self):
+        epoch = self.package.epoch
+        return str(epoch) if epoch is not None else None
+
+    @property
+    def pkgId(self):
+        return self.package.pkgid
+
+    @property
+    def rpm_header_start(self):
+        return self.package.rpm_header_range[0]
+
+    @property
+    def rpm_header_end(self):
+        return self.package.rpm_header_range[1]
+
+    @property
+    def rpm_packager(self):
+        return self.package.packager
+
+    def nevra(self):
+        return self.package.nevra()
+
+    def __getattr__(self, name):
+        return getattr(self.package, name)
+
+
 # Hard to move this due to circular import problems
 class RpmVersionField(models.Field):
     """Model Field for the EVR sort key (single BYTEA encoding epoch+version+release)."""
@@ -317,7 +360,7 @@ class Package(Content):
         deduplicated_files = []
         has_duplicates = False
 
-        string_cache = string_cache or {}
+        string_cache = string_cache if string_cache is not None else {}
 
         for file_entry in uninterned_files:
             # length of this tuple could be 3 or 4 depending on whether the file digest is included
@@ -395,6 +438,16 @@ class Package(Content):
             PULP_PACKAGE_ATTRS.VERSION: getattr(package, CR_PACKAGE_ATTRS.VERSION),
             PULP_PACKAGE_ATTRS.SIGNING_KEYS: signing_keys or [],
         }
+
+    @classmethod
+    def rpmrepo_to_dict(cls, package, tuple_cache=None, string_cache=None, signing_keys=None):
+        """Convert an rpmrepo_metadata package object to a Package initialization dictionary."""
+        return cls.createrepo_to_dict(
+            _RpmrepoPackageAdapter(package),
+            tuple_cache=tuple_cache,
+            string_cache=string_cache,
+            signing_keys=signing_keys,
+        )
 
     def to_createrepo_c(self):
         """
