@@ -2,12 +2,10 @@ import shutil
 import tempfile
 from hashlib import sha256
 
-import createrepo_c as cr
 import rpm_rs
+import rpmrepo_metadata as rpmmd
 from django.conf import settings
 from django.utils.dateparse import parse_datetime
-
-from pulp_rpm.app.constants import CR_HEADER_FLAGS
 
 
 def format_nevra(name=None, epoch=0, version=None, release=None, arch=None):
@@ -68,6 +66,11 @@ def extract_signing_keys(path):
     return format_signing_keys(pkg.signatures())
 
 
+def read_package_from_file(path):
+    """Parse a full RPM using Pulp's configured changelog retention."""
+    return rpmmd.Package.from_file(path, changelog_limit=settings.KEEP_CHANGELOG_LIMIT)
+
+
 def _split_key_identifier(identifier):
     """Split a key identifier into (prefix, uppercase hex); a bare hex is assumed to be v4."""
     prefix, sep, hex_part = identifier.partition(":")
@@ -112,13 +115,13 @@ def signing_key_matches(fingerprint, signing_keys):
     return any(_same_key(fingerprint, signing_key) for signing_key in signing_keys)
 
 
-def read_crpackage_from_artifact(artifact, working_dir="."):
+def read_package_from_artifact(artifact, working_dir="."):
     """
     Helper function for creating package.
 
     Copy file to a temp directory and parse it.
 
-    Returns: (cr_package, signing_keys) tuple
+    Returns: (rpmrepo_metadata package, signing_keys) tuple
 
     Args:
         artifact: inited and validated artifact to save
@@ -128,15 +131,11 @@ def read_crpackage_from_artifact(artifact, working_dir="."):
     with tempfile.NamedTemporaryFile("wb", dir=working_dir, suffix=filename) as temp_file:
         shutil.copyfileobj(artifact_file, temp_file)
         temp_file.flush()
-        cr_pkginfo = cr.package_from_rpm(
-            temp_file.name,
-            changelog_limit=settings.KEEP_CHANGELOG_LIMIT,
-            header_reading_flags=CR_HEADER_FLAGS,
-        )
+        package = read_package_from_file(temp_file.name)
         signing_keys = extract_signing_keys(temp_file.name)
 
     artifact_file.close()
-    return cr_pkginfo, signing_keys
+    return package, signing_keys
 
 
 def urlpath_sanitize(*args):

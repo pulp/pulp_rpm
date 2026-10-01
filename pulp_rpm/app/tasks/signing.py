@@ -3,7 +3,6 @@ import logging
 from pathlib import Path
 from tempfile import NamedTemporaryFile
 
-import createrepo_c as cr
 from django.conf import settings
 
 from pulpcore.plugin.models import (
@@ -21,7 +20,11 @@ from pulp_rpm.app.exceptions import PackageSigningError
 from pulp_rpm.app.models.content import RpmPackageSigningResult, RpmPackageSigningService
 from pulp_rpm.app.models.package import Package
 from pulp_rpm.app.models.repository import RpmRepository
-from pulp_rpm.app.shared_utils import extract_signing_keys, signing_key_matches
+from pulp_rpm.app.shared_utils import (
+    extract_signing_keys,
+    read_package_from_file,
+    signing_key_matches,
+)
 
 log = logging.getLogger(__name__)
 
@@ -111,8 +114,8 @@ def _sign_package(package, signing_service, signing_fingerprint):
         # Read signing key fingerprints directly from the signed RPM's signature packets.
         signing_keys = extract_signing_keys(str(signed_package_path))
         # Read all updated metadata from the signed RPM
-        cr_pkg = cr.package_from_rpm(str(signed_package_path))
-        new_pkg_dict = Package.createrepo_to_dict(cr_pkg, signing_keys=signing_keys)
+        parsed_package = read_package_from_file(signed_package_path)
+        new_pkg_dict = Package.rpmrepo_to_dict(parsed_package, signing_keys=signing_keys)
         artifact = _save_artifact(signed_package_path)
         extra_fields = {}
         if settings.RPM_SIGNING_COPY_LABELS:

@@ -1,0 +1,1 @@
+Strip control characters (illegal in XML) from changelogs so that it cannot cause errors / crashes during XML writing.
