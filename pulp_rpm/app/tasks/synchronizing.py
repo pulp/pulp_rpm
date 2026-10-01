@@ -81,6 +81,7 @@ from pulp_rpm.app.models import (
     UpdateRecord,
     UpdateReference,
     Variant,
+    safe_subrepo_name_validator,
 )
 from pulp_rpm.app.modulemd import parse_modular
 from pulp_rpm.app.rpm_version import RpmVersion
@@ -1627,6 +1628,7 @@ class RpmContentSaver(ContentSaver):
             variants = []
 
             for addon_id, addon in treeinfo_data["addons"].items():
+                safe_subrepo_name_validator(addon["addon_id"])
                 instance = Addon(**addon)
                 instance.distribution_tree = distribution_tree
                 addons.append(instance)
@@ -1642,6 +1644,7 @@ class RpmContentSaver(ContentSaver):
                 images.append(instance)
 
             for variant_id, variant in treeinfo_data["variants"].items():
+                safe_subrepo_name_validator(variant["variant_id"])
                 instance = Variant(**variant)
                 instance.distribution_tree = distribution_tree
                 variants.append(instance)
