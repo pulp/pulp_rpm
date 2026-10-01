@@ -263,9 +263,10 @@ def copy_content(config, dependency_solving, dependency_upgrade=False):
         )
 
         # Group units by destination repository before creating new versions.
-        # Multiple config entries may map to the same destination repository;
-        # calling new_version() more than once per destination would violate
-        # the unique (repository, number) constraint on RepositoryVersion.
+        # Each config entry loaded its own instance of the destination repository, so
+        # calling new_version() once per entry would reuse the same stale next_version
+        # and violate the unique (repository, number) constraint on RepositoryVersion.
+        # The viewset ensures entries sharing a destination share a dest_base_version.
         dest_content = {}
         for from_repo, units in content_to_copy.items():
             src_repo_version = libsolv_repo_names[from_repo]
