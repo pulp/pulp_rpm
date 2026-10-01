@@ -1,5 +1,6 @@
 """Tests that perform actions over content unit."""
 
+import uuid
 from tempfile import NamedTemporaryFile
 
 import pytest
@@ -21,7 +22,10 @@ from pulp_rpm.tests.functional.constants import (
     RPM_PACKAGEENVIRONMENT_CONTENT_NAME,
     RPM_PACKAGEGROUP_CONTENT_NAME,
     RPM_PACKAGELANGPACKS_CONTENT_NAME,
+    RPM_WITH_NON_ASCII_NAME,
     RPM_WITH_NON_ASCII_URL,
+    RPM_WITH_NON_UTF_8_NAME,
+    RPM_WITH_NON_UTF_8_URL,
     SMALL_CATEGORY,
     SMALL_COMPS_XML,
     SMALL_ENVIRONMENTS,
@@ -102,6 +106,66 @@ def test_upload_non_ascii(delete_orphans_pre, rpm_package_api, monitor_task):
     monitor_task(upload.task)
     new_packages_count = rpm_package_api.list().count
     assert (packages_count + 1) == new_packages_count
+
+
+@pytest.mark.parallel
+def test_upload_invalid_utf8_changelog(rpm_package_api, monitor_task, tmp_path):
+    """Uploads an RPM with a non-UTF-8 changelog without crashing the worker."""
+    builder = rpm_rs.PackageBuilder("invalid-utf8-changelog", "1.0", "MIT", "noarch")
+    builder.add_changelog_entry("AuthorXYName", "DescriptionABCDE", 1_700_000_000)
+    rpm_bytes = builder.build().to_bytes()
+    for original, replacement in [
+        (b"utf-8\x00", b"ascii\x00"),
+        (b"AuthorXYName", b"Author\xffYName"),
+        (b"DescriptionABCDE", b"Description\xffBCDE"),
+    ]:
+        assert len(original) == len(replacement)
+        assert rpm_bytes.count(original) == 1
+        rpm_bytes = rpm_bytes.replace(original, replacement, 1)
+
+    path = tmp_path / "invalid-utf8-changelog-1.0-1.noarch.rpm"
+    path.write_bytes(rpm_bytes)
+    upload = rpm_package_api.create(file=str(path))
+
+    content = monitor_task(upload.task).created_resources[0]
+    package = rpm_package_api.read(content)
+
+    assert package.changelogs == [["Author�YName", 1_700_000_000, "Description�BCDE"]]
+
+
+# TODO: could probably consolidate these
+def test_upload_non_ascii_from_artifact(
+    tmp_path, pulpcore_bindings, rpm_package_api, monitor_task, delete_orphans_pre
+):
+    """Uploads valid non-ASCII metadata from an existing artifact."""
+    temp_file = tmp_path / str(uuid.uuid4())
+    temp_file.write_bytes(fetch_url(RPM_WITH_NON_ASCII_URL))
+    artifact = pulpcore_bindings.ArtifactsApi.create(str(temp_file))
+    response = rpm_package_api.create(
+        artifact=artifact.pulp_href,
+        relative_path=RPM_WITH_NON_ASCII_NAME,
+    )
+    task = monitor_task(response.task)
+    assert len(task.created_resources) == 1
+
+
+def test_upload_non_utf8_from_artifact(
+    tmp_path, pulpcore_bindings, rpm_package_api, monitor_task, delete_orphans_pre
+):
+    """Uploads non-UTF-8 metadata from an artifact using replacement characters."""
+    temp_file = tmp_path / str(uuid.uuid4())
+    temp_file.write_bytes(fetch_url(RPM_WITH_NON_UTF_8_URL))
+    artifact = pulpcore_bindings.ArtifactsApi.create(str(temp_file))
+    response = rpm_package_api.create(
+        artifact=artifact.pulp_href,
+        relative_path=RPM_WITH_NON_UTF_8_NAME,
+    )
+
+    task = monitor_task(response.task)
+    package = rpm_package_api.read(task.created_resources[0])
+
+    assert package.name == RPM_WITH_NON_UTF_8_NAME
+    assert "�" in package.description
 
 
 @pytest.fixture
