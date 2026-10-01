@@ -759,6 +759,8 @@ class CopyViewSet(viewsets.ViewSet):
         config = serializer.validated_data["config"]
 
         config, shared_repos, exclusive_repos = self._process_config(config)
+        if dependency_solving:
+            self._validate_shared_dest_base_versions(config)
         async_result = dispatch(
             tasks.copy_content,
             shared_resources=shared_repos,
@@ -811,3 +813,21 @@ class CopyViewSet(viewsets.ViewSet):
             result.append(r)
 
         return result, shared_repos, exclusive_repos
+
+    def _validate_shared_dest_base_versions(self, config):
+        """
+        Ensure entries that share a destination repository also share a dest_base_version.
+
+        With dependency solving, all entries targeting the same destination are merged into a
+        single new repository version, so they must agree on the version it is based on.
+        """
+        base_versions = {}
+        for entry in config:
+            base_version = entry.get("dest_base_version")
+            if base_versions.setdefault(entry["dest_repo"], base_version) != base_version:
+                raise DRFValidationError(
+                    detail=_(
+                        "When dependency_solving is enabled, all config entries with the same "
+                        "dest_repo must specify the same dest_base_version."
+                    )
+                )

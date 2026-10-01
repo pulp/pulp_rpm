@@ -1,6 +1,8 @@
 """Tests that sync rpm plugin repositories."""
 
+import hashlib
 import subprocess
+import uuid
 
 import pytest
 
@@ -15,6 +17,7 @@ from pulp_rpm.tests.functional.constants import (
     RPM_MODULAR_STATIC_FIXTURE_SUMMARY,
     RPM_MODULES_STATIC_CONTEXT_FIXTURE_URL,
 )
+from pulp_rpm.tests.functional.utils import MetaPackage, Nevra
 
 
 def noop(uri):
@@ -531,68 +534,77 @@ class TestCopyWithUnsignedRepoSyncedImmediate:
         assert "0.3" in kangaroo_versions
 
 
-def _repo_version_number(version_href):
-    """Parse the integer version number out of a RepositoryVersion href.
+@pytest.fixture
+def single_package_repo_factory(repository_builder, init_and_sync, rpm_package_api):
+    """Return a factory that syncs a new repository containing one uniquely-named package.
 
-    Expected shape: ``.../versions/<N>/``. Raises ``ValueError`` if the
-    trailing segment is not a non-negative integer, so test assertion
-    failures point at the parsing site rather than at downstream comparisons.
+    The factory returns the synced repository and its package.
     """
-    if not version_href:
-        raise ValueError(f"empty version_href: {version_href!r}")
-    last = version_href.rstrip("/").rsplit("/", 1)[-1]
-    return int(last)
+
+    def _factory():
+        nevra = Nevra(f"test-pkg-{uuid.uuid4().hex[:8]}", 0, "1.0", "1", "noarch")
+        package = MetaPackage(
+            nevra=nevra,
+            digest=hashlib.sha256(nevra.to_nvra().encode()).hexdigest(),
+            location=f"{nevra.to_nvra()}.rpm",
+        )
+        remote_repo = repository_builder.build(packages=[package])
+        repo, _ = init_and_sync(url=remote_repo.url, policy="on_demand")
+        (synced_package,) = rpm_package_api.list(
+            repository_version=repo.latest_version_href
+        ).results
+        return repo, synced_package
+
+    return _factory
+
+
+def _package_names(rpm_package_api, repo_version_href):
+    return {p.name for p in rpm_package_api.list(repository_version=repo_version_href).results}
+
+
+@pytest.fixture
+def whale_repo(init_and_sync, rpm_package_api):
+    """Return a repository with the unsigned fixture and its `whale` package.
+
+    `whale` depends on `shark` and `stork`, so copying it with dependency solving copies all three.
+    """
+    repo, _ = init_and_sync(policy="on_demand")
+    (whale,) = rpm_package_api.list(
+        repository_version=repo.latest_version_href, name="whale"
+    ).results
+    return repo, whale
 
 
 @pytest.mark.parallel
 def test_copy_multiple_sources_to_same_destination_with_depsolving(
-    init_and_sync,
     monitor_task,
     rpm_copy_api,
     rpm_package_api,
     rpm_repository_api,
     rpm_repository_factory,
+    single_package_repo_factory,
+    whale_repo,
 ):
     """Regression test for #4286.
 
-    When ``copy_content`` is invoked with ``dependency_solving=True`` and
-    multiple source repository versions in the config map to the same
-    destination repository, the task must succeed and produce exactly one new
-    repository version on the destination. Previously, the task failed with an
-    ``IntegrityError`` because ``new_version()`` was called once per source
-    entry on the same destination inside one ``@transaction.atomic`` block,
-    violating the unique ``(repository, number)`` constraint.
+    Copying from multiple sources into the same destination with dependency solving must create
+    exactly one new repository version holding the content of every source.
     """
-    src_a, _ = init_and_sync()
-    src_b, _ = init_and_sync(url=RPM_MODULAR_FIXTURE_URL)
+    src_a, whale = whale_repo
+    src_b, package_b = single_package_repo_factory()
     dest = rpm_repository_factory()
-    initial_version = _repo_version_number(dest.latest_version_href)
-
-    # Specific seed by name in src_a; specific identity matters for the
-    # landing assertion below.
-    src_a_seed = rpm_package_api.list(
-        repository_version=src_a.latest_version_href, name="whale"
-    ).results[0]
-    # Any package from src_b — the bug is structural and triggers regardless
-    # of which packages are involved; we only need a non-empty content list
-    # so the depsolver loads this source. We pick the first result here
-    # deliberately (not by name) to keep the test independent of any
-    # specific modular-fixture package name.
-    src_b_packages = rpm_package_api.list(repository_version=src_b.latest_version_href).results
-    assert src_b_packages, "modular fixture must contain at least one package"
-    src_b_any = src_b_packages[0]
 
     data = Copy(
         config=[
             {
                 "source_repo_version": src_a.latest_version_href,
                 "dest_repo": dest.pulp_href,
-                "content": [src_a_seed.pulp_href],
+                "content": [whale.pulp_href],
             },
             {
                 "source_repo_version": src_b.latest_version_href,
                 "dest_repo": dest.pulp_href,
-                "content": [src_b_any.pulp_href],
+                "content": [package_b.pulp_href],
             },
         ],
         dependency_solving=True,
@@ -600,91 +612,151 @@ def test_copy_multiple_sources_to_same_destination_with_depsolving(
     monitor_task(rpm_copy_api.copy_content(data).task)
 
     dest = rpm_repository_api.read(dest.pulp_href)
-    # Exactly one new repository version was created on the shared destination.
-    assert _repo_version_number(dest.latest_version_href) == initial_version + 1
-
-    dest_pkg_hrefs = {
-        p.pulp_href
-        for p in rpm_package_api.list(repository_version=dest.latest_version_href).results
+    assert dest.latest_version_href == f"{dest.pulp_href}versions/1/"
+    assert _package_names(rpm_package_api, dest.latest_version_href) == {
+        "whale",
+        "shark",
+        "stork",
+        package_b.name,
     }
-    # Both sources' requested packages must have landed in the merged version.
-    assert src_a_seed.pulp_href in dest_pkg_hrefs
-    assert src_b_any.pulp_href in dest_pkg_hrefs
 
 
 @pytest.mark.parallel
 def test_copy_multiple_sources_to_distinct_destinations_with_depsolving(
-    init_and_sync,
     monitor_task,
     rpm_copy_api,
     rpm_package_api,
     rpm_repository_api,
     rpm_repository_factory,
+    single_package_repo_factory,
+    whale_repo,
 ):
-    """Companion to the #4286 regression test.
+    """Copying from multiple sources into distinct destinations with dependency solving.
 
-    When sources in a single ``copy_content`` call map to DIFFERENT
-    destinations, the batching fix must produce exactly one new repository
-    version per distinct destination, and content from one source must not
-    leak into the other source's destination. This guards against a
-    regression that would accidentally collapse distinct destinations.
+    Each destination must get one new repository version holding only the content of its own
+    source, including the dependencies resolved from that source.
     """
-    src_a, _ = init_and_sync()
-    src_b, _ = init_and_sync(url=RPM_MODULAR_FIXTURE_URL)
+    src_a, whale = whale_repo
+    src_b, package_b = single_package_repo_factory()
     dest_a = rpm_repository_factory()
     dest_b = rpm_repository_factory()
-    initial_a = _repo_version_number(dest_a.latest_version_href)
-    initial_b = _repo_version_number(dest_b.latest_version_href)
-
-    src_a_seed = rpm_package_api.list(
-        repository_version=src_a.latest_version_href, name="whale"
-    ).results[0]
-    src_b_packages = rpm_package_api.list(repository_version=src_b.latest_version_href).results
-    assert src_b_packages, "modular fixture must contain at least one package"
-    src_b_any = src_b_packages[0]
 
     data = Copy(
         config=[
             {
                 "source_repo_version": src_a.latest_version_href,
                 "dest_repo": dest_a.pulp_href,
-                "content": [src_a_seed.pulp_href],
+                "content": [whale.pulp_href],
             },
             {
                 "source_repo_version": src_b.latest_version_href,
                 "dest_repo": dest_b.pulp_href,
-                "content": [src_b_any.pulp_href],
+                "content": [package_b.pulp_href],
             },
         ],
         dependency_solving=True,
     )
     monitor_task(rpm_copy_api.copy_content(data).task)
 
-    dest_a = rpm_repository_api.read(dest_a.pulp_href)
-    dest_b = rpm_repository_api.read(dest_b.pulp_href)
+    expected = [(dest_a, {"whale", "shark", "stork"}), (dest_b, {package_b.name})]
+    for dest, expected_names in expected:
+        refreshed = rpm_repository_api.read(dest.pulp_href)
+        assert refreshed.latest_version_href == f"{dest.pulp_href}versions/1/"
+        assert _package_names(rpm_package_api, refreshed.latest_version_href) == expected_names
 
-    # Each distinct destination got exactly one new repository version.
-    assert _repo_version_number(dest_a.latest_version_href) == initial_a + 1
-    assert _repo_version_number(dest_b.latest_version_href) == initial_b + 1
 
-    # Compare by pulp_href, not name: the unsigned and modular fixtures share
-    # several package names, so a name-based check could match a same-named but
-    # distinct package the depsolver legitimately pulled in.
-    dest_a_pkg_hrefs = {
-        p.pulp_href
-        for p in rpm_package_api.list(repository_version=dest_a.latest_version_href).results
+@pytest.mark.parallel
+def test_copy_multiple_sources_to_same_destination_base_version_with_depsolving(
+    monitor_task,
+    rpm_copy_api,
+    rpm_package_api,
+    rpm_repository_api,
+    rpm_repository_factory,
+    single_package_repo_factory,
+    whale_repo,
+):
+    """Entries sharing a destination and a dest_base_version build on that base version."""
+    src_a, whale = whale_repo
+    src_b, package_b = single_package_repo_factory()
+    _, in_base = single_package_repo_factory()
+    _, after_base = single_package_repo_factory()
+    dest = rpm_repository_factory()
+    for package in (in_base, after_base):
+        response = rpm_repository_api.modify(
+            dest.pulp_href, {"add_content_units": [package.pulp_href]}
+        )
+        monitor_task(response.task)
+
+    data = Copy(
+        config=[
+            {
+                "source_repo_version": src_a.latest_version_href,
+                "dest_repo": dest.pulp_href,
+                "dest_base_version": 1,
+                "content": [whale.pulp_href],
+            },
+            {
+                "source_repo_version": src_b.latest_version_href,
+                "dest_repo": dest.pulp_href,
+                "dest_base_version": 1,
+                "content": [package_b.pulp_href],
+            },
+        ],
+        dependency_solving=True,
+    )
+    monitor_task(rpm_copy_api.copy_content(data).task)
+
+    # Version 2 added `after_base`; version 3 is based on version 1, so it is left out.
+    dest = rpm_repository_api.read(dest.pulp_href)
+    assert dest.latest_version_href == f"{dest.pulp_href}versions/3/"
+    assert _package_names(rpm_package_api, dest.latest_version_href) == {
+        in_base.name,
+        "whale",
+        "shark",
+        "stork",
+        package_b.name,
     }
-    dest_b_pkg_hrefs = {
-        p.pulp_href
-        for p in rpm_package_api.list(repository_version=dest_b.latest_version_href).results
-    }
-    # Each destination received its own source's requested package ...
-    assert src_a_seed.pulp_href in dest_a_pkg_hrefs
-    assert src_b_any.pulp_href in dest_b_pkg_hrefs
-    # ... and did NOT receive the other source's requested package. This is
-    # the actual "distinct destinations" invariant the test name promises.
-    assert src_b_any.pulp_href not in dest_a_pkg_hrefs
-    assert src_a_seed.pulp_href not in dest_b_pkg_hrefs
+
+
+@pytest.mark.parallel
+def test_copy_multiple_sources_to_same_destination_mismatched_base_version_with_depsolving(
+    monitor_task,
+    rpm_copy_api,
+    rpm_repository_api,
+    rpm_repository_factory,
+    single_package_repo_factory,
+    whale_repo,
+):
+    """Entries sharing a destination but not a dest_base_version are rejected."""
+    src_a, whale = whale_repo
+    src_b, package_b = single_package_repo_factory()
+    dest = rpm_repository_factory()
+    response = rpm_repository_api.modify(
+        dest.pulp_href, {"add_content_units": [package_b.pulp_href]}
+    )
+    monitor_task(response.task)
+
+    data = Copy(
+        config=[
+            {
+                "source_repo_version": src_a.latest_version_href,
+                "dest_repo": dest.pulp_href,
+                "dest_base_version": 0,
+                "content": [whale.pulp_href],
+            },
+            {
+                "source_repo_version": src_b.latest_version_href,
+                "dest_repo": dest.pulp_href,
+                "dest_base_version": 1,
+                "content": [package_b.pulp_href],
+            },
+        ],
+        dependency_solving=True,
+    )
+    with pytest.raises(ApiException) as exc:
+        rpm_copy_api.copy_content(data)
+    assert exc.value.status == 400
+    assert "dest_base_version" in exc.value.body
 
 
 class TestCopyWithKickstartRepoSyncedImmediate:

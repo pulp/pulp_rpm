@@ -432,6 +432,9 @@ the **latest** repository version present in destination repository, instead cre
 specified version-number of the destination repository. These semantics are similar to how the
 `base_version` parameter is used in the repository modification API.
 
+When `dependency_solving` is enabled, all config entries targeting the same destination repository are
+merged into a single new repository version, so they must specify the same `dest_base_version` (or all omit it).
+
 === "Copy content to dest-repo/versions/0/"
 
     ```bash
