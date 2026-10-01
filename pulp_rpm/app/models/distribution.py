@@ -1,6 +1,7 @@
 from functools import reduce
 from logging import getLogger
 
+from django.core.validators import RegexValidator
 from django.db import models
 from django.db.models.signals import post_delete, pre_delete
 from django.dispatch import receiver
@@ -15,6 +16,12 @@ from pulpcore.plugin.models import (
 from pulpcore.plugin.util import get_domain_pk
 
 log = getLogger(__name__)
+
+
+safe_subrepo_name_validator = RegexValidator(
+    regex=r"^(?!\.{1,2}$)[A-Za-z0-9._-]+$",
+    message="Subrepository names may only contain letters, numbers, periods, underscores, and hyphens.",
+)
 
 
 class DistributionTree(Content):

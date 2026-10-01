@@ -7,7 +7,14 @@ from .advisory import (  # noqa
 from .comps import PackageCategory, PackageEnvironment, PackageGroup, PackageLangpacks  # noqa
 from .content import RpmPackageSigningService  # noqa
 from .custom_metadata import RepoMetadataFile  # noqa
-from .distribution import Addon, Checksum, DistributionTree, Image, Variant  # noqa
+from .distribution import (  # noqa
+    Addon,
+    Checksum,
+    DistributionTree,
+    Image,
+    Variant,
+    safe_subrepo_name_validator,
+)
 from .modulemd import Modulemd, ModulemdDefaults, ModulemdObsolete  # noqa
 from .package import Package, format_nevra, format_nevra_short, format_nvra  # noqa
 from .repository import RpmDistribution, RpmPublication, RpmRemote, UlnRemote, RpmRepository  # noqa
