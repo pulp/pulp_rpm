@@ -13,6 +13,7 @@ from pulp_rpm.app.models import (
     DistributionTree,
     Image,
     Variant,
+    safe_subrepo_name_validator,
 )
 
 
@@ -21,7 +22,9 @@ class AddonSerializer(serializers.ModelSerializer):
     Addon serializer.
     """
 
-    addon_id = serializers.CharField(help_text=_("Addon id."))
+    addon_id = serializers.CharField(
+        help_text=_("Addon id."), validators=[safe_subrepo_name_validator]
+    )
     uid = serializers.CharField(help_text=_("Addon uid."))
     name = serializers.CharField(help_text=_("Addon name."))
     type = serializers.CharField(help_text=_("Addon type."))
@@ -65,7 +68,9 @@ class VariantSerializer(serializers.ModelSerializer):
     Variant serializer.
     """
 
-    variant_id = serializers.CharField(help_text=_("Variant id."))
+    variant_id = serializers.CharField(
+        help_text=_("Variant id."), validators=[safe_subrepo_name_validator]
+    )
     uid = serializers.CharField(help_text=_("Variant uid."))
     name = serializers.CharField(help_text=_("Variant name."))
     type = serializers.CharField(help_text=_("Variant type."))

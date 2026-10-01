@@ -1,6 +1,11 @@
 """Tests distribution trees."""
 
+from pathlib import Path
+
 import pytest
+import requests
+
+from pulpcore.tests.functional.utils import PulpTaskError
 
 from pulp_rpm.tests.functional.constants import (
     PULP_TYPE_DISTRIBUTION_TREE,
@@ -87,6 +92,23 @@ def test_skip_treeinfo(init_and_sync, has_pulp_plugin):
     _, _, task = init_and_sync(url=RPM_KICKSTART_FIXTURE_URL, return_task=True)
     rsrvd_repos = [r for r in task.reserved_resources_record if rsrvd in r]
     assert 5 == len(rsrvd_repos)
+
+
+@pytest.mark.parametrize("treeinfo_id", ["Whale", "Land"])
+def test_sync_rejects_unsafe_distribution_tree_subrepo_id(
+    treeinfo_id, init_and_sync, tmpdir, wget_recursive_download_on_host
+):
+    """Reject traversal in an addon or variant ID read from an upstream .treeinfo file."""
+    wget_recursive_download_on_host(RPM_KICKSTART_FIXTURE_URL, str(tmpdir))
+    treeinfo_path = Path(str(tmpdir)) / "rpm-distribution-tree" / ".treeinfo"
+    response = requests.get(f"{RPM_KICKSTART_FIXTURE_URL}.treeinfo")
+    response.raise_for_status()
+    treeinfo_path.write_text(response.text.replace(f"id = {treeinfo_id}", "id = ../outside", 1))
+
+    with pytest.raises(PulpTaskError) as exc_info:
+        init_and_sync(url=f"file://{tmpdir}/rpm-distribution-tree/")
+
+    assert exc_info.value.task.state == "failed"
 
 
 def test_sync_dist_tree_change_addon_repo(init_and_sync, rpm_package_api, delete_orphans_pre):
