@@ -38,6 +38,10 @@ pulp-rpm functional tests require pulp-rpm, pulpcore & pulp-rpm client bindings 
 
 **Always** use the `oci-env` to run the functional and unit tests.
 
+The unit-test wrapper invokes pytest with `--pyargs pulp_rpm.tests.unit`, so it collects all unit
+test modules even when given a specific test path. Use `oci-env compose exec` for focused runs
+when unrelated collection errors block the wrapper.
+
 ## Modifying template_config.yml
 
 Use the `plugin-template` tool after any changes made to `template_config.yml`.

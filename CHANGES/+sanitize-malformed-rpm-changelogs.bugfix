@@ -1,0 +1,1 @@
+Prevent malformed RPM changelogs from crashing package uploads or producing invalid repository metadata.
