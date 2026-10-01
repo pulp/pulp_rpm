@@ -5,7 +5,7 @@ productmd>=1.25
 python-gnupg
 pydantic
 pyyaml
-pytest<8
+pytest>=8.4,<10
 pytest-xdist
 pytest-timeout
 pytest-custom_exit_code

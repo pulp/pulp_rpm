@@ -1,5 +1,5 @@
 # Unit test requirements
-pytest<8
+pytest>=8.4,<10
 asynctest
 mock
 pytest-django
