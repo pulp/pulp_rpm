@@ -35,7 +35,7 @@ dependencies = [
     "aiohttp_xmlrpc~=1.5.0",
     "importlib-resources~=6.4.0",
     "rpm-rs>=0.27,<0.28",
-    "rpmrepo_metadata>=0.7,<0.8",
+    "rpmrepo_metadata>=0.8.0,<0.9.0",
 ]
 
 [project.urls]
