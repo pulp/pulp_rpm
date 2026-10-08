@@ -1,1 +1,0 @@
-Fixed a possible path traversal issue when publishing distribution tree subrepositories (CVE-2026-103870).
