@@ -8,6 +8,14 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.27.14 (2026-10-08) {: #3.27.14 }
+
+#### Bugfixes {: #3.27.14-bugfix }
+
+- Fixed a possible path traversal issue when publishing distribution tree subrepositories (CVE-2026-103870).
+
+---
+
 ## 3.27.13 (2026-06-03) {: #3.27.13 }
 
 #### Bugfixes {: #3.27.13-bugfix }
