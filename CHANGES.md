@@ -8,6 +8,17 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.39.1 (2026-10-08) {: #3.39.1 }
+
+#### Bugfixes {: #3.39.1-bugfix }
+
+- Strip control characters (illegal in XML) from changelogs so that it cannot cause errors / crashes during XML writing.
+  [#4394](https://github.com/pulp/pulp_rpm/issues/4394)
+- Fixed a possible path traversal issue when publishing distribution tree subrepositories (CVE-2026-103870).
+- Prevent malformed RPM changelogs from crashing package uploads or producing invalid repository metadata.
+
+---
+
 ## 3.39.0 (2026-09-03) {: #3.39.0 }
 
 #### Bugfixes {: #3.39.0-bugfix }
