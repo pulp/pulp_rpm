@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.35.4 (2026-10-08) {: #3.35.4 }
+
+#### Bugfixes {: #3.35.4-bugfix }
+
+- Fixed a possible path traversal issue when publishing distribution tree subrepositories (CVE-2026-103870).
+- Fixed queries in the content copy API that could exceed PostgreSQL's 65535 bound-parameter limit.
+
+---
+
 ## 3.35.3 (2026-06-03) {: #3.35.3 }
 
 #### Bugfixes {: #3.35.3-bugfix }
