@@ -8,6 +8,17 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.39.1 (2026-10-08) {: #3.39.1 }
+
+#### Bugfixes {: #3.39.1-bugfix }
+
+- Strip control characters (illegal in XML) from changelogs so that it cannot cause errors / crashes during XML writing.
+  [#4394](https://github.com/pulp/pulp_rpm/issues/4394)
+- Fixed a possible path traversal issue when publishing distribution tree subrepositories (CVE-2026-103870).
+- Prevent malformed RPM changelogs from crashing package uploads or producing invalid repository metadata.
+
+---
+
 ## 3.39.0 (2026-09-03) {: #3.39.0 }
 
 #### Bugfixes {: #3.39.0-bugfix }
@@ -169,6 +180,15 @@ No significant changes.
 
 ---
 
+## 3.35.4 (2026-10-08) {: #3.35.4 }
+
+#### Bugfixes {: #3.35.4-bugfix }
+
+- Fixed a possible path traversal issue when publishing distribution tree subrepositories (CVE-2026-103870).
+- Fixed queries in the content copy API that could exceed PostgreSQL's 65535 bound-parameter limit.
+
+---
+
 ## 3.35.3 (2026-06-03) {: #3.35.3 }
 
 #### Bugfixes {: #3.35.3-bugfix }
@@ -300,6 +320,14 @@ No significant changes.
 #### Misc {: #3.33.0-misc }
 
 - 
+
+---
+
+## 3.32.12 (2026-10-08) {: #3.32.12 }
+
+#### Bugfixes {: #3.32.12-bugfix }
+
+- Fixed a possible path traversal issue when publishing distribution tree subrepositories (CVE-2026-103870).
 
 ---
 
@@ -508,6 +536,14 @@ No significant changes.
 
 ---
 
+## 3.29.12 (2026-10-08) {: #3.29.12 }
+
+#### Bugfixes {: #3.29.12-bugfix }
+
+- Fixed a possible path traversal issue when publishing distribution tree subrepositories (CVE-2026-103870).
+
+---
+
 ## 3.29.11 (2026-06-03) {: #3.29.11 }
 
 #### Bugfixes {: #3.29.11-bugfix }
@@ -684,6 +720,14 @@ No significant changes.
 
 ---
 
+## 3.27.14 (2026-10-08) {: #3.27.14 }
+
+#### Bugfixes {: #3.27.14-bugfix }
+
+- Fixed a possible path traversal issue when publishing distribution tree subrepositories (CVE-2026-103870).
+
+---
+
 ## 3.27.13 (2026-06-03) {: #3.27.13 }
 
 #### Bugfixes {: #3.27.13-bugfix }
@@ -837,6 +881,14 @@ No significant changes.
   [#3587](https://github.com/pulp/pulp_rpm/issues/3587)
 - Made sync more tolerant of poorly configured webservers.
   [#3599](https://github.com/pulp/pulp_rpm/issues/3599)
+
+---
+
+## 3.26.9 (2026-10-08) {: #3.26.9 }
+
+#### Bugfixes {: #3.26.9-bugfix }
+
+- Fixed a possible path traversal issue when publishing distribution tree subrepositories (CVE-2026-103870).
 
 ---
 
