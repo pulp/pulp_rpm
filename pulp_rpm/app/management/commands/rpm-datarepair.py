@@ -2,7 +2,7 @@ import uuid
 from gettext import gettext as _
 
 from django.core.management import BaseCommand, CommandError
-from django.db.models import F, Value
+from django.db.models import Exists, F, OuterRef, Value
 from django.db.models.functions import Concat
 
 from pulpcore.plugin.models import ContentArtifact
@@ -98,9 +98,10 @@ class Command(BaseCommand):
         """Perform data repair for issue #4073.
 
         For each updated ContentArtifact, print:
-            {ca.pkg_uuid} {ca_uuid} {old_relpath} {new_relpath}
+            {package_uuid} {ca_uuid} {old_relpath} {new_relpath}
         """
         update_count = 0
+        skipped_count = 0
         batch = []
         batch_msgs = []
 
@@ -115,38 +116,61 @@ class Command(BaseCommand):
             batch.clear()
             batch_msgs.clear()
 
-        def add_to_batch(ca, pkg):
+        def add_to_batch(ca):
             original_relpath = ca.relative_path
-            ca.relative_path = pkg.filename
+            ca.relative_path = ca.expected_filename
             batch.append(ca)
             batch_msgs.append(
                 UPDATE_MSG.format(
-                    pkg_uuid=str(pkg.pk),
+                    pkg_uuid=str(ca.content_id),
                     ca_uuid=str(ca.pk),
                     old_relpath=original_relpath,
                     new_relpath=ca.relative_path,
                 )
             )
 
-        bad_packages = Package.objects.annotate(
-            computed_filename=Concat(
-                F("name"),
-                Value("-"),
-                F("version"),
-                Value("-"),
-                F("release"),
-                Value("."),
-                F("arch"),
-                Value(".rpm"),
+        sibling_cas = ContentArtifact.objects.filter(content_id=OuterRef("content_id")).exclude(
+            pk=OuterRef("pk")
+        )
+        bad_content_artifacts = (
+            ContentArtifact.objects.filter(
+                content__pulp_type=Package.get_pulp_type(),
+                content__rpm_package__isnull=False,
             )
-        ).exclude(location_href__endswith=F("computed_filename"))
+            .annotate(
+                expected_filename=Concat(
+                    F("content__rpm_package__name"),
+                    Value("-"),
+                    F("content__rpm_package__version"),
+                    Value("-"),
+                    F("content__rpm_package__release"),
+                    Value("."),
+                    F("content__rpm_package__arch"),
+                    Value(".rpm"),
+                ),
+                has_sibling=Exists(sibling_cas),
+            )
+            .exclude(relative_path=F("expected_filename"))
+            .order_by("content_id", "pk")
+        )
 
         UPDATE_MSG = "{pkg_uuid!r} {ca_uuid!r} {old_relpath!r} {new_relpath!r}"
-        for pkg in bad_packages.iterator():
-            for ca in pkg.contentartifact_set.exclude(relative_path=pkg.filename):
-                add_to_batch(ca, pkg)
-                if len(batch) > 500:
-                    process_batch()
-        if batch:  # handle remaining
+        for ca in bad_content_artifacts.iterator(chunk_size=1000):
+            if ca.has_sibling:
+                skipped_count += 1
+                self.stdout.write(
+                    f"Skipping package {ca.content_id!r}: multiple ContentArtifacts make "
+                    f"normalizing {ca.relative_path!r} to {ca.expected_filename!r} ambiguous."
+                )
+                continue
+
+            add_to_batch(ca)
+            if len(batch) >= 500:
+                process_batch()
+        if batch:
             process_batch()
-        self.stdout.write(f"Updated {update_count} records")
+
+        verb = "Would update" if dry_run else "Updated"
+        self.stdout.write(f"{verb} {update_count} records")
+        if skipped_count:
+            self.stdout.write(f"Skipped {skipped_count} records due to ContentArtifact conflicts")
