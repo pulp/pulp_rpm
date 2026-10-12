@@ -105,9 +105,9 @@ log = logging.getLogger(__name__)
 # A global dictionary for storing data about the remote's metadata files, used for mirroring
 # Indexed by repository.pk due to sub-repos.
 metadata_files_for_mirroring = collections.defaultdict(dict)
-# A global dictionary for storing data mapping pkgid to location_href for all packages, used
+# A global dictionary for storing data mapping pkgid to remote href for all packages, used
 # for mirroring. Indexed by repository.pk due to sub-repos.
-pkgid_to_location_href = collections.defaultdict(functools.partial(collections.defaultdict, set))
+pkgid_to_remote_hrefs = collections.defaultdict(functools.partial(collections.defaultdict, set))
 
 
 MIRROR_INCOMPATIBLE_REPO_ERR_MSG = (
@@ -141,19 +141,19 @@ def store_metadata_for_mirroring(repo, md_path, relative_path):
     metadata_files_for_mirroring[str(repo.pk)][relative_path] = md_path
 
 
-def store_package_for_mirroring(repo, pkgid, location_href):
+def store_remote_package_href_for_mirroring(repo, pkgid, remote_href):
     """Used to store data about the packages for mirror-publishing after the sync.
 
     Args:
         repo: Which repository the metadata is associated with
         pkgid: The checksum of the package
-        location_href: The relative path to the package within the repository
+        remote_href: The package path from the remote repository metadata
     """
-    global pkgid_to_location_href
-    # this shouldn't really add the location_href to a list, really it ought to set the value
+    global pkgid_to_remote_hrefs
+    # this shouldn't really add the remote_href to a list, really it ought to set the value
     # but unfortunately some repositories have the same packages present in multiple places
-    # same pkgid, >1 different location_hrefs
-    pkgid_to_location_href[str(repo.pk)][pkgid].add(location_href)
+    # same pkgid, >1 different remote hrefs
+    pkgid_to_remote_hrefs[str(repo.pk)][pkgid].add(remote_href)
 
 
 def add_metadata_to_publication(publication, version, prefix=""):
@@ -184,12 +184,12 @@ def add_metadata_to_publication(publication, version, prefix=""):
         content__in=version.content, content__pulp_type=Package.get_pulp_type()
     ).values("pk", "content__rpm_package__pkgId")
     for ca in pkg_data.iterator():
-        for relative_path in pkgid_to_location_href[str(version.repository.pk)][
+        for remote_href in pkgid_to_remote_hrefs[str(version.repository.pk)][
             ca["content__rpm_package__pkgId"]
         ]:
             pa = PublishedArtifact(
                 content_artifact_id=ca["pk"],
-                relative_path=os.path.join(prefix, relative_path),
+                relative_path=os.path.join(prefix, remote_href),
                 publication=publication,
             )
             published_artifacts.append(pa)
@@ -1432,19 +1432,23 @@ class RpmFirstStage(Stage):
                 # more expensive queries down the line in QueryExistingContents.
                 cached = existing_packages.pop(pkg.pkgId, None)
                 if cached is not None:
+                    remote_location_href = pkg.location_href
                     base_url = pkg.location_base or self.remote_url
-                    url = urlpath_sanitize(base_url, pkg.location_href)
-                    store_package_for_mirroring(self.repository, cached.pkgId, pkg.location_href)
+                    url = urlpath_sanitize(base_url, remote_location_href)
+                    store_remote_package_href_for_mirroring(
+                        self.repository, cached.pkgId, remote_location_href
+                    )
                     last_seen_package_name = pkg.name
                     del pkg
 
                     artifact = Artifact(size=cached.size_package)
                     checksum_type = getattr(CHECKSUM_TYPES, cached.checksum_type.upper())
                     setattr(artifact, checksum_type, cached.pkgId)
+                    relative_path = cached.filename
                     da = DeclarativeArtifact(
                         artifact=artifact,
                         url=url,
-                        relative_path=cached.location_href,
+                        relative_path=relative_path,
                         remote=self.remote,
                         deferred_download=self.deferred_download,
                     )
@@ -1462,20 +1466,20 @@ class RpmFirstStage(Stage):
                     )
                     # TODO: set signing_keys when we support package signing during sync
                     package.signing_keys = None
+                    remote_location_href = package.location_href
                     base_url = pkg.location_base or self.remote_url
-                    url = urlpath_sanitize(base_url, package.location_href)
+                    url = urlpath_sanitize(base_url, remote_location_href)
                     last_seen_package_name = pkg.name
                     del pkg  # delete & free the memory as soon as we're done with it
 
-                    # Location_href is not a property of the Package in isolation [0], and
-                    # Pulp has a well defined way of generating the layout/locations on
-                    # publication time. We only need to use the original location_href for
-                    # metadata mirroring.
+                    # The remote href is not a property of the Package in isolation [0], and
+                    # Pulp has a well defined way of generating package locations on publication.
+                    # We only need the remote href for metadata mirroring.
                     # [0] https://github.com/pulp/pulp_rpm/issues/2580
-                    original_location_href = package.location_href
-                    package.location_href = package.filename
-                    store_package_for_mirroring(
-                        self.repository, package.pkgId, original_location_href
+                    relative_path = package.filename
+                    package.location_href = relative_path
+                    store_remote_package_href_for_mirroring(
+                        self.repository, package.pkgId, remote_location_href
                     )
 
                     artifact = Artifact(size=package.size_package)
@@ -1484,7 +1488,7 @@ class RpmFirstStage(Stage):
                     da = DeclarativeArtifact(
                         artifact=artifact,
                         url=url,
-                        relative_path=package.location_href,
+                        relative_path=relative_path,
                         remote=self.remote,
                         deferred_download=self.deferred_download,
                     )
