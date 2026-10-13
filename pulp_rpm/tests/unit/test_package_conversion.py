@@ -1,6 +1,7 @@
 """Parity tests for conversion of RPM metadata parsed by supported libraries."""
 
 import createrepo_c as cr
+from django.test import override_settings
 from rpm_rs import DependencyFlags, FileOptions, PackageBuilder
 
 from pulp_rpm.app.models import Package
@@ -123,16 +124,14 @@ def test_package_conversion_matches_with_caches_and_signing_keys(tmp_path):
     assert createrepo_dict["files"][0][1] is rpmrepo_dict["files"][0][1]
 
 
-def test_package_conversion_keeps_only_configured_recent_changelogs(tmp_path, monkeypatch):
+@override_settings(KEEP_CHANGELOG_LIMIT=2)
+def test_package_conversion_keeps_only_configured_recent_changelogs(tmp_path):
     """Applies Pulp's configured changelog retention identically with either parser."""
     builder = PackageBuilder("changelog-limit", "1.0", "MIT", "noarch")
     builder.add_changelog_entry("Newest", "third", 1_700_000_000)
     builder.add_changelog_entry("Oldest", "first", 1_500_000_000)
     builder.add_changelog_entry("Middle", "second", 1_600_000_000)
     path = _write_rpm(tmp_path, "changelog-limit-1.0-1.noarch", builder)
-
-    monkeypatch.setattr("pulp_rpm.app.models.package.KEEP_CHANGELOG_LIMIT", 2)
-    monkeypatch.setattr("pulp_rpm.app.shared_utils.settings.KEEP_CHANGELOG_LIMIT", 2)
 
     _assert_conversion_parity(path, changelog_limit=2)
 
