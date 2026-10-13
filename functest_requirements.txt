@@ -11,4 +11,6 @@ pytest-timeout
 pytest-custom_exit_code
 pyzstd
 requests
+rpm_rs
+rpmrepo_metadata
 xmltodict
