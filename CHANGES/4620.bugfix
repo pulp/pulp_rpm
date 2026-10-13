@@ -1,0 +1,1 @@
+Prevent control characters from leaking into XML (this was previously done for changelogs, but now covers other fields).
