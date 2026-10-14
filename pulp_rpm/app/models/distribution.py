@@ -350,7 +350,7 @@ def setup_cleanup_subrepos(sender, instance, **kwargs):
 @receiver(post_delete, sender=DistributionTree)
 def cleanup_subrepos(sender, instance, **kwargs):
     """
-    Delete the found subrepos of the deleted DistributionTree.
+    Delete subrepos no longer referenced by any DistributionTree.
     """
     repos = instance.repositories()
-    repos.delete()
+    repos.filter(addons__isnull=True, variants__isnull=True).delete()
