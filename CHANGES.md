@@ -8,6 +8,16 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.39.2 (2026-10-16) {: #3.39.2 }
+
+#### Bugfixes {: #3.39.2-bugfix }
+
+- Use the canonical package filename as the artifact path when reusing cached packages during sync.
+  Update the RPM data repair command to select mismatched content artifact paths without relying on `location_href`.
+  [#4596](https://github.com/pulp/pulp_rpm/issues/4596)
+
+---
+
 ## 3.39.1 (2026-10-08) {: #3.39.1 }
 
 #### Bugfixes {: #3.39.1-bugfix }
@@ -180,6 +190,16 @@ No significant changes.
 
 ---
 
+## 3.35.5 (2026-10-16) {: #3.35.5 }
+
+#### Bugfixes {: #3.35.5-bugfix }
+
+- Use the canonical package filename as the artifact path when reusing cached packages during sync.
+  Update the RPM data repair command to select mismatched content artifact paths without relying on `location_href`.
+  [#4596](https://github.com/pulp/pulp_rpm/issues/4596)
+
+---
+
 ## 3.35.4 (2026-10-08) {: #3.35.4 }
 
 #### Bugfixes {: #3.35.4-bugfix }
@@ -320,6 +340,16 @@ No significant changes.
 #### Misc {: #3.33.0-misc }
 
 - 
+
+---
+
+## 3.32.13 (2026-10-16) {: #3.32.13 }
+
+#### Bugfixes {: #3.32.13-bugfix }
+
+- Use the canonical package filename as the artifact path when reusing cached packages during sync.
+  Update the RPM data repair command to select mismatched content artifact paths without relying on `location_href`.
+  [#4596](https://github.com/pulp/pulp_rpm/issues/4596)
 
 ---
 
@@ -533,6 +563,16 @@ No significant changes.
 #### Misc {: #3.30.0-misc }
 
 - 
+
+---
+
+## 3.29.13 (2026-10-16) {: #3.29.13 }
+
+#### Bugfixes {: #3.29.13-bugfix }
+
+- Use the canonical package filename as the artifact path when reusing cached packages during sync.
+  Update the RPM data repair command to select mismatched content artifact paths without relying on `location_href`.
+  [#4596](https://github.com/pulp/pulp_rpm/issues/4596)
 
 ---
 
