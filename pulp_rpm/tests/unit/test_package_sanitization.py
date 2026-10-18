@@ -1,8 +1,12 @@
 """Tests for sanitizing malformed RPM changelog metadata during package conversion."""
 
+import xml.etree.ElementTree as ET
+
 import createrepo_c as cr
 import pytest
 from rpm_rs import PackageBuilder
+
+from pulpcore.plugin.models import Domain
 
 from pulp_rpm.app.models import Package
 
@@ -57,3 +61,71 @@ def test_createrepo_to_dict_lossy_decodes_non_utf8_changelog_characters(tmp_path
     package_dict = Package.createrepo_to_dict(package)
 
     assert package_dict["changelogs"] == [("Author�YName", 1_700_000_000, "Description�BCDE")]
+
+
+def _create_legacy_package(**overrides):
+    """Create and reload a package with legacy database metadata."""
+    domain, _ = Domain.objects.get_or_create(name="default")
+    package_data = {
+        "name": "legacy-metadata",
+        "epoch": "0",
+        "version": "1.0",
+        "release": "1",
+        "arch": "noarch",
+        "pkgId": "0" * 64,
+        "checksum_type": "sha256",
+        "summary": "\x08summary",
+        "description": "\x08description",
+        "url": "https://example.invalid/\x08package",
+        "changelogs": [["\x08author", 1_700_000_000, "\x08changelog"]],
+        "location_base": "",
+        "location_href": "legacy-metadata-1.0-1.noarch.rpm",
+        "rpm_buildhost": "\x08buildhost",
+        "rpm_group": "\x08group",
+        "rpm_license": "\x08license",
+        "rpm_packager": "\x08packager",
+        "rpm_sourcerpm": "",
+        "rpm_vendor": "\x08vendor",
+        "rpm_header_start": 0,
+        "rpm_header_end": 0,
+        "size_archive": 0,
+        "size_installed": 0,
+        "size_package": 0,
+        "time_build": 0,
+        "time_file": 0,
+        "_pulp_domain": domain,
+    }
+    package_data.update(overrides)
+    package = Package.objects.create(**package_data)
+    package.refresh_from_db()
+    return package
+
+
+@pytest.mark.django_db
+@pytest.mark.skip("Needs createrepo_c 1.2.6")
+def test_createrepo_writer_replaces_forbidden_display_chars(tmp_path):
+    """Publishes legacy display metadata with XML-forbidden characters replaced."""
+    package = _create_legacy_package()
+
+    with cr.RepositoryWriter(str(tmp_path), compression=cr.NO_COMPRESSION) as writer:
+        writer.set_num_of_pkgs(1)
+        writer.add_pkg(package.to_createrepo_c())
+
+    repodata = tmp_path / "repodata"
+    for metadata in (next(repodata.glob("*-primary.xml")), next(repodata.glob("*-other.xml"))):
+        text = metadata.read_text()
+        ET.fromstring(text)
+        assert "\x08" not in text
+        assert "�" in text
+
+
+@pytest.mark.django_db
+@pytest.mark.skip("Needs createrepo_c 1.2.6")
+def test_createrepo_writer_rejects_forbidden_structured_chars(tmp_path):
+    """Rejects legacy structured metadata that cannot be safely transformed."""
+    package = _create_legacy_package(location_href="packages/\x08legacy-metadata.rpm")
+
+    with cr.RepositoryWriter(str(tmp_path), compression=cr.NO_COMPRESSION) as writer:
+        writer.set_num_of_pkgs(1)
+        with pytest.raises(cr.CreaterepoCError, match="Forbidden control chars"):
+            writer.add_pkg(package.to_createrepo_c())
