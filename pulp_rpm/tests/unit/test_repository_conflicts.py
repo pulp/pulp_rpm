@@ -135,6 +135,16 @@ CASES = [
         expected1=[WALRUS.replace(epoch=1, time_build=2000)],
     ),
     DedupCase(
+        id="known-build-time-wins-over-missing",
+        description="A package with a known build time wins over one without a build time.",
+        add_packages1=[
+            WALRUS.replace(epoch=1, time_build=0, digest="zzz"),
+            WALRUS.replace(epoch=1, time_build=1000, digest="aaa"),
+        ],
+        expected1=[WALRUS.replace(epoch=1, time_build=1000, digest="aaa")],
+        compare_digest=True,
+    ),
+    DedupCase(
         id="all-tied-highest-pkgid-wins",
         description="When epoch and build time are equal, the package with highest pkgId wins.",
         add_packages1=[
