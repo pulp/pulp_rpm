@@ -8,6 +8,7 @@ from aiohttp.web_response import Response
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
+from django.db.models import Case, F, IntegerField, Value, When
 
 from pulpcore.plugin.download import DownloaderFactory
 from pulpcore.plugin.models import (
@@ -56,6 +57,27 @@ from pulp_rpm.app.shared_utils import urlpath_sanitize
 from pulp_rpm.app.sql_utils import annotate_with_age, get_content_in_repoversion
 
 log = getLogger(__name__)
+
+
+def remove_package_duplicates(new_version):
+    """Keep one package for each repository key, including packages added together."""
+    repo_key = Package.repo_key_fields
+    # Epoch is part of this branch's repo key, so main's numeric epoch ranking is unnecessary.
+    is_incoming = Case(
+        When(pk__in=new_version.added(), then=Value(1)),
+        default=Value(0),
+        output_field=IntegerField(),
+    )
+    # Greatest-1-per-group via postgres DISTINCT ON
+    winners = (
+        Package.objects.filter(pk__in=new_version.content)
+        .annotate(is_incoming=is_incoming)
+        # PostgreSQL puts NULL first in a plain descending sort; prefer a known build time.
+        .order_by(*repo_key, "-is_incoming", F("time_build").desc(nulls_last=True), "-pkgId")
+        .distinct(*repo_key)
+    )
+    losers = Package.objects.filter(pk__in=new_version.content).exclude(pk__in=winners)
+    new_version.remove_content(losers)
 
 
 class RpmRemote(Remote, AutoAddObjPermsMixin):
@@ -401,6 +423,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
             except RepositoryVersion.DoesNotExist:
                 previous_version = None
 
+        remove_package_duplicates(new_version)
         remove_duplicates(new_version)
         self._resolve_distribution_trees(new_version, previous_version)
 
