@@ -8,7 +8,7 @@ from aiohttp.web_response import Response
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
-from django.db.models import Case, IntegerField, Value, When
+from django.db.models import Case, F, IntegerField, Value, When
 from django.db.models.functions import Cast
 
 from pulpcore.plugin.download import DownloaderFactory
@@ -209,7 +209,9 @@ def remove_package_duplicates(new_version):
     winners = (
         Package.objects.filter(pk__in=new_version.content)
         .annotate(epoch_int=Cast("epoch", IntegerField()), is_incoming=is_incoming)
-        .order_by(*repo_key, "-epoch_int", "-is_incoming", "-time_build", "-pkgId")
+        .order_by(
+            *repo_key, "-epoch_int", "-is_incoming", F("time_build").desc(nulls_last=True), "-pkgId"
+        )
         .distinct(*repo_key)
     )
     losers = Package.objects.filter(pk__in=new_version.content).exclude(pk__in=winners)
