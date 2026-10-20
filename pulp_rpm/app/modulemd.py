@@ -39,6 +39,7 @@ def resolve_module_packages(version, previous_version):
     modulemd_pulp_type = Modulemd.get_pulp_type()
 
     def modules_packages(modules):
+        """Return the set of RPM packages linked to the given modules."""
         packages = set()
         # Materialize pks because Django dont allow prefetching on a difference's result
         module_pks = [module.pk for module in modules]
@@ -63,6 +64,22 @@ def resolve_module_packages(version, previous_version):
         removed_modules = previous_modules.difference(current_modules)
         removed_module_packages = modules_packages(removed_modules)
         packages_to_remove = removed_module_packages.difference(current_module_packages)
+        if packages_to_remove and current_module_packages:
+            # Re-signed RPMs can have different content IDs for the same NEVRA.
+            # A removed module may reference the copy kept by deduplication while a
+            # remaining module references the other copy. Keep the selected copy.
+            relevant_pks = {p.pk for p in packages_to_remove | current_module_packages}
+            package_nevras = {
+                pk: (name, epoch, version, release, arch)
+                for pk, name, epoch, version, release, arch in Package.objects.filter(
+                    pk__in=Content.objects.filter(safe_in("pk", relevant_pks))
+                ).values_list("pk", "name", "epoch", "version", "release", "arch")
+            }
+            current_nevras = {package_nevras[p.pk] for p in current_module_packages}
+            # Keep the retained RPM if any remaining module references its NEVRA.
+            packages_to_remove = {
+                p for p in packages_to_remove if package_nevras[p.pk] not in current_nevras
+            }
         version.remove_content(Package.objects.filter(pk__in=packages_to_remove))
     else:
         added_modules = current_modules
