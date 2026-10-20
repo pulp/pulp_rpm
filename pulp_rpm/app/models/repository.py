@@ -8,8 +8,8 @@ from aiohttp.web_response import Response
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
-from django.db.models import Case, F, IntegerField, Value, When
-from django.db.models.functions import Cast
+from django.db.models import Case, F, IntegerField, Value, When, Window
+from django.db.models.functions import Cast, RowNumber
 
 from pulpcore.plugin.download import DownloaderFactory
 from pulpcore.plugin.models import (
@@ -56,7 +56,7 @@ from pulp_rpm.app.models import (
 )
 from pulp_rpm.app.models.content import RpmPackageSigningResult
 from pulp_rpm.app.shared_utils import urlpath_sanitize
-from pulp_rpm.app.sql_utils import annotate_with_age, get_content_in_repoversion
+from pulp_rpm.app.sql_utils import annotate_with_age, get_content_in_repoversion, safe_in
 
 log = getLogger(__name__)
 
@@ -198,24 +198,39 @@ class UlnRemote(Remote, AutoAddObjPermsMixin):
 
 
 def remove_package_duplicates(new_version):
-    """Deduplicate packages that share NVRA but differ in other properties."""
+    """Keep one package per repository key across the new version."""
     repo_key = Package.repo_key_fields
     is_incoming = Case(
         When(pk__in=new_version.added(), then=Value(1)),
         default=Value(0),
         output_field=IntegerField(),
     )
-    # Greatest-1-per-group via postgres DISTINCT ON
-    winners = (
+    # Compare all content in the version so existing and incoming packages compete.
+    ranked = (
         Package.objects.filter(pk__in=new_version.content)
         .annotate(epoch_int=Cast("epoch", IntegerField()), is_incoming=is_incoming)
-        .order_by(
-            *repo_key, "-epoch_int", "-is_incoming", F("time_build").desc(nulls_last=True), "-pkgId"
+        .annotate(
+            row_number=Window(
+                expression=RowNumber(),
+                partition_by=[F(field) for field in repo_key],
+                # Epoch is not part of the repository key. Prefer the highest epoch,
+                # then incoming content so an equal-epoch replacement takes effect.
+                order_by=[
+                    F("epoch_int").desc(),
+                    F("is_incoming").desc(),
+                    F("time_build").desc(nulls_last=True),
+                    F("pkgId").desc(),
+                    F("pk").desc(),
+                ],
+            )
         )
-        .distinct(*repo_key)
     )
-    losers = Package.objects.filter(pk__in=new_version.content).exclude(pk__in=winners)
-    new_version.remove_content(losers)
+    loser_pks = list(ranked.filter(row_number__gt=1).values_list("pk", flat=True))
+    if loser_pks:
+        losers = Package.objects.filter(
+            pk__in=Content.objects.filter(safe_in("pk", loser_pks))
+        ).only("pk")
+        new_version.remove_content(losers)
 
 
 class RpmRepository(Repository, AutoAddObjPermsMixin):
