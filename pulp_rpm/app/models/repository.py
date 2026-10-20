@@ -8,7 +8,8 @@ from aiohttp.web_response import Response
 from django.conf import settings
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models
-from django.db.models import Case, F, IntegerField, Value, When
+from django.db.models import Case, F, IntegerField, Value, When, Window
+from django.db.models.functions import RowNumber
 
 from pulpcore.plugin.download import DownloaderFactory
 from pulpcore.plugin.models import (
@@ -54,7 +55,7 @@ from pulp_rpm.app.models import (
     UpdateRecord,
 )
 from pulp_rpm.app.shared_utils import urlpath_sanitize
-from pulp_rpm.app.sql_utils import annotate_with_age, get_content_in_repoversion
+from pulp_rpm.app.sql_utils import annotate_with_age, get_content_in_repoversion, safe_in
 
 log = getLogger(__name__)
 
@@ -68,16 +69,30 @@ def remove_package_duplicates(new_version):
         default=Value(0),
         output_field=IntegerField(),
     )
-    # Greatest-1-per-group via postgres DISTINCT ON
-    winners = (
+    # Compare the whole version; incoming content wins when repository keys match.
+    # PostgreSQL puts NULL first in a plain descending sort; prefer a known build time.
+    ranked = (
         Package.objects.filter(pk__in=new_version.content)
         .annotate(is_incoming=is_incoming)
-        # PostgreSQL puts NULL first in a plain descending sort; prefer a known build time.
-        .order_by(*repo_key, "-is_incoming", F("time_build").desc(nulls_last=True), "-pkgId")
-        .distinct(*repo_key)
+        .annotate(
+            row_number=Window(
+                expression=RowNumber(),
+                partition_by=[F(field) for field in repo_key],
+                order_by=[
+                    F("is_incoming").desc(),
+                    F("time_build").desc(nulls_last=True),
+                    F("pkgId").desc(),
+                    F("pk").desc(),
+                ],
+            )
+        )
     )
-    losers = Package.objects.filter(pk__in=new_version.content).exclude(pk__in=winners)
-    new_version.remove_content(losers)
+    loser_pks = list(ranked.filter(row_number__gt=1).values_list("pk", flat=True))
+    if loser_pks:
+        losers = Package.objects.filter(
+            pk__in=Content.objects.filter(safe_in("pk", loser_pks))
+        ).only("pk")
+        new_version.remove_content(losers)
 
 
 class RpmRemote(Remote, AutoAddObjPermsMixin):

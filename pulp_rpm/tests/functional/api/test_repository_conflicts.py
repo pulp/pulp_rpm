@@ -16,7 +16,12 @@ def test_modify_with_resigned_packages_from_two_repositories(
     rpm_repository_factory,
     rpm_package_api,
 ):
-    """A single modify request can combine two checksums of the same package."""
+    """Deduplicate re-signed RPMs copied from two source repositories.
+
+    The sources have the same NEVRA, location, and build time but different
+    checksums, simulating an RPM re-signed in place. A single modify request
+    must succeed and keep one RPM; the higher checksum breaks the tie.
+    """
     nevra = MetaPackage.generate_nevra(random.randint(1000, 999_999))
     location = f"Packages/{nevra.name[0]}/{nevra.to_nvra()}.rpm"
     source_packages = []
