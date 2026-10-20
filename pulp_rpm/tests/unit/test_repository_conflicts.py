@@ -1,8 +1,10 @@
+import uuid
+
 import pytest
 
 from pulpcore.plugin.models import Content
 
-from pulp_rpm.app.models import Package, RpmRepository
+from pulp_rpm.app.models import Modulemd, Package, RpmRepository
 
 
 def make_package(pkg_id, *, location="Packages/g/galera-1-1.x86_64.rpm", epoch="0", build=100):
@@ -75,3 +77,44 @@ def test_package_with_build_time_wins_over_missing_build_time():
         version.add_content(Content.objects.filter(pk__in=[missing.pk, built.pk]))
 
     assert package_ids(repo.latest_version()) == {built.pk}
+
+
+@pytest.mark.django_db
+def test_resigned_modular_package_survives_removing_another_stream():
+    """Keep the selected RPM when a remaining module links to its re-signed twin.
+
+    Deduplication keeps one content ID for the shared NEVRA. Removing the module
+    linked to that ID must not remove the RPM needed by the other module.
+    """
+    older = make_package("aaa")
+    winner = make_package("fff")
+    modules = []
+    for stream, package in (("one", winner), ("two", older)):
+        module = Modulemd.objects.create(
+            name="galera",
+            stream=stream,
+            version="1",
+            context="context",
+            arch="x86_64",
+            artifacts=["galera-0:1-1.x86_64"],
+            description="",
+            digest=uuid.uuid4().hex,
+            snippet="",
+        )
+        module.packages.add(package)
+        modules.append(module)
+
+    repo = RpmRepository.objects.create(name="modular-package-repo")
+    with repo.new_version() as version:
+        version.add_content(
+            Content.objects.filter(pk__in=[older.pk, winner.pk, *[m.pk for m in modules]])
+        )
+    assert package_ids(repo.latest_version()) == {winner.pk}
+
+    with repo.new_version() as version:
+        version.remove_content(Content.objects.filter(pk=modules[0].pk))
+
+    assert set(
+        Modulemd.objects.filter(pk__in=repo.latest_version().content).values_list("pk", flat=True)
+    ) == {modules[1].pk}
+    assert package_ids(repo.latest_version()) == {winner.pk}
