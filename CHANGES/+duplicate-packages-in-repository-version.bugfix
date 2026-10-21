@@ -1,1 +1,0 @@
-Creating an RPM repository version no longer fails when newly added packages share a NEVRA and location but have different checksums.
