@@ -8,6 +8,14 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.39.3 (2026-10-21) {: #3.39.3 }
+
+#### Bugfixes {: #3.39.3-bugfix }
+
+- Fixed orphan cleanup failing for RPM distribution trees that share a subrepository.
+
+---
+
 ## 3.39.2 (2026-10-16) {: #3.39.2 }
 
 #### Bugfixes {: #3.39.2-bugfix }
