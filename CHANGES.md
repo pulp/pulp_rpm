@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.32.14 (2026-10-21) {: #3.32.14 }
+
+#### Bugfixes {: #3.32.14-bugfix }
+
+- Creating an RPM repository version no longer fails when newly added packages share a NEVRA and location but have different checksums.
+- Fixed orphan cleanup failing for RPM distribution trees that share a subrepository.
+
+---
+
 ## 3.32.13 (2026-10-16) {: #3.32.13 }
 
 #### Bugfixes {: #3.32.13-bugfix }
