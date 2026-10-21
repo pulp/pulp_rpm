@@ -229,6 +229,10 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
             The name of a checksum type to use for metadata when generating metadata.
         package_checksum_type (String):
             The name of a default checksum type to use for packages when generating metadata.
+        metadata_signing_fingerprint (String):
+            The fingerprint to be used by @metadata_signing_service. Defaults to the key the
+            signing service was created with.
+            Format: 'v<N>:<hex-fingerprint>' or 'keyid:<16-hex>'.
         package_signing_service (RpmPackageSigningService):
             Signing service to be used on package signing operations related to this repository.
         package_signing_fingerprint (String):
@@ -260,6 +264,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
     metadata_signing_service = models.ForeignKey(
         AsciiArmoredDetachedSigningService, on_delete=models.PROTECT, null=True
     )
+    metadata_signing_fingerprint = models.TextField(null=True)
     package_signing_service = models.ForeignKey(
         RpmPackageSigningService, on_delete=models.PROTECT, null=True
     )
@@ -295,6 +300,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
             tasks.publish(
                 repository_version_pk=version.pk,
                 metadata_signing_service=self.metadata_signing_service,
+                metadata_signing_fingerprint=self.metadata_signing_fingerprint,
                 checksum_type=self.checksum_type,
                 repo_config=self.repo_config,
                 compression_type=self.compression_type,

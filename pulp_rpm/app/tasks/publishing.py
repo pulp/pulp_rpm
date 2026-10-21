@@ -560,6 +560,7 @@ def cr_checksum_type_from_string(checksum_type):
 def publish(
     repository_version_pk,
     metadata_signing_service=None,
+    metadata_signing_fingerprint=None,
     checkpoint=False,
     checksum_types=None,
     checksum_type=None,
@@ -576,6 +577,8 @@ def publish(
         repository_version_pk (str): Create a publication from this repository version.
         metadata_signing_service (pulpcore.app.models.AsciiArmoredDetachedSigningService):
             A reference to an associated signing service.
+        metadata_signing_fingerprint (str): Prefixed fingerprint of the key to sign the metadata
+            with. Defaults to the key @metadata_signing_service was created with.
         checkpoint (bool): Whether to create a checkpoint publication.
         checksum_types (dict): Checksum types for metadata and packages.
         repo_config (JSON): repo config that will be served by distribution
@@ -635,6 +638,7 @@ def publish(
                     checksum_types,
                     publication_data.repomdrecords,
                     metadata_signing_service=metadata_signing_service,
+                    metadata_signing_fingerprint=metadata_signing_fingerprint,
                     compression_type=compression_type,
                     retained_packages=publication_data.packages,
                 )
@@ -652,6 +656,7 @@ def publish(
                         extra_repomdrecords,
                         name,
                         metadata_signing_service=metadata_signing_service,
+                        metadata_signing_fingerprint=metadata_signing_fingerprint,
                         compression_type=compression_type,
                         retained_packages=packages,
                     )
@@ -671,6 +676,7 @@ def generate_repo_metadata(
     extra_repomdrecords,
     sub_folder=None,
     metadata_signing_service=None,
+    metadata_signing_fingerprint=None,
     compression_type=COMPRESSION_TYPES.GZ,
     retained_packages: dict[UUID, PackageInfo] = {},
 ):
@@ -684,6 +690,8 @@ def generate_repo_metadata(
         sub_folder(str): name of the folder for sub repos
         metadata_signing_service (pulpcore.app.models.AsciiArmoredDetachedSigningService):
             A reference to an associated signing service.
+        metadata_signing_fingerprint (str): Prefixed fingerprint of the key to sign repomd.xml
+            with. Defaults to the key @metadata_signing_service was created with.
         compression_type(pulp_rpm.app.constants.COMPRESSION_TYPES):
             Compression type to use for metadata files.
         retained_packages(dict):
@@ -825,7 +833,11 @@ def generate_repo_metadata(
         signing_service = AsciiArmoredDetachedSigningService.objects.get(
             pk=metadata_signing_service
         )
-        sign_results = signing_service.sign(repomd_path)
+        # The signing script takes a bare fingerprint; the stored form carries a version prefix.
+        fingerprint = (
+            metadata_signing_fingerprint.split(":", 1)[1] if metadata_signing_fingerprint else None
+        )
+        sign_results = signing_service.sign(repomd_path, pubkey_fingerprint=fingerprint)
 
         # https://github.com/pulp/pulp_rpm/issues/3526
         signature_file_path = sign_results["signature"]
@@ -851,19 +863,28 @@ def generate_repo_metadata(
                 file=File(signature_fd),
             )
 
-        # publish a public key required for further verification
-        pubkey_name = "repomd.xml.key"
-        with open(pubkey_name, "wb+") as f:
-            f.write(signing_service.public_key.encode("utf-8"))
-            f.flush()
-            # important! as the file has already been opened and used, it will be treated as a
-            # cursor and when calculating the checksum it will calculate the checksum of nothing.
-            f.seek(0)
-            PublishedMetadata.create_from_file(
-                relative_path=os.path.join(repodata_path, pubkey_name),
-                publication=publication,
-                file=File(f),
+        # The signing service only stores the public key of its own key, so there is nothing
+        # truthful to publish once the repository signs with a different one.
+        if fingerprint:
+            log.warning(
+                f"Not publishing repomd.xml.key: repository signs with {fingerprint}, which is "
+                f"not the key signing service {signing_service.name} was created with."
             )
+        else:
+            # publish a public key required for further verification
+            pubkey_name = "repomd.xml.key"
+            with open(pubkey_name, "wb+") as f:
+                f.write(signing_service.public_key.encode("utf-8"))
+                f.flush()
+                # important! as the file has already been opened and used, it will be treated as a
+                # cursor and when calculating the checksum it will calculate the checksum of
+                # nothing.
+                f.seek(0)
+                PublishedMetadata.create_from_file(
+                    relative_path=os.path.join(repodata_path, pubkey_name),
+                    publication=publication,
+                    file=File(f),
+                )
     else:
         with open(repomd_path, "rb") as repomd_fd:
             PublishedMetadata.create_from_file(
