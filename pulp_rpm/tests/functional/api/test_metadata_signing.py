@@ -91,7 +91,7 @@ def test_publish_signed_repo_metadata(
 
 
 @pytest.fixture
-def two_key_signing_service(tmp_path, pulpcore_bindings):
+def signing_service_with_keyring(tmp_path, pulpcore_bindings):
     """A signing service created with KEY_V4_RSA4K, whose keyring also holds KEY_V4_RSA2K."""
     home = tmp_path / "signing"
     home.mkdir(mode=0o700)
@@ -108,20 +108,23 @@ def two_key_signing_service(tmp_path, pulpcore_bindings):
 
 @pytest.mark.parallel
 def test_publish_with_metadata_signing_fingerprint(
-    two_key_signing_service,
+    has_pulp_plugin,
+    signing_service_with_keyring,
     rpm_repository_factory,
     init_and_sync,
     rpm_publication_factory,
     rpm_distribution_factory,
     distribution_base_url,
 ):
-    """Verify that a repository signs repomd.xml with its own fingerprint.
+    """Verify that metadata_signing_fingerprint selects the key repomd.xml is signed with.
 
-    The signature must verify against the repository's key rather than the one the signing
-    service was created with. Since the service only stores the public key of its own key,
-    `repomd.xml.key` is not published at all.
+    No `repomd.xml.key` is published, since the signing service only holds the public key it
+    was created with.
     """
-    service, other_fingerprint = two_key_signing_service
+    if not has_pulp_plugin("core", min="3.123.0"):
+        pytest.skip("Overriding the signing key per call requires pulpcore 3.123.0+")
+
+    service, other_fingerprint = signing_service_with_keyring
 
     repo = rpm_repository_factory(
         metadata_signing_service=service.pulp_href,

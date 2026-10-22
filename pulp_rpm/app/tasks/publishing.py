@@ -51,7 +51,7 @@ from pulp_rpm.app.models import (
     UpdateRecord,
 )
 from pulp_rpm.app.serializers import RpmPublicationSerializer
-from pulp_rpm.app.shared_utils import format_nevra
+from pulp_rpm.app.shared_utils import format_nevra, split_key_identifier
 
 log = logging.getLogger(__name__)
 
@@ -835,9 +835,13 @@ def generate_repo_metadata(
         )
         # The signing script takes a bare fingerprint; the stored form carries a version prefix.
         fingerprint = (
-            metadata_signing_fingerprint.split(":", 1)[1] if metadata_signing_fingerprint else None
+            split_key_identifier(metadata_signing_fingerprint)[1]
+            if metadata_signing_fingerprint
+            else None
         )
-        sign_results = signing_service.sign(repomd_path, pubkey_fingerprint=fingerprint)
+        # shortcut: pulpcore < 3.123.0 lacks pubkey_fingerprint, drop when pyproject requires it
+        override = {"pubkey_fingerprint": fingerprint} if fingerprint else {}
+        sign_results = signing_service.sign(repomd_path, **override)
 
         # https://github.com/pulp/pulp_rpm/issues/3526
         signature_file_path = sign_results["signature"]
@@ -863,8 +867,8 @@ def generate_repo_metadata(
                 file=File(signature_fd),
             )
 
-        # The signing service only stores the public key of its own key, so there is nothing
-        # truthful to publish once the repository signs with a different one.
+        # The signing service only holds the public key it was created with, which is not the
+        # one that signed this metadata.
         if fingerprint:
             log.warning(
                 f"Not publishing repomd.xml.key: repository signs with {fingerprint}, which is "
