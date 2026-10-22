@@ -24,6 +24,7 @@ from pulp_rpm.app.shared_utils import (
     extract_signing_keys,
     read_package_from_file,
     signing_key_matches,
+    split_key_identifier,
 )
 
 log = logging.getLogger(__name__)
@@ -55,7 +56,7 @@ def _verify_package_fingerprint(path, fingerprint):
 
 def _sign_file(package_file, signing_service, signing_fingerprint):
     """Sign a package and return the local path of the signed file."""
-    prefix, raw_fingerprint = signing_fingerprint.split(":", 1)
+    prefix, raw_fingerprint = split_key_identifier(signing_fingerprint)
     log.info(f"Signing package {package_file.name} with fingerprint {signing_fingerprint}.")
     result = signing_service.sign(
         package_file.name,
