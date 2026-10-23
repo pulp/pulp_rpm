@@ -1,1 +1,0 @@
-Fixed the `filename` filter of the package list, which failed with a server error on every request.
