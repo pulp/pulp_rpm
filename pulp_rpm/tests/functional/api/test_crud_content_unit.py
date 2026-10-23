@@ -54,6 +54,13 @@ def test_crud_content_unit(
     assert len(page.results) == 1
     assert page.results[0] == content_unit
 
+    # Read content units by their file name
+    page = rpm_package_api.list(filename=content_unit.location_href)
+    assert content_unit.pulp_href in [unit.pulp_href for unit in page.results]
+    assert all(unit.location_href == content_unit.location_href for unit in page.results)
+    page = rpm_package_api.list(filename=f"no-such-{content_unit.location_href}")
+    assert page.count == 0
+
     # Attempt to update a content unit using HTTP PATCH
     attrs = gen_rpm_content_attrs(artifact, relative_path)
     with pytest.raises(AttributeError) as exc:
