@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.39.4 (2026-10-23) {: #3.39.4 }
+
+#### Bugfixes {: #3.39.4-bugfix }
+
+- Fixed the `filename` filter of the package list, which failed with a server error on every request.
+- Keep RPMs required by remaining module streams when removing another stream that references a differently signed copy of the same package.
+
+---
+
 ## 3.39.3 (2026-10-21) {: #3.39.3 }
 
 #### Bugfixes {: #3.39.3-bugfix }
