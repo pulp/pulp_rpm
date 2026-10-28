@@ -8,6 +8,15 @@
 
 [//]: # (towncrier release notes start)
 
+## 3.32.15 (2026-10-28) {: #3.32.15 }
+
+#### Bugfixes {: #3.32.15-bugfix }
+
+- Prevent control characters from leaking into XML (this was previously done for changelogs, but now covers other fields).
+  [#4620](https://github.com/pulp/pulp_rpm/issues/4620)
+
+---
+
 ## 3.32.14 (2026-10-21) {: #3.32.14 }
 
 #### Bugfixes {: #3.32.14-bugfix }
