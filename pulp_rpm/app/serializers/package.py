@@ -8,6 +8,7 @@ from django.db import DatabaseError
 from drf_spectacular.utils import extend_schema_serializer
 from rest_framework import serializers
 from rest_framework.exceptions import NotAcceptable
+from rpmrepo_metadata import MetadataError
 
 from pulpcore.plugin.files import PulpTemporaryUploadedFile
 from pulpcore.plugin.models import Artifact, UploadChunk
@@ -281,7 +282,7 @@ class PackageSerializer(SingleArtifactContentUploadSerializer, ContentChecksumSe
         try:
             package, signing_keys = read_package_from_artifact(data["artifact"])
             new_pkg = Package.rpmrepo_to_dict(package, signing_keys=signing_keys)
-        except OSError:
+        except (OSError, MetadataError):
             log.info(traceback.format_exc())
             raise NotAcceptable(detail="RPM file cannot be parsed for metadata")
 
@@ -455,7 +456,7 @@ class PackageUploadSerializer(PackageSerializer):
                         artifact, working_dir=working_dir_rel_path
                     )
                     new_pkg = Package.rpmrepo_to_dict(package, signing_keys=signing_keys)
-        except OSError as e:
+        except (OSError, MetadataError) as e:
             log.info(traceback.format_exc())
             raise NotAcceptable(detail="RPM file cannot be parsed for metadata") from e
 
