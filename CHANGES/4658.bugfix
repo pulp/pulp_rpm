@@ -1,0 +1,1 @@
+Fixed RPM uploads of files that are not valid RPMs failing with a raw parser error instead of "RPM file cannot be parsed for metadata".
