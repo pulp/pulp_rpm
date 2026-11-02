@@ -133,6 +133,23 @@ def test_upload_invalid_utf8_changelog(rpm_package_api, monitor_task, tmp_path):
     assert package.changelogs == [["Author�YName", 1_700_000_000, "Description�BCDE"]]
 
 
+@pytest.mark.parallel
+def test_upload_invalid_rpm(rpm_package_api, monitor_task, tmp_path):
+    """Uploading a file that is not an RPM fails with a clear error on both upload APIs."""
+    path = tmp_path / "not-an-rpm.rpm"
+    path.write_text("this is not an rpm")
+
+    upload = rpm_package_api.create(file=str(path))
+    with pytest.raises(PulpTaskError) as task_exc:
+        monitor_task(upload.task)
+    assert task_exc.value.task.error["description"] == "RPM file cannot be parsed for metadata"
+
+    with pytest.raises(ApiException) as api_exc:
+        rpm_package_api.upload(file=str(path))
+    assert api_exc.value.status == 406
+    assert "RPM file cannot be parsed for metadata" in api_exc.value.body
+
+
 # TODO: could probably consolidate these
 def test_upload_non_ascii_from_artifact(
     tmp_path, pulpcore_bindings, rpm_package_api, monitor_task, delete_orphans_pre
