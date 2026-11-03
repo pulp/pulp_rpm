@@ -616,6 +616,7 @@ class RpmPublicationViewSet(PublicationViewSet, RolesMixin):
         kwargs = {
             "repository_version_pk": repository_version.pk,
             "metadata_signing_service": signing_service_pk,
+            "metadata_signing_fingerprint": repository.metadata_signing_fingerprint,
             "checksum_type": checksum_type,
             "repo_config": repo_config,
             "compression_type": compression_type,
