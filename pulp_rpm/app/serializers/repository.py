@@ -543,6 +543,19 @@ class RpmPublicationSerializer(PublicationSerializer):
             "A JSON document describing the config.repo file Pulp should generate for this repo"
         ),
     )
+    base_publication = DetailRelatedField(
+        read_only=True,
+        help_text=_("The publication this one was derived from, when derivation was possible."),
+        view_name_pattern=r"publications(-.*/.*)?-detail",
+    )
+    metadata_signing_fingerprint = serializers.CharField(
+        read_only=True,
+        help_text=_("The fingerprint of the signing service whose key signed repomd.xml."),
+    )
+    metadata_fingerprints = serializers.JSONField(
+        read_only=True,
+        help_text=_("Canonical fingerprints of the publication's metadata, per record type."),
+    )
 
     def validate(self, data):
         """Validate data."""
@@ -553,8 +566,7 @@ class RpmPublicationSerializer(PublicationSerializer):
             if checksum_type not in ALLOWED_PUBLISH_CHECKSUMS:
                 raise serializers.ValidationError(ALLOWED_PUBLISH_CHECKSUM_ERROR_MSG)
 
-        validated_data = super().validate(data)
-        return validated_data
+        return super().validate(data)
 
     class Meta:
         fields = PublicationSerializer.Meta.fields + (
@@ -568,6 +580,9 @@ class RpmPublicationSerializer(PublicationSerializer):
             "repo_config",
             "compression_type",
             "layout",
+            "base_publication",
+            "metadata_signing_fingerprint",
+            "metadata_fingerprints",
         )
         model = RpmPublication
 

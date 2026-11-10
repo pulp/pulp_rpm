@@ -311,7 +311,7 @@ class RpmRepository(Repository, AutoAddObjPermsMixin):
         if self.autopublish:
             tasks.publish(
                 repository_version_pk=version.pk,
-                metadata_signing_service=self.metadata_signing_service,
+                metadata_signing_service=self.metadata_signing_service_id,
                 checksum_type=self.checksum_type,
                 repo_config=self.repo_config,
                 compression_type=self.compression_type,
@@ -571,6 +571,16 @@ class RpmPublication(Publication, AutoAddObjPermsMixin):
     package_checksum_type = models.TextField(null=True, choices=CHECKSUM_CHOICES)
     layout = models.TextField(null=True, choices=LAYOUT_CHOICES)
     repo_config = models.JSONField(default=dict)
+    base_publication = models.ForeignKey(
+        "self",
+        null=True,
+        on_delete=models.SET_NULL,
+        related_name="derived_publications",
+    )
+    metadata_signing_fingerprint = models.TextField(null=True)
+    # Nullable so a database that outlives this code (rollback after migration 0075) can still
+    # publish: code without this model field writes no value and must not hit a NOT NULL column.
+    metadata_fingerprints = models.JSONField(default=dict, null=True)
 
     class Meta:
         default_related_name = "%(app_label)s_%(model_name)s"
