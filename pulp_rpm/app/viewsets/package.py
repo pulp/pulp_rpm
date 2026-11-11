@@ -1,11 +1,12 @@
 from django.db import transaction
+from django.db.models import Prefetch
 from django_filters import CharFilter
 from drf_spectacular.utils import extend_schema
 from rest_framework import status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from pulpcore.plugin.models import PulpTemporaryFile
+from pulpcore.plugin.models import PulpTemporaryFile, VulnerabilityReport
 from pulpcore.plugin.serializers import AsyncOperationResponseSerializer
 from pulpcore.plugin.tasking import dispatch
 from pulpcore.plugin.viewsets import (
@@ -61,7 +62,15 @@ class PackageViewSet(SingleArtifactContentUploadViewSet):
     """
 
     endpoint_name = "packages"
-    queryset = Package.objects.prefetch_related("_artifacts")
+    queryset = Package.objects.select_related("pulp_domain").prefetch_related(
+        "_artifacts",
+        Prefetch(
+            "core_vulnerabilityreport",
+            queryset=VulnerabilityReport.objects.select_related("pulp_domain").only(
+                "pk", "content_id", "pulp_domain_id", "pulp_domain__name"
+            ),
+        ),
+    )
     serializer_class = PackageSerializer
     minimal_serializer_class = MinimalPackageSerializer
     filterset_class = PackageFilter
