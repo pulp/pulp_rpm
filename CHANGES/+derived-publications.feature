@@ -1,0 +1,1 @@
+Publishing a repository version now reuses the metadata of the newest publication of the same repository, computing only the version delta. Publications whose base is incompatible fall back to a full publication.
