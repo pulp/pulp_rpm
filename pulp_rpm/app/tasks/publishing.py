@@ -1,7 +1,10 @@
+import hashlib
 import logging
 import os
 import shutil
 import tempfile
+from contextlib import contextmanager
+from dataclasses import dataclass, field
 from gettext import gettext as _
 from typing import NamedTuple
 from uuid import UUID
@@ -13,6 +16,7 @@ from django.db.models import Q
 
 from pulpcore.plugin.models import (
     AsciiArmoredDetachedSigningService,
+    Content,
     ContentArtifact,
     ProgressReport,
     PublishedArtifact,
@@ -52,6 +56,7 @@ from pulp_rpm.app.models import (
 )
 from pulp_rpm.app.serializers import RpmPublicationSerializer
 from pulp_rpm.app.shared_utils import format_nevra
+from pulp_rpm.app.sql_utils import safe_in
 
 log = logging.getLogger(__name__)
 
@@ -292,27 +297,6 @@ class PublicationData:
             dict: Mapping of content_id to PackageInfo for retained packages.
         """
 
-        def nested_alphabetically_path(pkg_filename):
-            """Returns the path to use for nested_alphabetically. Used twice, define once."""
-            return os.path.join(PACKAGES_DIRECTORY, pkg_filename[0].lower(), pkg_filename)
-
-        def nested_by_digest_path(pkg_filename, checksum):
-            """Returns the path to use for nested_by_digest. Used twice, define once."""
-            # Regardless of checksum type, let's use the first 6 characters of the checksum
-            # to create a nested directory structure.
-            if len(checksum) < 6:
-                raise ChecksumTooShortError(checksum, self.publication.layout)
-            return os.path.join(
-                PACKAGES_DIRECTORY,
-                pkg_filename[0].lower(),
-                "by-digest",
-                f"{checksum[:6]}-{pkg_filename}",
-            )
-
-        def flat_path(pkg_filename):
-            """Returns the path to use for flat layout. Define to keep it close to the others."""
-            return os.path.join(PACKAGES_DIRECTORY, pkg_filename)
-
         published_artifacts = []
         requested_checksum_type = get_checksum_type(self.checksum_types)
         layout = self.publication.layout
@@ -367,32 +351,13 @@ class PublicationData:
             pkg_build = PkgBuild(cid=cid, epoch=epoch, build_time=build_time)
 
             # Second, get the checksum / checksum type, defaulting to rpm_package__pkgId if needed
-            if requested_checksum_type:
-                checksum = row.get(artifact_checksum, None)
-                checksum_type = requested_checksum_type
-
-            if not requested_checksum_type or not checksum:
-                checksum = row["content__rpm_package__pkgId"]
-                checksum_type = row["content__rpm_package__checksum_type"]
-                if checksum_type not in ALLOWED_CONTENT_CHECKSUMS:
-                    raise ForbiddenChecksumTypeError(
-                        checksum_type,
-                        _(
-                            "Package with pkgId {pkgid} as content unit {cid} contains "
-                            "forbidden checksum type. {error_msg}"
-                        ).format(pkgid=checksum, cid=cid, error_msg=ALLOWED_CHECKSUM_ERROR_MSG),
-                    )
+            checksum, checksum_type = _package_checksum(
+                row, requested_checksum_type, artifact_checksum
+            )
 
             # Third, compute the path based on layout
             pkg_filename = os.path.basename(row["relative_path"])
-            if layout == LAYOUT_TYPES.NESTED_ALPHABETICALLY:
-                path = nested_alphabetically_path(pkg_filename)
-            elif layout == LAYOUT_TYPES.FLAT:
-                path = flat_path(pkg_filename)
-            elif layout == LAYOUT_TYPES.NESTED_BY_DIGEST:
-                path = nested_by_digest_path(pkg_filename, checksum)
-            else:
-                raise UnsupportedLayoutError(layout)
+            path = _published_path(layout, pkg_filename, checksum)
 
             pkg_info = PackageInfo(
                 caid=caid, path=path, checksum_type=checksum_type, checksum=checksum
@@ -416,15 +381,7 @@ class PublicationData:
 
         # Handle the non-packages
         is_treeinfo = Q(relative_path__in=["treeinfo", ".treeinfo"])
-        unpublishable_types = Q(
-            content__pulp_type__in=[
-                RepoMetadataFile.get_pulp_type(),
-                Modulemd.get_pulp_type(),
-                ModulemdDefaults.get_pulp_type(),
-                # already dealt with
-                Package.get_pulp_type(),
-            ]
-        )
+        unpublishable_types = Q(content__pulp_type__in=_UNPUBLISHABLE_TYPES)
 
         contentartifact_qs = (
             ContentArtifact.objects.filter(content__in=content)
@@ -557,6 +514,134 @@ def cr_checksum_type_from_string(checksum_type):
     return getattr(cr, checksum_type.upper())
 
 
+@dataclass(frozen=True)
+class PublishRequest:
+    """A validated publish request, with every setting already resolved."""
+
+    repository_version: RepositoryVersion
+    metadata_signing_service: AsciiArmoredDetachedSigningService | None = None
+    checkpoint: bool = False
+    checksum_types: dict = field(default_factory=dict)
+    compression_type: str = COMPRESSION_TYPES.GZ
+    layout: str = LAYOUT_TYPES.NESTED_ALPHABETICALLY
+    repo_config: dict | None = None
+
+    @property
+    def checksum_type(self):
+        """The checksum type used for metadata files."""
+        return get_checksum_type(self.checksum_types)
+
+
+@dataclass(frozen=True)
+class ContentDelta:
+    """The content a version adds to and removes from its base version."""
+
+    added_pks: frozenset = frozenset()
+    removed_pks: frozenset = frozenset()
+    changed_types: frozenset = frozenset()
+
+
+@dataclass(frozen=True)
+class PublishPlan:
+    """What was decided about a publish request, before anything is written."""
+
+    request: PublishRequest
+    base_publication: RpmPublication | None
+    delta: ContentDelta = ContentDelta()
+
+    @property
+    def derived(self):
+        return self.base_publication is not None
+
+
+class PublicationPlanner:
+    """Decide whether the requested publication can be derived from an existing one."""
+
+    def __init__(self, request):
+        self.request = request
+
+    def plan(self):
+        """Build the plan for the request."""
+        base = self._base_publication()
+        if base is None:
+            return PublishPlan(self.request, None)
+        version = self.request.repository_version
+        delta = self._delta(base)
+        reason = self._incompatibility(base) or self._delta_reason(version, delta)
+        if reason:
+            log.warning(
+                _("Not deriving the publication of {version} from {base}: {reason}").format(
+                    version=version, base=base.pk, reason=reason
+                )
+            )
+            return PublishPlan(self.request, None)
+        return PublishPlan(self.request, base, delta)
+
+    def _base_publication(self):
+        """The newest complete publication of the same repository this one can reuse.
+
+        Only publications built with the same settings are candidates, so a repository that
+        alternates settings still derives from its most recent compatible publication.
+        """
+        request = self.request
+        version = request.repository_version
+        return (
+            RpmPublication.objects.filter(
+                repository_version__repository_id=version.repository_id,
+                repository_version__number__lte=version.number,
+                complete=True,
+                checkpoint=request.checkpoint,
+                checksum_type=request.checksum_type,
+                compression_type=request.compression_type,
+                layout=request.layout,
+                repo_config=request.repo_config or {},
+                metadata_signing_fingerprint=_signing_fingerprint(request.metadata_signing_service),
+                metadata_fingerprints__isnull=False,
+            )
+            .select_related("repository_version")
+            .defer("repository_version__content_ids")
+            .order_by("-repository_version__number", "-pulp_created")
+            .first()
+        )
+
+    def _delta(self, base):
+        """The content the target version adds to and removes from the base version."""
+        version = self.request.repository_version
+        if base.repository_version_id == version.pk:
+            return ContentDelta()
+        added = frozenset(version.added(base.repository_version).values_list("pk", flat=True))
+        removed = frozenset(version.removed(base.repository_version).values_list("pk", flat=True))
+        return ContentDelta(added, removed, _changed_pulp_types(added, removed))
+
+    @staticmethod
+    def _delta_reason(version, delta):
+        """Return why the delta makes deriving pointless, or None if it does not."""
+        if (delta.added_pks or delta.removed_pks) and not PublicationPlanner._worth_deriving(
+            version.content.count(), len(delta.added_pks), len(delta.removed_pks)
+        ):
+            return "the delta is too large"
+        if DistributionTree.get_pulp_type() in delta.changed_types:
+            return "it contains distribution trees"
+        return None
+
+    @staticmethod
+    def _worth_deriving(target, added, removed):
+        """Deriving pays off while most of both the target and the base content are retained."""
+        retained = target - added
+        return added <= retained and removed <= retained
+
+    def _incompatibility(self, base):
+        """Return why the base publication cannot be derived from, or None if it can."""
+        settings = (base.metadata_fingerprints or {}).get("settings") or {}
+        if settings.get("format") != _METADATA_FORMAT:
+            return "metadata format differs or is unknown"
+        if settings.get("repository_package_time") != RPM_METADATA_USE_REPO_PACKAGE_TIME:
+            return "RPM_METADATA_USE_REPO_PACKAGE_TIME differs or is unknown"
+        if _has_distribution_trees(base.repository_version):
+            return "base repository version contains distribution trees"
+        return None
+
+
 def publish(
     repository_version_pk,
     metadata_signing_service=None,
@@ -582,11 +667,10 @@ def publish(
         compression_type(pulp_rpm.app.constants.COMPRESSION_TYPES):
             Compression type to use for metadata files.
         layout(pulp_rpm.app.constants.LAYOUT_TYPES):
-            How to layout the package files within the publication (flat, nested, etc.)
+            How to layout the package files within the publication (flat, nested, etc.).
 
     """
     repository_version = RepositoryVersion.objects.get(pk=repository_version_pk)
-    repository = repository_version.repository.cast()
     checksum_types = checksum_types or {}
     # currently unused, but prep for eliminating "checksum_types due to zero-downtime requirements"
     if checksum_type:
@@ -597,26 +681,74 @@ def publish(
             pk=metadata_signing_service
         )
 
-    if layout is None:
-        # Can't simply set a default in the function signature because some code calls this function
-        # with an explicit None value.
-        layout = LAYOUT_TYPES.NESTED_ALPHABETICALLY
+    request = PublishRequest(
+        repository_version=repository_version,
+        metadata_signing_service=metadata_signing_service,
+        checkpoint=checkpoint,
+        checksum_types=checksum_types,
+        compression_type=compression_type,
+        layout=layout or LAYOUT_TYPES.NESTED_ALPHABETICALLY,
+        repo_config=repo_config,
+    )
+    return _publish_full(PublicationPlanner(request).plan())
 
+
+def _signing_fingerprint(signing_service):
+    if signing_service is None:
+        return None
+    return hashlib.sha256(signing_service.public_key.encode()).hexdigest()
+
+
+def _has_distribution_trees(repository_version):
+    return repository_version.content.filter(pulp_type=DistributionTree.get_pulp_type()).exists()
+
+
+def _configure_publication(publication, request):
+    publication.checksum_type = request.checksum_type
+    publication.compression_type = request.compression_type
+    publication.layout = request.layout
+    publication.repo_config = request.repo_config
+
+
+@contextmanager
+def _publish_workspace():
+    """Run a publish attempt in its own directory, so a failed attempt leaves nothing behind."""
+    cwd = os.getcwd()
+    with tempfile.TemporaryDirectory(dir=".") as workdir:
+        os.chdir(workdir)
+        try:
+            yield
+        finally:
+            os.chdir(cwd)
+
+
+def _finalize_publication(publication, request, publication_data, repomd_path):
+    """Record how the publication was produced and return it serialized."""
+    publication.metadata_signing_fingerprint = _signing_fingerprint(
+        request.metadata_signing_service
+    )
+    publication.metadata_fingerprints = _content_fingerprints(
+        publication, publication_data.packages, repomd_path
+    )
+    publication.save()
+    return RpmPublicationSerializer(instance=publication, context={"request": None}).data
+
+
+def _publish_full(plan):
+    request = plan.request
+    repository = request.repository_version.repository.cast()
     log.info(
         _("Publishing: repository={repo}, version={version}").format(
             repo=repository.name,
-            version=repository_version.number,
+            version=request.repository_version.number,
         )
     )
-    with tempfile.TemporaryDirectory(dir="."):
-        with RpmPublication.create(repository_version, checkpoint=checkpoint) as publication:
-            checksum_type = get_checksum_type(checksum_types)
-            publication.checksum_type = checksum_type
-            publication.compression_type = compression_type
-            publication.layout = layout
-            publication.repo_config = repo_config
-
-            publication_data = PublicationData(publication, checksum_types)
+    with _publish_workspace():
+        with RpmPublication.create(
+            request.repository_version, checkpoint=request.checkpoint
+        ) as publication:
+            _configure_publication(publication, request)
+            publication_data = PublicationData(publication, request.checksum_types)
             publication_data.populate()
 
             total_repos = 1 + len(publication_data.sub_repos)
@@ -629,13 +761,13 @@ def publish(
                 content = publication.repository_version.content
 
                 # Main repo
-                generate_repo_metadata(
+                repomd_path = _generate_repo_metadata(
                     content,
                     publication,
-                    checksum_types,
+                    request.checksum_types,
                     publication_data.repomdrecords,
-                    metadata_signing_service=metadata_signing_service,
-                    compression_type=compression_type,
+                    metadata_signing_service=request.metadata_signing_service,
+                    compression_type=request.compression_type,
                     retained_packages=publication_data.packages,
                 )
                 publish_pb.increment()
@@ -645,26 +777,24 @@ def publish(
                     content = getattr(publication_data, f"{name}_content")
                     extra_repomdrecords = getattr(publication_data, f"{name}_repomdrecords")
                     packages = getattr(publication_data, f"{name}_packages")
-                    generate_repo_metadata(
+                    _generate_repo_metadata(
                         content,
                         publication,
-                        checksum_types,
+                        request.checksum_types,
                         extra_repomdrecords,
                         name,
-                        metadata_signing_service=metadata_signing_service,
-                        compression_type=compression_type,
+                        metadata_signing_service=request.metadata_signing_service,
+                        compression_type=request.compression_type,
                         retained_packages=packages,
                     )
                     publish_pb.increment()
 
+            result = _finalize_publication(publication, request, publication_data, repomd_path)
             log.info(_("Publication: {publication} created").format(publication=publication.pk))
-            serialized_pub = RpmPublicationSerializer(
-                instance=publication, context={"request": None}
-            ).data
-            return serialized_pub
+            return result
 
 
-def generate_repo_metadata(
+def _generate_repo_metadata(
     content,
     publication,
     checksum_types,
@@ -703,26 +833,10 @@ def generate_repo_metadata(
         repodata_path = os.path.join(sub_folder, repodata_path)
 
     # Prepare metadata files
-    if compression_type == COMPRESSION_TYPES.ZSTD:
-        cr_compression_type = cr.ZSTD
-    elif compression_type == COMPRESSION_TYPES.NONE:
-        cr_compression_type = cr.NO_COMPRESSION
-    else:
-        # Gzip is the default option & fallback should the value be something unexpected
-        cr_compression_type = cr.GZ
+    cr_compression_type, _ = _compression(compression_type)
     total_packages = len(retained_packages)
 
-    if RPM_METADATA_USE_REPO_PACKAGE_TIME:
-        # gather the times the packages were added to the repo
-        repo_content = (
-            RepositoryContent.objects.filter(
-                repository=publication.repository,
-                version_added__number__lte=publication.repository_version.number,
-            )
-            .exclude(version_removed__number__lte=publication.repository_version.number)
-            .values_list("content", "pulp_created")
-        )
-        repo_pkg_times = {pk: created.timestamp() for pk, created in repo_content}
+    repo_pkg_times = _repo_package_times(publication) if RPM_METADATA_USE_REPO_PACKAGE_TIME else {}
 
     repomd_path = os.path.join(repodata_path, "repomd.xml")
     mod_yml_path = os.path.join(repodata_path, "modules.yaml")
@@ -822,48 +936,7 @@ def generate_repo_metadata(
             )
 
     if metadata_signing_service:
-        signing_service = AsciiArmoredDetachedSigningService.objects.get(
-            pk=metadata_signing_service
-        )
-        sign_results = signing_service.sign(repomd_path)
-
-        # https://github.com/pulp/pulp_rpm/issues/3526
-        signature_file_path = sign_results["signature"]
-        if os.stat(signature_file_path).st_size == 0:
-            log.error(f"{signature_file_path} is 0 bytes! sign_results: {sign_results}")
-            raise MetadataSigningError("Signature file is 0 bytes")
-
-        # publish a signed file
-        with open(sign_results["file"], "rb") as signed_file_fd:
-            PublishedMetadata.create_from_file(
-                relative_path=os.path.join(repodata_path, os.path.basename(sign_results["file"])),
-                publication=publication,
-                file=File(signed_file_fd),
-            )
-
-        # publish a detached signature
-        with open(sign_results["signature"], "rb") as signature_fd:
-            PublishedMetadata.create_from_file(
-                relative_path=os.path.join(
-                    repodata_path, os.path.basename(sign_results["signature"])
-                ),
-                publication=publication,
-                file=File(signature_fd),
-            )
-
-        # publish a public key required for further verification
-        pubkey_name = "repomd.xml.key"
-        with open(pubkey_name, "wb+") as f:
-            f.write(signing_service.public_key.encode("utf-8"))
-            f.flush()
-            # important! as the file has already been opened and used, it will be treated as a
-            # cursor and when calculating the checksum it will calculate the checksum of nothing.
-            f.seek(0)
-            PublishedMetadata.create_from_file(
-                relative_path=os.path.join(repodata_path, pubkey_name),
-                publication=publication,
-                file=File(f),
-            )
+        _sign_repomd(publication, repomd_path, repodata_path, metadata_signing_service)
     else:
         with open(repomd_path, "rb") as repomd_fd:
             PublishedMetadata.create_from_file(
@@ -871,3 +944,275 @@ def generate_repo_metadata(
                 publication=publication,
                 file=File(repomd_fd),
             )
+
+    return repomd_path
+
+
+def _sign_repomd(publication, repomd_path, repodata_path, signing_service):
+    """Sign repomd.xml and publish the signature and public key alongside it."""
+    sign_results = signing_service.sign(repomd_path)
+
+    # https://github.com/pulp/pulp_rpm/issues/3526
+    signature_file_path = sign_results["signature"]
+    if os.stat(signature_file_path).st_size == 0:
+        log.error(f"{signature_file_path} is 0 bytes! sign_results: {sign_results}")
+        raise MetadataSigningError("Signature file is 0 bytes")
+
+    # publish a signed file
+    with open(sign_results["file"], "rb") as signed_file_fd:
+        PublishedMetadata.create_from_file(
+            relative_path=os.path.join(repodata_path, os.path.basename(sign_results["file"])),
+            publication=publication,
+            file=File(signed_file_fd),
+        )
+
+    # publish a detached signature
+    with open(sign_results["signature"], "rb") as signature_fd:
+        PublishedMetadata.create_from_file(
+            relative_path=os.path.join(repodata_path, os.path.basename(sign_results["signature"])),
+            publication=publication,
+            file=File(signature_fd),
+        )
+
+    # publish a public key required for further verification
+    pubkey_name = "repomd.xml.key"
+    with open(pubkey_name, "wb+") as f:
+        f.write(signing_service.public_key.encode("utf-8"))
+        f.flush()
+        # important! as the file has already been opened and used, it will be treated as a
+        # cursor and when calculating the checksum it will calculate the checksum of nothing.
+        f.seek(0)
+        PublishedMetadata.create_from_file(
+            relative_path=os.path.join(repodata_path, pubkey_name),
+            publication=publication,
+            file=File(f),
+        )
+
+
+def _published_path(layout, pkg_filename, checksum):
+    """Return the relative path a package is published at."""
+    if layout == LAYOUT_TYPES.NESTED_ALPHABETICALLY:
+        return os.path.join(PACKAGES_DIRECTORY, pkg_filename[0].lower(), pkg_filename)
+    if layout == LAYOUT_TYPES.FLAT:
+        return os.path.join(PACKAGES_DIRECTORY, pkg_filename)
+    if layout == LAYOUT_TYPES.NESTED_BY_DIGEST:
+        # Regardless of checksum type, let's use the first 6 characters of the checksum
+        # to create a nested directory structure.
+        if len(checksum) < 6:
+            raise ChecksumTooShortError(checksum, layout)
+        return os.path.join(
+            PACKAGES_DIRECTORY,
+            pkg_filename[0].lower(),
+            "by-digest",
+            f"{checksum[:6]}-{pkg_filename}",
+        )
+    raise UnsupportedLayoutError(layout)
+
+
+_COMPRESSION = {
+    COMPRESSION_TYPES.ZSTD: (cr.ZSTD, ".zst"),
+    COMPRESSION_TYPES.NONE: (cr.NO_COMPRESSION, ""),
+    COMPRESSION_TYPES.GZ: (cr.GZ, ".gz"),
+}
+
+
+def _compression(compression_type):
+    """The createrepo_c compression and metadata file extension for a publication setting."""
+    # Gzip is the default option & fallback should the value be something unexpected
+    return _COMPRESSION.get(compression_type, _COMPRESSION[COMPRESSION_TYPES.GZ])
+
+
+def _changed_pulp_types(added_pks, removed_pks):
+    """The content types whose membership differs between the base version and the target."""
+    delta = added_pks | removed_pks
+    if not delta:
+        return frozenset()
+    return frozenset(
+        Content.objects.filter(safe_in("pk", delta)).values_list("pulp_type", flat=True).distinct()
+    )
+
+
+def _nevra_key(name, epoch, version, release, arch):
+    return (name, str(int(epoch)) if epoch else "0", version, release, arch)
+
+
+# Bump when generated metadata changes in a way that older publications cannot represent.
+_METADATA_FORMAT = 1
+
+
+def _digest(items):
+    digest = hashlib.sha256()
+    for item in sorted(items):
+        text = "|".join(str(part) for part in item) if isinstance(item, tuple) else str(item)
+        digest.update(text.encode())
+        digest.update(b"\n")
+    return digest.hexdigest()
+
+
+def _repomd_fingerprint(repomd_path):
+    """The set of metadata records in the publication.
+
+    Record checksums and sizes are not usable as a comparison unit: compressed bytes vary
+    between identical runs, and a parsed-then-dumped record omits empty optional elements that
+    regenerating it from the database emits. The per-type fingerprints cover the content.
+    """
+    repomd = cr.Repomd()
+    cr.xml_parse_repomd(repomd_path, repomd)
+    return sorted({record.type for record in repomd.records})
+
+
+def _content_fingerprints(publication, retained_packages, repomd_path):
+    """Describe the client-visible metadata of a publication, per record type.
+
+    Two publications of the same repository version must have equal fingerprints.
+    """
+    content = publication.repository_version.content
+    comps_digests = [
+        *PackageGroup.objects.filter(pk__in=content).values_list("digest", flat=True),
+        *PackageCategory.objects.filter(pk__in=content).values_list("digest", flat=True),
+        *PackageEnvironment.objects.filter(pk__in=content).values_list("digest", flat=True),
+        *PackageLangpacks.objects.filter(pk__in=content).values_list("digest", flat=True),
+    ]
+    module_digests = [
+        *Modulemd.objects.filter(pk__in=content).values_list("digest", flat=True),
+        *ModulemdDefaults.objects.filter(pk__in=content).values_list("digest", flat=True),
+        *(
+            f"{obsolete.module_name}:{obsolete.module_stream}:{obsolete.module_context}:"
+            f"{obsolete.modified}"
+            for obsolete in ModulemdObsolete.objects.filter(pk__in=content)
+        ),
+    ]
+    return {
+        "settings": {
+            "format": _METADATA_FORMAT,
+            "repository_package_time": RPM_METADATA_USE_REPO_PACKAGE_TIME,
+        },
+        "packages": _digest(
+            (info.checksum_type, info.checksum, info.path) for info in retained_packages.values()
+        ),
+        "updateinfo": _digest(
+            UpdateRecord.objects.filter(pk__in=content).values_list("digest", flat=True)
+        ),
+        "modules": _digest(module_digests),
+        "comps": _digest(comps_digests),
+        "custom": dict(
+            RepoMetadataFile.objects.filter(pk__in=content).values_list("data_type", "checksum")
+        ),
+        "repomd": _repomd_fingerprint(repomd_path),
+    }
+
+
+def _file_stat(path, checksum_type=CHECKSUM_TYPES.SHA256):
+    digest = hashlib.new(checksum_type)
+    with open(path, "rb") as stream:
+        for chunk in iter(lambda: stream.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest(), os.path.getsize(path)
+
+
+def _open_stat(path, checksum_type=CHECKSUM_TYPES.SHA256):
+    """Checksum and size of the uncompressed payload, or none for an uncompressed file."""
+    compression = cr.detect_compression(path)
+    if compression == cr.NO_COMPRESSION:
+        return None, None
+    uncompressed = tempfile.NamedTemporaryFile(suffix=".xml", dir=".", delete=False).name
+    try:
+        cr.decompress_file(path, uncompressed, compression)
+        return _file_stat(uncompressed, checksum_type)
+    finally:
+        os.unlink(uncompressed)
+
+
+def _package_checksum(row, requested_checksum_type, checksum_field):
+    """The checksum a package is published with, and its type, validated against the allowlist."""
+    if checksum_field and row.get(checksum_field):
+        return row[checksum_field], requested_checksum_type
+    checksum = row["content__rpm_package__pkgId"]
+    checksum_type = row["content__rpm_package__checksum_type"]
+    if checksum_type not in ALLOWED_CONTENT_CHECKSUMS:
+        raise ForbiddenChecksumTypeError(
+            checksum_type,
+            _(
+                "Package with pkgId {pkgid} as content unit {cid} contains "
+                "forbidden checksum type. {error_msg}"
+            ).format(
+                pkgid=checksum,
+                cid=row["content_id"],
+                error_msg=ALLOWED_CHECKSUM_ERROR_MSG,
+            ),
+        )
+    return checksum, checksum_type
+
+
+def _package_details(pks, request):
+    """Return {content_id: (PackageInfo, nevra_key)} for the given pks that are packages."""
+    requested_checksum_type = request.checksum_type
+    checksum_field = f"artifact__{requested_checksum_type}"
+    rows = ContentArtifact.objects.filter(
+        content__in=Content.objects.filter(safe_in("pk", list(pks))),
+        content__pulp_type=Package.get_pulp_type(),
+    ).values(
+        "pk",
+        "content_id",
+        "relative_path",
+        checksum_field,
+        "content__rpm_package__name",
+        "content__rpm_package__epoch",
+        "content__rpm_package__version",
+        "content__rpm_package__release",
+        "content__rpm_package__arch",
+        "content__rpm_package__pkgId",
+        "content__rpm_package__checksum_type",
+    )
+    details = {}
+    for row in rows:
+        checksum, checksum_type = _package_checksum(row, requested_checksum_type, checksum_field)
+        filename = os.path.basename(row["relative_path"])
+        info = PackageInfo(
+            caid=row["pk"],
+            path=_published_path(request.layout, filename, checksum),
+            checksum_type=checksum_type,
+            checksum=checksum,
+        )
+        nevra = _nevra_key(
+            row["content__rpm_package__name"],
+            row["content__rpm_package__epoch"],
+            row["content__rpm_package__version"],
+            row["content__rpm_package__release"],
+            row["content__rpm_package__arch"],
+        )
+        details[row["content_id"]] = (info, nevra)
+    return details
+
+
+_MAX_COLLISION_FILENAMES = 1000
+
+
+_UNPUBLISHABLE_TYPES = (
+    RepoMetadataFile.get_pulp_type(),
+    Modulemd.get_pulp_type(),
+    ModulemdDefaults.get_pulp_type(),
+    Package.get_pulp_type(),
+    # A publication's own metadata files are published by create_from_file, which writes their
+    # PublishedArtifact rows itself.
+    PublishedMetadata.get_pulp_type(),
+)
+
+
+def _package_times(repository, version_number):
+    """When each unit currently in the version entered the repository."""
+    repo_content = (
+        RepositoryContent.objects.filter(
+            repository=repository,
+            version_added__number__lte=version_number,
+        )
+        .exclude(version_removed__number__lte=version_number)
+        .values_list("content", "pulp_created")
+    )
+    return {pk: created.timestamp() for pk, created in repo_content}
+
+
+def _repo_package_times(publication):
+    return _package_times(publication.repository, publication.repository_version.number)
+
+
