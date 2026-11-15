@@ -1,8 +1,11 @@
+import gzip
 import hashlib
 import logging
 import os
+import re
 import shutil
 import tempfile
+import time
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from gettext import gettext as _
@@ -12,6 +15,7 @@ from uuid import UUID
 import createrepo_c as cr
 from django.conf import settings
 from django.core.files import File
+from django.db import IntegrityError
 from django.db.models import Q
 
 from pulpcore.plugin.models import (
@@ -690,7 +694,34 @@ def publish(
         layout=layout or LAYOUT_TYPES.NESTED_ALPHABETICALLY,
         repo_config=repo_config,
     )
-    return _publish_full(PublicationPlanner(request).plan())
+    return apply_publish(PublicationPlanner(request).plan())
+
+
+def apply_publish(plan):
+    """Create the publication the plan describes."""
+    if not plan.derived:
+        return _publish_full(plan)
+    try:
+        return _publish_derived(plan)
+    except (
+        _CannotDerive,
+        RpmPublication.DoesNotExist,
+        PublishedMetadata.DoesNotExist,
+        cr.CreaterepoCError,
+        IntegrityError,
+        OSError,
+        UnicodeDecodeError,
+    ) as exc:
+        log.warning(
+            _("Not deriving the publication of {version}: {reason}").format(
+                version=plan.request.repository_version, reason=exc
+            )
+        )
+        return _publish_full(plan)
+
+
+class _CannotDerive(Exception):
+    """Raised when the base publication cannot represent the target version exactly."""
 
 
 def _signing_fingerprint(signing_service):
@@ -1102,6 +1133,49 @@ def _content_fingerprints(publication, retained_packages, repomd_path):
     }
 
 
+def _copy_published_file(published_metadata, destination):
+    content_artifact = published_metadata.contentartifact_set.get()
+    with open(destination, "wb") as destination_file:
+        shutil.copyfileobj(content_artifact.artifact.file.file, destination_file)
+
+
+def _materialize_base_metadata(base_publication):
+    """Copy the base publication's metadata files into the working directory.
+
+    Returns the local path and the open (uncompressed) checksum/size of every record.
+    """
+    directory = "base-metadata"
+    os.makedirs(directory, exist_ok=True)
+    repomd_path = os.path.join(directory, "repomd.xml")
+    published = {
+        metadata.relative_path: metadata
+        for metadata in PublishedMetadata.objects.filter(
+            publication=base_publication
+        ).prefetch_related("contentartifact_set")
+    }
+
+    def metadata_for(relative_path):
+        try:
+            return published[relative_path]
+        except KeyError:
+            raise PublishedMetadata.DoesNotExist(
+                f"{relative_path} missing from publication {base_publication.pk}"
+            )
+
+    _copy_published_file(metadata_for(os.path.join(REPODATA_PATH, "repomd.xml")), repomd_path)
+    base_repomd = cr.Repomd()
+    cr.xml_parse_repomd(repomd_path, base_repomd)
+
+    files = {}
+    stats = {}
+    for record in base_repomd.records:
+        local_path = os.path.join(directory, os.path.basename(record.location_href))
+        _copy_published_file(metadata_for(record.location_href), local_path)
+        files[record.type] = local_path
+        stats[record.type] = (record.checksum_open, record.size_open)
+    return files, stats
+
+
 def _file_stat(path, checksum_type=CHECKSUM_TYPES.SHA256):
     digest = hashlib.new(checksum_type)
     with open(path, "rb") as stream:
@@ -1188,6 +1262,61 @@ def _package_details(pks, request):
 _MAX_COLLISION_FILENAMES = 1000
 
 
+def _target_package_keys(version, delta_pks, delta_keys):
+    """Keys of the packages remaining in the version that could collide with the delta.
+
+    A NEVRA collision requires the same name, so only packages sharing a delta name are
+    considered for it. Filename collisions do not: packages with different names can be
+    published at the same path, and a full publish keeps only one of them.
+    """
+    names = {nevra[0] for nevra, _ in delta_keys}
+    delta_filenames = {filename for _, filename in delta_keys}
+    if not names and not delta_filenames:
+        return set(), set()
+    if len(delta_filenames) > _MAX_COLLISION_FILENAMES:
+        raise _CannotDerive("the delta is too large to validate path collisions")
+    candidate_filter = Q(content__rpm_package__name__in=names)
+    for filename in delta_filenames:
+        candidate_filter |= Q(relative_path=filename) | Q(relative_path__endswith=f"/{filename}")
+    delta_content = Content.objects.filter(safe_in("pk", delta_pks))
+    rows = list(
+        ContentArtifact.objects.filter(
+            content__in=version.content,
+            content__pulp_type=Package.get_pulp_type(),
+        )
+        .exclude(content_id__in=delta_content)
+        .filter(candidate_filter)
+        .values(
+            "relative_path",
+            "content__rpm_package__name",
+            "content__rpm_package__epoch",
+            "content__rpm_package__version",
+            "content__rpm_package__release",
+            "content__rpm_package__arch",
+        )
+    )
+    nevras = {
+        _nevra_key(
+            row["content__rpm_package__name"],
+            row["content__rpm_package__epoch"],
+            row["content__rpm_package__version"],
+            row["content__rpm_package__release"],
+            row["content__rpm_package__arch"],
+        )
+        for row in rows
+    }
+    retained_filenames = {os.path.basename(row["relative_path"]) for row in rows}
+    return nevras, retained_filenames
+
+
+def _packages_to_add(plan, retained):
+    added = [pk for pk in plan.delta.added_pks if pk in retained]
+    if not added:
+        return []
+    added_content = Content.objects.filter(safe_in("pk", added))
+    return list(Package.objects.filter(pk__in=added_content).order_by("name", "evr"))
+
+
 _UNPUBLISHABLE_TYPES = (
     RepoMetadataFile.get_pulp_type(),
     Modulemd.get_pulp_type(),
@@ -1197,6 +1326,128 @@ _UNPUBLISHABLE_TYPES = (
     # PublishedArtifact rows itself.
     PublishedMetadata.get_pulp_type(),
 )
+
+
+def _base_package_checksums(primary_path):
+    """Map a base publication's package path to its published checksum and checksum type."""
+    checksums = {}
+
+    def collect(package):
+        checksums[package.location_href] = (package.pkgId, package.checksum_type)
+        return 0
+
+    cr.xml_parse_primary(primary_path, pkgcb=collect)
+    return checksums
+
+
+def _populate_derived(publication, publication_data, plan, base_files):
+    """Populate a derived publication by inheriting the base rows for retained content.
+
+    The base publication already made the checksum, path and collision-winner decisions for
+    everything it published; only the packages the delta adds need new decisions.
+    """
+    request = plan.request
+    base = plan.base_publication
+    removed = plan.delta.removed_pks
+    publication_data.repomdrecords = publication_data.prepare_metadata_files(
+        request.repository_version.content
+    )
+
+    rows = []
+
+    def add_row(caid, path):
+        rows.append(
+            PublishedArtifact(publication=publication, content_artifact_id=caid, relative_path=path)
+        )
+
+    packages = {}
+    if "primary" not in base_files:
+        raise _CannotDerive("base publication has no primary record")
+    base_checksums = _base_package_checksums(base_files["primary"])
+    package_type = Package.get_pulp_type()
+    base_rows = PublishedArtifact.objects.filter(publication=base).values_list(
+        "content_artifact_id",
+        "relative_path",
+        "content_artifact__content_id",
+        "content_artifact__content__pulp_type",
+    )
+    for caid, path, cid, pulp_type in base_rows:
+        if cid in removed or path in ("treeinfo", ".treeinfo"):
+            continue
+        if pulp_type == package_type:
+            try:
+                checksum, checksum_type = base_checksums[path]
+            except KeyError:
+                raise _CannotDerive(f"package {path} missing from the base primary metadata")
+            packages[cid] = PackageInfo(
+                caid=caid, path=path, checksum_type=checksum_type, checksum=checksum
+            )
+        elif pulp_type in _UNPUBLISHABLE_TYPES:
+            continue
+        add_row(caid, path)
+
+    # A deletion after this point leaves the inherited rows valid (they reference the shared
+    # content artifacts), but one that raced the query above would silently drop content.
+    if not RpmPublication.objects.filter(pk=base.pk).exists():
+        raise _CannotDerive("base publication was deleted while deriving")
+
+    added = [pk for pk in plan.delta.added_pks if pk not in packages]
+    for cid, (info, _nevra) in _package_details(added, request).items():
+        packages[cid] = info
+        add_row(info.caid, info.path)
+
+    added_content = Content.objects.filter(safe_in("pk", list(plan.delta.added_pks)))
+    added_artifacts = (
+        ContentArtifact.objects.filter(content__in=added_content)
+        .exclude(content__pulp_type__in=_UNPUBLISHABLE_TYPES)
+        .exclude(relative_path__in=["treeinfo", ".treeinfo"])
+        .values_list("pk", "relative_path")
+    )
+    for caid, path in added_artifacts:
+        add_row(caid, path)
+
+    PublishedArtifact.objects.bulk_create(rows, batch_size=2000)
+    publication_data.packages = packages
+
+
+def _package_keys(pks):
+    """NEVRA and artifact filename of packages, in the form `_target_package_keys` reports.
+
+    Removed packages are resolved from their content artifacts rather than through the
+    published-path machinery: they are never published, and their build-time checksum must
+    not be validated against the current allowlist.
+    """
+    content = Content.objects.filter(safe_in("pk", list(pks)))
+    rows = ContentArtifact.objects.filter(
+        content__in=content, content__pulp_type=Package.get_pulp_type()
+    ).values_list(
+        "content__rpm_package__name",
+        "content__rpm_package__epoch",
+        "content__rpm_package__version",
+        "content__rpm_package__release",
+        "content__rpm_package__arch",
+        "relative_path",
+    )
+    return {
+        (_nevra_key(name, epoch, version, release, arch), os.path.basename(path))
+        for name, epoch, version, release, arch, path in rows
+    }
+
+
+def _validate_package_delta(plan):
+    """Refuse to derive when the published winner of a NEVRA or a filename could change."""
+    delta_pks = plan.delta.added_pks | plan.delta.removed_pks
+    delta_keys = _package_keys(delta_pks)
+    retained_nevras, retained_filenames = _target_package_keys(
+        plan.request.repository_version, delta_pks, delta_keys
+    )
+    for nevra, filename in delta_keys:
+        if nevra in retained_nevras or filename in retained_filenames:
+            raise _CannotDerive(f"collision key overlap on {nevra} / {filename}")
+    if len({nevra for nevra, _ in delta_keys}) != len(delta_keys):
+        raise _CannotDerive("duplicate NEVRA in delta")
+    if len({filename for _, filename in delta_keys}) != len(delta_keys):
+        raise _CannotDerive("duplicate filename in delta")
 
 
 def _package_times(repository, version_number):
@@ -1216,3 +1467,452 @@ def _repo_package_times(publication):
     return _package_times(publication.repository, publication.repository_version.number)
 
 
+def _package_block_checksum(block):
+    """Return the pkgId of a serialized <package> block."""
+    if 'pkgid="YES"' in block:
+        start = block.index('pkgid="YES">') + len('pkgid="YES">')
+        return block[start : block.index("</checksum>", start)]
+    start = block.index('pkgid="') + len('pkgid="')
+    return block[start : block.index('"', start)]
+
+
+def _splice_stream(source, target, retained_checksums, added_chunks, expected_count, checksum_type):
+    """Copy retained <package> blocks verbatim, append delta chunks, fix the package count.
+
+    Returns the checksum and size of the uncompressed payload written. ``checksum_type`` is None
+    for an uncompressed record, which gets no open-checksum.
+    """
+    digest = hashlib.new(checksum_type) if checksum_type else None
+    size = 0
+
+    def emit(text):
+        nonlocal size
+        target.write(text)
+        data = text.encode("utf-8")
+        if digest:
+            digest.update(data)
+        size += len(data)
+
+    header_done = False
+    first_line = None
+    root = None
+    for line in source:
+        first_line = first_line or line
+        if line.lstrip().startswith(("<metadata", "<filelists", "<otherdata")):
+            root = re.match(r"\s*<(\w+)", line).group(1)
+            line = re.sub(r'packages="\d+"', f'packages="{expected_count}"', line)
+            emit(line)
+            header_done = True
+            break
+        if "<package" in line:
+            break
+        emit(line)
+    if not header_done:
+        raise _CannotDerive(f"unexpected metadata header: {first_line[:100]!r}")
+
+    written = 0
+    block = []
+    for line in source:
+        if line.strip().startswith(f"</{root}"):
+            break
+        if not block and not line.startswith("<package "):
+            continue
+        block.append(line)
+        if "</package>" in block[-1]:
+            text = "".join(block)
+            block = []
+            try:
+                checksum = _package_block_checksum(text)
+            except ValueError:
+                raise _CannotDerive("unrecognized package block")
+            if checksum in retained_checksums:
+                emit(text)
+                written += 1
+
+    for chunk in added_chunks:
+        emit(chunk)
+        if not chunk.endswith("\n"):
+            emit("\n")
+        written += 1
+    emit(f"</{root}>\n")
+
+    if written != expected_count:
+        raise _CannotDerive(f"wrote {written} of {expected_count} package entries")
+    return (digest.hexdigest() if digest else None), size
+
+
+def _package_chunks(added_packages, retained_info, repo_pkg_times, dump):
+    """Serialize the packages the delta adds, with the published checksum and path."""
+    chunks = []
+    for package in added_packages:
+        info = retained_info[package.pk]
+        cr_package = package.to_createrepo_c()
+        cr_package.checksum_type = info.checksum_type
+        cr_package.pkgId = info.checksum
+        cr_package.location_href = info.path
+        if repo_pkg_times:
+            cr_package.time_file = repo_pkg_times[package.pk]
+        chunks.append(dump(cr_package))
+    return chunks
+
+
+def _splice_packages(
+    base_path,
+    output_path,
+    retained_checksums,
+    added_chunks,
+    expected_count,
+    cr_compression,
+    checksum_type,
+):
+    """Write the spliced package metadata and return its open checksum and size."""
+    open_checksum_type = None if cr_compression == cr.NO_COMPRESSION else checksum_type
+
+    def splice(source, target):
+        return _splice_stream(
+            source,
+            target,
+            retained_checksums,
+            added_chunks,
+            expected_count,
+            open_checksum_type,
+        )
+
+    if cr_compression == cr.ZSTD:
+        uncompressed = tempfile.NamedTemporaryFile("w", suffix=".xml", dir=".", delete=False).name
+        spliced = tempfile.NamedTemporaryFile("w", suffix=".xml", dir=".", delete=False).name
+        try:
+            cr.decompress_file(base_path, uncompressed, cr.ZSTD)
+            with (
+                open(uncompressed, encoding="utf-8") as source,
+                open(spliced, "w", encoding="utf-8") as target,
+            ):
+                stat = splice(source, target)
+            cr.compress_file(spliced, output_path, cr.ZSTD)
+            return stat
+        finally:
+            for path in (uncompressed, spliced):
+                if os.path.exists(path):
+                    os.unlink(path)
+
+    try:
+        if cr_compression == cr.GZ:
+            # compresslevel matches createrepo_c's zlib default; gzip.open defaults to 9 and
+            # spends several times longer on the large files.
+            with (
+                gzip.open(base_path, "rt", encoding="utf-8") as source,
+                gzip.open(output_path, "wt", encoding="utf-8", compresslevel=6) as target,
+            ):
+                return splice(source, target)
+
+        with (
+            open(base_path, encoding="utf-8") as source,
+            open(output_path, "w", encoding="utf-8") as target,
+        ):
+            return splice(source, target)
+    except _CannotDerive as exc:
+        raise _CannotDerive(f"{os.path.basename(base_path)}: {exc}")
+
+
+def _write_compressed(text, path, cr_compression):
+    if cr_compression == cr.NO_COMPRESSION:
+        with open(path, "w", encoding="utf-8") as output:
+            output.write(text)
+        return
+    # createrepo_c detects the compression of the source from its extension.
+    with tempfile.NamedTemporaryFile(
+        "w", suffix=".xml", dir=".", delete=False, encoding="utf-8"
+    ) as output:
+        output.write(text)
+        uncompressed = output.name
+    try:
+        cr.compress_file(uncompressed, path, cr_compression)
+    finally:
+        os.unlink(uncompressed)
+
+
+def _reuse_base_record(record, filename, base_files, base_stats):
+    """Copy the base publication's unchanged record under a neutral name."""
+    if record not in base_files:
+        return None
+    path = os.path.join(REPODATA_PATH, filename)
+    shutil.copyfile(base_files[record], path)
+    return path, *base_stats[record]
+
+
+def _records_unchanged(changed_types, models):
+    return not any(model.get_pulp_type() in changed_types for model in models)
+
+
+def _updateinfo_file(
+    plan, base_files, base_stats, cr_compression, extension, checksum_type, changed_types
+):
+    version = plan.request.repository_version
+
+    if UpdateRecord.get_pulp_type() not in changed_types:
+        return _reuse_base_record(
+            "updateinfo", f"updateinfo.xml{extension}", base_files, base_stats
+        )
+
+    # Counting beats a grouped existence check: grouping over the version's advisory ids
+    # costs a minute on large repositories, the two counts cost a fraction of a second.
+    advisories = UpdateRecord.objects.filter(pk__in=version.content)
+    if advisories.count() != advisories.values("id").distinct().count():
+        raise _CannotDerive("duplicate advisory ids in the target version")
+
+    target_ids = set(advisories.values_list("id", flat=True))
+    records = {}
+    if "updateinfo" in base_files:
+        base_updates = cr.UpdateInfo(base_files["updateinfo"]).updates
+        if len({record.id for record in base_updates}) != len(base_updates):
+            raise _CannotDerive("base updateinfo has duplicate advisory ids")
+        for record in base_updates:
+            if record.id in target_ids:
+                records[record.id] = record
+    added_content = Content.objects.filter(safe_in("pk", list(plan.delta.added_pks)))
+    for advisory in UpdateRecord.objects.filter(pk__in=added_content):
+        records[advisory.id] = advisory.to_createrepo_c()
+    if not records:
+        return None
+
+    updateinfo = cr.UpdateInfo()
+    for record in records.values():
+        updateinfo.append(record)
+    text = updateinfo.xml_dump()
+    path = os.path.join(REPODATA_PATH, f"updateinfo.xml{extension}")
+    _write_compressed(text, path, cr_compression)
+    encoded = text.encode("utf-8")
+    if cr_compression == cr.NO_COMPRESSION:
+        return path, None, None
+    return path, hashlib.new(checksum_type, encoded).hexdigest(), len(encoded)
+
+
+def _modules_file(plan, base_files, base_stats, changed_types):
+    version = plan.request.repository_version
+    models = (Modulemd, ModulemdDefaults, ModulemdObsolete)
+
+    if _records_unchanged(changed_types, models):
+        return _reuse_base_record("modules", "modules.yaml", base_files, base_stats)
+
+    content = version.content
+    path = os.path.join(REPODATA_PATH, "modules.yaml")
+    has_modules = False
+    with open(path, "wb") as mod_yml:
+        for model in models:
+            entries = model.objects.filter(pk__in=content).order_by(*model.natural_key_fields())
+            for entry in entries:
+                mod_yml.write(entry.snippet.encode())
+                mod_yml.write(b"\n")
+                has_modules = True
+    if not has_modules:
+        os.unlink(path)
+        return None
+    # createrepo_c records no open-checksum for this uncompressed extra metadata file.
+    return path, None, None
+
+
+def _comps_file(plan, base_files, base_stats, changed_types):
+    version = plan.request.repository_version
+    models = (PackageGroup, PackageCategory, PackageEnvironment, PackageLangpacks)
+
+    if _records_unchanged(changed_types, models):
+        return _reuse_base_record("group", "comps.xml", base_files, base_stats)
+
+    content = version.content
+    groups = list(PackageGroup.objects.filter(pk__in=content).order_by("id"))
+    categories = list(PackageCategory.objects.filter(pk__in=content).order_by("id"))
+    environments = list(PackageEnvironment.objects.filter(pk__in=content).order_by("id"))
+    langpacks = (
+        PackageLangpacks.objects.filter(pk__in=content)
+        .order_by(*PackageLangpacks.natural_key_fields())
+        .first()
+    )
+
+    if not (groups or categories or environments or langpacks):
+        return None
+
+    comps = models_to_comps_data(groups, categories, environments, langpacks)
+    path = os.path.join(REPODATA_PATH, "comps.xml")
+    with open(path, "w", encoding="utf-8") as comps_file:
+        comps_file.write(comps.to_xml())
+    # createrepo_c records no open-checksum for this uncompressed extra metadata file.
+    return path, None, None
+
+
+def _write_repomd(publication, records, empty=False):
+    repomd = cr.Repomd()
+    if empty:
+        # If the repository is empty, use a revision of 0
+        # See: https://pulp.plan.io/issues/9402
+        repomd.revision = "0"
+    finalized = []
+    for record_type, path, open_checksum, open_size in records:
+        checksum, size = _file_stat(path, publication.checksum_type)
+        directory, name = os.path.split(path)
+        final_path = os.path.join(directory, f"{checksum}-{name}")
+        if final_path != path:
+            os.replace(path, final_path)
+        record = cr.RepomdRecord(record_type, final_path)
+        record.checksum_type = publication.checksum_type
+        record.checksum = checksum
+        record.size = size
+        if open_checksum:
+            record.checksum_open_type = publication.checksum_type
+            record.checksum_open = open_checksum
+            record.size_open = open_size
+        record.timestamp = int(time.time())
+        repomd.set_record(record)
+        finalized.append((record_type, final_path))
+    repomd_path = os.path.join(REPODATA_PATH, "repomd.xml")
+    with open(repomd_path, "w") as repomd_file:
+        repomd_file.write(repomd.xml_dump())
+    return repomd_path, finalized
+
+
+def _publish_metadata_file(publication, path):
+    with open(path, "rb") as metadata_file:
+        PublishedMetadata.create_from_file(
+            relative_path=os.path.relpath(path),
+            publication=publication,
+            file=File(metadata_file),
+        )
+
+
+def _custom_metadata_records(publication_data, cr_compression, extension, checksum_type):
+    """Compress the custom metadata files the same way RepositoryWriter does."""
+    records = []
+    for data_type, path in publication_data.repomdrecords:
+        source_compression = cr.detect_compression(path)
+        if source_compression != cr.NO_COMPRESSION:
+            if source_compression != cr_compression:
+                raise _CannotDerive(
+                    f"custom metadata {data_type} is pre-compressed with a different type"
+                )
+            destination = os.path.join(REPODATA_PATH, os.path.basename(path))
+            shutil.copyfile(path, destination)
+            stat = _open_stat(destination, checksum_type)
+        elif cr_compression == cr.NO_COMPRESSION:
+            destination = os.path.join(REPODATA_PATH, os.path.basename(path))
+            shutil.copyfile(path, destination)
+            stat = (None, None)
+        else:
+            destination = os.path.join(REPODATA_PATH, os.path.basename(path) + extension)
+            cr.compress_file(path, destination, cr_compression)
+            stat = _file_stat(path, checksum_type)
+        records.append((data_type, destination, *stat))
+    return records
+
+
+def _generate_derived_metadata(publication, publication_data, plan, base_files, base_stats):
+    """Build the publication's metadata from its base publication plus the version delta."""
+    request = plan.request
+    version = request.repository_version
+    cr_compression, extension = _compression(request.compression_type)
+    checksum_type = publication.checksum_type
+    changed_types = plan.delta.changed_types
+
+    content_checksum_type = get_checksum_type(request.checksum_types)
+    if content_checksum_type not in ALLOWED_CONTENT_CHECKSUMS:
+        raise ForbiddenChecksumTypeError(content_checksum_type, ALLOWED_CHECKSUM_ERROR_MSG)
+
+    os.makedirs(REPODATA_PATH, exist_ok=True)
+    records = []
+
+    repo_pkg_times = _repo_package_times(publication) if RPM_METADATA_USE_REPO_PACKAGE_TIME else {}
+    if RPM_METADATA_USE_REPO_PACKAGE_TIME:
+        base_times = _package_times(
+            plan.base_publication.repository, plan.base_publication.repository_version.number
+        )
+        common = base_times.keys() & repo_pkg_times.keys()
+        if any(base_times[pk] != repo_pkg_times[pk] for pk in common):
+            # Retained entries would keep the base's <time file> for a package that was
+            # re-added at a different time.
+            raise _CannotDerive("repository package times changed")
+
+    packages_unchanged = Package.get_pulp_type() not in changed_types
+    if packages_unchanged:
+        for name in ("primary", "filelists", "other"):
+            path = os.path.join(REPODATA_PATH, f"{name}.xml{extension}")
+            shutil.copyfile(base_files[name], path)
+            records.append((name, path, *base_stats[name]))
+    else:
+        for name in ("primary", "filelists", "other"):
+            if name not in base_files:
+                raise _CannotDerive(f"base publication has no {name} record")
+        added_packages = _packages_to_add(plan, publication_data.packages)
+        _validate_package_delta(plan)
+        retained_checksums = {info.checksum for info in publication_data.packages.values()}
+        for name, dump in (
+            ("primary", cr.xml_dump_primary),
+            ("filelists", cr.xml_dump_filelists),
+            ("other", cr.xml_dump_other),
+        ):
+            path = os.path.join(REPODATA_PATH, f"{name}.xml{extension}")
+            open_stat = _splice_packages(
+                base_files[name],
+                path,
+                retained_checksums,
+                _package_chunks(added_packages, publication_data.packages, repo_pkg_times, dump),
+                len(publication_data.packages),
+                cr_compression,
+                checksum_type,
+            )
+            records.append((name, path, *open_stat))
+
+    updateinfo_path = _updateinfo_file(
+        plan, base_files, base_stats, cr_compression, extension, checksum_type, changed_types
+    )
+    if updateinfo_path:
+        records.append(("updateinfo", *updateinfo_path))
+
+    modules_path = _modules_file(plan, base_files, base_stats, changed_types)
+    if modules_path:
+        records.append(("modules", *modules_path))
+
+    comps_path = _comps_file(plan, base_files, base_stats, changed_types)
+    if comps_path:
+        records.append(("group", *comps_path))
+
+    records.extend(
+        _custom_metadata_records(publication_data, cr_compression, extension, checksum_type)
+    )
+
+    repomd_path, finalized = _write_repomd(publication, records, empty=not version.content.exists())
+    for record_type, path in finalized:
+        _publish_metadata_file(publication, path)
+    if request.metadata_signing_service:
+        _sign_repomd(publication, repomd_path, REPODATA_PATH, request.metadata_signing_service)
+    else:
+        _publish_metadata_file(publication, repomd_path)
+    return repomd_path
+
+
+def _publish_derived(plan):
+    request = plan.request
+    repository = request.repository_version.repository.cast()
+    log.info(
+        _("Deriving publication: repository={repo}, version={version}, base={base}").format(
+            repo=repository.name,
+            version=request.repository_version.number,
+            base=plan.base_publication.pk,
+        )
+    )
+    with _publish_workspace():
+        with RpmPublication.create(
+            request.repository_version, checkpoint=request.checkpoint
+        ) as publication:
+            _configure_publication(publication, request)
+            publication.base_publication = plan.base_publication
+            publication.save()
+
+            publication_data = PublicationData(publication, request.checksum_types)
+            base_files, base_stats = _materialize_base_metadata(plan.base_publication)
+            _populate_derived(publication, publication_data, plan, base_files)
+
+            repomd_path = _generate_derived_metadata(
+                publication, publication_data, plan, base_files, base_stats
+            )
+
+            result = _finalize_publication(publication, request, publication_data, repomd_path)
+            log.info(_("Publication: {publication} derived").format(publication=publication.pk))
+            return result
