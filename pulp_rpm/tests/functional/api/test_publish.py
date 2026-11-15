@@ -12,7 +12,7 @@ import xmltodict
 from django.conf import settings
 from lxml import etree
 
-from pulpcore.client.pulp_rpm import RpmRepositorySyncURL, RpmRpmPublication
+from pulpcore.client.pulp_rpm import Copy, RpmRepositorySyncURL, RpmRpmPublication
 from pulpcore.client.pulp_rpm.exceptions import ApiException
 
 from pulp_rpm.tests.functional.constants import (
@@ -796,3 +796,473 @@ def generate_distribution(
         return distribution.base_url
 
     return _generate_distribution
+
+
+@pytest.fixture
+def derived_publication_repo(
+    rpm_unsigned_repo_immediate,
+    rpm_repository_factory,
+    rpm_copy_api,
+    rpm_repository_api,
+    monitor_task,
+):
+    """A copy of the unsigned fixture repository with no publications yet."""
+    repo = rpm_repository_factory()
+    copy = Copy(
+        config=[
+            {
+                "source_repo_version": rpm_unsigned_repo_immediate.latest_version_href,
+                "dest_repo": repo.pulp_href,
+            }
+        ],
+        dependency_solving=False,
+    )
+    monitor_task(rpm_copy_api.copy_content(copy).task)
+    return rpm_repository_api.read(repo.pulp_href)
+
+
+@pytest.mark.parallel
+class TestDerivedPublication:
+    """A publication derived from a base must be equivalent to a full one of the same version."""
+
+    @staticmethod
+    def _publish(rpm_publication_api, monitor_task, **kwargs):
+        response = rpm_publication_api.create(RpmRpmPublication(**kwargs))
+        publication_href = monitor_task(response.task).created_resources[0]
+        return rpm_publication_api.read(publication_href)
+
+    @staticmethod
+    def _full_publish_settings(settings=None):
+        """Settings the newest publication cannot match, forcing a full publication.
+
+        The repository config does not change the generated metadata, so the result stays
+        comparable with the derived publication.
+        """
+        return {**(settings or {}), "repo_config": {"forced": "full"}}
+
+    def _assert_derived_matches_full(
+        self,
+        repo,
+        remove_content_units,
+        rpm_publication_api,
+        rpm_repository_api,
+        monitor_task,
+    ):
+        first_version = repo.latest_version_href
+        base = self._publish(rpm_publication_api, monitor_task, repository_version=first_version)
+        assert base.base_publication is None
+        assert base.metadata_fingerprints
+
+        monitor_task(
+            rpm_repository_api.modify(
+                repo.pulp_href, {"remove_content_units": remove_content_units}
+            ).task
+        )
+        second_version = rpm_repository_api.read(repo.pulp_href).latest_version_href
+        assert second_version != first_version
+
+        derived = self._publish(
+            rpm_publication_api, monitor_task, repository_version=second_version
+        )
+        assert derived.repository_version == second_version
+        assert derived.base_publication == base.pulp_href
+
+        full = self._publish(
+            rpm_publication_api,
+            monitor_task,
+            repository_version=second_version,
+            **self._full_publish_settings(),
+        )
+        assert full.base_publication is None
+        assert derived.metadata_fingerprints == full.metadata_fingerprints
+        return base, derived, full
+
+    def test_derived_publication_matches_full_publication(
+        self,
+        derived_publication_repo,
+        rpm_publication_api,
+        rpm_repository_api,
+        rpm_package_api,
+        monitor_task,
+    ):
+        repo = derived_publication_repo
+        package = rpm_package_api.list(
+            repository_version=repo.latest_version_href, limit=1
+        ).results[0]
+
+        base, derived, _ = self._assert_derived_matches_full(
+            repo, [package.pulp_href], rpm_publication_api, rpm_repository_api, monitor_task
+        )
+        assert derived.metadata_fingerprints["packages"] != base.metadata_fingerprints["packages"]
+
+    def test_derived_publication_matches_full_after_advisory_removal(
+        self,
+        derived_publication_repo,
+        rpm_publication_api,
+        rpm_repository_api,
+        rpm_advisory_api,
+        monitor_task,
+    ):
+        repo = derived_publication_repo
+        advisory = rpm_advisory_api.list(
+            repository_version=repo.latest_version_href, limit=1
+        ).results[0]
+
+        base, derived, _ = self._assert_derived_matches_full(
+            repo, [advisory.pulp_href], rpm_publication_api, rpm_repository_api, monitor_task
+        )
+        assert (
+            derived.metadata_fingerprints["updateinfo"] != base.metadata_fingerprints["updateinfo"]
+        )
+
+    def test_derived_publication_matches_full_after_group_removal(
+        self,
+        derived_publication_repo,
+        rpm_publication_api,
+        rpm_repository_api,
+        rpm_package_groups_api,
+        monitor_task,
+    ):
+        repo = derived_publication_repo
+        group = rpm_package_groups_api.list(
+            repository_version=repo.latest_version_href, limit=1
+        ).results[0]
+
+        base, derived, _ = self._assert_derived_matches_full(
+            repo, [group.pulp_href], rpm_publication_api, rpm_repository_api, monitor_task
+        )
+        assert derived.metadata_fingerprints["comps"] != base.metadata_fingerprints["comps"]
+
+    def test_derived_publication_matches_full_on_modular_repo(
+        self,
+        init_and_sync,
+        rpm_publication_api,
+        rpm_repository_api,
+        rpm_modulemd_api,
+        rpm_distribution_factory,
+        distribution_base_url,
+        monitor_task,
+    ):
+        repo, _ = init_and_sync(url=RPM_MODULAR_FIXTURE_URL)
+        module = rpm_modulemd_api.list(
+            repository_version=repo.latest_version_href, limit=1
+        ).results[0]
+
+        base, derived, full = self._assert_derived_matches_full(
+            repo, [module.pulp_href], rpm_publication_api, rpm_repository_api, monitor_task
+        )
+        assert derived.metadata_fingerprints["modules"] != base.metadata_fingerprints["modules"]
+        _, _, derived_records = self._repomd_records(
+            derived, rpm_distribution_factory, distribution_base_url
+        )
+        _, _, full_records = self._repomd_records(
+            full, rpm_distribution_factory, distribution_base_url
+        )
+        assert derived_records == full_records
+        assert "modules" in derived_records
+
+    def test_derived_publication_matches_full_on_custom_metadata_repo(
+        self,
+        init_and_sync,
+        rpm_publication_api,
+        rpm_repository_api,
+        rpm_package_api,
+        monitor_task,
+    ):
+        repo, _ = init_and_sync(url=RPM_REPO_METADATA_FIXTURE_URL)
+        package = rpm_package_api.list(
+            repository_version=repo.latest_version_href, limit=1
+        ).results[0]
+
+        self._assert_derived_matches_full(
+            repo, [package.pulp_href], rpm_publication_api, rpm_repository_api, monitor_task
+        )
+
+    @staticmethod
+    def _repomd_records(publication, rpm_distribution_factory, distribution_base_url):
+        """Return the served base url, the parsed repomd, and type -> open-checksum algorithm."""
+        distribution = rpm_distribution_factory(publication=publication.pulp_href)
+        base_url = distribution_base_url(distribution.base_url)
+        repomd = ElementTree.fromstring(
+            requests.get(os.path.join(base_url, "repodata/repomd.xml")).text
+        )
+        namespace = RPM_NAMESPACES["metadata/repo"]
+        records = {}
+        for record in repomd.findall(f"{{{namespace}}}data"):
+            checksum = record.find(f"{{{namespace}}}checksum").text
+            location = record.find(f"{{{namespace}}}location").get("href")
+            assert os.path.basename(location).startswith(f"{checksum}-")
+            open_checksum = record.find(f"{{{namespace}}}open-checksum")
+            records[record.get("type")] = (
+                open_checksum.get("type") if open_checksum is not None else None
+            )
+        return base_url, repomd, records
+
+    @pytest.mark.parametrize(
+        "settings",
+        [{}, {"compression_type": "none"}, {"checksum_type": "sha512"}],
+        ids=["gzip-sha256", "no-compression", "sha512"],
+    )
+    def test_derived_repomd_matches_full_structure(
+        self,
+        settings,
+        derived_publication_repo,
+        rpm_publication_api,
+        rpm_repository_api,
+        rpm_package_api,
+        rpm_distribution_factory,
+        distribution_base_url,
+        monitor_task,
+    ):
+        repo = derived_publication_repo
+        base = self._publish(
+            rpm_publication_api,
+            monitor_task,
+            repository_version=repo.latest_version_href,
+            **settings,
+        )
+        package = rpm_package_api.list(
+            repository_version=repo.latest_version_href, limit=1
+        ).results[0]
+        monitor_task(
+            rpm_repository_api.modify(
+                repo.pulp_href, {"remove_content_units": [package.pulp_href]}
+            ).task
+        )
+        version = rpm_repository_api.read(repo.pulp_href).latest_version_href
+        derived = self._publish(
+            rpm_publication_api,
+            monitor_task,
+            repository_version=version,
+            **settings,
+        )
+        assert derived.base_publication == base.pulp_href
+        full = self._publish(
+            rpm_publication_api,
+            monitor_task,
+            repository_version=version,
+            **self._full_publish_settings(settings),
+        )
+        assert full.base_publication is None
+
+        derived_url, derived_repomd, derived_records = self._repomd_records(
+            derived, rpm_distribution_factory, distribution_base_url
+        )
+        _, _, full_records = self._repomd_records(
+            full, rpm_distribution_factory, distribution_base_url
+        )
+        assert derived_records == full_records
+
+        namespace = RPM_NAMESPACES["metadata/repo"]
+        primary_location = next(
+            record.find(f"{{{namespace}}}location").get("href")
+            for record in derived_repomd.findall(f"{{{namespace}}}data")
+            if record.get("type") == "primary"
+        )
+        primary = ElementTree.fromstring(
+            download_and_decompress_file(os.path.join(derived_url, primary_location))
+        )
+        common = RPM_NAMESPACES["metadata/common"]
+        package_location = primary.find(f"{{{common}}}package/{{{common}}}location").get("href")
+        assert requests.get(os.path.join(derived_url, package_location)).status_code == 200
+
+    def test_derived_publication_omits_updateinfo_when_advisories_removed(
+        self,
+        derived_publication_repo,
+        rpm_publication_api,
+        rpm_repository_api,
+        rpm_advisory_api,
+        rpm_distribution_factory,
+        distribution_base_url,
+        monitor_task,
+    ):
+        repo = derived_publication_repo
+        base = self._publish(
+            rpm_publication_api, monitor_task, repository_version=repo.latest_version_href
+        )
+        advisories = rpm_advisory_api.list(
+            repository_version=repo.latest_version_href, limit=1000
+        ).results
+        assert advisories
+        monitor_task(
+            rpm_repository_api.modify(
+                repo.pulp_href,
+                {"remove_content_units": [advisory.pulp_href for advisory in advisories]},
+            ).task
+        )
+        version = rpm_repository_api.read(repo.pulp_href).latest_version_href
+        derived = self._publish(
+            rpm_publication_api,
+            monitor_task,
+            repository_version=version,
+        )
+        assert derived.base_publication == base.pulp_href
+        full = self._publish(
+            rpm_publication_api,
+            monitor_task,
+            repository_version=version,
+            **self._full_publish_settings(),
+        )
+        assert full.base_publication is None
+
+        _, _, derived_records = self._repomd_records(
+            derived, rpm_distribution_factory, distribution_base_url
+        )
+        _, _, full_records = self._repomd_records(
+            full, rpm_distribution_factory, distribution_base_url
+        )
+        assert derived_records == full_records
+        assert "updateinfo" not in derived_records
+
+    def test_derived_revision_matches_full_for_package_less_version(
+        self,
+        derived_publication_repo,
+        rpm_publication_api,
+        rpm_repository_api,
+        rpm_package_api,
+        rpm_distribution_factory,
+        distribution_base_url,
+        monitor_task,
+    ):
+        repo = derived_publication_repo
+        packages = rpm_package_api.list(
+            repository_version=repo.latest_version_href, limit=1000
+        ).results
+        assert len(packages) > 1
+        monitor_task(
+            rpm_repository_api.modify(
+                repo.pulp_href,
+                {"remove_content_units": [package.pulp_href for package in packages[1:]]},
+            ).task
+        )
+        base = self._publish(
+            rpm_publication_api,
+            monitor_task,
+            repository_version=rpm_repository_api.read(repo.pulp_href).latest_version_href,
+        )
+        monitor_task(
+            rpm_repository_api.modify(
+                repo.pulp_href, {"remove_content_units": [packages[0].pulp_href]}
+            ).task
+        )
+        version = rpm_repository_api.read(repo.pulp_href).latest_version_href
+        derived = self._publish(
+            rpm_publication_api,
+            monitor_task,
+            repository_version=version,
+        )
+        assert derived.base_publication == base.pulp_href
+        full = self._publish(
+            rpm_publication_api,
+            monitor_task,
+            repository_version=version,
+            **self._full_publish_settings(),
+        )
+        assert full.base_publication is None
+
+        namespace = RPM_NAMESPACES["metadata/repo"]
+        revisions = []
+        for publication in (derived, full):
+            _, repomd, _ = self._repomd_records(
+                publication, rpm_distribution_factory, distribution_base_url
+            )
+            revisions.append(repomd.find(f"{{{namespace}}}revision").text)
+        derived_revision, full_revision = revisions
+        assert (derived_revision == "0") == (full_revision == "0")
+        assert derived_revision != "0"
+
+    def test_incompatible_publication_falls_back_to_full_publication(
+        self,
+        derived_publication_repo,
+        rpm_publication_api,
+        rpm_repository_api,
+        monitor_task,
+    ):
+        repo = derived_publication_repo
+        version_href = repo.latest_version_href
+        base = self._publish(rpm_publication_api, monitor_task, repository_version=version_href)
+        assert base.base_publication is None
+
+        publication = self._publish(
+            rpm_publication_api,
+            monitor_task,
+            repository_version=version_href,
+            compression_type="zstd",
+        )
+
+        assert publication.base_publication is None
+        assert publication.repository_version == version_href
+
+    def test_publication_is_derived_from_the_newest_one(
+        self,
+        rpm_repository_factory,
+        rpm_unsigned_repo_immediate,
+        rpm_publication_api,
+        rpm_repository_api,
+        rpm_package_api,
+        monitor_task,
+    ):
+        packages = rpm_package_api.list(
+            repository_version=rpm_unsigned_repo_immediate.latest_version_href, limit=2
+        ).results
+        repo = rpm_repository_factory()
+        monitor_task(
+            rpm_repository_api.modify(
+                repo.pulp_href, {"add_content_units": [package.pulp_href for package in packages]}
+            ).task
+        )
+        first_version = rpm_repository_api.read(repo.pulp_href).latest_version_href
+        base = self._publish(rpm_publication_api, monitor_task, repository_version=first_version)
+        assert base.base_publication is None
+
+        monitor_task(
+            rpm_repository_api.modify(
+                repo.pulp_href, {"remove_content_units": [packages[0].pulp_href]}
+            ).task
+        )
+        second_version = rpm_repository_api.read(repo.pulp_href).latest_version_href
+        derived = self._publish(
+            rpm_publication_api, monitor_task, repository_version=second_version
+        )
+        assert derived.base_publication == base.pulp_href
+
+        republished = self._publish(
+            rpm_publication_api, monitor_task, repository_version=second_version
+        )
+        assert republished.base_publication == derived.pulp_href
+        assert republished.metadata_fingerprints == derived.metadata_fingerprints
+
+    def test_large_delta_falls_back_to_full_publication(
+        self,
+        rpm_repository_factory,
+        rpm_unsigned_repo_immediate,
+        rpm_publication_api,
+        rpm_repository_api,
+        rpm_package_api,
+        monitor_task,
+    ):
+        packages = rpm_package_api.list(
+            repository_version=rpm_unsigned_repo_immediate.latest_version_href, limit=3
+        ).results
+        repo = rpm_repository_factory()
+        monitor_task(
+            rpm_repository_api.modify(
+                repo.pulp_href, {"add_content_units": [packages[0].pulp_href]}
+            ).task
+        )
+        first_version = rpm_repository_api.read(repo.pulp_href).latest_version_href
+        base = self._publish(rpm_publication_api, monitor_task, repository_version=first_version)
+        assert base.base_publication is None
+
+        monitor_task(
+            rpm_repository_api.modify(
+                repo.pulp_href,
+                {"add_content_units": [package.pulp_href for package in packages[1:]]},
+            ).task
+        )
+        second_version = rpm_repository_api.read(repo.pulp_href).latest_version_href
+        publication = self._publish(
+            rpm_publication_api, monitor_task, repository_version=second_version
+        )
+        assert publication.base_publication is None
+        assert publication.metadata_fingerprints
