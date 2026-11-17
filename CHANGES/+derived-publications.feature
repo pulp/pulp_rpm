@@ -1,0 +1,1 @@
+Publishing a repository version now reuses the metadata of the newest publication of the same repository, computing only the version delta. Distribution trees and their unchanged sub-repositories are reproduced from the base publication too. Publications whose base is incompatible fall back to a full publication.
