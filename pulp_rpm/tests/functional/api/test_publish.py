@@ -18,6 +18,7 @@ from pulpcore.client.pulp_rpm.exceptions import ApiException
 from pulp_rpm.tests.functional.constants import (
     RPM_ALT_LAYOUT_FIXTURE_URL,
     RPM_COMPLEX_FIXTURE_URL,
+    RPM_DISTRIBUTION_TREE_CHANGED_ADDON_URL,
     RPM_KICKSTART_FIXTURE_URL,
     RPM_KICKSTART_REPOSITORY_ROOT_CONTENT,
     RPM_LONG_UPDATEINFO_FIXTURE_URL,
@@ -821,24 +822,25 @@ def derived_publication_repo(
     return rpm_repository_api.read(repo.pulp_href)
 
 
+def publish_publication(rpm_publication_api, monitor_task, **kwargs):
+    """Publish a repository version and return the publication."""
+    response = rpm_publication_api.create(RpmRpmPublication(**kwargs))
+    publication_href = monitor_task(response.task).created_resources[0]
+    return rpm_publication_api.read(publication_href)
+
+
+def forced_full_settings(settings=None):
+    """Settings the newest publication cannot match, forcing a full publication.
+
+    The repository config does not change the generated metadata, so the result stays
+    comparable with the derived publication.
+    """
+    return {**(settings or {}), "repo_config": {"forced": "full"}}
+
+
 @pytest.mark.parallel
 class TestDerivedPublication:
     """A publication derived from a base must be equivalent to a full one of the same version."""
-
-    @staticmethod
-    def _publish(rpm_publication_api, monitor_task, **kwargs):
-        response = rpm_publication_api.create(RpmRpmPublication(**kwargs))
-        publication_href = monitor_task(response.task).created_resources[0]
-        return rpm_publication_api.read(publication_href)
-
-    @staticmethod
-    def _full_publish_settings(settings=None):
-        """Settings the newest publication cannot match, forcing a full publication.
-
-        The repository config does not change the generated metadata, so the result stays
-        comparable with the derived publication.
-        """
-        return {**(settings or {}), "repo_config": {"forced": "full"}}
 
     def _assert_derived_matches_full(
         self,
@@ -849,7 +851,9 @@ class TestDerivedPublication:
         monitor_task,
     ):
         first_version = repo.latest_version_href
-        base = self._publish(rpm_publication_api, monitor_task, repository_version=first_version)
+        base = publish_publication(
+            rpm_publication_api, monitor_task, repository_version=first_version
+        )
         assert base.base_publication is None
         assert base.metadata_fingerprints
 
@@ -861,17 +865,17 @@ class TestDerivedPublication:
         second_version = rpm_repository_api.read(repo.pulp_href).latest_version_href
         assert second_version != first_version
 
-        derived = self._publish(
+        derived = publish_publication(
             rpm_publication_api, monitor_task, repository_version=second_version
         )
         assert derived.repository_version == second_version
         assert derived.base_publication == base.pulp_href
 
-        full = self._publish(
+        full = publish_publication(
             rpm_publication_api,
             monitor_task,
             repository_version=second_version,
-            **self._full_publish_settings(),
+            **forced_full_settings(),
         )
         assert full.base_publication is None
         assert derived.metadata_fingerprints == full.metadata_fingerprints
@@ -1015,7 +1019,7 @@ class TestDerivedPublication:
         monitor_task,
     ):
         repo = derived_publication_repo
-        base = self._publish(
+        base = publish_publication(
             rpm_publication_api,
             monitor_task,
             repository_version=repo.latest_version_href,
@@ -1030,18 +1034,18 @@ class TestDerivedPublication:
             ).task
         )
         version = rpm_repository_api.read(repo.pulp_href).latest_version_href
-        derived = self._publish(
+        derived = publish_publication(
             rpm_publication_api,
             monitor_task,
             repository_version=version,
             **settings,
         )
         assert derived.base_publication == base.pulp_href
-        full = self._publish(
+        full = publish_publication(
             rpm_publication_api,
             monitor_task,
             repository_version=version,
-            **self._full_publish_settings(settings),
+            **forced_full_settings(settings),
         )
         assert full.base_publication is None
 
@@ -1077,7 +1081,7 @@ class TestDerivedPublication:
         monitor_task,
     ):
         repo = derived_publication_repo
-        base = self._publish(
+        base = publish_publication(
             rpm_publication_api, monitor_task, repository_version=repo.latest_version_href
         )
         advisories = rpm_advisory_api.list(
@@ -1091,17 +1095,17 @@ class TestDerivedPublication:
             ).task
         )
         version = rpm_repository_api.read(repo.pulp_href).latest_version_href
-        derived = self._publish(
+        derived = publish_publication(
             rpm_publication_api,
             monitor_task,
             repository_version=version,
         )
         assert derived.base_publication == base.pulp_href
-        full = self._publish(
+        full = publish_publication(
             rpm_publication_api,
             monitor_task,
             repository_version=version,
-            **self._full_publish_settings(),
+            **forced_full_settings(),
         )
         assert full.base_publication is None
 
@@ -1135,7 +1139,7 @@ class TestDerivedPublication:
                 {"remove_content_units": [package.pulp_href for package in packages[1:]]},
             ).task
         )
-        base = self._publish(
+        base = publish_publication(
             rpm_publication_api,
             monitor_task,
             repository_version=rpm_repository_api.read(repo.pulp_href).latest_version_href,
@@ -1146,17 +1150,17 @@ class TestDerivedPublication:
             ).task
         )
         version = rpm_repository_api.read(repo.pulp_href).latest_version_href
-        derived = self._publish(
+        derived = publish_publication(
             rpm_publication_api,
             monitor_task,
             repository_version=version,
         )
         assert derived.base_publication == base.pulp_href
-        full = self._publish(
+        full = publish_publication(
             rpm_publication_api,
             monitor_task,
             repository_version=version,
-            **self._full_publish_settings(),
+            **forced_full_settings(),
         )
         assert full.base_publication is None
 
@@ -1180,10 +1184,12 @@ class TestDerivedPublication:
     ):
         repo = derived_publication_repo
         version_href = repo.latest_version_href
-        base = self._publish(rpm_publication_api, monitor_task, repository_version=version_href)
+        base = publish_publication(
+            rpm_publication_api, monitor_task, repository_version=version_href
+        )
         assert base.base_publication is None
 
-        publication = self._publish(
+        publication = publish_publication(
             rpm_publication_api,
             monitor_task,
             repository_version=version_href,
@@ -1212,7 +1218,9 @@ class TestDerivedPublication:
             ).task
         )
         first_version = rpm_repository_api.read(repo.pulp_href).latest_version_href
-        base = self._publish(rpm_publication_api, monitor_task, repository_version=first_version)
+        base = publish_publication(
+            rpm_publication_api, monitor_task, repository_version=first_version
+        )
         assert base.base_publication is None
 
         monitor_task(
@@ -1221,12 +1229,12 @@ class TestDerivedPublication:
             ).task
         )
         second_version = rpm_repository_api.read(repo.pulp_href).latest_version_href
-        derived = self._publish(
+        derived = publish_publication(
             rpm_publication_api, monitor_task, repository_version=second_version
         )
         assert derived.base_publication == base.pulp_href
 
-        republished = self._publish(
+        republished = publish_publication(
             rpm_publication_api, monitor_task, repository_version=second_version
         )
         assert republished.base_publication == derived.pulp_href
@@ -1251,7 +1259,9 @@ class TestDerivedPublication:
             ).task
         )
         first_version = rpm_repository_api.read(repo.pulp_href).latest_version_href
-        base = self._publish(rpm_publication_api, monitor_task, repository_version=first_version)
+        base = publish_publication(
+            rpm_publication_api, monitor_task, repository_version=first_version
+        )
         assert base.base_publication is None
 
         monitor_task(
@@ -1261,8 +1271,145 @@ class TestDerivedPublication:
             ).task
         )
         second_version = rpm_repository_api.read(repo.pulp_href).latest_version_href
-        publication = self._publish(
+        publication = publish_publication(
             rpm_publication_api, monitor_task, repository_version=second_version
         )
         assert publication.base_publication is None
         assert publication.metadata_fingerprints
+
+
+@pytest.mark.parallel
+class TestDerivedPublicationDistributionTree:
+    """A tree-bearing repository must derive into the same publication a full publish makes."""
+
+    @staticmethod
+    def _subrepo_directories(base_url):
+        """The variant/addon repositories a published treeinfo points at."""
+        from configparser import ConfigParser
+
+        response = requests.get(f"{base_url.rstrip('/')}/.treeinfo")
+        response.raise_for_status()
+        config = ConfigParser(interpolation=None)
+        config.optionxform = str
+        config.read_string(response.text)
+        directories = set()
+        for section in config.sections():
+            repository = config[section].get("repository", ".")
+            if section.startswith(("variant-", "addon-")) and repository != ".":
+                directories.add(os.path.normpath(repository))
+        return directories
+
+    def test_derived_publication_matches_full_with_distribution_tree(
+        self,
+        init_and_sync,
+        rpm_publication_api,
+        rpm_repository_api,
+        rpm_package_api,
+        rpm_distribution_factory,
+        distribution_base_url,
+        monitor_task,
+    ):
+        repo, _ = init_and_sync(url=RPM_KICKSTART_FIXTURE_URL)
+        first_version = repo.latest_version_href
+        base = publish_publication(
+            rpm_publication_api, monitor_task, repository_version=first_version
+        )
+        assert base.base_publication is None
+        assert base.metadata_fingerprints["treeinfo"]
+        assert base.metadata_fingerprints["subrepos"]
+
+        package = rpm_package_api.list(repository_version=first_version, limit=1).results[0]
+        monitor_task(
+            rpm_repository_api.modify(
+                repo.pulp_href, {"remove_content_units": [package.pulp_href]}
+            ).task
+        )
+        second_version = rpm_repository_api.read(repo.pulp_href).latest_version_href
+        assert second_version != first_version
+
+        derived = publish_publication(
+            rpm_publication_api, monitor_task, repository_version=second_version
+        )
+        assert derived.base_publication == base.pulp_href
+
+        full = publish_publication(
+            rpm_publication_api,
+            monitor_task,
+            repository_version=second_version,
+            **forced_full_settings(),
+        )
+        assert full.base_publication is None
+        assert derived.metadata_fingerprints == full.metadata_fingerprints
+
+        derived_url = distribution_base_url(
+            rpm_distribution_factory(publication=derived.pulp_href).base_url
+        )
+        full_url = distribution_base_url(
+            rpm_distribution_factory(publication=full.pulp_href).base_url
+        )
+
+        derived_treeinfo = requests.get(f"{derived_url.rstrip('/')}/.treeinfo")
+        derived_treeinfo.raise_for_status()
+        full_treeinfo = requests.get(f"{full_url.rstrip('/')}/.treeinfo")
+        full_treeinfo.raise_for_status()
+        assert derived_treeinfo.content == full_treeinfo.content
+
+        directories = self._subrepo_directories(derived_url)
+        for directory in directories:
+            for url in (derived_url, full_url):
+                response = requests.get(f"{url.rstrip('/')}/{directory}/repodata/repomd.xml")
+                response.raise_for_status()
+
+    def test_tree_publication_is_derived_from_a_derived_base(
+        self,
+        init_and_sync,
+        rpm_publication_api,
+        rpm_repository_api,
+        rpm_package_api,
+        monitor_task,
+    ):
+        repo, _ = init_and_sync(url=RPM_KICKSTART_FIXTURE_URL)
+        first_version = repo.latest_version_href
+        base = publish_publication(
+            rpm_publication_api, monitor_task, repository_version=first_version
+        )
+
+        package = rpm_package_api.list(repository_version=first_version, limit=1).results[0]
+        monitor_task(
+            rpm_repository_api.modify(
+                repo.pulp_href, {"remove_content_units": [package.pulp_href]}
+            ).task
+        )
+        second_version = rpm_repository_api.read(repo.pulp_href).latest_version_href
+
+        derived = publish_publication(
+            rpm_publication_api, monitor_task, repository_version=second_version
+        )
+        assert derived.base_publication == base.pulp_href
+
+        chained = publish_publication(
+            rpm_publication_api, monitor_task, repository_version=second_version
+        )
+        assert chained.base_publication == derived.pulp_href
+        assert chained.metadata_fingerprints == derived.metadata_fingerprints
+
+    def test_derived_publication_falls_back_when_subrepositories_change(
+        self,
+        init_and_sync,
+        rpm_publication_api,
+        rpm_repository_api,
+        monitor_task,
+    ):
+        repo, _ = init_and_sync(url=RPM_KICKSTART_FIXTURE_URL)
+        base = publish_publication(
+            rpm_publication_api, monitor_task, repository_version=repo.latest_version_href
+        )
+
+        init_and_sync(repository=repo, url=RPM_DISTRIBUTION_TREE_CHANGED_ADDON_URL)
+        repo = rpm_repository_api.read(repo.pulp_href)
+        changed = publish_publication(
+            rpm_publication_api, monitor_task, repository_version=repo.latest_version_href
+        )
+
+        assert changed.base_publication is None
+        assert changed.metadata_fingerprints["subrepos"] != base.metadata_fingerprints["subrepos"]

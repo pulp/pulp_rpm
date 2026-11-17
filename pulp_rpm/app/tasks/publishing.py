@@ -65,6 +65,7 @@ from pulp_rpm.app.sql_utils import safe_in
 log = logging.getLogger(__name__)
 
 REPODATA_PATH = "repodata"
+TREEINFO_PATHS = ("treeinfo", ".treeinfo")
 
 # lift dynaconf lookups outside of loops
 ALLOWED_CONTENT_CHECKSUMS = settings.ALLOWED_CONTENT_CHECKSUMS
@@ -103,6 +104,16 @@ class PkgBuild(NamedTuple):
     cid: UUID
     epoch: int
     build_time: int
+
+
+@dataclass
+class SubRepoRender:
+    """One addon/variant sub-repository that a publication renders."""
+
+    name: str
+    repository_version: RepositoryVersion
+    repomdrecords: list = field(default_factory=list)
+    packages: dict = field(default_factory=dict)
 
 
 class _CollisionManager:
@@ -174,8 +185,10 @@ class PublicationData:
 
     Attributes:
         publication (pulpcore.plugin.models.Publication): A Publication to populate.
-        sub_repos (list): A list of tuples with sub_repos data.
+        sub_repos (list): The sub-repositories this publication renders.
         repomdrecords (list): A list of tuples with repomdrecords data.
+        treeinfos (dict): The rendered treeinfo file of each distribution tree.
+        subrepo_fingerprints (dict): The rendered state of each sub-repository.
 
     """
 
@@ -188,10 +201,12 @@ class PublicationData:
 
         """
         self.publication = publication
-        self.sub_repos = []
+        self.sub_repos: list[SubRepoRender] = []
         self.repomdrecords = []
         self.checksum_types = checksum_types
         self.packages: dict[UUID, PackageInfo] = {}
+        self.treeinfos: dict[str, dict] = {}
+        self.subrepo_fingerprints: dict[str, dict] = {}
 
     @staticmethod
     def _publication_path(path):
@@ -384,7 +399,7 @@ class PublicationData:
             )
 
         # Handle the non-packages
-        is_treeinfo = Q(relative_path__in=["treeinfo", ".treeinfo"])
+        is_treeinfo = Q(relative_path__in=TREEINFO_PATHS)
         unpublishable_types = Q(content__pulp_type__in=_UNPUBLISHABLE_TYPES)
 
         contentartifact_qs = (
@@ -405,62 +420,6 @@ class PublicationData:
         PublishedArtifact.objects.bulk_create(published_artifacts, batch_size=2000)
         return cid_to_pkginfo
 
-    def handle_sub_repos(self, distribution_tree):
-        """
-        Get sub-repo content and publish them.
-
-        Args:
-            distribution_tree (pulp_rpm.models.DistributionTree): A distribution_tree object.
-
-        """
-        original_treeinfo_content_artifact = distribution_tree.contentartifact_set.get(
-            relative_path__in=[".treeinfo", "treeinfo"]
-        )
-        orig_artifact = original_treeinfo_content_artifact.artifact
-        artifact_file = orig_artifact.pulp_domain.get_storage().open(orig_artifact.file.name)
-        with tempfile.NamedTemporaryFile("wb", dir=".") as temp_file:
-            shutil.copyfileobj(artifact_file, temp_file)
-            temp_file.flush()
-            treeinfo = PulpTreeInfo()
-            treeinfo.load(f=temp_file.name)
-            treeinfo_data = TreeinfoData(treeinfo.parsed_sections())
-
-            # rewrite the treeinfo file such that the variant repository and package location
-            # is a relative subtree
-            treeinfo.rewrite_subrepo_paths(treeinfo_data)
-
-            # TODO: better way to do this?
-            main_variant = treeinfo.original_parser._sections.get("general", {}).get(
-                "variant", None
-            )
-            treeinfo_file = tempfile.NamedTemporaryFile(dir=".")
-            treeinfo.dump(treeinfo_file.name, main_variant=main_variant)
-            with open(treeinfo_file.name, "rb") as treeinfo_fd:
-                PublishedMetadata.create_from_file(
-                    relative_path=original_treeinfo_content_artifact.relative_path,
-                    publication=self.publication,
-                    file=File(treeinfo_fd),
-                )
-        artifact_file.close()
-        relations = ["addon", "variant"]
-        for relation in relations:
-            addons_or_variants = getattr(distribution_tree, f"{relation}s").all()
-            for addon_or_variant in addons_or_variants:
-                if not addon_or_variant.repository:
-                    # a variant of the main repo
-                    continue
-                repository = addon_or_variant.repository.cast()
-                repository_version = repository.latest_version()
-
-                if repository_version and repository.user_hidden:
-                    addon_or_variant_id = getattr(addon_or_variant, f"{relation}_id")
-                    self.sub_repos.append(
-                        (
-                            addon_or_variant_id,
-                            repository_version.content,
-                        )
-                    )
-
     def populate(self):
         """
         Populate a publication.
@@ -473,23 +432,18 @@ class PublicationData:
 
         self.packages = self.publish_artifacts(main_content)
 
-        distribution_trees = DistributionTree.objects.filter(pk__in=main_content).prefetch_related(
-            "addons",
-            "variants",
-            "addons__repository",
-            "variants__repository",
-            "contentartifact_set",
-        )
+        trees, self.sub_repos = _resolve_trees(self.publication.repository_version)
+        for distribution_tree in trees:
+            _publish_treeinfo(distribution_tree, self)
 
-        for distribution_tree in distribution_trees:
-            self.handle_sub_repos(distribution_tree)
-
-        for name, content in self.sub_repos:
-            os.mkdir(self._publication_path(name))
-            setattr(self, f"{name}_content", content)
-            setattr(self, f"{name}_checksums", self.checksum_types)
-            setattr(self, f"{name}_repomdrecords", self.prepare_metadata_files(content, name))
-            setattr(self, f"{name}_packages", self.publish_artifacts(content, prefix=name))
+        for sub_repo in self.sub_repos:
+            os.mkdir(self._publication_path(sub_repo.name))
+            sub_repo.repomdrecords = self.prepare_metadata_files(
+                sub_repo.repository_version.content, sub_repo.name
+            )
+            sub_repo.packages = self.publish_artifacts(
+                sub_repo.repository_version.content, prefix=sub_repo.name
+            )
 
 
 def get_checksum_type(checksum_types, default=CHECKSUM_TYPES.SHA256):
@@ -552,6 +506,7 @@ class PublishPlan:
     request: PublishRequest
     base_publication: RpmPublication | None
     delta: ContentDelta = ContentDelta()
+    subrepos: dict = field(default_factory=dict)
 
     @property
     def derived(self):
@@ -571,7 +526,12 @@ class PublicationPlanner:
             return PublishPlan(self.request, None)
         version = self.request.repository_version
         delta = self._delta(base)
-        reason = self._incompatibility(base) or self._delta_reason(version, delta)
+        reason = self._delta_reason(version, delta)
+        trees, renders, state = (), (), {}
+        if reason is None:
+            trees, renders = _resolve_trees(version)
+            state = _subrepo_state(renders)
+            reason = self._incompatibility(base, trees, state)
         if reason:
             log.warning(
                 _("Not deriving the publication of {version} from {base}: {reason}").format(
@@ -579,7 +539,7 @@ class PublicationPlanner:
                 )
             )
             return PublishPlan(self.request, None)
-        return PublishPlan(self.request, base, delta)
+        return PublishPlan(self.request, base, delta, state)
 
     def _base_publication(self):
         """The newest complete publication of the same repository this one can reuse.
@@ -634,15 +594,51 @@ class PublicationPlanner:
         retained = target - added
         return added <= retained and removed <= retained
 
-    def _incompatibility(self, base):
+    def _incompatibility(self, base, trees=(), rendered_state=None):
         """Return why the base publication cannot be derived from, or None if it can."""
-        settings = (base.metadata_fingerprints or {}).get("settings") or {}
+        fingerprints = base.metadata_fingerprints or {}
+        settings = fingerprints.get("settings") or {}
         if settings.get("format") != _METADATA_FORMAT:
             return "metadata format differs or is unknown"
         if settings.get("repository_package_time") != RPM_METADATA_USE_REPO_PACKAGE_TIME:
             return "RPM_METADATA_USE_REPO_PACKAGE_TIME differs or is unknown"
-        if _has_distribution_trees(base.repository_version):
-            return "base repository version contains distribution trees"
+        if not trees:
+            return None
+        if rendered_state and RPM_METADATA_USE_REPO_PACKAGE_TIME:
+            # The full path renders sub-repo package times from the main repository, so a
+            # derived publication cannot reproduce them.
+            return "repository package times cannot be derived for sub-repositories"
+        return self._tree_reason(
+            fingerprints.get("treeinfo"),
+            fingerprints.get("subrepos"),
+            rendered_state,
+            [tree.pk for tree in trees],
+        )
+
+    @staticmethod
+    def _tree_reason(recorded_treeinfo, recorded_subrepos, rendered_state, tree_pks):
+        """Why the base publication does not describe the trees this version renders.
+
+        Takes plain data so the decision is testable without a database.
+        """
+        if not isinstance(recorded_treeinfo, dict) or not isinstance(recorded_subrepos, dict):
+            return "the base publication did not record its distribution tree metadata"
+        if set(recorded_treeinfo) != {str(pk) for pk in tree_pks}:
+            return "the distribution tree set changed"
+        if rendered_state is None:
+            return "duplicate sub-repository names"
+        if set(recorded_subrepos) != set(rendered_state):
+            return "the rendered sub-repositories changed"
+        for name, state in rendered_state.items():
+            recorded = recorded_subrepos[name]
+            if recorded.get("version") != state["version"]:
+                return _("sub-repository {name} changed since the base publication").format(
+                    name=name
+                )
+            if recorded.get("content") != state["content"]:
+                return _("sub-repository {name} content changed since the base publication").format(
+                    name=name
+                )
         return None
 
 
@@ -730,10 +726,6 @@ def _signing_fingerprint(signing_service):
     return hashlib.sha256(signing_service.public_key.encode()).hexdigest()
 
 
-def _has_distribution_trees(repository_version):
-    return repository_version.content.filter(pulp_type=DistributionTree.get_pulp_type()).exists()
-
-
 def _configure_publication(publication, request):
     publication.checksum_type = request.checksum_type
     publication.compression_type = request.compression_type
@@ -759,7 +751,7 @@ def _finalize_publication(publication, request, publication_data, repomd_path):
         request.metadata_signing_service
     )
     publication.metadata_fingerprints = _content_fingerprints(
-        publication, publication_data.packages, repomd_path
+        publication, publication_data.packages, repomd_path, publication_data
     )
     publication.save()
     return RpmPublicationSerializer(instance=publication, context={"request": None}).data
@@ -804,19 +796,18 @@ def _publish_full(plan):
                 publish_pb.increment()
 
                 for sub_repo in publication_data.sub_repos:
-                    name = sub_repo[0]
-                    content = getattr(publication_data, f"{name}_content")
-                    extra_repomdrecords = getattr(publication_data, f"{name}_repomdrecords")
-                    packages = getattr(publication_data, f"{name}_packages")
-                    _generate_repo_metadata(
-                        content,
+                    sub_repomd_path = _generate_repo_metadata(
+                        sub_repo.repository_version.content,
                         publication,
                         request.checksum_types,
-                        extra_repomdrecords,
-                        name,
+                        sub_repo.repomdrecords,
+                        sub_repo.name,
                         metadata_signing_service=request.metadata_signing_service,
                         compression_type=request.compression_type,
-                        retained_packages=packages,
+                        retained_packages=sub_repo.packages,
+                    )
+                    publication_data.subrepo_fingerprints[sub_repo.name] = _subrepo_fingerprint(
+                        sub_repo.repository_version, sub_repomd_path
                     )
                     publish_pb.increment()
 
@@ -1053,6 +1044,75 @@ def _compression(compression_type):
     return _COMPRESSION.get(compression_type, _COMPRESSION[COMPRESSION_TYPES.GZ])
 
 
+def _rendered_subrepos(distribution_tree):
+    """The sub-repositories a full publication renders for a tree.
+
+    A sub-repository is rendered when an addon or variant has a linked repository with a latest
+    version that is hidden from listings.
+    """
+    for relation in ("addon", "variant"):
+        for addon_or_variant in getattr(distribution_tree, f"{relation}s").all():
+            repository = addon_or_variant.repository
+            if not repository or not repository.user_hidden:
+                continue
+            repository_version = repository.latest_version()
+            if repository_version:
+                yield SubRepoRender(
+                    name=getattr(addon_or_variant, f"{relation}_id"),
+                    repository_version=repository_version,
+                )
+
+
+def _resolve_trees(repository_version):
+    """The distribution trees of a version and the sub-repositories they render."""
+    trees = list(
+        DistributionTree.objects.filter(pk__in=repository_version.content).prefetch_related(
+            "addons",
+            "variants",
+            "addons__repository",
+            "variants__repository",
+            "contentartifact_set",
+        )
+    )
+    return trees, [render for tree in trees for render in _rendered_subrepos(tree)]
+
+
+def _rewritten_treeinfo(distribution_tree):
+    """Write the treeinfo file a publication serves for one tree into the working directory.
+
+    The rewrite depends only on the source treeinfo artifact and the pulp_rpm constants, so
+    the same content unit always renders the same bytes. Returns the relative path and its
+    sha256.
+    """
+    content_artifact = distribution_tree.contentartifact_set.get(relative_path__in=TREEINFO_PATHS)
+    artifact = content_artifact.artifact
+    with artifact.pulp_domain.get_storage().open(artifact.file.name) as source:
+        with tempfile.NamedTemporaryFile("wb", dir=".") as source_copy:
+            shutil.copyfileobj(source, source_copy)
+            source_copy.flush()
+            treeinfo = PulpTreeInfo()
+            treeinfo.load(f=source_copy.name)
+            treeinfo_data = TreeinfoData(treeinfo.parsed_sections())
+            treeinfo.rewrite_subrepo_paths(treeinfo_data)
+            main_variant = treeinfo.original_parser._sections.get("general", {}).get("variant")
+            treeinfo.dump(content_artifact.relative_path, main_variant=main_variant)
+    digest = hashlib.sha256()
+    with open(content_artifact.relative_path, "rb") as rewritten:
+        for chunk in iter(lambda: rewritten.read(1 << 20), b""):
+            digest.update(chunk)
+    return content_artifact.relative_path, digest.hexdigest()
+
+
+def _publish_treeinfo(distribution_tree, publication_data):
+    """Publish a tree's rewritten treeinfo and record its fingerprint."""
+    relative_path, sha256 = _rewritten_treeinfo(distribution_tree)
+    _publish_metadata_file(publication_data.publication, relative_path)
+    publication_data.treeinfos[str(distribution_tree.pk)] = {
+        "path": relative_path,
+        "sha256": sha256,
+    }
+
+
 def _changed_pulp_types(added_pks, removed_pks):
     """The content types whose membership differs between the base version and the target."""
     delta = added_pks | removed_pks
@@ -1080,6 +1140,38 @@ def _digest(items):
     return digest.hexdigest()
 
 
+def _subrepo_identity(repository_version):
+    """The identity a base publication must have rendered for a sub-repository.
+
+    Repository version membership is immutable, so the version pk plus its denormalized
+    content ids identify the rendering without querying the content tables.
+    """
+    return {
+        "version": str(repository_version.pk),
+        "content": _digest(str(pk) for pk in repository_version.content_ids),
+    }
+
+
+def _subrepo_state(renders):
+    """What a full publication would render per sub-repository, cheap to compare.
+
+    Returns None when two rendered sub-repositories share a name, which a publication cannot
+    represent.
+    """
+    state = {}
+    for render in renders:
+        if render.name in state:
+            return None
+        state[render.name] = _subrepo_identity(render.repository_version)
+    return state
+
+
+def _verify_subrepo_snapshot(plan, renders):
+    """Refuse to inherit base metadata if a linked repository moved after planning."""
+    if _subrepo_state(renders) != plan.subrepos:
+        raise _CannotDerive("the rendered sub-repositories changed while deriving")
+
+
 def _repomd_fingerprint(repomd_path):
     """The set of metadata records in the publication.
 
@@ -1092,12 +1184,8 @@ def _repomd_fingerprint(repomd_path):
     return sorted({record.type for record in repomd.records})
 
 
-def _content_fingerprints(publication, retained_packages, repomd_path):
-    """Describe the client-visible metadata of a publication, per record type.
-
-    Two publications of the same repository version must have equal fingerprints.
-    """
-    content = publication.repository_version.content
+def _metadata_content_fingerprints(content):
+    """Digests of the metadata content types a repository version carries."""
     comps_digests = [
         *PackageGroup.objects.filter(pk__in=content).values_list("digest", flat=True),
         *PackageCategory.objects.filter(pk__in=content).values_list("digest", flat=True),
@@ -1114,13 +1202,6 @@ def _content_fingerprints(publication, retained_packages, repomd_path):
         ),
     ]
     return {
-        "settings": {
-            "format": _METADATA_FORMAT,
-            "repository_package_time": RPM_METADATA_USE_REPO_PACKAGE_TIME,
-        },
-        "packages": _digest(
-            (info.checksum_type, info.checksum, info.path) for info in retained_packages.values()
-        ),
         "updateinfo": _digest(
             UpdateRecord.objects.filter(pk__in=content).values_list("digest", flat=True)
         ),
@@ -1129,6 +1210,51 @@ def _content_fingerprints(publication, retained_packages, repomd_path):
         "custom": dict(
             RepoMetadataFile.objects.filter(pk__in=content).values_list("data_type", "checksum")
         ),
+    }
+
+
+def _subrepo_fingerprint(repository_version, repomd_path=None):
+    """Describe one rendered sub-repository.
+
+    Computable identically before publishing (from the linked repository version) and after,
+    so the planner can prove the base publication rendered the same state.
+    """
+    content = repository_version.content
+    fingerprint = {
+        **_subrepo_identity(repository_version),
+        "packages": _digest(
+            ContentArtifact.objects.filter(
+                content__in=content, content__pulp_type=Package.get_pulp_type()
+            ).values_list(
+                "content__rpm_package__checksum_type",
+                "content__rpm_package__pkgId",
+                "relative_path",
+            )
+        ),
+        **_metadata_content_fingerprints(content),
+    }
+    if repomd_path:
+        fingerprint["repomd"] = _repomd_fingerprint(repomd_path)
+    return fingerprint
+
+
+def _content_fingerprints(publication, retained_packages, repomd_path, publication_data):
+    """Describe the client-visible metadata of a publication, per record type.
+
+    Two publications of the same repository version must have equal fingerprints.
+    """
+    content = publication.repository_version.content
+    return {
+        "settings": {
+            "format": _METADATA_FORMAT,
+            "repository_package_time": RPM_METADATA_USE_REPO_PACKAGE_TIME,
+        },
+        "packages": _digest(
+            (info.checksum_type, info.checksum, info.path) for info in retained_packages.values()
+        ),
+        **_metadata_content_fingerprints(content),
+        "treeinfo": publication_data.treeinfos,
+        "subrepos": publication_data.subrepo_fingerprints,
         "repomd": _repomd_fingerprint(repomd_path),
     }
 
@@ -1139,6 +1265,20 @@ def _copy_published_file(published_metadata, destination):
         shutil.copyfileobj(content_artifact.artifact.file.file, destination_file)
 
 
+def _published_metadata(publication, prefixes=None):
+    """The publication's metadata files keyed by relative path, optionally by path prefix."""
+    query = PublishedMetadata.objects.filter(publication=publication)
+    if prefixes:
+        scope = Q()
+        for prefix in prefixes:
+            scope |= Q(relative_path__startswith=prefix)
+        query = query.filter(scope)
+    return {
+        metadata.relative_path: metadata
+        for metadata in query.prefetch_related("contentartifact_set")
+    }
+
+
 def _materialize_base_metadata(base_publication):
     """Copy the base publication's metadata files into the working directory.
 
@@ -1147,12 +1287,7 @@ def _materialize_base_metadata(base_publication):
     directory = "base-metadata"
     os.makedirs(directory, exist_ok=True)
     repomd_path = os.path.join(directory, "repomd.xml")
-    published = {
-        metadata.relative_path: metadata
-        for metadata in PublishedMetadata.objects.filter(
-            publication=base_publication
-        ).prefetch_related("contentartifact_set")
-    }
+    published = _published_metadata(base_publication)
 
     def metadata_for(relative_path):
         try:
@@ -1174,6 +1309,40 @@ def _materialize_base_metadata(base_publication):
         files[record.type] = local_path
         stats[record.type] = (record.checksum_open, record.size_open)
     return files, stats
+
+
+def _inherit_subrepo_metadata(publication, publication_data, base_publication, renders):
+    """Copy the base publication's metadata for every rendered sub-repository.
+
+    The planner proved each linked repository version unchanged, so the base's rendering is
+    what a full publication would produce now.
+    """
+    if not renders:
+        return
+    prefixes = tuple(f"{render.name}/" for render in renders)
+    repomd_renders = {
+        os.path.join(render.name, REPODATA_PATH, "repomd.xml"): render for render in renders
+    }
+    inherited = _published_metadata(base_publication, prefixes)
+    for relative_path in repomd_renders:
+        if relative_path not in inherited:
+            raise PublishedMetadata.DoesNotExist(
+                f"{relative_path} missing from publication {base_publication.pk}"
+            )
+    for relative_path, metadata in inherited.items():
+        with tempfile.NamedTemporaryFile("wb", dir=".") as local:
+            _copy_published_file(metadata, local.name)
+            with open(local.name, "rb") as source:
+                PublishedMetadata.create_from_file(
+                    relative_path=relative_path,
+                    publication=publication,
+                    file=File(source),
+                )
+            render = repomd_renders.get(relative_path)
+            if render is not None:
+                publication_data.subrepo_fingerprints[render.name] = _subrepo_fingerprint(
+                    render.repository_version, local.name
+                )
 
 
 def _file_stat(path, checksum_type=CHECKSUM_TYPES.SHA256):
@@ -1340,7 +1509,28 @@ def _base_package_checksums(primary_path):
     return checksums
 
 
-def _populate_derived(publication, publication_data, plan, base_files):
+def _base_row_origin(path, cid, pulp_type, package_type, subrepo_names_by_cid):
+    """Which rendered sub-repository published a base PublishedArtifact row, if any.
+
+    Package rows are published under their sub-repository's directory, so the path identifies
+    them even when the package also belongs to another sub-repository. Other artifacts are
+    published with their original relative path, so ownership comes from content membership; a
+    unit published by two sub-repositories is ambiguous.
+    """
+    names = subrepo_names_by_cid.get(cid)
+    if not names:
+        return None
+    if pulp_type == package_type:
+        for name in names:
+            if path.startswith(f"{name}/{PACKAGES_DIRECTORY}/"):
+                return name
+        return None
+    if len(names) > 1:
+        raise _CannotDerive(f"content {cid} is shared by multiple sub-repositories")
+    return next(iter(names))
+
+
+def _populate_derived(publication, publication_data, plan, base_files, renders):
     """Populate a derived publication by inheriting the base rows for retained content.
 
     The base publication already made the checksum, path and collision-winner decisions for
@@ -1365,14 +1555,27 @@ def _populate_derived(publication, publication_data, plan, base_files):
         raise _CannotDerive("base publication has no primary record")
     base_checksums = _base_package_checksums(base_files["primary"])
     package_type = Package.get_pulp_type()
-    base_rows = PublishedArtifact.objects.filter(publication=base).values_list(
-        "content_artifact_id",
-        "relative_path",
-        "content_artifact__content_id",
-        "content_artifact__content__pulp_type",
+    subrepo_names_by_cid = {}
+    for render in renders:
+        for cid in render.repository_version.content_ids:
+            subrepo_names_by_cid.setdefault(cid, set()).add(render.name)
+    base_rows = (
+        PublishedArtifact.objects.filter(publication=base)
+        .values_list(
+            "content_artifact_id",
+            "relative_path",
+            "content_artifact__content_id",
+            "content_artifact__content__pulp_type",
+        )
+        .iterator(chunk_size=2000)
     )
     for caid, path, cid, pulp_type in base_rows:
-        if cid in removed or path in ("treeinfo", ".treeinfo"):
+        if _base_row_origin(path, cid, pulp_type, package_type, subrepo_names_by_cid) is not None:
+            # Rendered from a linked version the planner proved unchanged; the main delta
+            # does not apply to it.
+            add_row(caid, path)
+            continue
+        if cid in removed or path in TREEINFO_PATHS:
             continue
         if pulp_type == package_type:
             try:
@@ -1400,7 +1603,7 @@ def _populate_derived(publication, publication_data, plan, base_files):
     added_artifacts = (
         ContentArtifact.objects.filter(content__in=added_content)
         .exclude(content__pulp_type__in=_UNPUBLISHABLE_TYPES)
-        .exclude(relative_path__in=["treeinfo", ".treeinfo"])
+        .exclude(relative_path__in=TREEINFO_PATHS)
         .values_list("pk", "relative_path")
     )
     for caid, path in added_artifacts:
@@ -1906,8 +2109,14 @@ def _publish_derived(plan):
             publication.save()
 
             publication_data = PublicationData(publication, request.checksum_types)
+            trees, renders = _resolve_trees(request.repository_version)
+            _verify_subrepo_snapshot(plan, renders)
+
             base_files, base_stats = _materialize_base_metadata(plan.base_publication)
-            _populate_derived(publication, publication_data, plan, base_files)
+            _populate_derived(publication, publication_data, plan, base_files, renders)
+            for tree in trees:
+                _publish_treeinfo(tree, publication_data)
+            _inherit_subrepo_metadata(publication, publication_data, plan.base_publication, renders)
 
             repomd_path = _generate_derived_metadata(
                 publication, publication_data, plan, base_files, base_stats

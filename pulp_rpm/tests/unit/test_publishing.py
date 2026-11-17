@@ -2,13 +2,16 @@ import pytest
 from django.test import SimpleTestCase
 
 from pulp_rpm.app.tasks.publishing import (
+    ContentDelta,
     PkgBuild,
     PublicationData,
     PublicationPlanner,
+    _base_row_origin,
     _CannotDerive,
     _CollisionManager,
     _sign_repomd,
     _splice_stream,
+    _subrepo_state,
     _validate_package_delta,
 )
 
@@ -292,3 +295,177 @@ class TestValidatePackageDelta(SimpleTestCase):
         ):
             with pytest.raises(_CannotDerive, match="collision key overlap"):
                 _validate_package_delta(self._plan({"pkg"}, set()))
+
+
+def _render(name, version_pk, pks):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(
+        name=name,
+        repository_version=SimpleNamespace(pk=version_pk, content_ids=pks),
+    )
+
+
+class TestSubrepoState(SimpleTestCase):
+    """The plan-time snapshot must describe exactly what a full publication renders."""
+
+    def test_same_state_from_equal_pks_in_any_order(self):
+        assert _subrepo_state([_render("AppStream", "v1", [1, 2])]) == _subrepo_state(
+            [_render("AppStream", "v1", [2, 1])]
+        )
+
+    def test_none_when_two_subrepositories_share_a_name(self):
+        assert (
+            _subrepo_state([_render("AppStream", "v1", [1]), _render("AppStream", "v2", [2])])
+            is None
+        )
+
+    def test_version_change_is_visible(self):
+        assert _subrepo_state([_render("AppStream", "v1", [1])]) != _subrepo_state(
+            [_render("AppStream", "v2", [1])]
+        )
+
+
+class TestTreeReason(SimpleTestCase):
+    """The planner must only accept trees the base publication already rendered."""
+
+    def _recorded(self):
+        state = _subrepo_state([_render("AppStream", "v1", [1, 2])])
+        return {"treeinfo": {"tree-1": {"path": ".treeinfo", "sha256": "abc"}}, "subrepos": state}
+
+    def test_rejects_base_without_tree_metadata(self):
+        reason = PublicationPlanner._tree_reason(None, {}, {}, ["tree-1"])
+        assert "did not record" in reason
+
+    def test_rejects_changed_tree_set(self):
+        recorded = self._recorded()
+        reason = PublicationPlanner._tree_reason(
+            recorded["treeinfo"], recorded["subrepos"], {}, ["tree-2"]
+        )
+        assert "tree set changed" in reason
+
+    def test_rejects_duplicate_subrepository_names(self):
+        recorded = self._recorded()
+        reason = PublicationPlanner._tree_reason(
+            recorded["treeinfo"], recorded["subrepos"], None, ["tree-1"]
+        )
+        assert "duplicate" in reason
+
+    def test_rejects_added_subrepository(self):
+        recorded = self._recorded()
+        state = _subrepo_state([_render("AppStream", "v1", [1, 2]), _render("BaseOS", "v3", [9])])
+        reason = PublicationPlanner._tree_reason(
+            recorded["treeinfo"], recorded["subrepos"], state, ["tree-1"]
+        )
+        assert "sub-repositories changed" in reason
+
+    def test_rejects_removed_subrepository(self):
+        recorded = self._recorded()
+        reason = PublicationPlanner._tree_reason(
+            recorded["treeinfo"], recorded["subrepos"], {}, ["tree-1"]
+        )
+        assert "sub-repositories changed" in reason
+
+    def test_rejects_changed_version(self):
+        recorded = self._recorded()
+        state = _subrepo_state([_render("AppStream", "v2", [1, 2])])
+        reason = PublicationPlanner._tree_reason(
+            recorded["treeinfo"], recorded["subrepos"], state, ["tree-1"]
+        )
+        assert "changed since the base publication" in reason
+
+    def test_rejects_changed_content(self):
+        recorded = self._recorded()
+        state = _subrepo_state([_render("AppStream", "v1", [1, 2, 3])])
+        reason = PublicationPlanner._tree_reason(
+            recorded["treeinfo"], recorded["subrepos"], state, ["tree-1"]
+        )
+        assert "content changed" in reason
+
+    def test_accepts_unchanged_state(self):
+        recorded = self._recorded()
+        state = _subrepo_state([_render("AppStream", "v1", [2, 1])])
+        assert (
+            PublicationPlanner._tree_reason(
+                recorded["treeinfo"], recorded["subrepos"], state, ["tree-1"]
+            )
+            is None
+        )
+
+    def test_delta_reason_still_rejects_tree_type_changes(self):
+        from pulp_rpm.app.models import DistributionTree
+
+        delta = ContentDelta(changed_types=frozenset({DistributionTree.get_pulp_type()}))
+        assert PublicationPlanner._delta_reason(None, delta) == "it contains distribution trees"
+
+
+class TestBaseRowOrigin(SimpleTestCase):
+    """Base rows must be attributed before the main-version delta is applied."""
+
+    package_type = "rpm.package"
+
+    def test_prefixed_package_row_belongs_to_the_subrepository(self):
+        origin = _base_row_origin(
+            "AppStream/Packages/f/fzf.rpm",
+            "c1",
+            self.package_type,
+            self.package_type,
+            {"c1": {"AppStream"}},
+        )
+        assert origin == "AppStream"
+
+    def test_main_package_row_with_shared_content_stays_main(self):
+        origin = _base_row_origin(
+            "Packages/f/fzf.rpm",
+            "c1",
+            self.package_type,
+            self.package_type,
+            {"c1": {"AppStream"}},
+        )
+        assert origin is None
+
+    def test_unprefixed_non_package_row_is_owned_by_content(self):
+        origin = _base_row_origin(
+            "group.xml", "c1", "rpm.packagegroup", self.package_type, {"c1": {"AppStream"}}
+        )
+        assert origin == "AppStream"
+
+    def test_package_row_shared_by_two_subrepositories_is_attributed_by_path(self):
+        origin = _base_row_origin(
+            "BaseOS/Packages/f/fzf.rpm",
+            "c1",
+            self.package_type,
+            self.package_type,
+            {"c1": {"AppStream", "BaseOS"}},
+        )
+        assert origin == "BaseOS"
+
+    def test_non_package_row_shared_by_two_subrepositories_is_ambiguous(self):
+        with pytest.raises(_CannotDerive, match="shared by multiple sub-repositories"):
+            _base_row_origin(
+                "group.xml",
+                "c1",
+                "rpm.packagegroup",
+                self.package_type,
+                {"c1": {"AppStream", "BaseOS"}},
+            )
+
+    def test_subrepository_called_packages_needs_its_own_prefix(self):
+        origin = _base_row_origin(
+            "Packages/Packages/f/fzf.rpm",
+            "c1",
+            self.package_type,
+            self.package_type,
+            {"c1": {"Packages"}},
+        )
+        assert origin == "Packages"
+
+    def test_package_row_of_another_repository_is_not_claimed(self):
+        origin = _base_row_origin(
+            "AppStream/Packages/f/fzf.rpm",
+            "other",
+            self.package_type,
+            self.package_type,
+            {"c1": {"AppStream"}},
+        )
+        assert origin is None
