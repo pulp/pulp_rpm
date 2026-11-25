@@ -4,3 +4,4 @@ asynctest
 mock
 pytest-django
 pytest-custom_exit_code
+rpm_rs
