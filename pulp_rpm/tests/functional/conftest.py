@@ -494,7 +494,7 @@ SIGNING_SCRIPT_STRING = """#!/usr/bin/env bash
 FILE_PATH=$1
 SIGNATURE_PATH="$1.asc"
 
-GPG_KEY_ID="{gpg_key_id}"
+GPG_KEY_ID="${{PULP_SIGNING_KEY_FINGERPRINT:-{gpg_key_id}}}"
 
 # Create a detached signature
 gpg --quiet --batch --homedir {gpg_home} --detach-sign --local-user "${{GPG_KEY_ID}}" \\
@@ -515,7 +515,7 @@ FILE_PATH=$1
 SIGNATURE_PATH="$1.asc"
 
 SQ_HOME="{sq_home}"
-SIGNER="{signer_fingerprint}"
+SIGNER="${{PULP_SIGNING_KEY_FINGERPRINT:-{signer_fingerprint}}}"
 
 # Create a detached signature using Sequoia (sq)
 sq --home "${{SQ_HOME}}" sign --signer "${{SIGNER}}" \\
@@ -567,7 +567,8 @@ def import_signing_key(key_url, home, *, backend="gpg"):
         result = gpg.import_keys(response.content)
         assert result.count >= 1, f"Failed to import key from {key_url}"
 
-        key_info = gpg.list_keys()[0]
+        # list_keys() returns the whole keyring, which may already hold other keys
+        key_info = next(k for k in gpg.list_keys() if k["fingerprint"] in result.fingerprints)
         fingerprint = key_info["fingerprint"]
         keyid = key_info["keyid"]
         gpg.trust_keys(fingerprint, "TRUST_ULTIMATE")

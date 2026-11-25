@@ -1,0 +1,1 @@
+Added `metadata_signing_fingerprint` to RPM repositories, selecting which key the metadata signing service signs `repomd.xml` with. `repomd.xml.key` is not published when it is set, because the signing service only stores the public key of its own key.

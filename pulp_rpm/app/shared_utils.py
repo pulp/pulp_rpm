@@ -71,7 +71,7 @@ def read_package_from_file(path):
     return rpmmd.Package.from_file(path, changelog_limit=settings.KEEP_CHANGELOG_LIMIT)
 
 
-def _split_key_identifier(identifier):
+def split_key_identifier(identifier):
     """Split a key identifier into (prefix, uppercase hex); a bare hex is assumed to be v4."""
     prefix, sep, hex_part = identifier.partition(":")
     return (prefix.lower(), hex_part.upper()) if sep else ("v4", identifier.upper())
@@ -92,8 +92,8 @@ def _key_id_of(prefix, hex_part):
 
 def _same_key(identifier, other):
     """Check whether two key identifiers refer to the same key."""
-    prefix, hex_part = _split_key_identifier(identifier)
-    other_prefix, other_hex = _split_key_identifier(other)
+    prefix, hex_part = split_key_identifier(identifier)
+    other_prefix, other_hex = split_key_identifier(other)
     if (prefix, hex_part) == (other_prefix, other_hex):
         return True
     # Only fall back to comparing key IDs when one side lacks a full fingerprint.

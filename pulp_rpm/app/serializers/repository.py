@@ -195,6 +195,17 @@ class RpmRepositorySerializer(RepositorySerializer):
         required=False,
         allow_null=True,
     )
+    metadata_signing_fingerprint = PgpKeyFingerprintField(
+        help_text=_(
+            "The pubkey fingerprint to be passed to the metadata signing service. Defaults to "
+            "the key the signing service was created with. "
+            "Format: 'v<N>:<hex-fingerprint>' or 'keyid:<16-hex-char>'. "
+            "Example: 'v4:ABCDEF1234567890ABCDEF1234567890ABCDEF12'."
+        ),
+        required=False,
+        allow_null=True,
+        default=None,
+    )
     package_signing_service = RelatedField(
         help_text="A reference to an associated package signing service.",
         view_name="signing-services-detail",
@@ -313,6 +324,7 @@ class RpmRepositorySerializer(RepositorySerializer):
             "package_checksum_type",
             "compression_type",
             "layout",
+            "metadata_signing_fingerprint",
             "package_signing_fingerprint",
         ):
             field_data = data.get(field)
@@ -357,6 +369,7 @@ class RpmRepositorySerializer(RepositorySerializer):
         fields = RepositorySerializer.Meta.fields + (
             "autopublish",
             "metadata_signing_service",
+            "metadata_signing_fingerprint",
             "package_signing_service",
             "package_signing_fingerprint",
             "retain_package_versions",
